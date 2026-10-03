@@ -1,381 +1,254 @@
-# `all`
+# `all` (end-to-end workflow)
 
-`pdb2reaction all` runs the workflow end-to-end from PDB/mmCIF/XYZ/GJF.
-mmCIF and oversized PDB inputs are converted to a safely reindexed internal
-PDB; coordinate outputs also include CIF with the original identifiers.
+## Overview
 
-`all` runs in one of three modes, chosen by what you pass:
+`all` runs the whole workflow in one command: it extracts the active-site model and builds the minimum energy path (MEP). When asked, it also optimizes the transition state (TS) of each reaction step and runs the intrinsic reaction coordinate (IRC), frequency, and DFT calculations on it.
 
-- **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order. With `-c`, `all` first extracts active-site models; without it, the full supplied structures are used. It then runs GSM / DMF MEP search and optionally runs TSOPT + IRC / freq / DFT per reactive segment.
-- **Single-structure scan-defined workflow** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals. One literal defines one stage; several tuples inside it are advanced concertedly. The stage endpoints form the ordered input series for the MEP step.
-- **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
+Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
 
-```{note}
-The TSOPT-only reactant/product labels follow an **energy-order presentation convention**, not a chemically established reaction direction: the higher-energy IRC endpoint is presented as the reactant (on an exact energy tie the left endpoint is the reactant). The R/P labels, `reactant_irc`/`product_irc` filenames, barrier and delta are computed under this convention. The machine-readable summary records it explicitly under `endpoint_assignment` (`policy = "higher_energy_endpoint_as_reactant"`, `chemical_direction_known = false`); read that field and do not infer chemical direction from the labels alone.
-```
+### What it is for
 
-```{important}
-Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them and performs terminal exact-PHVA validation. Numerical optimizer convergence and saddle order are reported separately. `all` proceeds to IRC only when optimization converged, terminal PHVA completed, and a negative reaction direction is available. A converged higher-order stationary point (`n_imag > 1`) may be followed by **diagnostic** IRC with an explicit warning, but it is not certified as a first-order TS. Actual optimizer non-convergence, no imaginary mode, failed/unavailable PHVA, or no valid negative root stops the pipeline after preserving the TS artifacts and before IRC. Always inspect the imaginary modes and IRC endpoint connectivity before mechanistic interpretation.
-```
+What you pass selects the mode:
 
-## Optimization completion and IRC diagnostics
+* **Path and energy diagram from R and P**: give two or more structures in reaction order (reactant, intermediates, product); `all` finds the MEP between each neighbouring pair and draws the energy diagram.
+* **Path from a reactant alone**: give one structure and the bonds to form or break with `-s`; a staged scan makes the intermediates, and the MEP search runs through them.
+* **Check one TS candidate (TS-only mode)**: give one structure with `--tsopt` and no `-s`; `all` optimizes the TS and runs IRC from it. The TS is confirmed when n_imag = 1 and the IRC ends at the intended R and P.
 
-The aggregate reports execution and scientific completion separately. A finite, numerically converged TS with completed terminal PHVA and one imaginary mode is a valid TS1. If exactly one endpoint optimization is nonconverged, that TS1 remains a `partial` scientific result with `execution_status=completed`; a captured endpoint exception also remains `partial` but sets `execution_status=failed`. A converged higher-order saddle (`n_imag > 1`) is `partial` even when diagnostic IRC continues. IRC stop conditions and endpoint connectivity remain diagnostics. Missing requested MEP, thermochemistry or DFT work remains visible in its own stage outcome.
-
-When `--tsopt` is requested, completed TS and endpoint optimizations supersede
-preliminary MEP/preoptimization convergence for the processed segment. The
-original convergence fields remain available. Unprocessed intervals, missing
-requested outputs and final optimization failures still prevent completion.
-Without `--tsopt`, MEP convergence remains the final optimization criterion.
+---
 
 ## Examples
 
-Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) covering both multi-structure MEP and scan-based pipelines: [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples).
+The examples use the GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)); the full scripts are in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). `1.R.pdb` (reactant), `2.IM.pdb` (intermediate), and `3.P.pdb` (product) are full structures with every hydrogen; your own structures need hydrogens too. Examples 1–3 are walked through, with how to check the results, in [Quickstart: `all`](quickstart-all.md), [Quickstart: `--scan-lists`](quickstart-scan.md), and [Quickstart: TS-only mode](quickstart-tsopt.md).
 
-Command form:
+### 1. MEP with TS optimization, thermochemistry, and DFT
 
-```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b uma|orb|mace|aimnet2|dft] [options]
-```
-
-Multi-structure MEP with TS + thermo + DFT:
+`-c` names the extraction centers, and `-l` gives the charges of the non-standard residues.
 
 ```bash
-# Multi-structure MEP with TS + thermo + DFT
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-Single-structure staged scan (two stages):
+Every requested stage finished when the console prints `[tsopt] Converged (n_imag=1).` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
+
+### 2. Path from the reactant by a staged scan
+
+Stage 1 brings the methyl carbon of SAM (CS1) to C7 of GPP (1.60 Å), and stage 2 moves H11 of GPP onto OE2 of Glu186 (0.90 Å).
 
 ```bash
-# Single-structure staged scan (two stages)
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
     --tsopt --thermo --out-dir ./result_scan
 ```
 
-TSOPT-only validation of a single TS candidate:
+The targets inside one literal move together in one stage. Literals given in a row run as successive stages, each starting from the end of the one before, and the stage ends become the inputs of the MEP search. Give `-s` once and list every literal after it. To decide how to split a reaction, see {ref}`Decide how to split the reaction <mechanism-split>`. In a PDB with an empty chain field, an atom is its residue name, residue number, and atom name in any order (`"CS1 SAM 320"`); with chains, write `A:SAM:320:CS1`. All accepted forms are in {ref}`Scan-list spec <scan-list-spec>`.
+
+### 3. Check a TS candidate (TS-only mode)
+
+One input with `--tsopt` and no `-s` skips the MEP search.
 
 ```bash
-# TSOPT-only validation of a single TS candidate
 pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-PDB / CIF / GJF companion files are generated automatically when reference templates are available; CIF is emitted for mmCIF/oversized-PDB bridge inputs. Control with `--convert-files` (on by default).
+The optimized R, TS, and P are written to `result_all/segments/seg_01/`.
 
-`pdb2reaction all --help` shows core options; `pdb2reaction all --help-advanced` shows the full option list.
+### 4. Resume post-processing from a segment
 
-## Workflow
-
-```text
-Full system(s) (PDB / mmCIF / XYZ / GJF)
-  ├─ (optional) active-site extraction `extract` — requires PDB/mmCIF when `-c` is used
-  │   └─ active-site cluster model(s)
-  │       ├─ (optional) staged scan `scan` — single-structure workflows
-  │       │   └─ ordered intermediates
-  │       └─ MEP search `path-opt` (default) or `path-search` (recursive, `--refine-path`)
-  │           └─ MEP trajectory `mep_trj.xyz` + energy diagrams
-  └─ (optional) TS optimization + IRC `tsopt` → `irc`
-      ├─ (optional) thermochemistry `freq`
-      └─ (optional) single-point DFT `dft`
-```
-
-`all` runs the following stages in order. Stages 0 and 1 are automatic preprocessing; the rest fire based on the flags you pass.
-
-0. **Structure bridge and preflight** (automatic) — mmCIF, oversized/nonstandard PDB, and PDB altloc input are converted once to a safely reindexed internal PDB; altloc is selected coherently per residue. For an ordinary PDB with blank element columns, `all` runs `add-elem-info`. Standalone `fix-altloc` is only needed when you want a cleaned PDB deliverable; standalone commands use the same bridge. Missing element data must still be repaired for an ordinary PDB or supplied as mmCIF `_atom_site.type_symbol`.
-1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`; normally use substrate + catalytic residues. Every match starts radius expansion. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
-2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal contains distance `(i,j,target_Å)`, angle `(i,j,k,target_deg)`, or dihedral `(i,j,k,l,target_deg)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--scan-zero-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'SAM,320,CS1'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
-3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep_trj.pdb`, bridge-input `mep_trj.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
-4. **Per-segment post-processing** (ordinary MEP/TS candidates; bridge segments are skipped, and bond changes are diagnostic):
-   - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` or when either endpoint does not converge. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
-   - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
-   - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced. For large production calculations, finish the MLIP pipeline first and run `sp -b dft` later in a separate process/job so the DFT step starts with released VRAM. `all -b dft --dft` is rejected because it would repeat the primary DFT calculation.
-   - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
-5. **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) — skips MEP / merge; runs `tsopt` + EulerPC IRC and generates the same energy diagrams plus optional freq / DFT outputs.
-
-An endpoint execution error or missing valid final structure stops that segment
-before frequency/DFT and refined diagrams. `endpoint_opt/failure.json` records
-the error; TS/IRC structures and endpoint diagnostics are retained. Diagnostic
-frequency/DFT calculations may still run after ordinary nonconvergence with
-finite output.
-
-## Outputs
-
-The tree has three top-level zones: **deliverables at the root**, **per-segment deliverables under `segments/seg_NN/`**, and **pipeline scratch under `_work/`** (safe to `rm -rf` once you have the results you need).
-
-```text
-out_dir/   (default: ./result_all/)
-├─ summary.log                 # Text summary (authored at the root)
-├─ summary.json                # JSON results
-├─ mep_trj.pdb                 # Concatenated MEP path (promoted from the engine)
-├─ mep_trj.cif                 # Bridge inputs only; original identifiers restored
-├─ mep_w_ref.pdb               # Coordinate composite for inspection (--write-ref-merge)
-├─ mep_w_ref.cif               # Bridge-template companion (--write-ref-merge)
-├─ mep_trj.xyz                 # Full MEP trajectory
-├─ energy_diagram_MEP.png      # All-segment MEP barriers
-├─ energy_diagram_*.png        # Aggregated post-processing diagrams (MLIP / Gibbs / DFT, with --tsopt etc.)
-├─ segments/                   # Per-reactive-segment deliverables (bridge segments are skipped)
-│  └─ seg_NN/                  # 2-digit index, e.g. seg_01, seg_02
-│     ├─ reactant.{pdb,cif,xyz,gjf} # Canonical R/TS/P; bridge inputs write PDB + CIF
-│     ├─ ts.{pdb,cif,xyz,gjf}
-│     ├─ product.{pdb,cif,xyz,gjf}
-│     ├─ ts/                   # TS optimization output + vibrational analysis (--tsopt)
-│     ├─ irc/                  # IRC trajectories + plots (--tsopt)
-│     ├─ freq/{R,TS,P}/        # frequencies_cm-1.txt + thermoanalysis.yaml (--thermo)
-│     └─ dft/                  # DFT single-point results (--dft)
-└─ _work/                      # Pipeline scratch (safe to delete)
-   ├─ models/                  # Extracted active-site model PDBs (model_<input_stem>.pdb, when extraction runs)
-   ├─ scan/                    # Staged scan results (with --scan-lists)
-   ├─ add_elem_info/           # Preflight element-symbol fills
-   └─ path_opt/                # Raw MEP-engine output (path_search/ with --refine-path)
-```
-
-In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no MEP stage: the optimized R/TS/P plus `ts/`, `irc/`, `freq/`, and `dft/` land directly under `segments/seg_01/`, and the MEP work directory (`_work/path_opt/`) is absent.
-
-```{note}
-**The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_opt/` is scratch — the products you need (`mep_trj.pdb`, bridge-input `mep_trj.cif`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
-```
-
-At `-v 2` the console summarizes active-site charge resolution, scan stages,
-MEP progress (GSM / DMF), and per-stage timing. Resolved configuration details
-are shown at `-v 3`; see {ref}`verbosity-levels`.
-
-### Plot file naming
-
-Energy-diagram filenames encode method and scope:
-
-| File | Generated when | Content |
-|---|---|---|
-| `energy_diagram_MEP.png` | `path-opt` / `path-search` completes | All-segment MEP barriers (raw GSM / DMF values) |
-| `energy_diagram_MLIP.png` | per-segment `tsopt` + IRC completes | R → TS → P (MLIP energy) |
-| `energy_diagram_G_MLIP.png` | per-segment thermo completes | R → TS → P (MLIP Gibbs) |
-| `energy_diagram_DFT.png` | per-segment DFT completes | R → TS → P (DFT energy) |
-| `energy_diagram_G_DFT_plus_MLIP.png` | per-segment DFT + thermo | R → TS → P (DFT energy + MLIP thermal correction) |
-| `energy_diagram_MLIP_all.png` / `_G_MLIP_all.png` / `_DFT_all.png` / `_G_DFT_plus_MLIP_all.png` | all segments aggregated (variants for MLIP / Gibbs / DFT / DFT//MLIP Gibbs) | Combined across all segments |
-| `irc_plot.png` (per `segments/seg_NN/irc/`) | per-segment IRC completes | IRC profile (MLIP energy along the trajectory) |
-| `irc_plot_all.png` | all segments aggregated | IRC profiles concatenated across segments |
-
-### Reading `summary.log`
-
-The header identifies the `all` entry route as `MEP`, `Scan`, or `TS-only` and
-prints the absolute root output directory and, for `MEP` / `Scan`, the absolute
-internal path module directory (`TS-only` reports `-`). Internal engine names
-such as `path-opt` / `path-search`
-remain machine-readable metadata rather than the user-facing pipeline mode.
-
-The log is organized into numbered sections:
-
-- **[1] Global MEP overview** — image / segment counts, MEP trajectory plot paths, aggregate MEP energy diagram.
-- **[2] Segment-level MEP summary (MLIP path)** — per-segment barriers (ΔE‡), reaction energies (ΔE), bond-change summaries.
-- **[3] Per-segment post-processing (TSOPT / Thermo / DFT)** — TS imaginary-frequency checks, IRC outputs, MLIP / thermo / DFT energy tables.
-- **[4] Energy diagrams (overview)** — diagram tables for MEP / MLIP / Gibbs / DFT plus an optional cross-method summary.
-- **[5] Output directory structure** — a compact tree of generated files with inline annotations.
-
-### Reading `summary.json`
-
-Before interpreting energies, check `scientific_status` and `scientific_status_reasons`; see [result status and stage outcomes](json-output.md#execution-and-requested-stage-completion) for partial or stopped runs.
-
-Top-level keys: `out_dir`, `n_images`, `n_segments` (run metadata and counts); `segments` (per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`); `energy_diagrams` (optional payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` paths). `summary.json` intentionally omits the formatted tables and filesystem tree from `summary.log`.
-
-## CLI options
-
-Defaults shown are used when the option is not specified. The full flag list is in the generated [command reference](reference/commands/index.md); the tables below cover the options that need explanation.
-
-Input expectations:
-
-- Extraction enabled (`-c/--center`): inputs must be **PDB / mmCIF** so residues can be located.
-- Extraction skipped: inputs may be **PDB / mmCIF / XYZ / GJF**.
-- Multi-structure runs require ≥ 2 structures. For full input-file requirements (hydrogens, element columns, atom-order parity), see [CLI Conventions](cli-conventions.md).
-
-Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`). In `all`, the charge derivation from active-site model extraction (when `-c` is set) acts as an additional priority layer. Spin resolution: `--multiplicity` CLI → `.gjf` template → default `1`. Always provide `--ligand-charge/-l` for non-standard substrates so the correct net charge propagates to scan / MEP / TSOPT / DFT.
-
-### Input / output
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists/-s` or `--tsopt`). | Required |
-| `--ref-pdb FILE` | Reference PDB/mmCIF topology when `-i` provides XYZ/GJF coordinates. | _None_ |
-| `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
-| `--convert-files / --no-convert-files` | Global toggle for XYZ / TRJ → PDB / CIF / GJF companions when templates are available. CIF requires a bridged mmCIF/oversized-PDB topology. | `True` |
-| `--dump / --no-dump` | Dump MEP (GSM / DMF) trajectories. An explicit parent toggle is forwarded to `path-search` / `path-opt` and `scan` / `tsopt`; when omitted, each child resolves its YAML/default. With `--thermo`, freq always retains the internal `thermoanalysis.yaml` channel even when `--no-dump` is supplied. | `False` |
-| `--config FILE` | Base YAML applied first. | _None_ |
-| `--show-config / --no-show-config` | Print the effective YAML plus parent settings before execution. Child-governing parent options are `null` when omitted, because each child then resolves its own YAML/default. | `False` |
-| `--dry-run / --no-dry-run` | Validate options and print the plan. With `--center`, run extraction in a temporary directory to validate derived charge and electron parity. No scan/MEP/TSOPT/freq/DFT stage runs, and no persistent output is produced. | `False` |
-
-### Charge / spin
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `-l, --ligand-charge TEXT` | Net charge or per-resname mapping used when `-q` is omitted (PDB/mmCIF metadata or `--ref-pdb`). | _None_ |
-| `-q, --charge INT` | Explicit net system charge with highest priority. If it differs from the extracted/workflow-derived value, warn and use `-q`; omit it for automatic derivation. | _None_ |
-| `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
-
-### Extraction
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `-c, --center TEXT` | PDB/mmCIF path, IDs/names, `CHAIN:RESNAME`, or `CHAIN:RESNAME:RESSEQ`. | Required for extraction |
-| `-r, --radius FLOAT` | Active-site model inclusion cutoff (Å). `0` disables radius-based expansion, leaving the `-c` and `--selected-resn` selections. | `2.6` |
-| `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). `0` is internally nudged to `0.001 Å` to avoid empty selections (same as standalone `extract`). | `0.0` |
-| `--include-h2o / --no-include-h2o` | Include waters (HOH / WAT / H2O / DOD / TIP / TIP3 / SOL). | `True` |
-| `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms from amino acids outside the extraction centers. | `False` |
-| `--add-linkh / --no-add-linkh` | Add cap hydrogens for severed bonds. | `True` |
-| `--selected-resn TEXT` | Force-include using the same ID/name/chain-qualified selector forms as `--center`. | `""` |
-| `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
-| `--freeze-links / --no-freeze-links` | Freeze cap parents in active-site model PDBs. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based indices frozen in every stage. With extraction, indices refer to the original full input and are mapped to the active-site model; without extraction, they refer to the current input. Merged with `--freeze-links` and YAML `geom.freeze_atoms`. | _None_ |
-
-Built-in amino-acid names follow force-field-normalized Amber/CHARMM
-conventions. Raw PDB CCD name collisions are not inferred automatically; use
-`--modified-residue NAME:charge` to state the intended nominal charge.
-
-### MEP search
-
-```{note}
-`--max-cycles-gsm` and `--dmf-max-iterations` bound the MEP stage only; leave
-them unset to let each stage use its own default. The single-stage `opt`
-and `tsopt` subcommands keep their own `--max-cycles`.
-```
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `--mep-mode [gsm\|dmf]` | MEP algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
-| `--max-nodes INT` | Movable internal images per GSM/DMF segment. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
-| `--max-depth INT` | Recursive subdivision levels allowed; requires `--refine-path`. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
-| `--gsm-param [equi\|energy]` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
-| `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
-| `--dmf-max-iterations INT` | Maximum DMF IPOPT iterations. | `3000` |
-| `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
-| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
-| `--print-every INT` | Explicit CLI logging stride forwarded to child commands. Conflicting explicitly set downstream YAML values raise an error. | Child defaults / YAML |
-| `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--thresh-gsm TEXT` | Convergence preset for the GSM string optimizer of the MEP stage (same presets as `--thresh`). | `gau_loose` |
-| `--dmf-tol TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
-| `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. Recursive refinement also applies to a single-step MEP, where it can improve a poor HEI or TS estimate. | disabled |
-| `--write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. Requires `--refine-path`, `-c/--center`, and PDB/mmCIF input. | disabled |
-
-### MLIP calculator
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `--uma-workers`, `--uma-workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-### Post-processing
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `--tsopt / --no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | For Hessian TS optimizers, guide reaction-root identity with CPU/file-cached HEI tangent candidates. Turning it off disables cache creation/use and selects from the initial Hessian modes. Not applicable to Dimer. | `True` |
-| `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P; requires `--tsopt`. | `False` |
-| `--dft / --no-dft` | Run single-point DFT on R / TS / P; requires `--tsopt`. | `False` |
-| `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
-| `--thresh-post TEXT` | Convergence preset for TS and post-IRC endpoint optimizations. | `baker` |
-| `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
-| `--reject-uphill / --no-reject-uphill` | Opt in to rejecting energy-raising RFO steps during post-IRC **endpoint re-optimization only**, using a `1e-4` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `False` |
-| `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |
-| `--irc-never-stop / --no-irc-never-stop` | Ignore IRC gradient and energy stop conditions and trace each branch until its max-cycle cap. Numerical/integration failures and external interruption still stop propagation. | `False` |
-
-```{warning}
-`--dft` cost and memory depend on basis-function count, elements, functional,
-grid, engine, and hardware; atom count alone is not a reliable cutoff. Pilot a
-representative state and monitor peak memory before selecting resources.
-```
-
-TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsprfo`). Example: `--opt-mode grad --opt-mode-post hess` uses L-BFGS for path optimization and RS-P-RFO for TS refinement.
-
-### TSOPT / freq / DFT / scan overrides
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles`. | `100000` |
-| `--tsopt-out-dir PATH` | Custom tsopt subdirectory. | _None_ |
-| `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
-| `--freq-max-write INT` | Maximum modes to write. | `10` |
-| `--freq-amplitude-ang FLOAT` | Mode-trajectory amplitude (Å). | `0.8` |
-| `--freq-n-frames INT` | Frames per mode trajectory. | `20` |
-| `--freq-sort [value\|abs]` | Mode sorting behavior. | `value` |
-| `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
-| `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). | `gpu` |
-| `--dft-solvent TEXT` | Native PySCF implicit solvent for post-processing DFT. | `none` |
-| `--dft-solvent-model [pcm\|smd]` | Native PySCF solvent model for post-processing DFT. | `smd` |
-| `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
-| `--func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-svp` |
-| `--scf-max-cycles INT` | Maximum SCF iterations. | `100` |
-| `--dft-low-memory/--no-dft-low-memory` | Low-memory policy for a primary DFT backend or the optional `--dft` stage. | `--dft-low-memory` |
-| `--dft-nprocs INT` | PySCF/OpenMP CPU threads for DFT. | `auto` |
-| `--dft-memory SIZE` | PySCF host-RAM limit for DFT; not GPU VRAM. | `auto` |
-| `--scf-tol FLOAT` | SCF convergence tolerance. | `1e-9` |
-| `--dft-grid-level INT` | PySCF grid level. | `3` |
-| `-s, --scan-lists TEXT...` | Staged distance, angle, or dihedral targets (single-input runs). | _None_ |
-| `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based / --scan-zero-based` | How to read the `--scan-lists` atom indices. | 1-based |
-| `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
-| `--scan-restraint-k FLOAT` | Harmonic bias strength (eV · Å⁻²). | `300` |
-| `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `100000` |
-| `--scan-preopt / --no-scan-preopt` | Override the scan preoptimization toggle. | _None_ |
-| `--scan-endopt / --no-scan-endopt` | Override the scan end-of-stage optimization toggle. | _None_ |
-
-## Resume post-processing at a segment
-
-Repeat the original `all` command with the same inputs, extraction, path, and
-calculator settings, the same `--out-dir`, and add `--resume-segment N`.
-Post-processing settings such as `--tsopt-max-cycles` may be changed.
+To redo the post-processing from segment N, repeat the original command with the same inputs, extraction, path, and calculator options and the same `--out-dir`, and add `--resume-segment N`. Post-processing options such as `--tsopt-max-cycles` may change.
 
 ```bash
-pdb2reaction all -i R.pdb P.pdb -c 'SUB,CYS:112,ASP:114' \
-  --tsopt --thermo --tsopt-max-cycles 200000 \
-  --resume-segment 3 --out-dir result_all
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --dft \
+    --resume-segment 1 --out-dir ./result_mep
 ```
 
-The command verifies the saved inputs and MEP artifacts, preserves completed
-segments before `N`, removes post-processing outputs from `N` onward, and
-rebuilds the aggregate summary and diagrams. The output directory must contain
-resume metadata from an earlier `all` run.
+The segments before N are kept; the post-processing from segment N onward, the summary, and the diagrams are written again.
 
-## YAML configuration
+---
 
-`all` supports layered YAML — base settings via `--config FILE`, with the precedence `defaults < config < CLI`. The effective YAML is forwarded to every invoked subcommand, and each subcommand reads its own sections:
+## How it works
 
-| Subcommand | YAML sections |
-|---|---|
-| [`path-opt`](path-opt.md) | `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt`, `lbfgs`, `rfo` |
-| [`path-search`](path-search.md) | `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt`, `lbfgs`, `rfo`, `bond`, `search` |
-| [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
-| [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
-| [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
-| [`dft`](dft.md) | `dft` |
-| [`irc`](irc.md) | `geom`, `calc`, `irc` |
-
-```yaml
-# Minimal example
-calc:
-  model: uma-s-1p2            # uma-s-1p2 | uma-m-1p1
-  hessian_calc_mode: FiniteDifference   # default; benchmark Analytical before opting in
-gs:
-  max_nodes: 12
-  climb: true
-dft:
-  grid_level: 6
+```text
+Full structure(s) (PDB / mmCIF / XYZ / GJF)
+  ├─ (with -c) active-site extraction: extract
+  │   └─ active-site model(s)
+  ├─ (one structure with -s) staged scan: scan
+  │   └─ stage ends as intermediates
+  ├─ MEP search: path-opt (default) or path-search (--refine-path)
+  │   └─ mep_trj.xyz and energy_diagram_MEP.png
+  └─ (with --tsopt) TS optimization and IRC: tsopt → irc
+      ├─ (with --thermo) frequencies and thermochemistry: freq
+      └─ (with --dft) DFT single points: dft
 ```
 
-Full schema: [YAML Reference](yaml-reference.md).
+1. **Preparing the input**: for a PDB with alternate locations (altloc), `all` keeps one label per residue, the one with the highest mean occupancy; for a PDB with blank element columns, it fills them in. With `-c`, it cuts out the active-site model around the given residues and caps the cut bonds with hydrogens.
+2. **Building the path**: the input structures are optimized first (`--preopt`). With `-s`, the staged scan makes the intermediates. `path-opt` then finds the MEP between each neighbouring pair by GSM (growing string method) or DMF (direct max flux); with `--refine-path`, the recursive `path-search` refines the path and splits it into steps where bonds change. The HEI of each step is its TS candidate.
+3. **Optimizing the TS** (`--tsopt`): each HEI is optimized by RS-P-RFO (restricted-step partitioned rational function optimization) by default, and the final Hessian gives n_imag.
+4. **Following the IRC**: from the TS, the IRC is traced in both directions with EulerPC (Euler predictor–corrector), and both ends are optimized to minima. These become the R and P of the segment.
+5. **Thermochemistry and DFT**: `--thermo` runs `freq` on R, TS, and P for the Gibbs energy, and `--dft` adds DFT single points on the same structures. Each adds its own energy diagram.
+
+`all` continues from the TS to IRC only when the TS optimization converged, its final Hessian was computed, and n_imag ≥ 1:
+
+| TS result | What `all` does |
+| --- | --- |
+| Converged, n_imag = 1 | Runs IRC and optimizes both IRC ends. |
+| Converged, n_imag ≥ 2 | Runs IRC with a warning along the imaginary mode that best matches the MEP direction (the lowest one when none matches). The result is `partial`. |
+| Converged, n_imag = 0 | Stops before IRC. |
+| Not converged (cycle limit or `--stop-plateau`), the final Hessian skipped with `--skip-final-freq`, or a failed Hessian | Stops before IRC. |
+
+When `all` stops before IRC, the result is not `success`; the TS files stay in `segments/seg_NN/ts/`, and the later segments are not post-processed. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
+
+If one endpoint optimization does not converge, the result is `partial` and `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
+
+---
+
+## Reading the run status
+
+A successful TS optimization gives one imaginary mode along the reaction coordinate (n_imag = 1). Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
+
+Read the outcome in three places:
+
+* **Console**: each TS optimization ends with `[tsopt] Converged (n_imag=1).` when it converged with one imaginary mode. The `====== Pipeline summary ======` block prints `Execution status:` and `Scientific status:`. When the result is not `success`, `RESULT WARNING:` lines give the reasons.
+* **`summary.log`**: the header shows `Pipeline mode` (`MEP`, `Scan`, or `TS-only`) and both statuses. Section [1] is the MEP overview; [2] lists the barrier ΔE‡, the reaction energy ΔE, and the bond changes of each segment on the MEP; [3] gives the post-processing of each segment, with n_imag under `TS imaginary freq:`; [4] tabulates the energy diagrams; [5] shows the output tree.
+* **`summary.json`**: `scientific_status` holds `success`, `partial`, or `failed`, and `scientific_status_reasons` holds the [reasons](json-output.md#execution-and-requested-stage-completion). n_imag of each TS is `post_segments[].tsopt.n_imaginary_modes`.
+  * **Barriers in `summary.json`**: with `--tsopt`, the barrier of each segment is `post_segments[].mlip.barrier_kcal` (MLIP energy of the optimized TS minus R). With `--thermo` and `--dft`, the same `barrier_kcal` is also under `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. `segments[].barrier_kcal` is the barrier on the MEP before TS optimization, or TS − R in TS-only mode.
+
+`success` means that every requested stage converged; with `--tsopt`, it also means that every TS has n_imag = 1. Whether the endpoints are the intended R and P is for you to check: compare the bond changes in section [2] of `summary.log` and the structures `segments/seg_NN/reactant.*` and `product.*` with the R and P you intended. If n_imag ≠ 1 or the endpoints are not the intended ones, see {ref}`When the TS search fails <ts-search-fails>`.
+
+---
+
+## Output files
+
+`all` writes these files to `--out-dir`:
+
+```text
+result_all/
+├─ summary.log                  # Text summary
+├─ summary.json                 # Machine-readable results (always written; all has no --out-json)
+├─ mep_trj.xyz                  # MEP trajectory over all segments
+├─ mep_trj.pdb                  # Same trajectory as PDB
+├─ mep_trj.cif                  # Same trajectory as mmCIF (mmCIF or very large PDB input)
+├─ mep_w_ref.pdb                # MEP merged into the full input (--write-ref-merge)
+├─ energy_diagram_MEP.png       # MEP energy profile over all segments
+├─ energy_diagram_*_all.png     # R → TS → P diagrams over all segments (--tsopt, --thermo, --dft)
+├─ irc_plot_all.png             # IRC profiles over all segments (--tsopt)
+├─ segments/
+│  └─ seg_NN/                   # One reaction step: seg_01, seg_02, ...
+│     ├─ reactant.*             # Optimized R, TS, and P in the input format (--tsopt)
+│     ├─ ts.*
+│     ├─ product.*
+│     ├─ energy_diagram_*.png   # R → TS → P diagrams of this step
+│     ├─ ts/                    # TS optimization; vib/imag_*_trj.xyz animates the imaginary modes
+│     ├─ irc/                   # IRC trajectories and irc_plot.png
+│     ├─ endpoint_opt/          # Endpoint optimizations (kept with --dump or when an endpoint did not converge)
+│     ├─ freq/{R,TS,P}/         # Frequencies and thermochemistry (--thermo)
+│     └─ dft/{R,TS,P}/          # DFT single points (--dft)
+└─ _work/                       # Intermediate files, including the TS candidates (HEI)
+   ├─ models/                   # Extracted models, model_<input>.pdb (with -c)
+   ├─ scan/                     # Staged scan (with -s)
+   └─ path_opt/                 # MEP search and hei_seg_NN.* (path_search/ with --refine-path)
+```
+
+* **Structures to report**: cite `segments/seg_NN/reactant.*`, `ts.*`, and `product.*`. The subdirectories of `seg_NN/` hold the files of each stage.
+* **TS-only mode**: there is no MEP search, so the MEP files and `_work/path_opt/` are absent; R, TS, and P go to `segments/seg_01/`.
+
+The energy diagrams are named by method:
+
+| File | Written when | Content |
+| --- | --- | --- |
+| `energy_diagram_MEP.png` | The MEP search finishes | MEP energy profile over all segments |
+| `energy_diagram_MLIP.png` | `--tsopt` | R → TS → P, MLIP energy |
+| `energy_diagram_G_MLIP.png` | `--thermo` | R → TS → P, MLIP Gibbs energy |
+| `energy_diagram_DFT.png` | `--dft` | R → TS → P, DFT energy on the MLIP geometries |
+| `energy_diagram_G_DFT_plus_MLIP.png` | `--dft` and `--thermo` | R → TS → P, DFT energy plus the MLIP thermal correction |
+| `energy_diagram_*_all.png` | Same as the diagram without `_all` | The same diagram over all segments, at the top of the output directory |
+| `irc_plot.png` (in `seg_NN/irc/`), `irc_plot_all.png` | `--tsopt` | IRC energy profile of one segment, and of all segments |
+
+Energies in the diagrams are in kcal/mol relative to the first state (the reactant).
+
+---
+
+## Main options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path(s) | (required) | Two or more structures in reaction order, or one structure with `-s` or `--tsopt` (`.pdb`, `.cif`, `.xyz`, `.gjf`). Give several files after one `-i`, or repeat `-i` |
+| `-c, --center` | text | `None` | Extraction centers, normally the substrate and catalytic residues: residue names (`'SAM,GPP'`), residue IDs (`'A:123,B:456'`), or chain-qualified names (`'A:SAM'`, `'A:SAM:123'`). Omit to use the full input |
+| `-l, --ligand-charge` | text | `None` | Charges of non-standard residues (e.g. `'SAM:1,GPP:-3'`), or their total charge as one number (total ligand charge). PDB/mmCIF input only |
+| `-q, --charge` | integer | `None` | Total charge. With `-c`, it comes from the extracted model; without `-c`, required unless `-l` is given or the input is `.gjf`. An explicit value overrides the derived one with a warning |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
+| `-b, --backend` | text | `uma` | Calculator backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |
+| `-r, --radius` | float | `2.6` | Extraction cutoff (Å) around the center atoms. `0` keeps only the `-c` and `--selected-resn` residues |
+| `--selected-resn` | text | `""` | Residues to include without radius expansion, in the same forms as `-c` |
+| `-s, --scan-lists` | text | `None` | Staged scan targets for one input, one literal per stage (e.g. `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`; format in {ref}`Scan-list spec <scan-list-spec>`) |
+| `--tsopt/--no-tsopt` | flag | `False` | Optimize the TS of each segment and run IRC |
+| `--thermo/--no-thermo` | flag | `False` | Frequencies and thermochemistry on R, TS, and P (needs `--tsopt`) |
+| `--dft/--no-dft` | flag | `False` | DFT single points on R, TS, and P (needs `--tsopt`) |
+| `--refine-path/--no-refine-path` | flag | `False` | Run the recursive `path-search` instead of one `path-opt` per pair |
+| `--mep-mode` | `gsm` / `dmf` | `gsm` | MEP method: GSM or DMF |
+| `--opt-mode` | `grad` / `hess` | `grad` | Optimizer for the single-structure optimizations and the scan: `grad` = L-BFGS, `hess` = RFO |
+| `--opt-mode-post` | `grad` / `hess` | `hess` (the `--opt-mode` value when `--opt-mode` is given on the command line) | Optimizer for the TS and the endpoints after IRC: `grad` = Dimer for the TS and L-BFGS for the endpoints, `hess` = RS-P-RFO for the TS and RFO for the endpoints |
+| `--preopt/--no-preopt` | flag | `True` | Optimize the input structures before the scan and the MEP search |
+| `--flatten/--no-flatten` | flag | `False` | Remove extra imaginary modes left after the TS optimization |
+| `--stop-plateau/--no-stop-plateau` | flag | `False` | Stop an optimization when the energy stops changing before convergence; the run is reported as stalled, not converged |
+| `--tsopt-max-cycles` | integer | `100000` | Cycle limit of the TS optimization |
+| `--resume-segment` | integer | `None` | Redo the post-processing from segment N, reusing the MEP in `--out-dir` (example 4) |
+| `--dry-run/--no-dry-run` | flag | `False` | Check the options and print the plan without running a calculation. With `-c`, extraction runs in a temporary directory to check the charge |
+| `-o, --out-dir` | path | `./result_all/` | Output directory |
+
+For every option, run `pdb2reaction all --help-advanced` or see the [generated CLI reference](reference/commands/all.md).
+
+> **Note:** In YAML (`--config`), you can set what the options above do not cover. See [YAML Reference](yaml-reference.md) for the sections and keys.
+
+---
 
 ## Notes
 
-Structural differences outside the reaction coordinate can affect barriers
-obtained from independently prepared full-system structures. Inspect the
-structures and validate the selected path workflow for the modeled system.
+* **`--dft` and `-b dft`**: they cannot be used together, and the run stops with an error at startup. To add DFT single points after a `-b dft` run, run `pdb2reaction sp -b dft` or `pdb2reaction dft` as a separate job.
+* **Cost of `--dft`**: memory use depends on the structure, basis, functional, precision, and software stack. Try a representative structure on the target node and watch the peak memory. For a large model, finish the MLIP run first and run the DFT single points as a separate job.
+* **R and P in TS-only mode**: the higher-energy IRC end is named the reactant (on an exact tie, the left end). The names, the file names, the barrier, and the reaction energy follow this energy order, not a known chemical direction; the barrier from P is `barrier_kcal − delta_kcal`. `summary.json` records the rule under `endpoint_assignment`, with `chemical_direction_known: false`.
+* **`summary.log` in TS-only mode**: section [1] is the TS and IRC overview, and [2] comes from the optimized TS and endpoints.
+* **Thermochemistry file**: with `--thermo`, `thermoanalysis.yaml` is kept even under [`--no-dump`](reference/commands/all.md), because `all` reads the thermochemistry from it.
+* **Extraction radius**: `-r 0` disables radius-based expansion, so the model starts from the residues selected by `-c` and `--selected-resn`. Structural safeguards can still add a disulfide partner or the backbone of an adjacent residue. A zero radius is evaluated internally as 0.001 Å.
+* **Without `-c`**: extraction is skipped, and the full input structures go to the MEP search, `tsopt`, `freq`, and `dft`. One structure still needs `-s` or `--tsopt`.
+* **Input formats**: with `-c`, the input must be PDB or mmCIF; without `-c`, XYZ and GJF are accepted too. All structures of one run must have the same atoms in the same order.
+* **Charge and multiplicity**: with `-c`, the total charge is the sum over the extracted model: built-in values for amino acids, ions, and water, `-l` for the other residues, and 0 for residues not listed in `-l`. Without `-c`, it comes from `-l` applied to the input, or from the `.gjf` header. The multiplicity is `-m`, otherwise the `.gjf` header, otherwise 1. See {ref}`Charge specification <charge-specification>`.
+* **Separately prepared structures**: when the input structures were prepared independently, their differences outside the reaction coordinate enter the barrier. Compare the structures before reading the barrier.
+* **`--write-ref-merge`**: writes the path merged back into the original full input, for inspection: `mep_w_ref*` in the output directory and `hei_w_ref_seg_NN.pdb` in `_work/path_search/`. It needs `--refine-path`, `-c`, and PDB or mmCIF input.
+* **`--resume-segment`**: it needs `--tsopt`, `--thermo`, or `--dft`, and cannot be combined with `--dry-run`. The run stops with an error when the saved inputs and MEP do not match the command.
 
-- With `--write-ref-merge`, the static template is derived from the first original input; `path-search --ref-full-pdb` remains internal to this wrapper.
-- Extraction radii: `-r 0` (or `--radius 0`) disables radius-based expansion, so the model starts from residues selected by `-c` and `--selected-resn`; structural safeguards can still add a required disulfide partner or adjacent backbone context. The extractor internally clamps zero radii to `0.001 Å` to avoid an empty geometric query.
-- Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
-- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to MEP / `tsopt` / `freq` / `dft`; single-structure runs still require either `--scan-lists/-s` or `--tsopt`.
+### Comparing a mutant with the wild type
 
-## See Also
+Within one path, every structure has the same atoms in the same order. A mutant and the wild type (WT) differ in residues and often in atom count, so their total energies cannot be subtracted. Compare the barriers computed within each system instead:
 
-[Installation](installation.md) · [Getting Started](getting-started.md) · [extract](extract.md) · [scan](scan.md) · [path-opt](path-opt.md) · [path-search](path-search.md) · [tsopt](tsopt.md) · [irc](irc.md) · [freq](freq.md) · [dft](dft.md) · [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) · [YAML Reference](yaml-reference.md) · [Glossary](glossary.md).
+`ΔΔG‡ = (G_TS − G_R)_mutant − (G_TS − G_R)_WT`
+
+* Select the same residue positions and the same boundary and cap rules for both models, so that the mutation is the only designed difference. Two independent radius-based extractions can differ, because a boundary residue may enter one model and not the other; compare the two selections.
+* Use the same protonation rules, charge assignment, backend and model, precision, restraints, and thermochemistry settings. If the mutation changes a protonation state or a formal charge, the total charges differ; do not force the same `-q` on both.
+* For two mechanisms of the same composition, use one common atom set and atom order for both paths.
+
+The two runs use the same options except for the input and the output directory. Give R and P of each system (MEP mode), so that R is the chemical reactant; `G_TS − G_R` is `post_segments[].gibbs_mlip.barrier_kcal`:
+
+```bash
+pdb2reaction all -i wt_R.pdb wt_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt
+pdb2reaction all -i mutant_R.pdb mutant_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_mutant
+```
+
+---
+
+## See also
+
+* [extract](extract.md) — extraction of the active-site model
+* [scan](scan.md) — staged scans of distances, angles, and dihedrals
+* [path-opt](path-opt.md) — one MEP between two structures (GSM / DMF)
+* [path-search](path-search.md) — recursive MEP search that splits the path into steps
+* [tsopt](tsopt.md) — TS optimization
+* [irc](irc.md) — IRC from a TS
+* [freq](freq.md) — vibrational analysis and thermochemistry
+* [dft](dft.md) — DFT single points
+* [Refine an MLIP TS with DFT](dft-backend.md) — `-b dft` and `--dft`
+* [Tips for studying reaction mechanisms](mechanism-tips.md) — splitting the reaction, checking the TS, and what to try when it fails
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails
+* [Getting Started](getting-started.md) — the shortest run and what to read next

@@ -103,6 +103,10 @@ def _sanitize_all_args(args: list[str], fixture: dict[str, Path]) -> list[str]:
             out.extend([tok, "LIG"])
             i += 2
             continue
+        if tok == "--selected-resn":
+            # Named residues in doc examples do not exist in the LIG fixture.
+            i += 2
+            continue
         if tok in {"-l", "--ligand-charge", "-q", "--charge"}:
             # Drop system-specific charge args: they reference the doc example's
             # real residues/total charge, which would not match the LIG fixture.

@@ -1,29 +1,64 @@
 # YAML Reference
 
-```{tip}
-**Looking for the `all` end-to-end command?** The `all` command consumes every section described on this page and forwards them to the appropriate subcommand. See [`all`](all.md) (in particular its "Subcommand → YAML Sections" mapping) for which sections are read by which stage.
-```
+This page lists, section by section, the keys and default values you can set in a YAML configuration file (`--config`). The list of sections, the order of precedence, and the mapping from CLI flags to YAML keys come first.
+
+## Overview
+
+| Section | Description | Used by |
+|---------|-------------|---------|
+| [`geom`](#geom) | Geometry and coordinate settings | opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft, sp |
+| [`calc`](#calc) | Machine-learning interatomic potential (MLIP) backend configuration | opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, sp, dft (`charge` and `spin` only) |
+| [`opt`](#opt) | Shared optimizer settings | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
+| [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
+| [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
+| [`gs`](#gs) | Growing String Method (GSM) string: nodes, climbing image, reparameterization | path-opt, path-search |
+| [`dmf`](#dmf) | Direct Max Flux settings | path-opt, path-search |
+| [`stopt`](#stopt) | StringOptimizer, which moves the GSM string; its `thresh` and `max_cycles` decide when GSM stops | path-opt, path-search |
+| [`irc`](#irc-section) | IRC integration settings | irc |
+| [`freq`](#freq-section) | Vibrational analysis settings | freq (`zero_cutoff_cm` also opt, tsopt) |
+| [`thermo`](#thermo) | Thermochemistry settings | freq |
+| [`dft`](#dft-section) | DFT calculation settings of the `dft` command | dft |
+| [`bias`](#bias) | Harmonic bias settings | scan, scan2d, scan3d |
+| [`bond`](#bond) | Bond-change detection settings | scan, path-search |
+| [`search`](#search) | Recursive path search settings | path-search |
+| [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
+| [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS optimization | tsopt |
+| `sp` | Single-point options (`hess`, default `false`; `hessian_calc_mode`; same as `--hess` and `--hessian-calc-mode`); see [sp](sp.md) | sp |
 
 (yaml-configuration-precedence)=
 ## Configuration precedence
 
-Settings are resolved in the following order (later sources override earlier ones):
+Settings are applied in the following order (later sources override earlier ones):
 
 ```
 built-in defaults  <  --config (YAML)  <  CLI flags
 ```
 
-1. **Built-in defaults** — hard-coded values in `pdb2reaction/core/defaults.py`.
+1. **Built-in defaults** — the values shown by `pdb2reaction <subcmd> --help-advanced` and as `[default: …]` in the [Command Reference](reference/commands/index.md).
 2. **`--config`** — a YAML file that overrides defaults (e.g., `--config my_settings.yaml`).
-3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Only *explicitly supplied* flags override YAML; options left at their CLI default do not mask YAML values.
-
-These are the three layers exposed by the public CLI. Internal compatibility
-parameters used by embedded Python callers do not add another public
-command-line configuration layer.
+3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Options left at their CLI default do not mask YAML values.
 
 For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
 
-This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`CLI Conventions: Configuration precedence <configuration-precedence>`.
+This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft`, and `sp`.
+
+To check the values a run uses, run it with {ref}`-v 3 <verbosity-levels>`, which prints each section as its name, a dashed underline, and the values in effect:
+
+```text
+opt
+---
+thresh: gau
+max_cycles: 100000
+…
+```
+
+`--show-config` (not on `scan`, `scan2d`, or `scan3d`) prints the loaded YAML file and its top-level keys.
+
+A misspelled section name prints `[config] WARNING: YAML section(s) … are not recognized and were ignored.` A misspelled key inside a section is handled by section:
+
+- `calc` prints `[backend] WARNING: … ignored calc setting(s) …` and goes on.
+- `freq`, `thermo`, `bias`, `bond`, `search`, `sp`, the keys directly under `hessian_dimer`, and `geom` in the scan and path commands ignore it without a message. With `-v 3` it appears as an extra line in that section's block.
+- Every other section stops with an error that names the key.
 
 (common-cli-to-yaml-mapping)=
 ## Common CLI-to-YAML mapping
@@ -41,7 +76,8 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--max-cycles-gsm` | `max_cycles` | `stopt` (also sets `stopt.stop_in_when_full`) |
 | `--dmf-max-iterations` | `max_cycles` | `dmf` |
 | `--gsm-param` | `param` | `gs` |
-| `--dump` | `dump` | Command-specific optimizer/path owner (`opt`, `stopt`, or selected child configuration) |
+| `--dump` | `dump` | `opt` (opt, tsopt, scan), `stopt` (path-opt, path-search), `thermo` (freq) |
+| `--step-size` (irc) | `step_length` | `irc` |
 | `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
@@ -50,65 +86,32 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--dft-engine` | `engine` | `dft` |
 
 ```{note}
-**Name mismatch — `--pressure` vs `pressure_atm`.** On the CLI the flag is `--pressure` (units implicit: atm); the matching YAML key under `thermo:` is `pressure_atm` with an explicit unit suffix. Both carry atm values and get converted to Pa internally.
+**Name mismatch — `--pressure` vs `pressure_atm`.** Both take atm (converted to Pa internally); only the YAML key names the unit.
 ```
 
 ### Default `--thresh` per subcommand
 
-`--thresh` defaults differ per subcommand because TS optimizers use a tighter "baker" preset while minimizers use the standard "gau" preset.
-
-| Subcommand | Default `--thresh` | Backing defaults block |
-|------------|-------------------|------------------------|
-| `opt` | `gau` | `OPT_BASE_KW` (→ `lbfgs` / `rfo`) |
-| `tsopt` (Hessian Dimer) | `baker` | `HESSIAN_DIMER_KW`, inner `LBFGS_TS_KW` |
-| `tsopt` (RS-P-RFO / RS-I-RFO) | `baker` | `RSIRFO_KW` |
-| `scan` | `gau` | `OPT_BASE_KW` |
-| `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
-| `path-search` (per-step opt) | `gau` | `OPT_BASE_KW` |
-| `path-opt` / StringOptimizer | `gau_loose` | `STOPT_KW` |
-| `all` (pre-opt, post-opt min) | `gau` | `OPT_BASE_KW` |
-| `all` (post-opt TS stage) | `baker` | `HESSIAN_DIMER_KW` / `RSIRFO_KW` |
+| Subcommand | Default `--thresh` |
+|------------|-------------------|
+| `opt` | `gau` |
+| `tsopt` (Hessian Dimer) | `baker` |
+| `tsopt` (RS-P-RFO / RS-I-RFO) | `baker` |
+| `scan` | `gau` |
+| `scan2d`, `scan3d` | `baker` |
+| `path-opt`, `path-search` (single-structure optimizations) | `gau` |
+| `path-opt`, `path-search` (GSM string: `--thresh-gsm`, `stopt.thresh`) | `gau_loose` |
+| `all` (pre-opt, post-opt min) | `gau` |
+| `all` (post-opt TS stage) | `baker` |
 
 Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`. Override per run with `--thresh <preset>` or under `opt.thresh` in YAML.
 
 ```{note}
 **Subcommands without `--thresh`.** `irc`, `freq`, and `dft` do **not** expose `--thresh`:
 
-- `irc` — convergence is governed by `irc.rms_grad_thresh`, `irc.energy_thresh`, and `irc.max_cycles` (see [`irc` section](#irc-section)). The optimizer preset family does not apply because IRC follows a predictor–corrector integrator, not a force-based minimizer.
+- `irc` — convergence is governed by `irc.rms_grad_thresh`, `irc.energy_thresh`, and `irc.max_cycles`. The optimizer preset family does not apply because IRC follows a predictor–corrector integrator, not a force-based minimizer.
 - `freq` — there is no optimization step, so no `--thresh`. Numerical accuracy is governed by `--hessian-calc-mode` and the underlying MLIP precision.
-- `dft` — SCF convergence uses `dft.conv_tol` (default `1e-9` hartree) and `dft.max_cycle`, not the `gau`/`baker` preset family. See the [`dft` section](#dft-section).
+- `dft` — SCF convergence uses `dft.conv_tol` and `dft.max_cycle`, not the `gau`/`baker` preset family.
 ```
-
-## Overview
-
-`opt.lbfgs` and `opt.rfo` are aliases of `lbfgs` and `rfo`;
-`freq.thermo` is an alias of `thermo`, also used by `all --thermo`.
-In path workflows, `stopt.lbfgs` and `stopt.rfo` also configure
-single-structure optimizers. Conflicting explicit values within one YAML
-layer are rejected, including common `opt` keys and the selected optimizer
-section; path-specific output directories and prefixes are assigned per run.
-String optimization reads the outer `stopt` section.
-
-
-| Section | Description | Used by |
-|---------|-------------|---------|
-| [`geom`](#geom) | Geometry and coordinate settings | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft |
-| [`calc`](#calc) | MLIP backend configuration | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
-| [`opt`](#opt) | Shared optimizer settings | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
-| [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
-| [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
-| [`gs`](#gs) | Growing String Method settings | path-opt, path-search |
-| [`dmf`](#dmf) | Direct Max Flux settings | path-opt, path-search |
-| [`stopt`](#stopt) | StringOptimizer settings | path-opt, path-search |
-| [`irc`](#irc-section) | IRC integration settings | irc |
-| [`freq`](#freq-section) | Vibrational analysis settings | freq |
-| [`thermo`](#thermo) | Thermochemistry settings | all, freq |
-| [`dft`](#dft-section) | DFT calculation settings | dft |
-| [`bias`](#bias) | Harmonic bias settings | scan, scan2d, scan3d |
-| [`bond`](#bond) | Bond-change detection settings | scan, path-search |
-| [`search`](#search) | Recursive path search settings | path-search |
-| [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
-| [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS optimization | tsopt, all |
 
 ## Shared Sections
 
@@ -118,15 +121,14 @@ Geometry loading and coordinate handling.
 
 ```yaml
 geom:
- coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
+ coord_type: cart # "cart" (Cartesian), "redund" (redundant internals), "dlc" (delocalized internals), or "tric" (translation-rotation internals) for opt, tsopt, scan, scan2d, and scan3d; all, path-opt, and path-search accept cart and dlc only
  freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB/mmCIF input, or XYZ/GJF with `--ref-pdb`), the auto-detected cap-H parent indices are merged in
 ```
 
 **Notes:**
-- `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB/mmCIF topology inputs
-- Frozen atoms have zeroed forces. With the default `return_partial_hessian: true`, Hessian evaluation returns only the active-DOF block; setting it false returns a full matrix with frozen rows and columns zeroed
-- Cartesian PHVA always uses the constrained treatment, removing only full-system rigid motions that leave frozen anchors fixed; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
-- For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
+- Frozen atoms have zeroed forces. With the default `return_partial_hessian: true`, the Hessian covers only the movable atoms; setting it false returns a full matrix with frozen rows and columns zeroed
+- In Cartesian PHVA (partial Hessian vibrational analysis), only the rigid motions of the whole system that keep the frozen atoms in place are removed; see [freq](freq.md#rigid-modes-with-frozen-boundaries)
+- For `irc`, `geom.coord_type` is always `cart`, whatever YAML or the CLI sets
 
 ---
 
@@ -136,23 +138,23 @@ Energy/force calculator configuration.
 
 ```yaml
 calc:
- backend: uma           # uma, orb, mace, aimnet2, or dft
+ backend: uma           # uma, orb, mace, aimnet2, dft, or auto
  precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | fp32 | fp64; aimnet2 accepts auto/fp32 and rejects fp64
- charge: 0 # Total system charge (overridden by CLI -q)
+ charge: 0 # Total charge; used only when written here (no built-in default); -q and -l override it
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p2 # UMA: uma-s-1p2 | uma-m-1p1. Without a model set, backend orb / mace / aimnet2 uses orb_v3_conservative_omol / MACE-OMOL-0 / aimnet2
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
  radius: null # Cutoff radius for neighbor search
  r_edges: false # Store radial edges
- workers: 1 # UMA inference workers (workers>1 + explicit Analytical is an error)
+ workers: 1 # UMA inference workers
  workers_per_node: 1 # Workers per node for parallel predictor
  out_hess_torch: true # Return Hessian as torch.Tensor
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # Inherited from geom.freeze_atoms; do not set directly
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: true  # Return active-DOF block Hessian
+ return_partial_hessian: true  # Return the Hessian of the movable atoms only
  print_timing: true # Print Hessian timing breakdown
  print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
  # xTB solvent correction (computationally expensive)
@@ -165,13 +167,13 @@ calc:
   func_basis: wb97m-v/def2-svp
   engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
   lowmem: true             # direct JK without a persistent DF tensor
-  density_fit: false       # enabled by --no-dft-low-memory unless set explicitly
+  density_fit: false       # default: the opposite of lowmem
   nprocs: auto             # PySCF/OpenMP threads from scheduler/affinity
   memory: auto             # host RAM limit, e.g. 64GB (not GPU VRAM)
   solvent: none
   solvent_model: smd      # pcm | smd
   save_scf_checkpoint: false
-  checkpoint_path: null   # leaf default when enabled: <out-dir>/_work/dft_scf/state.chk
+  checkpoint_path: null   # default when enabled (commands other than all): <out-dir>/_work/dft_scf/state.chk
   pyscf:
    mol: {}
    mf: {}
@@ -181,15 +183,7 @@ calc:
    with_solvent: {}
 ```
 
-**Notes:**
-- `backend: dft` selects the stateful PySCF/GPU4PySCF scanner; the standalone top-level `dft:` section below remains the dedicated population-analysis command configuration.
-- All MLIP backends support analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only. DFT supports PySCF analytical and finite-difference Hessians.
-- `workers` / `workers_per_node` are effective with the UMA backend only.
-- `FiniteDifference` is the portable default. `Analytical` avoids finite-displacement error, but runtime and memory are backend/model/system dependent; select it only after validating the target setup.
-- `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
-- Charge/spin inherit `.gjf` template metadata when available
-- `freq` forces `calc.return_partial_hessian = true` (PHVA) regardless of YAML.
-- IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
+`backend: dft` computes energies, forces, and Hessians with DFT (PySCF or GPU4PySCF) through the `calc.dft` block above; see [Refine an MLIP TS with DFT](dft-backend.md). The top-level [`dft` section](#dft-section) configures the separate `dft` command (also run by `all --dft`). Both take the same SCF keys (`conv_tol`, `max_cycle`, `grid_level`, …); `save_scf_checkpoint` and `checkpoint_path` exist only in `calc.dft`. `hessian_calc_mode: Analytical` avoids the finite-displacement error, but its time and memory depend on the backend and system, so try it on your system first. For how `charge` and `spin` combine with the CLI and `.gjf` templates, see {ref}`Charge specification <charge-specification>`.
 
 ---
 
@@ -221,21 +215,18 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**Energy plateau stop (opt-in, default off):**
-`energy_plateau` is `false` by default; `--stop-plateau` on `opt` / `tsopt` /
-`all` turns it on (`--stop-plateau-thresh` and `--stop-plateau-window` set the
-two values below). When it is on, the optimizer terminates as `stalled`, not
-converged, if the energy range (max − min) over the last
-`energy_plateau_window` steps falls below `energy_plateau_thresh` (default
-`1e-4` au ≈ 0.06 kcal/mol over 50 steps). It saves cycles when MLIP force noise
-can exceed the `baker` threshold (`max_force = 3×10⁻⁴ au`), so the force
-criterion may never be satisfied even after the energy has flattened. It never
-reports convergence, and `max_cycles` remains the real bound on every run.
-The stop is **skipped** for chain-of-states (COS) optimizers such as `stopt`,
-`gs`, and DMF, because those store per-image energy arrays rather than a single scalar
-trace.
+**Energy plateau stop (off by default):**
+`--stop-plateau` on `opt` / `tsopt` / `all` turns `energy_plateau` on, and
+`--stop-plateau-thresh` / `--stop-plateau-window` set the two values below.
+The optimizer then stops as `stalled`, not converged, when the energy range
+(max − min) over the last `energy_plateau_window` steps falls below
+`energy_plateau_thresh`. Use it when MLIP force noise keeps the force above the
+`baker` threshold after the energy has flattened. When `tsopt` stops on a
+plateau, it still computes the Hessian and reports n_imag; a TS optimization
+that reaches `max_cycles` without converging skips the Hessian. GSM and DMF
+path optimizations do not use this stop.
 
-**Convergence Presets:**
+**Convergence Presets** (forces in Hartree/Bohr and steps in Bohr in Cartesian coordinates; Hartree/rad and rad for angles):
 
 | Preset | Max Force | RMS Force | Max Step | RMS Step |
 |--------|-----------|-----------|----------|----------|
@@ -245,15 +236,12 @@ trace.
 | `gau_vtight` | 2.0e-6 | 1.0e-6 | 6.0e-6 | 4.0e-6 |
 | `baker` | 3.0e-4 | 2.0e-4 | 3.0e-4 | 2.0e-4 |
 
-`baker` adds a fifth criterion to the four columns: `|delta E| < 1e-6` hartree
-against the previous cycle. All five must hold, so this preset is stricter than
-the published Baker criterion (Bakken and Helgaker, *J. Chem. Phys.* **117**,
-9160 (2002)), which requires only `max(|force|) <= 3e-4` **and**
-(`|delta E| < 1e-6` **or** `max(|step|) <= 3e-4`). The looser published form
-accepts geometries whose remaining RMS force still displaces the structure,
-which on machine-learned surfaces ends on higher-order saddle points. A
-zero-length step satisfies the energy criterion by construction, because the
-geometry cannot move.
+`baker` requires all four columns plus `|delta E| < 1e-6` hartree against the
+previous cycle, which is stricter than the Baker criterion as stated by Bakken and
+Helgaker (*J. Chem. Phys.* **117**, 9160 (2002)): `max(|force|) <= 3e-4`
+**and** (`|delta E| < 1e-6` **or** `max(|step|) <= 3e-4`). We use the stricter
+form because the published one can accept geometries with a remaining RMS force,
+which on machine-learned surfaces end on higher-order saddle points.
 
 ---
 
@@ -348,18 +336,14 @@ gs:
 
 ### `dmf`
 
-Direct Max Flux settings for MEP optimization.
-
-```{note}
-For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed DMF API defines `nmove` as movable interior evaluation points and constructs `nmove + 2` images including endpoints.
-```
+Direct Max Flux settings for MEP optimization. DMF builds its initial path with FB-ENM (flat-bottom elastic network model) or, with `correlated: true`, CFB-ENM (correlated FB-ENM).
 
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
  max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --dmf-max-iterations)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --dmf-tol)
- correlated: true # Correlated DMF propagation
+ correlated: true # Build the initial path with CFB-ENM instead of FB-ENM
  sequential: true # Sequential DMF execution
  fbenm_only_endpoints: false # Run FB-ENM beyond endpoints
  fbenm_options:
@@ -398,8 +382,8 @@ Recursive path search settings (path-search only).
 ```yaml
 search:
  max_depth: 10 # Recursive subdivision levels allowed (0 = no subdivision)
- stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
- bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
+ stitch_rmsd_thresh: 0.0001 # RMSD threshold (Bohr) for stitching segments
+ bridge_rmsd_thresh: 0.0001 # RMSD threshold (Bohr) for bridging nodes
  max_nodes_segment: 20 # Max nodes per segment
  max_nodes_bridge: 5 # Max nodes per bridge
  kink_max_nodes: 3 # Max nodes for kink optimizations
@@ -411,14 +395,14 @@ search:
 
 ### `stopt`
 
-StringOptimizer settings for chain-of-states path optimization (`path-opt`, `path-search`).
+StringOptimizer settings for chain-of-states path optimization. `stopt.lbfgs` and `stopt.rfo` set the single-structure optimizers, in the same way as `opt.lbfgs` and `opt.rfo`.
 
 ```yaml
 stopt:
  type: string # Optimizer type label
  thresh: gau_loose # StringOptimizer convergence preset
- stop_in_when_full: 300 # Early stop threshold when the string is full
- align: false # Alignment toggle (forced to False in path-opt/path-search; external Kabsch alignment is used instead)
+ stop_in_when_full: 300 # Cycles allowed after the string is fully grown; then the run stops unconverged
+ align: false # Always false in path-opt/path-search; the images are superposed separately by a Kabsch fit
  scale_step: global # Step scaling mode
  max_cycles: 300 # Maximum StringOptimizer iterations
  dump: false # Dump trajectory/restart data
@@ -435,21 +419,22 @@ TS optimization uses **two mutually exclusive** algorithm sections, selected by 
 - `--opt-mode dimer` (or `grad`) → uses `hessian_dimer` section
 - `--opt-mode rsprfo` (or `hess`, default), `rsirfo`, or `trim` → uses `rsirfo` section
 
-When the same setting is written in `opt` and the active algorithm section,
-different explicit values are rejected. One explicit value is used by both;
-otherwise the algorithm-specific default wins.
+A key set in only one of `opt` and the active section applies to both;
+different values in the two stop the run. With `thresh` in neither, TS optimization uses `baker`,
+not the `gau` shown under `opt`.
 
 ### `hessian_dimer`
 
-Hessian Guided Dimer TS optimization settings (tsopt --opt-mode grad).
+Hessian Guided Dimer TS optimization settings.
 
 ```yaml
 hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
+ neg_freq_thresh_cm: 5.0 # n_imag cutoff (cm⁻¹); see the freq section
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
- flatten_max_iter: 50 # Flattening iteration cap (see note below)
+ flatten_max_iter: 0 # Flatten rounds (0 = off); --flatten uses 50 when this is 0
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
  flatten_k: 10 # Representative atoms sampled per mode
  flatten_loop_bofill: false # Bofill update for flatten displacements
@@ -486,23 +471,21 @@ Inner L-BFGS settings live under `hessian_dimer.lbfgs`, not the top-level
 `lbfgs` section. Shared `print_every` and `energy_plateau*` values follow the
 conflict rule above. `line_search` is fixed to `false`; setting it to `true` is
 rejected because Dimer's projected/inverted effective force is not the gradient
-of the reported physical energy. `max_cycles` is not configurable because each
-segment receives the cycles remaining from `opt.max_cycles`.
+of the reported physical energy. `max_cycles` is not set here: each L-BFGS run
+between Hessian updates takes at most the cycles left in `opt.max_cycles`.
 
 ```{note}
-**`flatten_max_iter` default exception.** The CLI seeds
-`hessian_dimer.flatten_max_iter = 0` before applying YAML, so an omitted toggle
-keeps an explicit YAML value while leaving flattening off when YAML is silent.
-`--flatten` enables the configured value (or the built-in 50), and
-`--no-flatten` forces zero. `rsirfo` has no separate flatten counter. See
-{ref}`flatten-precedence-caveat` for the full behavior table.
+**`flatten_max_iter`.** `--flatten` removes extra imaginary modes in up to
+`flatten_max_iter` rounds (50 when the value is 0), and `--no-flatten` turns it
+off. With neither flag, a positive value set here turns it on. See
+{ref}`When --flatten is on <flatten-precedence-caveat>`.
 ```
 
 ---
 
 ### `rsirfo`
 
-RS-I-RFO / RS-P-RFO TS optimization settings (used by tsopt `--opt-mode rsirfo`, `rsprfo` (the `hess` default), and `trim`).
+RS-I-RFO / RS-P-RFO TS optimization settings.
 
 ```yaml
 rsirfo:
@@ -525,28 +508,26 @@ rsirfo:
  max_line_search: false # Always false: RS-P-RFO does not use line searches
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
- reject_mode_loss: false # Optional trial rejection after established mode loss
- mode_loss_trust_floor: 1.0e-05 # Positive emergency trust-radius floor for those retries
+ reject_mode_loss: false # Once a TS mode is found, reject steps that lose it and retry with a smaller trust radius
+ mode_loss_trust_floor: 1.0e-05 # Smallest trust radius for those retries
  max_mode_loss_rejections: 5 # Rejections allowed at that floor before stopping
- verify_saddle: true # Require exact-Hessian projected first-order-saddle validation
- saddle_recovery_step: 0.01 # Positive uphill recovery displacement cap in optimizer coordinates
- saddle_recovery_check_interval: 50 # Exact PHVA cadence during n_imag=0 recovery
- saddle_recovery_max_cycles: 0 # Automatic n_imag=0 recovery disabled
+ verify_saddle: true # At convergence, count n_imag with an exact Hessian; n_imag = 0 is not accepted
+ saddle_imaginary_threshold_cm: 5.0 # n_imag cutoff (cm⁻¹); see the freq section
+ saddle_recovery_step: 0.01 # Uphill step used to leave a minimum (n_imag = 0)
+ saddle_recovery_check_interval: 50 # Steps between exact-Hessian checks during that recovery
+ saddle_recovery_max_cycles: 0 # Maximum recovery steps; 0 turns recovery off
  out_dir: ./result_tsopt/ # Output directory
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
-RS-P-RFO does not use line searches: an explicit `true` for `min_line_search`
-or `max_line_search` prints a warning and falls back to `false`. RS-I-RFO and
-TRIM ignore both keys. Dimer uses the separate
-`hessian_dimer.lbfgs.line_search` setting shown above.
+In RS-P-RFO, an explicit `true` for `min_line_search` or `max_line_search`
+prints a warning and falls back to `false`. RS-I-RFO and TRIM ignore both keys,
+and Dimer uses `hessian_dimer.lbfgs.line_search`.
 
 ```{note}
-**`--flatten` precedence.** The flatten loop for Hessian-Dimer and RFO TS paths
-is configured under `hessian_dimer.flatten_max_iter`; `rsirfo` has no separate
-counter. With neither toggle, an explicit YAML value is retained. `--flatten`
-uses that value or the built-in 50, while `--no-flatten` forces zero. See
-{ref}`flatten-precedence-caveat`.
+**`--flatten` precedence.** The flatten loop of the RS-P-RFO, RS-I-RFO, and TRIM
+paths also reads `hessian_dimer.flatten_max_iter`, with the same rules as in the
+note under `hessian_dimer`. See {ref}`When --flatten is on <flatten-precedence-caveat>`.
 ```
 
 ## IRC Section
@@ -558,7 +539,7 @@ IRC integration settings.
 
 ```yaml
 irc:
- step_length: 0.1 # Integration step length
+ step_length: 0.1 # Integration step length (Bohr, unweighted Cartesian; --step-size)
  never_stop: false # Ignore physical endpoint criteria and trace to max_cycles
  max_cycles: 125 # Maximum steps along IRC
  forward: true # Propagate in forward direction
@@ -576,17 +557,17 @@ irc:
  rms_grad_thresh: 0.001 # RMS gradient convergence threshold
  hard_rms_grad_thresh: null # Hard RMS gradient stop
  energy_thresh: 0.000001 # Energy change threshold
- imag_below: 0.0 # Imaginary frequency cutoff
+ imag_below: 0.0 # IRC starts only if the root mode has ν ≤ this value (cm⁻¹)
  force_inflection: true # Enforce inflection detection
  check_bonds: false # Check bonds during propagation
  out_dir: ./result_irc/ # Output directory
  prefix: "" # Filename prefix
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # EulerPC corrector function (only "mbs" is currently registered)
+ corr_func: mbs # EulerPC corrector function
 ```
 
-The `corr_func` key selects the corrector step used by the predictor–corrector IRC integrator (EulerPC). Only `"mbs"` (the pysisyphus-native modified Bulirsch–Stoer implementation, default) is currently registered; other values raise a construction error.
+`corr_func` selects the corrector step of the predictor–corrector IRC integrator (EulerPC). Only `"mbs"` (modified Bulirsch–Stoer) is registered; other values raise a construction error.
 
 ## Vibrational Analysis Sections
 
@@ -605,16 +586,15 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-The default imaginary-mode criterion is ν < −5.00 cm⁻¹.
-Standalone `freq`, `opt` flattening, Dimer, and Hessian TS workflows share it.
-`n_negative_modes` separately counts every negative sign; neither count
-changes numerical convergence. The complete signed spectrum and all positive
-thermochemistry modes are retained.
-
-`freq.zero_cutoff_cm` sets the cutoff magnitude. Legacy aliases
-`hessian_dimer.neg_freq_thresh_cm` and
-`rsirfo.saddle_imaginary_threshold_cm` remain accepted; conflicting values
-are rejected.
+The default imaginary-mode criterion is ν < −5.00 cm⁻¹. `freq`, `opt`
+(flattening), and `tsopt` count n_imag with this `freq.zero_cutoff_cm`;
+`irc` does not read it. `tsopt` also takes this cutoff from
+`hessian_dimer.neg_freq_thresh_cm` or `rsirfo.saddle_imaginary_threshold_cm`;
+if two of the three keys are set explicitly to different values, the run stops
+with an error. `n_negative_modes` also counts the negative
+frequencies inside the cutoff. Neither n_imag nor `n_negative_modes` decides
+whether an optimization has converged. Whatever the cutoff, the output keeps
+every signed frequency, and thermochemistry uses every positive mode.
 
 ---
 
@@ -652,19 +632,19 @@ dft:
  lowmem: true # Low-memory direct JK; false enables density fitting
  nprocs: auto # PySCF/OpenMP threads from scheduler/affinity
  memory: auto # Host RAM limit, e.g. 64GB (not GPU VRAM)
- verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 raises runtime PySCF verbosity to >=4
+ verbose: 0 # PySCF verbosity (0-9); applies at -v 0/1; at the default -v 2 and at -v 3 it is raised to at least 4
  out_dir: ./result_dft/ # Output directory root
 ```
 
 ## Scan Sections
 
-Scan coordinates are specified via `--scan-lists/-s` (inline or YAML file), **not** in the main YAML config.
-See [Quickstart: scan workflow](quickstart-scan.md) for scan coordinate syntax (PDB selectors, multi-stage).
+Scan coordinates go in `-s/--scan-lists`, **not** in the `--config` YAML.
+See {ref}`Scan-list spec <scan-list-spec>` for the syntax.
 
 (bias-section)=
 ### `bias`
 
-Harmonic bias settings for scans and restraint-based optimizations.
+Harmonic bias settings for `scan`, `scan2d`, and `scan3d`.
 
 ```yaml
 bias:
@@ -676,29 +656,27 @@ bias:
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|
 | `bias.k` | `scan`, `scan2d`, `scan3d` | `--restraint-k` |
-| `dmf.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
+| `dmf.k_fix` | `path-opt` / `path-search` with `--mep-mode dmf` | — (YAML only) |
 
-`opt` also accepts `--restraint-k` (applied to `--distance-restraint` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honor the `bias:` YAML section.
+`opt` also applies `--restraint-k` (same default) to its `--distance-restraint` pairs, but reads it only from the CLI, not from the `bias:` section.
 
-Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
+Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default enforces near-rigid pinning.
 
 ---
 
 ### `bond`
 
-MLIP-based bond-change detection.
+Bond-change detection from element covalent radii.
 
 ```yaml
 bond:
- device: auto # MLIP device for bond analysis
+ device: auto # Device for the distance calculation: "cuda", "cpu", or "auto"
  bond_factor: 1.2 # Covalent-radius scaling for cutoff
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking
 ```
 
 ## Example: Complete Configuration File
-
-Below is a complete example combining multiple sections:
 
 ```yaml
 # pdb2reaction configuration example
@@ -709,9 +687,7 @@ geom:
 
 calc:
  backend: uma
- charge: 0
- spin: 1
- model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
+ model: uma-s-1p2 # Model name for the selected backend (UMA: uma-s-1p2 | uma-m-1p1)
  device: auto
  hessian_calc_mode: FiniteDifference # Portable default; benchmark Analytical before opting in
 
@@ -724,10 +700,6 @@ stopt:
  thresh: gau_loose
  max_cycles: 300
  dump: false
- out_dir: ./result_all/
-
-opt:
- thresh: gau
 
 lbfgs:
  max_cycles: 100000
@@ -758,6 +730,14 @@ dft:
  grid_level: 3
 ```
 
+## Notes
+
+- `workers` and `workers_per_node` take effect only with the UMA backend.
+- With `workers > 1`, UMA cannot compute analytical Hessians: an explicit `hessian_calc_mode: Analytical` stops the run with an error. Use `workers: 1` or `FiniteDifference`; see {ref}`Workers and analytical Hessians <workers-analytical-error>`.
+- `freq` and `irc` always use the partial Hessian, whatever `calc.return_partial_hessian` is set to.
+- `all` passes the same file to each stage it runs, and each stage reads the sections listed for that command in the **Used by** column of the Overview table. For example, the TS stage reads the `tsopt` sections, including `opt`, `hessian_dimer`, and `rsirfo`, and the `dft` section takes effect with `all --dft`.
+- `opt.lbfgs` and `opt.rfo` are other names for `lbfgs` and `rfo`, and `freq.thermo` is another name for `thermo`. Two different values for the same setting stop the run with an error, for example `lbfgs.max_cycles` and `opt.lbfgs.max_cycles`, or `opt.max_cycles` and `lbfgs.max_cycles` when L-BFGS is the selected optimizer. `-o/--out-dir` overrides the `out_dir` keys, and `all` sets the output directory of each stage itself.
+
 ## See Also
 
 - [all](all.md) - End-to-end workflow
@@ -766,4 +746,5 @@ dft:
 - [path-search](path-search.md) - Recursive MEP search
 - [freq](freq.md) - Vibrational analysis
 - [dft](dft.md) - DFT calculations
-- [uma-pysis](uma-pysis.md) - MLIP backend details
+- [Backends](backends.md) - MLIP backend details
+- [Troubleshooting](troubleshooting.md) - Common errors and fixes

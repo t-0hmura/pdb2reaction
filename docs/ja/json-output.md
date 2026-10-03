@@ -1,93 +1,37 @@
 # JSON 出力リファレンス
 
-pdb2reaction は、AI エージェント・スクリプト・下流ツールがプログラムから扱える機械可読の JSON 出力を提供します。
+このページでは、`--out-json` で書き出す `result.json` と `summary.json` の欄（key）を、全コマンドに共通の欄とコマンドごとの欄に分けて示します。
 
 ## `--out-json` フラグ
 
-MLIP を使用する主なサブコマンドとレポート系サブコマンド（`opt`、`sp`、
-`tsopt`、`freq`、`irc`、scan 系、`path-opt`、`dft`、`extract`、
-`trj2fig`、`energy-diagram`）は `--out-json / --no-out-json`（デフォルト:
-off）に対応しています。有効にすると、正規の `result.json` と、同一内容の
-互換ミラー `summary.json` が通常の出力と同じ場所に生成されます。
+`opt`、`sp`、`tsopt`、`freq`、`irc`、`scan`、`scan2d`、`scan3d`、`path-opt`、`dft`、`extract`、`trj2fig`、`energy-diagram` は `--out-json / --no-out-json`（デフォルト: 無効）に対応しています。有効にすると、通常の出力と同じ場所に `result.json` と `summary.json` を書き出します。2 つのファイルの中身は同じなので、`result.json` を読みます。
 
 ```bash
 pdb2reaction opt -i r.pdb -q -1 --out-json --out-dir result_opt
 cat result_opt/result.json | python -m json.tool
 ```
 
-`all` / `path-search` は、集約結果を書き込む段階まで到達すれば `--out-json` なしで
-`summary.json` を出力します。早期の CLI 引数または入力の検証で失敗した場合は、ファイルが
-作られないことがあります。
-
-### `summary.json` ミラー
-
-`write_result_json` はステージごとのペイロードを一度だけシリアライズし、
-互換ミラー `summary.json` を先に、正規の `result.json` を最後にアトミックに公開
-します。正常終了時は両ファイルのバイト列が同一です。I/O エラーによって公開が
-中断された場合、書き込み処理はミラーの不一致を隠さず例外を送出します。
-MCP の利用側は、割り当てられている場合には現在の `run_id` も検証してください。
+`result_opt/result.json` を開き、まず `execution_status` と `scientific_status` を読みます。`opt`、`tsopt`、`path-opt` は `optimization_status` も記録します。`all` と `path-search` が `--out-json` を付けなくても書き出す `summary.json` は、これとは[構造が違う別のファイル](#ja-summary-json-path-search-all)です。
 
 ## 共通エンベロープ
 
-共通の書き込み処理が供給するフィールドを示します。「任意」と明記した行は、
-生成側が対応するデータを渡した場合にだけ存在します。
+どの結果ファイルにも下の欄があります。「任意」と書いた欄は、そのコマンドが対応するデータを持つときだけ出ます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
-| `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
+| `schema_version` | string | ファイルのスキーマの版。版が上がると構造が変わったことを示します。 |
+| `command` | string | 単体のコマンドはサブコマンド名（例: `"opt"`）、`all` / `path-search` の要約はコマンドライン全体を記録します |
 | `pdb2reaction_version` | string | パッケージバージョン |
 | `execution_status` | string | 実行の完了状況: `completed` / `failed`。 |
 | `scientific_status` | string | 結果の利用可否: `success` / `partial` / `failed`。 |
-| `run_id` | string | 任意。現在の MCP 呼び出し UUID。プロダクト固有の実行環境が有効な場合のみ注入され、producer 側の値と衝突する場合は拒否されます。 |
-| `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
+| `run_id` | string | 任意。現在の呼び出しの UUID。MCP サーバーからコマンドを起動したときと、`all` の実行（各段を含む）で書かれます。 |
+| `elapsed_seconds` | float | 任意。実行時間（秒）。時間を記録しないコマンドでは省きます |
 | `environment` | object | ハードウェア情報（下表参照） |
-| `mlip_backend` | string \| null | 任意のMLIP backend識別子。plot-only commandがcalculatorを評価していない場合はnull |
-| `mlip_model` | string \| null | 任意。backendと分離した正確なmodel/checkpoint名 |
-| `mlip_model_label` | string \| null | 任意。正確な識別子から導出した論文表記用のmodel名 |
-| `mlip_task` | string \| null | 任意。multi-domain modelで使用したbackend task。正確な識別子は`mlip_model`に保持 |
-| `mlip_precision` | string \| null | 実効精度の共通token（`fp32` / `fp64`）。dtypeをuser codeが管理するcustom calculatorではnull |
-
-各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
-`mlip_backend` / `mlip_model` / `mlip_precision`を使用してください。
-
-### 実行と要求段階の完了状況
-
-すべての結果に `execution_status` と `scientific_status` を出します。複数段階の計算と scan は、以下の個別の結果も保持します。必要な最適化や計算が欠けていれば未完了です。IRC の停止理由は診断として残し、通常の積分終了は `completed` / `success`、all の判定は TS と端点の最適化から行います。
-
-| フィールド | 型 | 説明 |
-|-----------|------|------|
-| `execution_status` | string | 通常は `completed` または `failed`。端点未収束は実行完了、捕捉した端点例外は実行失敗です。 |
-| `scientific_status` | string | `success`、`partial`、`failed`。有効なTS1と片端OPT失敗の組合せ、および収束済みHOSPは`partial`です。 |
-| `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。 |
-| `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
-| `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別 outcome。 |
-| `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan 点別 outcome。 |
-
-`run_id` が存在する場合は、現在の呼び出しを識別します。`all` の集約
-`summary.json` では、`current_output_paths` と `key_output_files` も、その
-呼び出しが記録した成果物だけを示します。再利用した出力ディレクトリに残る
-既存ファイルは現在の結果に含まれません。
-
-### Rigid projection provenance
-
-`freq`、`irc`、`tsopt`のresultは`rigid_projection` objectを含み、`opt`では`--flatten`実行時に含みます。`freq --dump`は同じobjectを`thermoanalysis.yaml`にも書きます。
-
-| フィールド | 型 | 説明 |
-|-----------|------|------|
-| `treatment` | string | 固定の剛体モード処理: `"constrained"` |
-| `algorithm` | string | 射影kernelの識別子 |
-| `effective_rank` | int | active Hessian から除去した剛体方向の数 |
-| `full_rigid_rank` | int | 凍結anchor拘束前の全系剛体basisのrank |
-| `frozen_constraint_rank` | int | 凍結anchor拘束によって除かれたrank |
-| `svd_rtol` | float | rank 判定に用いる相対 SVD 許容値 |
-| `active_atom_count` / `frozen_atom_count` | int | active／frozen原子数 |
-| `active_atoms` / `frozen_atoms` | int[] | 射影kernelが使用した0始まり原子index |
-| `hessian_space` | string | 入力 Hessian 空間: `"full"` / `"active"` |
-| `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`で、`"file"`（`--read-hess`）、`"cache"`（同じ実行の前の stage）、`"fresh"`（新規計算）のいずれか。`opt`/`tsopt`は`source`を使用 |
-| `hessian_shape` / `raw_hessian_shape` | int[2] | 入力 Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
-
-`constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+| `mlip_backend` | string \| null | 任意。MLIP のバックエンドの識別子。描画だけのコマンドが calculator を評価しなかった場合は null |
+| `mlip_model` | string \| null | 任意。バックエンドと分けて記録する、正確なモデル/チェックポイント名 |
+| `mlip_model_label` | string \| null | 任意。正確な識別子から導出した論文表記用のモデル名 |
+| `mlip_task` | string \| null | 任意。複数ドメインのモデルで使ったバックエンドのタスク。正確な識別子は `mlip_model` に保持 |
+| `mlip_precision` | string \| null | 実効精度の共通表記（`fp32` / `fp64`）。dtype をユーザーのコードが管理する自作の calculator では null |
 
 **`environment`**:
 
@@ -101,26 +45,36 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `n_cpus` | int | `<int>` |
 | `ram_gb` | float | `<ram in GB>` |
 
+### 実行と要求段階の完了状況
+
+すべての結果に `execution_status` と `scientific_status` を出します。複数段階の計算と scan は、各段の結果も下の欄に残します。
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `execution_status` | string | `completed` または `failed`。`all` では、IRC の後の端点の最適化が収束しなくても `completed` のままで、エラーで止まると `failed` になります。 |
+| `scientific_status` | string | 要求したすべての段階が収束すれば `success`、そうでなければ `partial` か `failed`。`all` では、n_imag ≥ 2 の TS は `partial` になり、n_imag = 0 の TS では IRC の前で止まるので、`success` なら n_imag = 1 です。単体の `tsopt` は n_imag を見ないので、`n_imaginary_modes` を読んでください。 |
+| `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。 |
+| `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
+| `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別の結果。 |
+| `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan の点ごとの結果。 |
+
 ### エラーエンベロープ（`execution_status == "failed"` のとき）
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `error` | string | 元の例外の `str(exc)` |
 | `error_type` | string | 例外クラス名 |
-| `error_class_chain` | list[string] | MRO 全体のクラス名。エージェントがテキストを解析せずに階層を照合できます |
+| `error_class_chain` | list[string] | 例外のクラスとそのすべての親クラスの名前。エージェントはテキストを解析せずに階層を照合できます |
 | `error_module` | string | 例外クラスが定義されたモジュール |
 | `error_label` | string | 高レベルの CLI ステージラベル |
 
 ## エラー処理
 
-捕捉された実行時例外では、`"execution_status": "failed"` と `"error_type"` を含む
-`result.json` を可能な範囲で書き出します。使用法・入力検証による終了や出力先の
-確定前に失敗した場合は JSON が作られないことがあるため、0 以外の終了コードや
-期待した JSON の欠落も失敗のシグナルです。標準エラー出力またはジョブログを確認してください。
+出力ディレクトリを用意した後に例外で実行が止まった場合は、`--out-json` が無くても `"execution_status": "failed"` と `"error_type"` を含む `result.json` と `summary.json` を書き出します。それより前の失敗は[使用上の注意点](#使用上の注意点)を参照してください。
 
-制御された非収束結果の writer まで到達した job は、`"optimization_status": "not_converged"` の `result.json` を書きます。optimizer family は該当する最終 force/step または cycle field を含みますが、DFT と Dimer は所有しない field を出力しません。再試行の判断前に command-specific schema を確認してください。
+最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。オプティマイザの結果には該当する最終の力/ステップやサイクルの欄が入り、DFT と Dimer は持たない欄を出しません。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
 
-オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、設定した force/step の収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。stalled は converged とは別の非収束アウトカムであり、`converged` として報告されることは決してありません。`--flatten` を指定した `tsopt` と `opt` は、stalled の後も flatten ループを実行します。残った虚振動の方向へ変位すればプラトーから抜けられることがあるためです。`--max-cycles` の残りが 0 のときは実行しません。存在する場合は `stop_reason` にエネルギー範囲・ウィンドウ・満たせなかった基準が記録されます。stalled は（例えば摂動した構造やより厳しいステップ制御で）再試行し得るものであり、`max_cycles` 枯渇や一般的な失敗のエイリアスではありません。
+オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。停滞は未収束の一種で、`converged` にはなりません。止まった理由は `stop_reason` に記録されます。
 
 ## サブコマンド別スキーマ
 
@@ -129,14 +83,14 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `stage` | string | `"sp"` |
-| `input` | string | 準備後の公開入力path |
-| `backend` / `model` | string / string \| null | local MLIP provenance（共通の`mlip_*` fieldにもmirror） |
-| `custom_calculator` | string \| null | `--calc-file`時の`filename:factory`。組み込みbackendではnull |
-| `charge` / `spin` | int / int | 総電荷とspin多重度 |
+| `input` | string | 計算に使った入力のパス |
+| `backend` / `model` | string / string \| null | MLIP のバックエンドとモデル。共通の `mlip_*` 欄にも同じ値が入ります |
+| `custom_calculator` | string \| null | `--calc-file` 時の `filename:factory`。組み込みのバックエンドでは null |
+| `charge` / `spin` | int / int | 総電荷とスピン多重度 |
 | `n_atoms` | int | 原子数 |
-| `energy_au` | float | 一点energy (Hartree) |
-| `forces_path` | string | `forces.npy` のpath |
-| `hessian_path` | string \| null | `hessian.npy` のpath。`--hess` 無指定時はnull |
+| `energy_au` | float | 一点エネルギー (Hartree) |
+| `forces_path` | string | `forces.npy` のパス |
+| `hessian_path` | string \| null | `hessian.npy` のパス。`--hess` 無指定時は null |
 | `elapsed` | string | 人間可読の経過時間 |
 
 ### `opt`
@@ -144,27 +98,27 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `optimization_status` | string | `"converged"` / `"not_converged"` / `"stalled"`（エネルギープラトー、上記参照） |
-| `stop_reason` | string | 非収束停止（stalled/stopped）時のみ出力。エネルギープラトーの範囲・ウィンドウと満たせなかった基準を記録 |
+| `stop_reason` | string | オプティマイザが収束せずに早く止まったとき（`stalled` か `not_converged`）のみ出力。止まった理由（エネルギープラトーの範囲・ウィンドウと満たせなかった基準など）を記録 |
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
 | `opt_mode` | string | `"grad"` / `"hess"` / `"lbfgs"` / `"rfo"` |
-| `backend` | string | calculator backend（`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, `"dft"`、または `--calc-file` 時の `"custom"`）。DFTの互換fieldではmodelを`FUNCTIONAL/BASIS`、engineを別field、MLIP precisionをnullとする |
+| `backend` | string | calculator のバックエンド（`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, `"dft"`、または `--calc-file` 時の `"custom"`）。`dft` では `model` が `FUNCTIONAL/BASIS` で、エンジンは別の欄に記録し、MLIP の精度は null です |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIPモデル名。`dft`では`FUNCTIONAL/BASIS` |
 | `n_atoms` | int | 原子数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `solvent` | string | 陰溶媒または `"none"` |
 | `thresh` | string | 収束閾値プリセット名 |
 | `max_cycles` | int | 最大サイクル数 |
 | `input_file` | string | 入力ファイル名 |
-| `final_max_force` | float | 最終 max gradient (Hartree/Bohr) |
-| `final_rms_force` | float | 最終 RMS gradient |
+| `final_max_force` | float | 最終 max 勾配 (Hartree/Bohr) |
+| `final_rms_force` | float | 最終 RMS 勾配 |
 | `final_max_step` | float | 最終 max 変位 (Bohr) |
 | `final_rms_step` | float | 最終 RMS 変位 |
 | `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}`。力/ステップの単位は Cartesian で Hartree/Bohr と Bohr、角度成分で Hartree/rad と rad。 |
 | `files` | object | 出力ファイルマップ |
-| `rigid_projection` | object | 任意。`--flatten`実行時に含む。[projection provenance](#rigid-projection-provenance)を参照 |
+| `rigid_projection` | object | 任意。`--flatten` 実行時に含む。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
 ### `tsopt`
 
@@ -172,40 +126,34 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `optimization_status` | string | 数値optimizerの結果: `"converged"` / `"not_converged"` / `"stalled"`。鞍点次数とは独立 |
-| `saddle_validation` | string | 終端exact PHVAによる `"first_order"` / `"higher_order"` / `"no_imaginary"` / `"unavailable"` |
+| `optimization_status` | string | 数値オプティマイザの結果: `"converged"` / `"not_converged"` / `"stalled"`。鞍点次数とは独立 |
+| `saddle_validation` | string | 終端の厳密な PHVA（部分 Hessian 振動解析）による `"first_order"` / `"higher_order"` / `"no_imaginary"` / `"unavailable"` |
 | `hessian_status` | string | `"completed"` / `"failed"` / `"skipped"` / `"unavailable"`。失敗理由は`hessian_error` |
-| `reaction_mode_index` | int\|null | downstream IRCに使う負のexact-PHVA root。root 0 fallbackは明示され、反応identityを保証しない |
+| `reaction_mode_index` | int\|null | `all` が IRC でたどる虚振動の、PHVA の振動数の一覧での 0 始まりの番号。オプティマイザが追ったモードが虚振動ならそのモード、そうでなければ最も低い虚振動です。どちらかは `reaction_mode_source`（`"mep-reference-overlap"` / `"lowest-imaginary"`）に入ります。虚振動が無ければ `null` |
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
+| `n_negative_modes` | int\|null | 大きさを問わない負の振動数の数（閾値以内も含む）。`n_imaginary_modes` と並べて見る診断用の値で、PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
-| `frequency_zero_cutoff_cm` / `imaginary_mode_criterion` / `imaginary_frequency_threshold_cm` | float / string / float | 既定値は`5.0`、`"frequency_cutoff_cm"`、`-5.0`で、ν < −5.00 cm⁻¹だけを虚振動として数えます。 |
-| `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
-| `opt_mode_requested` | string | CLI で要求した preset（`grad` / `hess` / 明示 algorithm） |
-| `optimizer` | string | 実際に使用した optimizer algorithm |
-| `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
-| `safeguards` | object | exact saddle check、最終目的modeのindex/overlap、停止理由、および明示的に有効化した場合のmode-loss/recovery診断。これらの回復経路はデフォルト無効 |
-| `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
+| `frequency_zero_cutoff_cm` | float | 閾値（cm⁻¹、既定 `5.0`）。既定では ν < −5.00 cm⁻¹ だけを虚振動として数えます |
+| `imaginary_mode_criterion` | string | 数え方の規則の名前。値は `"frequency_cutoff_cm"` |
+| `imaginary_frequency_threshold_cm` | float | 符号を負にした同じ閾値（既定 `-5.0`） |
+| `opt_mode` | string | `"rsprfo"`（既定） / `"rsirfo"` / `"trim"` / `"dimer"` |
+| `opt_mode_requested` | string | CLI で要求したプリセット（`grad` / `hess` / 明示したアルゴリズム） |
+| `optimizer` | string | 実際に使用したオプティマイザのアルゴリズム |
+| `reference_mode_file` | string\|null | `--ref-mode` で渡した、経路から求めた反応モードのファイル（上級者向け）。通常は `all` が生成して内部指定します |
+| `safeguards` | object | 厳密な鞍点の確認、最終目的モードのインデックス/重なり、停止理由、および明示的に有効化した場合のモード消失/回復の診断。これらの回復経路はデフォルト無効 |
+| `rigid_projection` | object | 剛体モードと厳密な Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
-`files` には `imaginary_mode_files`（vib ファイルリスト）と `hessian_npy`（`--dump-hess` のファイルの絶対 path）を含む場合があります。
-終端PHVAは数値収束後とエネルギープラトー停止（`stalled`）後に実行します。それ以外の非収束では
-終端構造を保持してPHVAをskipします。PHVA計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
-`hessian_status: "failed"` と理由を記録します。`optimization_status`
-は数値最適化、`saddle_validation` はexact PHVAの鞍点次数を表します。数値収束
-済み高次停留点は`optimization_status: "converged"`かつ
-`saddle_validation: "higher_order"`であり、一次TS認定ではありません。`all`は
-有効な負rootがあれば警告付き診断IRCへ進むことがあります。数値非収束、虚振動
-0本、PHVA未実施/失敗、または有効な負rootなしでは、TS成果物登録後にIRC前で
-停止します。Dimerも同じ追加fieldを出力しますが、Hessian familyのcycleごとの
-force/step収束詳細と`safeguards`は省略します。
+`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ TS の欄を持ちますが、サイクルごとの力/ステップの詳細と `safeguards` はありません。
 
 ### `freq`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `n_modes` | int | 基準振動モードの総数 |
-| `n_imaginary` | int | 虚モード数 |
+| `n_imaginary` | int | 虚振動の数（n_imag）。−`freq.zero_cutoff_cm` より小さい振動数の数 |
+| `n_negative_modes` | int | 大きさを問わない負の振動数の数（閾値以内も含む） |
 | `frequencies_cm` | float[] | 全振動数 (cm⁻¹) |
-| `imaginary_frequencies_cm` | float[] | 負の振動数のみ |
+| `imaginary_frequencies_cm` | float[] | `n_imaginary` に数えた振動数 |
 | `thermochemistry` | object\|null | 熱化学データ（下表参照） |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
@@ -213,14 +161,14 @@ force/step収束詳細と`safeguards`は省略します。
 | `model` | string | MLIP モデル名 |
 | `n_atoms` | int | 原子数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `solvent` | string | 陰溶媒または `"none"` |
 | `temperature_K` | float | 温度 (K) |
 | `pressure_atm` | float | 圧力 (atm) |
 | `input_file` | string | 入力ファイル名 |
-| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}`。`--dump-hess` で書いたときは `hessian_npy`（絶対 path）を含む |
-| `rigid_projection` | object | 剛体モードと Hessian provenance。`--dump`時は`thermoanalysis.yaml`にも記録 |
+| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}`。`--dump-hess` で書いたときは `hessian_npy`（絶対パス）を含む |
+| `rigid_projection` | object | 剛体モードと Hessian の記録。`--dump` 時は `thermoanalysis.yaml` にも記録 |
 
-**`thermochemistry`** (thermoanalysis 利用不可時は null):
+**`thermochemistry`**:
 
 | フィールド | 型 | 単位 |
 |-----------|------|------|
@@ -243,51 +191,51 @@ force/step収束詳細と`safeguards`は省略します。
 
 ### `irc`
 
-IRC は共通の2欄に加え、方向ごとの停止理由と軌跡を残します。all は、その後の端点最適化を `endpoint_opt` に記録します。
+IRC は `execution_status` と `scientific_status` に加え、方向ごとの停止理由と軌跡を残します。`all` は、その後の端点最適化を `endpoint_opt` に記録します。つないだ経路は `finished_first`（前方の端）から TS を通って `finished_last`（後方の端）へ並びます。どちらが R でどちらが P かは並び順では決まりません。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `n_frames_forward` | int | 前方 IRC フレーム数 |
-| `forward_short_branch` / `backward_short_branch` | bool | cycle 上限前に3フレーム以内で停止した分岐。診断用のみ |
+| `forward_short_branch` / `backward_short_branch` | bool | サイクル上限前に 3 フレーム以内で停止した分岐。診断用のみ |
 | `n_frames_backward` | int | 後方 IRC フレーム数 |
 | `n_frames_total` | int | 全フレーム数 |
-| `energy_first_hartree` | float | stitched path の最初の端点エネルギー。standalone IRC は化学的identityを割り当てない |
+| `energy_first_hartree` | float | `finished_first` のエネルギー |
 | `energy_ts_hartree` | float | TS エネルギー |
-| `energy_last_hartree` | float | stitched path の最後の端点エネルギー。standalone IRC は化学的identityを割り当てない |
+| `energy_last_hartree` | float | `finished_last` のエネルギー |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
 | `forward_requested` / `backward_requested` | bool | 各方向を要求したか |
-| `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停留判定が発火して停止したか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。削除した `*_converged` が表していた条件は、`*_downhill_departure_valid` との連言で再構成できる |
-| `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS から downhill に離れたことを確認できたか |
+| `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停留判定が発火して停止したか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。`*_downhill_departure_valid` と合わせて見ると、その分岐が TS からエネルギーの下がる向きに離れ、かつこの判定を満たしたかを確かめられる |
+| `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS からエネルギーの下がる向きに離れたことを確認できたか |
 | `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | 数値伝播が失敗した場合だけ非空になる理由 |
-| `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
-| `backward_energy_increased` | bool \| null | 後方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
+| `forward_energy_increased` | bool \| null | 前方の最終ステップで `irc.energy_increase_thresh`（デフォルト `0` Hartree、上昇はすべて対象）を超えてエネルギーが上昇したか |
+| `backward_energy_increased` | bool \| null | 後方の最終ステップで `irc.energy_increase_thresh`（デフォルト `0` Hartree、上昇はすべて対象）を超えてエネルギーが上昇したか |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
-| `never_stop` | bool | opt-inの物理的端点停止bypass modeを有効にしたか |
-| `never_stop_energy_bypasses` | int | 実際にbypassしたenergy上昇／1 step energy変化量停止event数 |
+| `never_stop` | bool | 端点での物理的な停止を迂回するモード（指定したときだけ有効）を使ったか |
+| `never_stop_energy_bypasses` | int | エネルギーの上昇、または 1 ステップのエネルギー変化量による停止を、実際に迂回した回数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `solvent` | string | 陰溶媒または `"none"` |
 | `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き1始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
 | `bond_changes_direction` | string | `bond_changes` がある場合は `"finished_first_to_finished_last"` |
 | `step_length` | float | IRC ステップ長 (Bohr) |
 | `max_cycles` | int | 最大 IRC ステップ数 |
 | `input_file` | string | 入力ファイル名 |
-| `files` | object | 軌跡ファイル（XYZと、利用可能なPDB/CIF companion） |
-| `rigid_projection` | object | 剛体モードと初期 Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
+| `files` | object | 軌跡ファイル（XYZ と、あれば PDB/CIF 形式のファイル） |
+| `rigid_projection` | object | 剛体モードと初期 Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
 ### `scan`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `scan_opt_mode` | string | 拘束緩和に使用した optimizer preset |
-| `scan_optimizer` | string | 実効 optimizer identity（`lbfgs` / `rfo`） |
+| `scan_opt_mode` | string | 拘束緩和に使用したオプティマイザのプリセット |
+| `scan_optimizer` | string | 実効のオプティマイザの種類（`lbfgs` / `rfo`） |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `backend` | string | MLIPバックエンド |
 | `model` | string | MLIPモデル名 |
-| `solvent` | string | 暗黙溶媒または`"none"` |
+| `solvent` | string | 陰溶媒または`"none"` |
 | `preopt` | bool | 事前最適化を実行したか |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å) |
 | `n_stages` | int | スキャンステージ数 |
@@ -306,31 +254,31 @@ IRC は共通の2欄に加え、方向ごとの停止理由と軌跡を残しま
 | `target_distances_angstrom` | list | 目標距離 |
 | `final_energy_hartree` | float | 最終エネルギー |
 | `energies_hartree` | float[] | ステップごとのエネルギー |
-| `bond_changes` | object | `{"changed": bool \| null, "summary": str}`（`has_bond_change` の自由記述サマリ。比較が走らなかった場合は `null`/`""`）。 |
+| `bond_changes` | object | `{"changed": bool \| null, "summary": str}`（自由記述の要約。比較が走らなかった場合は `null`/`""`）。 |
 
 ### `scan2d` / `scan3d`
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `charge` | int \| null | 系の電荷。plot-onlyの`scan3d --csv`ではnull |
-| `spin` | int \| null | スピン多重度。plot-onlyの`scan3d --csv`ではnull |
-| `backend` | string \| null | MLIPバックエンド。plot-onlyの`scan3d --csv`ではnull |
-| `model` | string \| null | MLIPモデル名。plot-onlyの`scan3d --csv`ではnull |
-| `solvent` | string \| null | 暗黙溶媒または`"none"`。importしたenergyにはcalculator provenanceがないため、plot-onlyの`scan3d --csv`ではnull |
+| `charge` | int \| null | 系の電荷。描画だけの `scan3d --csv` では null |
+| `spin` | int \| null | スピン多重度。描画だけの `scan3d --csv` では null |
+| `backend` | string \| null | MLIPバックエンド。描画だけの `scan3d --csv` では null |
+| `model` | string \| null | MLIPモデル名。描画だけの `scan3d --csv` では null |
+| `solvent` | string \| null | 陰溶媒または`"none"`。読み込んだエネルギーには calculator の記録が無いため、描画だけの `scan3d --csv` では null |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
 | `n_grid_points` | int | `is_preopt=true` を除くグリッド行数 |
 | `execution_status` | string | 実行レベルの完了状態 |
-| `n_points_attempted` | int | fresh run の試行グリッド点数（事前最適化を除く） |
-| `n_points_usable` | int | 科学計算上再利用可能な fresh-run 点数 |
-| `point_outcomes` | object[] | 各点の収束・energy・artifact・eligibility |
+| `n_points_attempted` | int | 新規実行で試行したグリッド点数（事前最適化を除く） |
+| `n_points_usable` | int | 新規実行の点のうち、科学計算上再利用可能な点数 |
+| `point_outcomes` | object[] | 各点の収束・エネルギー・成果物・再利用可否 |
+| `grid_points` | object[] | 各格子点のインデックス、距離、エネルギー、収束、`geometry_file` の対応 |
+| `current_output_paths` | string[] | 今回の実行が書いた CSV/HTML/PNG と格子点の構造。前の実行で残ったファイルは入りません |
 | `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`)。`scan3d` で `--csv` 再プロット時は省略 |
 | `min_energy_hartree` | float | 表面最小エネルギー |
 | `files` | object | CSV + プロットファイル |
 
-outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
-試行数を出力せず、入力 CSV の provenance が不完全なら usable count も
-省略する場合があります。
+試行した点と使える点の数の欄は、新しく scan したときに出力します。描画だけの `scan3d --csv` は試行数を出力せず、入力 CSV の記録が不完全なら使える点の数も省略する場合があります。
 
 ### `path-opt`
 
@@ -343,10 +291,10 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
-| `preopt` | bool | 端点pre-optimizationを有効にしたか |
-| `reactant_energy_hartree` | float | 最初のimage energy (Hartree) |
-| `product_energy_hartree` | float | 最後のimage energy (Hartree) |
+| `solvent` | string | 陰溶媒または `"none"` |
+| `preopt` | bool | 端点の事前最適化を有効にしたか |
+| `reactant_energy_hartree` | float | 最初のイメージのエネルギー (Hartree) |
+| `product_energy_hartree` | float | 最後のイメージのエネルギー (Hartree) |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
 | `hei_index` | int | 最高エネルギーイメージのインデックス |
@@ -357,35 +305,11 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 ### `path-search`
 
-`path-search` は `--out-json` フラグを持ちません。summary writerまで到達すれば
-共通エンベロープ（`command`, `pdb2reaction_version`, `environment`）を持つ
-`summary.json` を書き出しますが、早期のCLI/input検証ではfileが作られない場合があります。
-追加fieldは以下です:
-
-| フィールド | 型 | 説明 |
-|-----------|------|------|
-| `n_segments` | int | 再帰 MEP のセグメント数 |
-| `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
-| `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` と `all` の `summary.json` にも記録 |
-| `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` はこの事前収束情報を使います。ただし、要求した最終 TS 最適化と両端点最適化がすべての反応区間で収束した場合は、最終結果で判定します。元のフィールドは保持します |
-| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`（`{title: [entries]}` dict のリスト。bridge セグメントは `""`）。 |
-| `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
-| `mlip_backend` | string | バックエンド名 |
-| `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
-| `mlip_model_label` | string \| null | 論文表記用のモデル名 |
-| `mlip_task` | string \| null | multi-domain modelのbackend task |
-| `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
-| `charge` | int | 系の電荷 |
-| `spin` | int | スピン多重度 |
-
-`all` がさらに追加するフィールドは下の [`summary.json` セクション](#ja-summary-json-path-search-all) を参照してください。
+`path-search` には `--out-json` フラグがありません。`summary.json` を書き出し、その欄は [`summary.json` (`path-search` / `all`)](#ja-summary-json-path-search-all) に示します。
 
 ### `dft`
 
-> **注:** `dft` は SCF 収束・非収束の両方で `result.json` と
-> `summary.json` を書きます。非収束時は `scientific_status: "failed"`、
-> `converged: false` を記録して exit code 1 で終了します。未処理 exception
-> では標準 error envelope を書きます。
+> **注:** `--out-json` 指定時、`dft` は SCF 収束・非収束の両方で `result.json` と `summary.json` を書き、非収束時は `scientific_status: "failed"`、`converged: false` を記録します。SCF が収束しなかった実行は終了コード 1 で終わります。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
@@ -403,11 +327,11 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `basis_set` | string | 基底関数 |
 | `engine` | string | 実効エンジンラベル (`"gpu4pyscf(rks_lowmem)"` / `"gpu4pyscf"` / `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU 使用? |
-| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS`を実際に使用したか（open-shell、CPU、`--no-dft-low-memory`ではFalse） |
-| `lowmem_requested` | bool | low-memory modeを要求したか |
-| `dft_settings` / `dft_resources` | object | 正規化済み科学設定と実効host resource |
+| `used_lowmem` | bool | GPU4PySCF の低メモリのソルバーを実際に使ったか（開殻、CPU、`--no-dft-low-memory` では False） |
+| `lowmem_requested` | bool | 低メモリモードを要求したか |
+| `dft_settings` / `dft_resources` | object | 正規化した計算の設定と、実際に使ったホストの計算資源 |
 | `effective_ecp` | string/object \| null | PySCFへ渡した実効ECP |
-| `solvent` / `solvent_model` | string | 実効native implicit-solvent設定 |
+| `solvent` / `solvent_model` | string | 実効の組み込み陰溶媒の設定 |
 | `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |
@@ -416,18 +340,18 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `n_atoms_raw` | int | 選択残基に含まれるbackbone/truncation filter前の原子数（入力全体ではない） |
-| `n_atoms_extracted` | int | truncation後に保持した原子数（cap-H追加前） |
+| `n_atoms_raw` | int | 選択残基に含まれる、主鎖の除外と切断の前の原子数（入力全体ではない） |
+| `n_atoms_extracted` | int | 切断後に保持した原子数（キャップ水素の追加前） |
 | `total_charge` | float | 合計電荷 |
 | `protein_charge` | float | タンパク質電荷 |
 | `ligand_total_charge` | float | リガンド電荷合計 |
 | `ion_total_charge` | float | イオン電荷合計 |
 | `ion_charges` | list | `[[名前, 電荷], ...]` |
 | `unknown_residue_charges` | object | `{残基名: 電荷}` |
-| `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数 |
-| `exclude_backbone` | bool | バックボーンを除外したか |
+| `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数。モデルの原子数は `n_atoms_extracted` + `n_link_hydrogens` です |
+| `exclude_backbone` | bool | 主鎖を除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
-| `ligand_charge_input` | string または null | ユーザー指定 `--ligand-charge` mapping。省略時は null |
+| `ligand_charge_input` | string または null | ユーザーが指定した `--ligand-charge` の対応表。省略時は null |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
 | `input_files` | string[] | 入力 PDB / mmCIF パス |
@@ -442,13 +366,13 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
 | `energy_source` | string | `"trajectory_comment"` または `"mlip_recomputed"` |
 | `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | 再計算の設定。軌跡コメントを読む場合はすべて null |
-| `energy_provenance` | string[] | frame ごとの energy source provenance |
-| `energy_unit` | string | 保存 energy unit（`hartree`） |
-| `backend` | string または null | フレームを再計算した場合のみ MLIP backend。comment energy mode では null |
-| `charge` / `multiplicity` | int または null | 再計算時の解決済み電子状態。それ以外は null |
+| `energy_provenance` | string[] | フレームごとのエネルギーの出どころ |
+| `energy_unit` | string | 保存したエネルギーの単位（`hartree`） |
+| `backend` | string または null | フレームを再計算した場合のみ MLIP のバックエンド。軌跡コメントのエネルギーを読む場合は null |
+| `charge` / `multiplicity` | int または null | エネルギーを再計算したときの電荷と多重度。それ以外は null |
 | `solvent` / `solvent_model` | string または null | 再計算 calculator の溶媒設定。それ以外は null |
 | `output_files` | string[] | すべての出力パスを順序どおりに保持する正規フィールド。別ディレクトリに同名ファイルがあっても保持される |
-| `files` | object | 後方互換用のベース名からパスへの対応表。同じベース名が重複すると一方だけが残る |
+| `files` | object | ベース名からパスへの対応表。同じベース名の出力が 2 つあると一方だけが残るため、`output_files` を使ってください |
 
 ### `energy-diagram`
 
@@ -459,11 +383,33 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 ### `bond-summary`
 
-`--json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（`result.json` ファイルは書き出しません。永続化したい場合は stdout をリダイレクトしてください）。上の MLIP 系サブコマンドが `out_dir` に `result.json` を書き出すのとは**異なる**挙動です:
+`--json` 有効時、`bond-summary` は JSON を**標準出力**に出し、上のサブコマンドと違って `result.json` を書き出しません:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `execution_status` / `scientific_status` | string / string | すべての組を比較できれば `completed` / `success`。比較できない組があると `execution_status` は `failed`、`scientific_status` は `partial` か `failed` |
 | `comparisons` | object[] | ペアごとの比較（`structure_a` (string), `structure_b` (string), `bonds_formed` (int), `bonds_broken` (int)） |
+
+### 剛体モードの射影の記録
+
+`freq`、`irc`、`tsopt` の結果は `rigid_projection` object を含み、`opt` では `--flatten` 実行時に含みます。`freq --dump` は同じ object を `thermoanalysis.yaml` にも書きます。
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `treatment` | string | 固定の剛体モード処理: `"constrained"` |
+| `algorithm` | string | 射影の方法の名前 |
+| `effective_rank` | int | 動ける原子の Hessian から除いた剛体方向の数 |
+| `full_rigid_rank` | int | 凍結原子を考える前の、系全体の剛体運動のランク |
+| `frozen_constraint_rank` | int | 凍結原子を動かさない条件で除かれたランク |
+| `svd_rtol` | float | ランクの判定に用いる相対 SVD 許容値 |
+| `active_atom_count` / `frozen_atom_count` | int | 動ける原子と凍結原子の数 |
+| `active_atoms` / `frozen_atoms` | int[] | 動ける原子と凍結原子の 0 始まりのインデックス |
+| `hessian_space` | string | 入力 Hessian 空間: `"full"` / `"active"` |
+| `hessian_source` / `source` | string | Hessian の出どころ。`freq`/`irc` は `hessian_source` で、`"file"`（`--read-hess`）、`"cache"`（同じ実行の前の段）、`"fresh"`（新規計算）のいずれか。`opt`/`tsopt` は `source` を使用 |
+| `hessian_shape` / `raw_hessian_shape` | int[2] | 入力 Hessian の形状。`freq`/`irc` は `hessian_shape`、`opt`/`tsopt` は `raw_hessian_shape` を使用 |
+| `near_zero_mode_count` / `near_zero_frequencies_cm` | int / float[] | ±`frequency_zero_cutoff_cm`（既定 5.00 cm⁻¹）以内のモードの数と値。これらのモードは全振動数の一覧にも入ります |
+
+`constrained` は、凍結原子を動かさない系全体の剛体運動だけを除きます。詳しくは [freq](freq.md#凍結境界での剛体モード) を参照してください。
 
 (ja-summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
@@ -476,39 +422,46 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
 | `pipeline_stop` | object \| 不在 | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
-| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定済み後処理 preset を示す。generic `opt_mode*` は解決済み CLI 入力を保持する。`path_opt_mode` は端点 preoptimization に使う単一構造 optimizer であり（`preopt` を参照）、MEP path algorithm ではない。 |
+| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
 | `scan` | object \| 不在 | scanを初期経路に使う`all`の、前段scanの状態・各段階の結果・診断。 |
 | `n_segments` | int | セグメント数 |
-| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
+| `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
+| `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` にも記録 |
+| `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` では `preopt_converged` が `scientific_status` の判定に入ります。`--tsopt` で、すべての反応セグメントの TS と両端点の最適化が収束すると、判定から外れます |
+| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[ねじれ](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（ねじれでは `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
 | `mlip_model_label` | string \| null | 論文表記用のモデル名 |
-| `mlip_task` | string \| null | multi-domain modelのbackend task |
-| `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
+| `mlip_task` | string \| null | 複数ドメインのモデルで使ったバックエンドのタスク |
+| `mlip_precision` | string \| null | 実効の `fp32` / `fp64` 表記。自作の calculator では null |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |
-| `references` | object[] | 解決済みworkflowで実際に使った手法の `{method, citation, doi}` record。同じreference setを `summary.log` と最終標準出力の末尾（elapsed time直前）にまとめて出力します。 |
+| `references` | object[] | 実行で実際に使った手法の `{method, citation, doi}` の記録。同じ文献の一覧を `summary.log` と最後の標準出力の末尾（経過時間の直前）にまとめて出力します。 |
 
 `all` はさらに以下を含みます:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `rate_limiting_step` | object | 互換性のため維持するキー。全 reactive segment を完全に覆う最高 method（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で、各段階の始状態を基準にした局所障壁の最大値。`method` と raw `mep_barrier_kcal` を明記する。microkinetics に基づく律速段階の判定ではない。 |
+| `rate_limiting_step` | object | 反応のあるすべてのセグメントで使える最上位の手法（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で求めた局所障壁の最大値。使った手法 `method` と、MEP から求めた障壁 `mep_barrier_kcal` も含みます。微視的速度論による律速段階の判定ではありません。 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
-| `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
+| `overall_reaction_energy_method` | string | 全体反応エネルギーを求めた手法（`MEP`、`MLIP`、`MLIP_Gibbs`、`DFT`、`DFT//MLIP_Gibbs`） |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
-| `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | 既存の終端Hessian結果と組み合わせる有限TSの確認。status判定のための追加Hessian・最適化は実行しません。 |
+| `post_segments[].tsopt.n_imaginary_modes` / `.imaginary_frequencies_cm` | int / float[] | 最適化した TS の n_imag と虚振動数 (cm⁻¹, 負の値) |
+| `post_segments[].mlip` / `.gibbs_mlip` / `.dft` / `.gibbs_dft_mlip` | object | 1 つのレベルでの R・TS・P のエネルギーと、`barrier_kcal`・`delta_kcal`・`energies_kcal`。順に MLIP の電子エネルギー（`--tsopt`）、MLIP の Gibbs エネルギー（`--thermo`）、DFT のエネルギー（`--dft`）、DFT//MLIP の Gibbs エネルギー（`--thermo` と `--dft`）です |
+| `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | `energy_valid`：最終の TS のエネルギーが有限の値。`structure_valid`：最終の TS の構造ファイルがあり、座標が有限の値 |
 | `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS 最適化で実行したサイクル数と設定上限。通常の非収束時にも記録します。 |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `optimization_status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC 停止・結合対応は独立した成功条件にせず、connectivity 情報は機構解釈用に保持します。 |
-| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称 provenance。有効な対称数 provenance を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `optimization_status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC がどう止まったかと結合変化が合うかは `scientific_status` に入りません。最適化した端点が狙った R と P かは自分で確かめてください。 |
+| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称の出どころ。有効な対称数の出どころを持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な出どころが無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 
 ## 使用例
 
 ### Python
+
+`opt --out-json` が書き出す `result_opt/result.json` を読む例です。
 
 ```python
 import json
@@ -534,19 +487,31 @@ else:
 # 収束確認
 jq '{execution_status, scientific_status}' result.json
 
-# 障壁エネルギー取得
+# path-opt の障壁
 jq '.barrier_kcal' result.json
 
-# 虚振動数の確認
+# tsopt の虚振動数
 jq '.imaginary_frequencies_cm' result.json
 
-# 自由エネルギー取得
+# freq の自由エネルギー
 jq '.thermochemistry.sum_EE_and_thermal_free_energy_ha' result.json
+
+# all の各セグメントの障壁（--tsopt の後）
+jq '.post_segments[] | {index, barrier_kcal: .mlip.barrier_kcal}' result_all/summary.json
 ```
 
-## 関連項目
+## 使用上の注意点
 
-- [CLI 規約](cli-conventions.md) — `--out-json` / `--no-out-json` フラグの規約と終了コード
+- CLI のオプションや入力を確かめている段階（出力ディレクトリを用意する前）で失敗すると、JSON を書かずに止まることがあります。0 以外の終了コードは失敗として扱い、標準エラー出力かジョブログでメッセージを確認してください。
+- `all` と `path-search` は要約の段に着いてから `summary.json` を書くため、早い段階の入力エラーではファイルが残りません。
+- コマンドごとの節にも、それぞれの `backend` / `model` 欄があります。複数のコマンドの結果を読むスクリプトでは、どのコマンドでも同じ意味の `mlip_backend` / `mlip_model` / `mlip_precision` を使ってください。
+- [IRC がどう止まったか](irc.md#irc-の成否の判定)は `scientific_status` に入りません。単体の `irc` は、積分が終われば `--max-cycles` に達した場合も `success` で、`all` は TS と端点の最適化から判定します。
+
+## 関連ドキュメント
+
+- {ref}`終了コード <ja-exit-codes>` — 終了コードの意味
+- [出力ディレクトリのレイアウト](output-layout.md) — `result.json` と `summary.json` を書き出す場所
+- [トラブルシューティング](troubleshooting.md) — 失敗・未収束の後に何を変えるか
 - [YAML リファレンス](yaml-reference.md) — これらのスキーマに現れる設定入力
-- [all](all.md), [path-search](path-search.md) — 常に `summary.json` を書き出すサブコマンド
-- [opt](opt.md), [tsopt](tsopt.md), [freq](freq.md), [irc](irc.md), [scan](scan.md), [path-opt](path-opt.md), [dft](dft.md), [extract](extract.md) — `--out-json` 指定時にのみ `result.json` を書き出すサブコマンド
+- [all](all.md), [path-search](path-search.md) — `--out-json` なしで `summary.json` を書き出すサブコマンド
+- [opt](opt.md), [sp](sp.md), [tsopt](tsopt.md), [freq](freq.md), [irc](irc.md), [scan](scan.md), [scan2d](scan2d.md), [scan3d](scan3d.md), [path-opt](path-opt.md), [dft](dft.md), [extract](extract.md), [trj2fig](trj2fig.md), [energy-diagram](energy-diagram.md) — `--out-json` 指定時にのみ `result.json` を書き出すサブコマンド

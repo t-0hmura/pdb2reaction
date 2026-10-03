@@ -1,255 +1,209 @@
-# `scan`
+# `scan` (restrained coordinate scan)
 
-Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It uses harmonic restraints and an MLIP backend (UMA by default). At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). mmCIF inputs run through the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology.
+## Overview
 
-## Scan-coordinate staging
+`scan` drives chosen distances, angles, or dihedrals of one structure step by step with harmonic restraints, relaxing every other degree of freedom at each step, and so builds a candidate reaction path from a single structure. The coordinates in one literal (or one YAML stage) move together as one **stage**; several literals run as stages in sequence, each starting from the relaxed end of the previous one.
 
-For 3-tuple input, one literal defines one stage. Several distance tuples within that literal are
-advanced concertedly. Several literals define sequential stages, each
-starting from the preceding stage endpoint. In contrast, [`scan2d`](scan2d.md)
-and [`scan3d`](scan3d.md) evaluate independent distance axes for
-energy-landscape exploration and PES mapping.
+### What it is for
 
-Angle ranges use `(i,j,k,low,high)` and dihedral ranges use
-`(i,j,k,l,low,high)`; angular values are in degrees. Each range follows the
-same two-pass `low` / `high` staging described below.
+* **A path from one structure**: drive the reacting bonds of a reactant to get intermediate- and product-like structures for [`path-search`](path-search.md).
+* **Testing the order of events**: drive bond formation and proton transfer in one stage or in separate stages, and compare the energy profiles.
+* **Running the scan step of `all` on its own**: repeat the scan that [`all`](all.md) runs for `-s`, with other step sizes or restraints.
+
+The default backend is **UMA** (Meta); `-b/--backend` also selects **ORB**, **MACE**, **AIMNet2**, or DFT (`dft`). For an energy grid over two or three independent coordinates, use [`scan2d`](scan2d.md) or [`scan3d`](scan3d.md).
+
+---
 
 ## Examples
 
-```bash
-# Minimal: run from a YAML spec
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
+The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`.
 
 ```bash
-# Inline Python literal
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
+pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-```bash
-# Dump trajectories for stage-by-stage inspection
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
-```
+Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces (`'SAM,320,CS1'` or `'CS1 SAM 320'`).
 
-Command form:
+### 1. From a YAML spec
 
-```bash
-pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2|dft] \
- [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
-
-> **Note:** Use `--dry-run` to validate the input and scan spec without calculating.
-
-## Workflow
-
-1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
-2. Optionally run an unbiased preoptimization (`--preopt`) before any
-    biasing so the starting point is relaxed.
-3. Parse stage targets from `--scan-lists/-s` (YAML/JSON file or inline literal), then normalize the
-    `(i, j)` indices (1-based by default). When the input is a PDB, each entry
-    may be either an integer index or an atom selector string like `'SAM,320,CS1'`;
-    selector fields can be separated by spaces, commas, slashes, backticks, or
-    backslashes and may be in any order. For repeated names or numbering, use
-    positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
-    Compute the per-bond displacement
-    `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
-    `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
-4. March through all steps, updating the temporary targets, applying the
-    harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with the MLIP backend.
-    Optimizer cycles come from YAML `opt.max_cycles` unless an explicit
-    `--relax-max-cycles` overrides it.
-5. After the last step of each stage, optionally run an unbiased relaxation
-    (`--endopt`) before reporting covalent bond changes and writing the
-    `result.*` files.
-6. Repeat for every stage. The concatenated `scan_trj.xyz` is always written;
-    PDB/CIF/GJF companions require `--convert-files` and a reference template.
-    Pass `--dump` to additionally emit per-step optimizer trajectory files
-    (`opt.dump` from YAML is run-scoped and ignored).
-
-## Outputs
-
-```text
-out_dir/ (default:./result_scan/)
-├─ preopt/ # Present when --preopt is True
-│ ├─ result.xyz
-│ ├─ result.pdb # PDB companion when reference topology exists and conversion is enabled
-│ ├─ result.cif # Bridge-input companion with original IDs
-│ └─ result.gjf # When a Gaussian template exists and conversion is enabled
-├─ stage_XX/ # One folder per stage
-│ ├─ result.xyz
-│ ├─ result.pdb # PDB mirror of the final structure (conversion enabled)
-│ ├─ result.cif # Bridge-input companion with original IDs
-│ ├─ result.gjf # Gaussian mirror when templates exist and conversion is enabled
-│ ├─ scan_trj.xyz # Always written (concatenated biased trajectory)
-│ ├─ scan.pdb # Written when reference topology exists and conversion is enabled (no scan.gjf is produced)
-│ └─ scan.cif # Bridge-input trajectory with original IDs
-├─ scan_trj.xyz # Combined trajectory across all stages
-├─ scan.pdb # Combined PDB trajectory (when conversion is enabled)
-└─ scan.cif # Combined bridge-input CIF trajectory
-```
-
-- Per-stage bond-change reports on the console; `-v 3` also prints the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
-
-## CLI options
-
-The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation.
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--uma-workers`, `--uma-workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` distance targets, or distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, and dihedral `(i,j,k,l,low,high)` ranges for bidirectional scans. Supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
-| `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
-| `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
-| `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
-| `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |
-| `--restraint-k FLOAT` | Harmonic bias strength `k`: eV·Å⁻² for distances and eV·rad⁻² for angles. | `300` |
-| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
-| `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--dump/--no-dump` | Forward to the per-step optimizer (`opt_cfg["dump"]`), emitting per-step optimizer trajectory files. `scan_trj.xyz` is always written regardless. | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions; bridge trajectories include CIF. | `True` |
-| `--ref-pdb FILE` | Reference PDB or mmCIF topology for XYZ/GJF input (keeps XYZ coordinates). | _None_ |
-| `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. **Scope-dependent default:** `False` standalone; flipped to `True` when invoked via `pdb2reaction all` (see [`all` → TSOPT / freq / DFT / scan overrides](all.md#tsopt--freq--dft--scan-overrides)). | `False` |
-| `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `False` |
-| `--out-json/--no-out-json` | Write `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-
-### Shared YAML sections
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [YAML Reference](yaml-reference.md). Per-step optimizer trajectories are controlled
-  by `--dump` (CLI) only — `opt.dump` and `opt.out_dir` from YAML are run-scoped and
-  overwritten (not YAML-tunable); `scan_trj.xyz` is always written, while
-  PDB/CIF/GJF companions require conversion and a reference template.
-- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
-
-### Section `bias`
-- `k` (`300`): Harmonic strength in eV·Å⁻².
-
-(section-bond)=
-### Section `bond`
-MLIP-based bond-change detection shared with `path-search`. Full keys and
-defaults (`device`, `bond_factor`, `margin_fraction`, `delta_fraction`): see
-[YAML Reference](yaml-reference.md#bond).
-
-## YAML configuration
+Write the stages in a file and add `--out-json` for a summary.
 
 ```yaml
-geom:
- coord_type: cart        # cartesian vs dlc internals
-calc:
- model: uma-s-1p2        # uma-s-1p2 | uma-m-1p1
- task_name: omol         # UMA task name
-opt:
- thresh: gau             # convergence preset
- max_cycles: 100000       # optimizer cycle cap
- # out_dir is run-scoped: set via -o/--out-dir, not YAML (a YAML value here is ignored)
-lbfgs:
- max_step: 0.3           # maximum step length (grad mode)
-rfo:
- trust_radius: 0.10      # trust-region radius (hess mode)
-bias:
- k: 300                  # harmonic bias strength (eV·Å⁻²)
-bond:
- bond_factor: 1.2        # covalent-radius scaling
- margin_fraction: 0.05   # tolerance margin
- delta_fraction: 0.05    # minimum relative change to flag bonds
+# scan.yaml
+stages:
+  - [["SAM,320,CS1", "GPP,321,C7", 1.60]]
+  - [["GPP,321,H11", "GLU,186,OE2", 0.90]]
 ```
-
-More YAML options for `opt`/`lbfgs`/`rfo`/`bias`/`bond` and their defaults are in [YAML Reference](yaml-reference.md).
-
-## Scan-list spec
-
-For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
-see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
-
-### Synchronized and sequential examples
-
-When the mechanism is not assigned to prescribed stages, the concerted
-form can be followed by [`path-search`](path-search.md) for candidate
-segmentation. A 4-tuple `(i, j, low, high)` instead expands into a
-bidirectional two-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).
 
 ```bash
-# Concerted: two coordinates move together in one stage
-pdb2reaction scan -i reactant.pdb \
-    -q 0 -m 1 \
-    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o result_concerted
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --out-json -o ./result_scan
 ```
 
-Pass multiple literals after a single `--scan-lists/-s` flag for a staged scan. Each literal becomes one stage:
+The console prints the covalent-bond changes of each stage and ends with `====== Scan summary ======`. `result_scan/result.json` gives `scientific_status`, with the reasons in `scientific_status_reasons` when it is not `success`.
+
+### 2. Inline literal
+
+A short single-stage scan can be given on the command line.
 
 ```bash
-# Stage 1: drive the methyl-transfer distance to 1.60 Å
-# Stage 2: then drive the proton transfer to 0.90 Å
--s \
- '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
- '[("GPP,321,H11","GLU,186,OE2",0.90)]'
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
 ```
 
-Stages run sequentially; each starts from the previous stage's relaxed result.
+### 3. Two coordinates in one stage
 
-(scan-direction-and-barrier-sign)=
-### Scan direction and barrier sign
+Coordinates in the same literal move together (a concerted step).
 
-The `scan` result stores sampled and final energies; it does not certify or
-emit a barrier field. If a user derives a barrier from a scan (or path) that
-**starts from the product** side, that difference is the **reverse** barrier,
-`E(TS) − E(product)`. To quote the forward barrier, compute it from the reactant:
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
+    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o ./result_concerted
+```
 
-| You ran | Forward barrier |
-| --- | --- |
-| A product-start scan | `E(TS) − E(reactant)` — **not** the product-referenced difference |
+### 4. Two stages in sequence
 
-This is something to interpret when reading results, not a CLI flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex.
+Give several literals after one `-s`; stage 2 starts from the relaxed result of stage 1.
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
+    -s '[("SAM,320,CS1","GPP,321,C7",1.60)]' '[("GPP,321,H11","GLU,186,OE2",0.90)]' -o ./result_staged
+```
+
+### 5. Bidirectional scan
+
+A [4-tuple](#bidirectional-scan-4-tuple) scans one distance in both directions from the input geometry.
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[(12, 45, 1.35, 2.50)]'
+```
+
+### 6. Dump trajectories
+
+Add `--dump` to keep the optimizer trajectory of every step.
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./result_scan_dump
+```
+
+---
+
+## How it works
+
+1. **Reading the structure**: the {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--preopt`, the structure is first optimized without restraints; if that does not converge, the input geometry is used.
+2. **Splitting each stage into steps**: for every coordinate, `scan` takes the change Δ = target − current and divides the stage into N = ceil(max(|Δ| / h)) steps, where h is `--max-step-size` (Å) for distances, `--max-angle-step-size` for angles, and `--max-dihedral-step-size` for dihedrals (degrees). Each coordinate moves by Δ / N per step, so all coordinates of a stage arrive together.
+3. **Restrained relaxation**: at each step, a harmonic restraint E = ½ k (q − q_target)² holds every scanned coordinate q at its step target (k from `--restraint-k`), and the rest of the structure is relaxed with L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). The energy written for each step is computed with the restraints removed.
+4. **End of the stage**: with `--endopt`, the last structure of the stage is optimized once more without restraints. `scan` then compares the first and last structures of the stage for covalent-bond changes and writes the stage result.
+5. **Next stage**: the next stage starts from this result. After the last stage, the trajectories of all stages are joined into one file.
 
 ### Bidirectional scan (4-tuple)
 
-Instead of a 3-tuple `(i, j, target)`, you can pass a **4-tuple** `(i, j, start, end)` to scan in both directions from the current geometry. The CLI automatically expands each 4-tuple into two stages:
+A range `(i, j, low, high)` instead of a target `(i, j, target)` scans in both directions from the input geometry. It expands into two stages:
 
-1. **Pass 1:** Drive `i`--`j` from the current distance toward `start`.
-2. **Pass 2:** Restore the initial geometry and drive `i`--`j` toward `end`.
+1. **Pass 1**: drive `i`–`j` from the current distance toward `low`.
+2. **Pass 2**: restore the input geometry and drive `i`–`j` toward `high`.
 
-The concatenated trajectory is assembled as `start → initial → end`, giving a continuous path through the starting structure.
+The joined trajectory runs `low → input geometry → high`, a continuous path through the starting structure. Angle ranges `(i, j, k, low, high)` and dihedral ranges `(i, j, k, l, low, high)` are scanned the same way.
 
-```bash
-# Bidirectional scan: drive bond 12--45 from current geometry
-# toward 1.35 Å (pass 1) and toward 2.50 Å (pass 2)
-pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
+(section-bond)=
+### Bond-change detection
+
+Let T be the sum of the covalent radii of two atoms scaled by `bond_factor` (default `1.20`). The atoms count as bonded when their distance is at most T − `margin_fraction` × T (default `0.05`). A pair is reported as formed or broken only when its distance changed by at least `delta_fraction` × T (default `0.05`). `path-search` uses the same rules; the keys are in the YAML [`bond`](yaml-reference.md#bond) section.
+
+---
+
+(scan-direction-and-barrier-sign)=
+## Scan direction and barrier sign
+
+(scan-checking-result)=
+### Checking the result
+
+| Where | What to check |
+| --- | --- |
+| Console, each stage | `[stage k] Covalent-bond changes (start vs final): Yes` with the formed and broken bonds listed, or `No` with `(no covalent changes detected)` |
+| Console, end of run | `====== Scan summary ======`: targets, number of steps, and bond changes of each stage |
+| `result.json` (`--out-json`) | `scientific_status`: `success` when every step of every stage converged (and the `--endopt` optimization, when requested) with a finite energy; `partial` when only some stages did; `failed` when none did |
+| `result.json` (`--out-json`) | `stages[].converged`, `stages[].bond_changes.changed`, `stages[].final_energy_hartree`, and the energy of every step in `stages[].energies_hartree` |
+
+A `partial` run exits with 0 and a `failed` run with 1; for stages that did not converge, see {ref}`max_cycles and plateau stops <troubleshooting-max-cycles>`. A converged scan with the intended bond changes gives a candidate path; the highest-energy step is a TS candidate for [`tsopt`](tsopt.md), which you can {ref}`extract <trajectory-one-frame>` from `scan_trj.xyz`.
+
+### Barrier sign
+
+`scan` records energies but does not report a barrier. If you read a barrier off a scan, the forward barrier is always computed from the reactant:
+
+| You ran | Difference from the starting structure | Forward barrier |
+| --- | --- | --- |
+| A scan from the reactant | `E(TS) − E(reactant)` | The same difference |
+| A scan from the product | `E(TS) − E(product)`, the **reverse** barrier | `E(TS) − E(reactant)`, **not** the difference from the starting structure; E(reactant) comes from an optimized reactant, for example an IRC endpoint optimized with [`opt`](opt.md) |
+
+No option changes this. Before quoting a barrier, check which endpoint the scan started from, especially when the starting structure was a crystallographic product complex.
+
+---
+
+## Output files
+
+`scan` writes these files to `--out-dir`:
+
+```text
+result_scan/
+├─ preopt/
+│  └─ result.xyz                    # Pre-optimized structure (--preopt)
+├─ stage_01/                        # One directory per stage (stage_NN)
+│  ├─ result.xyz                    # Final geometry of the stage
+│  ├─ scan_trj.xyz                  # Structure and energy of every step in the stage
+│  └─ scan_s0001_optimization_trj.xyz  # Optimizer trajectory of each step (--dump)
+├─ scan_trj.xyz                     # All stages joined
+└─ result.json                      # Summary (--out-json); summary.json has the same content
 ```
 
-This is equivalent to two manual stages with a geometry reset between them. Inline literals cannot mix 3-tuples and 4-tuples, within one literal or across literals; to combine targets and ranges, list them under `stages:` in a YAML/JSON spec.
+For PDB/mmCIF input, each `result.xyz` is also written as `result.pdb` and each `scan_trj.xyz` as `scan.pdb`, in the same directory; for Gaussian input, the structures also as `result.gjf`. {ref}`mmCIF input <mmcif-input>`, and PDB input too large for the PDB columns, also get `.cif` files that keep the original identifiers.
 
-The corresponding range forms are `(i,j,k,low,high)` for an angle and
-`(i,j,k,l,low,high)` for a dihedral.
+* **Stage results**: `stage_NN/result.*` is the structure at the end of stage NN. For [`path-search`](path-search.md), give the starting structure (`preopt/result.*` with `--preopt`) followed by the `stage_NN/result.*` files in stage order, as `all` does.
+* **Energy profile**: the comment line of each frame in `scan_trj.xyz` holds the energy without restraints (Hartree); plot it with [`trj2fig`](trj2fig.md).
 
-```{note}
-**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When a spec stage mixes 3-tuples and 4-tuples, each entry runs as its own stage and the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
-```
+---
+
+## Main options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, ...) |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
+| `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
+| `-s, --scan-lists` | text | (required) | A YAML/JSON spec file, or one or more inline literals (one per stage): distance targets `(i,j,target)`, or ranges for a distance `(i,j,low,high)`, an angle `(i,j,k,low,high)`, or a dihedral `(i,j,k,l,low,high)` |
+| `-o, --out-dir` | path | `./result_scan/` | Output directory |
+| `--one-based/--zero-based` | flag | `--one-based` | Read atom indices in `-s` as 1-based or 0-based |
+| `--max-step-size` | float | `0.2` | Largest change of a distance per step (Å) |
+| `--max-angle-step-size` | float | `5.0` | Largest change of an angle per step (degrees) |
+| `--max-dihedral-step-size` | float | `10.0` | Largest change of a dihedral per step (degrees) |
+| `--restraint-k` | float | `300.0` | Restraint strength k (eV/Å² for distances, eV/rad² for angles); alias `--bias-k` |
+| `--preopt/--no-preopt` | flag | `False` | Optimize the input structure without restraints before the scan |
+| `--endopt/--no-endopt` | flag | `False` | Optimize the result of each stage without restraints |
+| `--dump/--no-dump` | flag | `False` | Write the optimizer trajectory of every step |
+| `--opt-mode` | `grad` / `hess` | `grad` | Relaxation: L-BFGS / RFO (on `tsopt` the same words select other optimizers; see {ref}`--opt-mode by command <opt-mode-semantics>`) |
+| `--freeze-links/--no-freeze-links` | flag | `True` | Freeze the parent atoms of cap hydrogens at the cluster boundary |
+| `--out-json/--no-out-json` | flag | `False` | Write a summary to `result.json` ([JSON Output Reference](json-output.md)) |
+
+See the [generated CLI reference](reference/commands/scan.md) for every option.
+
+---
 
 ## Notes
 
-- The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals. YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
-- Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB/mmCIF topology inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
-- When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
+* **`--preopt` depends on the caller**: `scan` alone pre-optimizes only with `--preopt`. Inside `all`, it follows `all --preopt` (on by default), and `all --scan-preopt/--no-scan-preopt` overrides it.
+* **Tuples from `all -s`**: write them in the `scan` form ({ref}`Scan-list spec <scan-list-spec>`).
+* **Targets and ranges are not mixed inline**: one inline literal, and all literals of one run, hold either targets `(i,j,target)` or ranges. To combine them, list them under `stages:` in a YAML/JSON spec.
+* **Stage numbers with ranges**: a range becomes two stages, toward `low` and then toward `high`. Inline, all ranges of one literal share these two stages. In a YAML `stages:` list, a stage of targets only stays one stage; a stage that holds a range is split into one stage per target and two per range.
+* **Target distances must be positive**, and one coordinate may appear only once per stage.
+* **Check the spec without computing**: `--dry-run` reads the input, the charge and spin, and `-s`, prints the number of stages, and exits without any optimization.
+* **Cycle limit**: `--relax-max-cycles` (default `100000`) limits each relaxation; when given, it overrides YAML `opt.max_cycles`.
+* **Restraint strength in YAML**: in `--config`, {ref}`bias.k <bias-section>` applies when `--restraint-k` is not given.
 
-## See Also
+---
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) — Detailed fixes for common failure modes
-- [all](all.md) — End-to-end workflow with `--scan-lists/-s` for single-structure inputs
-- [scan2d](scan2d.md) — Two-distance grid scan (d₁, d₂) with the same MLIP backend and YAML controls
-- [scan3d](scan3d.md) — Three-distance grid scan (d₁, d₂, d₃) with isosurface output
-- [path-search](path-search.md) — MEP search using scan endpoints as intermediates
-- [extract](extract.md) — Generate active site model (binding pocket) PDBs before scanning
-- [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options
-- [Glossary](glossary.md) — Definitions of MEP, Segment
+## See also
+
+* {ref}`Scan-list spec <scan-list-spec>` — YAML/JSON spec files, inline literals, and atom selectors
+* [scan2d](scan2d.md) — energy map over two coordinates
+* [scan3d](scan3d.md) — energy grid over three coordinates
+* [path-search](path-search.md) — minimum energy path (MEP) search from the scan results
+* [all](all.md) — the full workflow, including a scan from one structure with `-s`
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails

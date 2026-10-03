@@ -1,28 +1,32 @@
-# `bond-summary`
+# `bond-summary`（構造間の結合変化）
 
-連続する分子構造（R → TS → P や多段中間体列）の間の共有結合変化を、元素固有の共有結合半径によって検出・報告します。入力 *N* 構造に対し *N* − 1 個のペア比較ブロック（A→B, B→C, …）を生成して標準出力へ表示します。ファイルは作成されません。反応経路上の連続構造でどの共有結合が形成・切断されたかを確認するときに使用します。例えば、IRC 端点ペアの妥当性検証、多段機構のスクリーニング、`all` の post-processing 結果の手動での検算などです。対応フォーマットは **XYZ**、**PDB**、**mmCIF**、**GJF**（拡張子から自動検出）で、距離はオングストローム（Å）で報告されます。
+## 概要
 
-## 実行例
+`bond-summary` サブコマンドは、反応物（R）→ 生成物（P）や、R → 中間体 IM1 → IM2 → P のような連続する構造の間で、**どの共有結合ができ、どれが切れたか**を報告します。入力 *N* 個に対して *N* − 1 個の比較ブロック（A → B、B → C、…）を表示し、変化した結合ごとに前後の距離（Å）を示します。
 
-2 構造の比較（R → P）:
+### 主な用途
+
+* **IRC 端点の確認**: 固有反応座標（IRC）の両端が狙った結合だけ違うかを確かめる
+* **多段機構のスクリーニング**: 中間体の列で、各段に変わる結合を一覧する
+* **ワークフローの結果の検算**: `all` が [`segments/seg_NN/`](output-layout.md) に書き出した R・遷移状態（TS）・P を手で比べる
+
+---
+
+## 基本的な実行例
+
+### 1. 2 つの構造を比べる
+
+反応物と生成物を比べます。
 
 ```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
+pdb2reaction bond-summary -i reactant.xyz product.xyz
 ```
 
-多構造列 — R→IM1, IM1→IM2, IM2→P の 3 つの比較ブロックが出力されます:
+`Bond formed (k):` と `Bond broken (k):` の下に結合が並びます。`Bond formed: None` はできた結合が無いという意味です。
 
-```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
-```
-
-## 出力
-
-`bond-summary` はファイルを書き出しません。標準出力に、形成・切断された結合とその距離（Å）を含むテキストレポート（連続ペアごとに 1 比較ブロック）を表示します。`--json` 指定時は機械可読 JSON を標準出力へ出力します。各ブロックは連続ペアの比較結果を示します:
-
-```
+```text
 ============================================================
-  1.R.xyz  →  3.P.xyz
+  reactant.xyz  →  product.xyz
 ============================================================
 Bond formed (2):
   - O14-H106 : 1.502 Å --> 1.011 Å
@@ -32,56 +36,58 @@ Bond broken (2):
   - H106-O107 : 1.034 Å --> 1.673 Å
 ```
 
-## Python API
+### 2. 多段の構造列
 
-結合変化検出関数は Python から直接利用できます:
+4 つの構造から、R → IM1、IM1 → IM2、IM2 → P の 3 ブロックが出ます。
 
-```python
-from pdb2reaction.domain.bond_changes import compare_structures, has_bond_change, summarize_changes
+```bash
+pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 ```
 
-| Function | Description |
-|----------|-------------|
-| `compare_structures(geom1, geom2, device="cuda", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
-| `has_bond_change(geom_start, geom_end, bond_cfg)` | Convenience wrapper: returns `(has_changes: bool, summary_text: str)`. `bond_cfg` accepts keys: `device`, `bond_factor`, `margin_fraction`, `delta_fraction`. |
-| `summarize_changes(geom, result, one_based=True)` | Format bond changes as a text report with distances in Angstrom. |
+---
 
-### 例
+## 処理の仕組みと計算仕様
 
-```python
-from pysisyphus.helpers import geom_loader
-from pdb2reaction.domain.bond_changes import has_bond_change
+1. **構造の読み込み**:
+渡した順にファイルを読みます。XYZ・PDB・mmCIF・GJF を拡張子で判別し、2 つ以上のファイルが必要です。
+2. **結合の判定**:
+2 つの原子の [Cordero et al. (2008)](https://doi.org/10.1039/b801115j) の共有結合半径（H は 0.40 Å）の和に `--bond-factor`（デフォルト `1.20`）を掛けた値を *T* とし、距離が 0.95 *T* 以下なら結合ありとします。
+3. **変化の数え方**:
+前の構造で結合なし（あり）、次の構造で結合あり（なし）で、距離の変化が 0.05 *T* 以上の組だけを、できた（切れた）結合として数えます。閾値をわずかにまたぐだけの変化は数えません。`irc` と `all` が報告する結合変化も同じ判定です。
 
-geom_r = geom_loader("R.xyz")
-geom_p = geom_loader("P.xyz")
+---
 
-changed, summary = has_bond_change(geom_r, geom_p, {"device": "cpu", "bond_factor": 1.20})
-if changed:
-    print(summary)
-```
+## 主な出力ファイル
 
-## CLI オプション
+`bond-summary` はファイルを書き出しません。連続する組ごとのテキストブロックを、実行例 1 の形で標準出力に表示します。原子は元素と原子インデックス（デフォルトは 1 始まり）で示します。`--json` では代わりに JSON を標準出力に表示し、`scientific_status`、`execution_status`、組ごとの `structure_a`・`structure_b`・`bonds_formed`・`bonds_broken`（件数）を持ちます。[JSON 出力リファレンス](json-output.md#bond-summary)を参照してください。保存したいときは標準出力をリダイレクトしてください。
 
-| オプション | 説明 | デフォルト |
-|--------|-------------|---------|
-| `-i, --input FILE` | 入力構造ファイル（XYZ, PDB, mmCIF, GJF 形式、拡張子から自動検出。各ファイルごとに `-i` を繰り返す、2 つ以上必須） | — |
-| `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
-| `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
-| `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
-| `--json / --no-json` | **機械可読な JSON を標準出力へ出力**（テキストレポートの代わり）。このサブコマンドは `result.json` ファイルを書き出しません（永続化したい場合は stdout をリダイレクトしてください）。スキーマは [JSON 出力スキーマ → bond-summary](json-output.md#bond-summary) を参照 | `False` |
+---
 
-すべてのフラグ一覧は生成された[コマンドリファレンス](../reference/commands/index.md)を参照してください。
+## 主な CLI オプション
 
-## 注意事項
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス | （必須） | 順に並べた 2 つ以上の構造。1 つの `-i` の後に並べる（`-i` を繰り返してもよい） |
+| `--bond-factor` | 浮動小数点数 | `1.20` | 共有結合半径の和に掛ける係数 |
+| `--json/--no-json` | フラグ | `False` | テキストの代わりに JSON を標準出力に表示 |
+| `--one-based/--zero-based` | フラグ | `--one-based` | 報告での原子の番号付け |
 
-- すべての入力構造は**同一の原子数と元素順序**である必要があります。
-- 結合検出は `all` ワークフローの IRC 端点検証で使用される内部 `bond_changes` モジュールと同じアルゴリズムを使用します。
-- 境界領域にあり判定が微妙な結合（例: 金属配位 2.0–2.4 Å）の感度を調整するには、`--bond-factor` を大きくしてください（例: `1.30`）。
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/bond_summary.md) を参照してください。
 
-## 関連項目
+---
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
-- [irc](irc.md) -- 結合検出で端点検証される IRC 軌跡
-- [all](all.md) -- 内部で結合変化検証を使用する一気通貫ワークフロー
-- [trj2fig](trj2fig.md) -- 軌跡からエネルギープロファイルを可視化
+## 使用上の注意点
+
+* **同じ原子が同じ順に並ぶこと**: 違う組では、標準エラーに `ERROR: Atom types and ordering must be identical.` が出ます。{ref}`入力 / 抽出の問題 <ja-input-extraction-problems>`を参照してください。
+* **境目の結合**: 2.0–2.4 Å の金属配位のような長めの接触も数えたいときは、`--bond-factor` を大きくしてください（例: `1.30`）。
+* **比較できなかった組**: 原子が違う組など比較できない組は飛ばし、ほかの組は報告します。そのとき `execution_status` が `failed` になるので終了コードは 1 で、JSON の `scientific_status` は、比較できた組があれば `partial`、1 組も無ければ `failed` です。
+* **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
+
+---
+
+## 関連ドキュメント
+
+* [irc](irc.md) — 同じ判定で端点を確かめる IRC
+* [all](all.md) — 各段の結合変化も報告する全工程のワークフロー
+* [trj2fig](trj2fig.md) — 軌跡のエネルギープロファイルの図
+* [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

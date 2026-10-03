@@ -1,85 +1,101 @@
-# `sp`
+# `sp` (single point)
 
-`pdb2reaction sp` evaluates the selected calculator's energy and atomic forces (optionally a Hessian) at a single geometry. Use it for a quick energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference values and Hessians outside the optimizer loop.
+## Overview
+
+`sp` computes the **energy and atomic forces** of one structure with the selected backend, and with `--hess` also the **Hessian**. It runs no optimization: the geometry stays as given.
+
+### What it is for
+
+* **Check before an optimization**: confirm that the charge and multiplicity are accepted and that the backend returns a finite energy and forces.
+* **Compare backends**: evaluate the same structure with the [MLIPs](backends.md) (machine-learning interatomic potentials) UMA, ORB, MACE, and AIMNet2, or with DFT (`-b dft`).
+* **Reference values**: forces and Hessians as `.npy` files, and the energy in the console or `result.json`, for your own analysis.
+
+---
 
 ## Examples
 
-Command form:
+### 1. Energy and forces
+
+Evaluate a neutral singlet with the default backend (UMA).
 
 ```bash
-pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2|dft] [--hess] [options]
+pdb2reaction sp -i structure.pdb -q 0 -m 1 --out-json
 ```
 
-Energy + forces (UMA backend, neutral closed-shell):
+The console prints `[sp] energy = … a.u.  |force|_max = … a.u./bohr`, and `result_sp/` has `forces.npy` and `result.json` with `energy_au`.
+
+### 2. Add the full Hessian
+
+`--hess` also computes the Hessian.
 
 ```bash
-# energy + forces (UMA backend, neutral closed-shell)
-pdb2reaction sp -i structure.pdb -q 0 -m 1
-```
-
-Also compute the full Hessian (finite differences are used by default for every backend):
-
-```bash
-# also compute the full Hessian (FiniteDifference by default)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
-## Outputs
+---
 
-`sp` writes its outputs under `result_sp/` by default. After a successful
-calculation, the scalar energy and `|force|_max` are printed to stdout and
-`forces.npy` (plus `hessian.npy` with `--hess`) is written there.
+## How it works
 
-| file | contents | written |
-|---|---|---|
-| _stdout_ | scalar energy (a.u.) and `|force|_max`, printed as `[sp] energy = …` | successful calculation |
-| `forces.npy` | `(N, 3)` array of forces in atomic units (Hartree / Bohr) | successful calculation |
-| `hessian.npy` | mass-unweighted Hessian (Hartree / Bohr²): `(3N, 3N)` without frozen atoms, or the active block with `--freeze-atoms` or YAML `geom.freeze_atoms` | only with `--hess` |
-| `result.json` / `summary.json` | machine-readable energy (a.u.), backend, charge/spin, paths to npy outputs, elapsed time | only with `--out-json` |
+1. **Reading the structure**:
+PDB, mmCIF, XYZ, and GJF inputs are read. The charge comes from `-q`, `-l` (PDB/mmCIF input), YAML `calc.charge`, or a `.gjf` header. Atoms given with `--freeze-atoms` are frozen.
+2. **Energy and forces**:
+The backend is called once at the input geometry. `sp` prints the energy and the largest force component and saves the forces to `forces.npy`.
+3. **Hessian (with `--hess`)**:
+`--hessian-calc-mode FiniteDifference` differentiates the forces numerically; `Analytical` uses the analytical Hessian of UMA, ORB, MACE, AIMNet2, or DFT. With UMA, `Analytical` {ref}`cannot run <workers-analytical-error>` with `--uma-workers` above 1.
 
-`sp` writes no human-readable `summary.log`.
+---
 
-### Hessian backend
+## Output files
 
-When `--hess` is set, `--hessian-calc-mode` selects the Hessian computation strategy:
+`sp` writes these files to `--out-dir`:
 
-- Every backend uses `FiniteDifference` by default.
-- Pass `--hessian-calc-mode Analytical` to use a supported backend's autograd path explicitly.
+| File | Contents | Written |
+| --- | --- | --- |
+| `forces.npy` | Forces as an `(N, 3)` array in Hartree/bohr | Always |
+| `hessian.npy` | Cartesian Hessian without mass weighting (Hartree/bohr²): `(3N, 3N)`, or `(3M, 3M)` for the M moving atoms in input order when atoms are frozen | With `--hess` |
+| `result.json` | Energy (`energy_au`), backend, model, charge, multiplicity, atom count, paths to the `.npy` files, elapsed time | With `--out-json` |
+| `summary.json` | Copy of `result.json`; read `result.json` | With `--out-json` |
 
-UMA, ORB, MACE, and AIMNet2 all implement analytical Hessians. Use `--hessian-calc-mode Analytical` to request one explicitly, or force `FiniteDifference` for a numerical cross-check. With UMA, `workers > 1` cannot be combined with an explicit analytical Hessian request and raises an error; use `workers = 1` or finite differences.
+---
 
-## CLI options
+## Main options
 
-The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation.
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.xyz`, `.gjf`, ...) |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1); a `.gjf` input supplies its own |
+| `-l, --ligand-charge` | text | `None` | Per-residue formal charges (e.g. `'SAM:1,GPP:-3'`) or one total ligand charge. Needs PDB/mmCIF input |
+| `-b, --backend` | text | `uma` | Calculator (`uma`, `orb`, `mace`, `aimnet2`, `dft`); for the `-b dft` settings see [Refine an MLIP TS with DFT](dft-backend.md) |
+| `--hess/--no-hess` | flag | `False` | Also compute the Hessian and write `hessian.npy` |
+| `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | Hessian method (finite difference / analytical); used with `--hess` |
+| `--freeze-atoms` | text | `None` | Atoms to freeze (1-based, comma-separated, e.g. `'1,3,5'`) |
+| `-o, --out-dir` | path | `./result_sp/` | Output directory |
+| `--out-json/--no-out-json` | flag | `False` | Write `result.json` and `summary.json` |
 
-| flag | default | meaning |
-|---|---|---|
-| `-i, --input FILE` | — | PDB / mmCIF / XYZ / GJF structure file (required) |
-| `-q, --charge INT` | — | total charge; alternatively derive it with `-l` for residue-bearing PDB/mmCIF, while a valid GJF can inherit its header value |
-| `-l, --ligand-charge TEXT` | — | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
-| `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (optional; defaults to 1. GJF inherits the template) |
-| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP backend or optional DFT calculator |
-| `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | select the Hessian mode (only applies with `--hess`) |
-| `--freeze-atoms TEXT` | — | 1-based atom indices, combined with YAML `geom.freeze_atoms` |
-| `-o, --out-dir PATH` | `./result_sp/` | output directory |
-| `--precision [fp32\|fp64]` | backend-dependent | numeric precision passed to the backend |
-| `--config PATH` | — | YAML config providing `calc.*`, `geom.*` defaults |
-| `--out-json / --no-out-json` | `--no-out-json` | also write a machine-readable `result.json` (mirrored to `summary.json`) into the output directory |
-| `--show-config / --dry-run` | off | print effective merged config / validate without running |
+See the [generated CLI reference](reference/commands/sp.md) for every option.
 
-Run `pdb2reaction sp --help-advanced` for the full option list.
+> **Note:** In YAML (`--config`), `calc` sets the backend and `geom.freeze_atoms` adds frozen atoms (1-based), merged with `--freeze-atoms`.
+
+---
 
 ## Notes
 
-- `sp` accepts `--freeze-atoms` and the 1-based YAML
-  `geom.freeze_atoms` list. Frozen forces are zeroed by the backend geometry
-  contract and `--hess` writes the active partial-Hessian block by default.
-- Use [`dft`](dft.md) when population analysis is needed; `sp -b dft` provides the calculator single-point route.
+* **Energy looks wrong**: re-check the {ref}`charge and multiplicity <charge-spin-problems>`.
+* **Frozen atoms** get zero force.
+* **Cap hydrogens**: `sp` does not freeze the parent atoms of the cap hydrogens that `extract` adds; list them in `--freeze-atoms` if you want them fixed.
+* **Atomic charges**: `sp -b dft` gives the DFT energy and forces only. For Mulliken, meta-Löwdin, and IAO charges, use [`dft`](dft.md).
+* **A failed run** prints a one-line `Error: …` or `Unhandled error during single-point calculation:` with a traceback, and exits with a nonzero code; see [Error handling](json-output.md#error-handling).
+* **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 
-## See Also
+---
 
-- [`opt`](opt.md) — optimize the structure
-- [`tsopt`](tsopt.md) — refine a TS candidate
-- [`freq`](freq.md) — vibrational analysis with thermochemistry
-- [`dft`](dft.md) — single-point DFT counterpart (uses PySCF / gpu4pyscf)
+## See also
+
+* [opt](opt.md) — optimize the structure
+* [tsopt](tsopt.md) — optimize a transition-state (TS) candidate
+* [freq](freq.md) — vibrational analysis and thermochemistry
+* [dft](dft.md) — DFT single point with atomic charges
+* [MLIP Backends](backends.md) — choosing a backend, and the Hugging Face login that UMA needs
+* [Refine an MLIP TS with DFT](dft-backend.md) — `-b dft` settings and GPU memory
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails

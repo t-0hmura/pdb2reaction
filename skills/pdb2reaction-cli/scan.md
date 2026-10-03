@@ -1,100 +1,143 @@
-# `pdb2reaction scan`
+# scan, scan2d, scan3d
 
-## Purpose
+## When to use
 
-1D internal-coordinate scan with staged harmonic restraints and inter-stage
-relaxation. Drive distances, angles, or dihedrals and inspect the
-trajectory or select frames as later path endpoints. Use
-`pdb2reaction all --scan-lists` when the integrated downstream MEP/TS/IRC
-pipeline is wanted; use standalone `scan` when the scan itself is the task.
+- `scan` drives distances, angles, or dihedrals step by step under harmonic
+  restraints and relaxes everything else, in stages that run in sequence. Use
+  it to build a candidate path from one structure or to pick frames as later
+  path endpoints. When you also want the MEP, TS, and IRC, use `all -s`
+  ([all-scan-list.md](all-scan-list.md)); run `scan` alone when the scan
+  itself is the task.
+- `scan2d` relaxes a grid over two coordinates. It shows how they couple, but
+  the grid alone does not prove a concerted or stepwise mechanism.
+- `scan3d` relaxes a grid over three coordinates. Use it only when three are
+  needed; fewer coordinates need fewer optimizations but answer a different
+  question. A grid neither models a change of electronic state nor
+  establishes a mechanism.
 
-## Synopsis
+## Writing -s
 
-```bash
-pdb2reaction scan -i input.pdb \
-    -s '[(idx_a, idx_b, target_A), ...]' \
-    [-l 'RES:Q,...'] [-q / -m] \
-    [-b uma|orb|mace|aimnet2|dft] [-o ./result_scan/]
-```
+`-s` is a Python literal: single quotes outside, double quotes inside. A tuple
+names its atoms by 1-based index (`(1, 5, 1.4)`) or by atom spec. An atom spec
+has residue name, residue number, and atom name in any order, separated by
+spaces, commas, slashes, backticks, or backslashes (`"CS1 SAM 320"`,
+`"SAM 320 CS1"`). When residue names or numbers repeat, use the positional
+`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`, for example
+`("A:SAM:320:CS1", "B:GPP:321:C7", 1.60)`.
 
-## Key flags
+- `(i, j, target)` drives a distance to a target (`scan` only).
+- `(i, j, low, high)`, `(i, j, k, low, high)`, and `(i, j, k, l, low, high)`
+  are distance, angle, and dihedral ranges, in Å and degrees. In `scan` a
+  range becomes two stages, toward `low` and then toward `high`. `scan2d` takes
+  exactly two ranges and `scan3d` exactly three, in one literal or under
+  `pairs:` in a YAML/JSON file; each range is one grid axis.
 
-| flag | type | default | description |
-|---|---|---|---|
-| `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required | Distance target/range, angle range, or dihedral range in an inline Python literal or YAML/JSON spec. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
-| `-q` / `-l` / `-m` | — | — | Charge / spin |
-| `--relax-max-cycles` | int | 100000 | Optimizer-cycle limit; an explicit value overrides YAML `opt.max_cycles` |
-| `--opt-mode` | str | `grad` | Single-structure optimizer: L-BFGS (`grad`) or RFO (`hess`) |
-| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
-| `-o, --out-dir` | path | `./result_scan/` | Output directory |
-| `--ref-pdb` | path | none | Residue context for XYZ/GJF inputs |
-| `--config` / `--dry-run` / `--help-advanced` | — | — | Standard (`scan` has no `--show-config`) |
+In `scan`, the tuples of one literal move together as one stage
+(`'[(a, b, 1.6), (c, d, 3.0)]'` drives two bonds at once). Several literals
+after one `-s` run as stages in sequence, each starting from the final
+geometry of the previous stage.
 
-The tuple grammar in `-s` accepts atom-index ints (`(1, 5, 1.4)`) or atom
-specs (`("CS1 SAM 320", "C7 GPP 321", 1.60)`). When residue numbering or
-names repeat, use `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`, for example
-`("A:SAM:320:CS1", "B:GPP:321:C7", 1.60)`. Multiple stages chain
-sequentially as space-separated literals after a **single** `-s`; each
-stage starts from the previous stage's final geometry.
+## Minimal run
 
-Range forms are `(i,j,low,high)`, `(i,j,k,low,high)`, and
-`(i,j,k,l,low,high)`. Distances use Å; angular values use degrees.
-
-## Examples
-
-### Single stage by atom name
+### scan
 
 ```bash
 pdb2reaction scan -i 1.R.pdb -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
     -b uma -o result_scan
-```
 
-### Two sequential stages
-
-```bash
+# Two stages in sequence
 pdb2reaction scan -i 1.R.pdb -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
        '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
     -b uma -o result_scan_staged
 ```
 
-Each space-separated literal after a single `-s` is one stage; do **not** repeat `-s` (rejected with `repeated flags are not accepted`).
+### scan2d
 
-## Output
+```bash
+pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
+    -s '[("CS1 SAM 320","C7 GPP 321",1.60,3.10), ("H11 GPP 321","OE2 GLU 186",0.90,2.40)]' \
+    -b uma -o result_scan2d
+```
 
-| Path | When | Content |
-|---|---|---|
-| `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/preopt/result.{xyz,pdb,gjf}` | `--preopt` | pre-optimized starting geometry |
-| `<out_dir>/stage_NN/result.xyz` | stage reaches its output-writing step | final attempted geometry; check the stage `converged` value |
-| `<out_dir>/stage_NN/scan_trj.xyz` | stage is attempted | per-stage scan trajectory; it may be empty when the target already equals the starting distance |
-| `<out_dir>/stage_NN/scan_*.xyz` | `--dump` | intermediate optimizer steps; run-scoped YAML `opt.dump` is ignored |
-| `<out_dir>/scan_trj.xyz` | at least one scan step produces a frame | stitched scan trajectory across all stages |
-| `<out_dir>/scan.pdb` | stitched XYZ exists, `--convert-files`, and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
-| `<out_dir>/scan.cif` | stitched XYZ exists, `--convert-files`, and input/reference required the mmCIF or oversized-PDB bridge | public trajectory with original IDs |
+### scan3d
 
-`result.json` separates `execution_status` (`completed` / `failed`) from
-`scientific_status` (`success` / `partial` / `failed`). Inspect each
-`stages[i]["converged"]`, target distance, final energy, and trajectory. Plot
-the stitched trajectory with `trj2fig.md` when it exists.
+```bash
+pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
+    -s '[("OH TYR 100","HC TYR 100",1.50,2.40), ("HC TYR 100","O ASP 50",1.20,2.20), ("FE HEM 200","O ASP 50",2.10,3.10)]' \
+    -b uma -o result_scan3d
+```
 
-## Caveats
+To redraw a finished `scan3d` grid without computing energies, give its
+`surface.csv` with `--csv`, for example with a new `--zmin`/`--zmax` and a
+separate `-o`; `-i`, `-s`, and `-q` are then not needed.
 
-- `-s` is Python literal-eval. Quote with single quotes outside,
-  double quotes inside. An atom spec has three fields (residue name,
-  residue number, atom name) in any order, separated by spaces, commas,
-  slashes, backticks, or backslashes (e.g. `"SAM 320 CS1"`, `"CS1 SAM 320"`).
-- A chain-qualified selector is positional:
-  `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. Three-field selectors are order-flexible.
-- Stage *k+1* starts from stage *k*'s final geometry; a diverged
-  stage poisons downstream stages.
-- For coupled multi-bond drives in one stage, put multiple tuples in
-  one `-s` argument: `'[(a,b,1.6),(c,d,3.0)]'`.
+## Judge success
 
-## See also
+**scan.** Each stage prints `[stage k] Covalent-bond changes (start vs final):`
+followed by `Yes` and the formed and broken bonds, or `No`; the run ends with
+`====== Scan summary ======`. With `--out-json`, `result.json` separates
+`execution_status` (`completed`/`failed`) from `scientific_status`
+(`success`/`partial`/`failed`); `partial` exits with 0 and `failed` with 1.
+Check each `stages[i]["converged"]`, the target, `final_energy_hartree`, and
+the trajectory.
 
-- `scan2d.md`, `scan3d.md` — higher-dim analogs.
-- `all-scan-list.md` — wraps `scan` inside the full pipeline.
-- Defaults: `import pdb2reaction.core.defaults as d; print(d.BIAS_KW, d.BOND_KW, d.OUT_DIR_SCAN)`
+```text
+result_scan/
+├─ preopt/result.xyz       # with --preopt
+├─ stage_NN/result.xyz     # final attempted geometry of stage NN
+├─ stage_NN/scan_trj.xyz   # steps of stage NN; empty when the target equals the start
+├─ stage_NN/scan_*.xyz     # optimizer steps, with --dump
+├─ scan_trj.xyz            # all stages joined
+└─ scan.pdb                # PDB/mmCIF input or --ref-pdb; scan.cif for mmCIF or oversized PDB
+```
+
+**scan2d and scan3d.** A point is usable when its relaxation converged with a
+finite energy. In `result.json` (`--out-json`), `scientific_status` is
+`success` when every point is usable, `partial` when some are (exit 0), and
+`failed` when none is (exit 1); `n_points_attempted` and `n_points_usable`
+give the counts, and `grid_points[]` maps each grid index to its values,
+energy, convergence, and structure file. `execution_status: completed` only
+means the run finished. `surface.csv` holds the per-point energies and
+`bias_converged`.
+
+- `grid/point_iDDD_jDDD[_kDDD].{xyz,pdb,cif,gjf}` (DDD = target × 100) is
+  the final attempted geometry of each point; when rounded tags collide,
+  later names append `_grid_III_JJJ[_KKK]` with zero-based indices.
+- `grid/preopt_…` is the starting snapshot (optimized only with `--preopt`);
+  `grid/inner_path_d1_NNN[_d2_MMM]_trj.xyz` are written with `--dump`.
+- Plots: `scan2d_map.png` and `scan2d_landscape.html`, or
+  `scan3d_density.html`. A `--csv` redraw reads the CSV without copying it
+  into the output directory.
+
+## Pitfalls and recovery
+
+- Put all stage literals after one `-s`. Repeating `-s` is rejected
+  (`repeated flags are not accepted`).
+- Stage k+1 starts from the final geometry of stage k, so a diverged stage
+  spoils every later stage.
+- An explicit `--relax-max-cycles` (default 100000) overrides YAML
+  `opt.max_cycles`.
+- The three commands have no `--show-config`; use `--dry-run` to check the
+  spec without optimizing.
+- Grid cost is the product of the axis lengths: a 10 × 10 grid runs 100
+  restrained optimizations and a 5 × 5 × 5 grid 125. Use `scan` or `scan2d`
+  when fewer coordinates answer the question.
+- With too few usable points (under three or all on one line for `scan2d`,
+  under four or all in one plane for `scan3d`) only the plots are skipped,
+  with `[plot] NOTE: Plots skipped` or `Volume plot skipped` and exit 0. With
+  no usable point the run prints `[plot] No finite data for plotting.` and
+  exits with 1.
+- A `--csv` table needs `d1_A`, `d2_A`, `d3_A`, and `energy_hartree` or
+  `energy_kcal`; pre-optimization rows, unconverged rows, and non-finite
+  energies are left out.
+
+## Next step
+
+- Plot `scan_trj.xyz`: [`trj2fig`](utilities.md#trj2fig).
+- Optimize a high-energy frame or grid point as a TS candidate:
+  [tsopt.md](tsopt.md).
+- Staged scans inside the full workflow, which avoid a grid when the stages
+  are decoupled: [all-scan-list.md](all-scan-list.md).
+- Flags and defaults: `--help-advanced` and [SKILL.md](SKILL.md#where-flags-and-defaults-live).

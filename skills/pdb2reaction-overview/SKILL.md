@@ -1,132 +1,129 @@
 ---
 name: pdb2reaction-overview
-description: Orientation for pdb2reaction — what it is, when to use it, and how it differs from generic QM/MLIP path-search tools (PDB-native input, GPU-accelerated pysisyphus fork, recursive bond-change-driven path search). TRIGGER on first-touch / "what is pdb2reaction" / "should I use it" questions. SKIP when the user already named a subcommand, an install issue, an output file, a structure format, or a cluster — sibling skills cover those.
+description: "Orientation, TS strategy, and output reading for pdb2reaction, a PDB-native toolkit for MLIP reaction-path calculations on enzyme active-site clusters. SKILL.md first picks the `all` mode (endpoint MEP, scan, or TS-only) from the available structures, then covers stage-by-stage runs, how to judge each stage, and where the source code lives; ts-strategy.md covers precision, routes to a TS candidate and retries when n_imag is wrong, product-start scans, staged vs concerted scans, and controlled comparisons; outputs.md covers summary.json, R/TS/P paths, bond changes, energy diagrams, and failed runs. TRIGGER on first-touch questions, choosing an all mode or workflow, building or debugging a TS candidate, reading summary.json, extracting barriers or Gibbs energies, or locating code. SKIP for one subcommand (pdb2reaction-cli), cluster building (pdb2reaction-model-setup), install or CUDA (pdb2reaction-install-backends), structure files or charge (pdb2reaction-structure-io), and job scripts (pdb2reaction-hpc)."
 ---
 
-# pdb2reaction Overview
+# pdb2reaction
 
-## Purpose
+`pdb2reaction all` picks its mode from the inputs: two or more structures in reaction order → endpoint MEP (`all-endpoint-mep.md`); one structure with `-s` → scan (`all-scan-list.md`); one TS candidate with `--tsopt` → TS-only (`all-ts-only.md`). Add `-c` to cut the cluster and `--tsopt --thermo` for the TS, IRC, and Gibbs energies; run the stages one by one when you want to judge each result first.
 
-`pdb2reaction` is a command-line toolkit that drives an MLIP reaction-path
-workflow from a single `pdb2reaction all` invocation. With `-c/--center`, `all`
-first extracts an active-site cluster from a protein–ligand PDB; without it,
-the supplied PDB/mmCIF/XYZ/GJF model is used as-is. It then pre-optimizes and runs a
-minimum-energy-path (MEP) search, stopping at the MEP's highest-energy image
-(a TS *candidate*). The post-processing stages are opt-in flags: `--tsopt`
-adds transition-state (TS) optimization + IRC validation, `--thermo` adds
-vibrational analysis + QRRHO thermochemistry, `--dft` adds the DFT
-single-point — e.g. `pdb2reaction all -i R.pdb P.pdb -q -1 --tsopt --thermo`.
+## Pick an all mode
 
-Three things make it different from gluing together generic tools:
+| You have | Mode | Read |
+|---|---|---|
+| Two or more structures in reaction order (R, any intermediates, P) | Endpoint MEP | [all-endpoint-mep.md](../pdb2reaction-cli/all-endpoint-mep.md) |
+| One structure (R) and the distances to drive | Scan (`-s`) | [all-scan-list.md](../pdb2reaction-cli/all-scan-list.md) |
+| One TS candidate | TS-only (`--tsopt`) | [all-ts-only.md](../pdb2reaction-cli/all-ts-only.md) |
 
-1. **PDB-native automation.** A residue-aware extractor cuts an active-site
-   cluster, sums residue/ligand formal charges, and places cap hydrogens at
-   supported carbon truncation boundaries without manual atom mapping.
-2. **GPU-aware pysisyphus fork (bundled).** Geometry optimizers, TS searches
-   (RS-P-RFO default, Dimer alternative), and IRC integrators include locally
-   maintained tensor/GPU paths designed for the MLIP backends. Exact device
-   placement is backend and operation dependent; verify it by profiling rather
-   than assuming every operation stays on the GPU.
-3. **Recursive bond-change-driven path search.** When the reactant and
-   product differ by more than one elementary step, the path search
-   detects bond changes along the MEP and recursively proposes narrower
-   reactive segments. This is a geometry-based segmentation heuristic, not
-   proof that a segment contains exactly one TS; validate every exported HEI
-   with TS optimization, one-imaginary-mode analysis, and IRC connectivity.
+```bash
+# R and P (put intermediates between them, in order)
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_mep
+# R only: one -s, then one literal per stage
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    -s '[("SAM,320,CS1","GPP,321,C7",1.60)]' '[("GPP,321,H11","GLU,186,OE2",0.90)]' \
+    --tsopt --thermo -o result_scan
+# A TS candidate from another code or an earlier run
+pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
+```
 
-## When to use it
+- `-c` cuts the active-site cluster around the named residues; without it, the input is used as the cluster. How to choose the residues, radius, and boundary: [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md).
+- `--tsopt` adds TS optimization, IRC, and endpoint optimization; `--thermo` adds frequencies and Gibbs energies for R, TS, and P; `--dft` adds DFT single points on them. `--thermo` and `--dft` need `--tsopt`.
+- Each neighbouring pair of inputs becomes one segment. Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
+- DFT//MLIP: `--dft` (with `--thermo`) evaluates R, TS, and P with DFT on the MLIP geometries; to run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
+- With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs the scan mode. One structure with neither is an error.
 
-| Goal | Fit |
-|---|---|
-| Cluster-model enzyme reaction mechanism (single or multi-step) | Primary use case |
-| Validate a TS candidate with IRC + thermochemistry on MLIP | `pdb2reaction tsopt → irc → freq` |
-| DFT//MLIP barrier evaluation | Run `pdb2reaction dft` consistently on the IRC-refined R, TS, and P geometries; one TS single point alone is not a barrier |
-| Single-point energies on an arbitrary geometry (MLIP or DFT) | `pdb2reaction sp` (MLIP energy + forces, optional Hessian via `--hess`) / `pdb2reaction dft` |
+## Run stage by stage and judge each stage
 
-## When *not* to use it
+Run the stages as separate commands when you want to check each result before spending GPU time on the next. Pass the same `-q`/`-l`/`-m` and `-b` to every stage, and add `--out-json` so each stage writes the `result.json` read below (standalone commands default to `--no-out-json`). Commands are on the pages under [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md).
 
-- Pure QM methods that PySCF/GPU4PySCF does not provide: use a dedicated QM code (plain DFT runs with `-b dft`).
-- Explicit-solvent QM/MM with full force-field embedding: out of scope
-  (`pdb2reaction` is cluster-model only).
-- Free-energy simulations (umbrella sampling, metadynamics): out of scope.
+| Stage | Command | Role |
+|---|---|---|
+| Cluster | `extract` | Cuts the active-site cluster, adds cap H, sums the charge |
+| MEP | `path-opt` (default in `all`) or `path-search` (`all --refine-path`) | Path between neighbouring structures; its highest-energy image (HEI) is the TS candidate |
+| TS | `tsopt` | TS optimization (RS-P-RFO by default, Dimer as an alternative) and n_imag |
+| IRC | `irc`, then `opt` on both ends | Follows the reaction mode both ways; the optimized ends become R and P |
+| Thermo | `freq` | Frequencies and QRRHO Gibbs energies (`all --thermo`) |
+| DFT | `dft` | Single points on R, TS, and P, ωB97M-V/def2-SVP by default (`all --dft`) |
+
+**MEP.** In `path-opt` `result.json`, `optimization_status` must be `"converged"`; `"completed"` only means the run returned. Look at `final_geometries_trj.xyz`, its energy profile, and `hei.pdb`, check that both ends have the same atoms in the same order, and run `bond-summary` on the end pair. For R → IM → P, run one `path-opt` per neighbouring pair. With `path-search`, read `summary.json`, check each segment's `bond_changes`, and start each TS from that segment's `hei_seg_NN.pdb`.
+
+**TS.** In `tsopt` `result.json`, `optimization_status` is `"converged"`, `hessian_status` is `"completed"`, `saddle_validation` is `"first_order"` (`n_imaginary_modes` = 1), and the imaginary mode moves the reacting atoms; the console prints `[tsopt] Converged (n_imag=1).` A successful TS optimization gives one imaginary mode along the reaction coordinate. A run that stops at max cycles without converging computes no Hessian, so it reports no n_imag. A run stopped on an energy plateau (`--stop-plateau`) always computes the Hessian and reports n_imag. `freq` on the TS is optional (all modes, thermochemistry).
+
+**IRC.** `irc` writes `finished_first.xyz` and `finished_last.xyz`. IRC has no pass/fail verdict of its own: `completed` means it returned, and `*_integration_converged` is a diagnostic. Optimize both ends with `opt` and require `optimization_status` `"converged"` for each. Then decide which end is R and which is P by comparing bonds and coordinates with the MEP ends, not from `first`/`last` or from energy. Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P. A first-order TS alone does not show the intended reaction.
+
+**Thermo.** The thermochemistry values of R, TS, and P must be finite. n_imag of R and P is a diagnostic, not this gate. Label R and P from the IRC assignment.
+
+**DFT.** Each `result.json` shows `converged: true`. Label the end energies from the IRC assignment, then draw the profile with `energy-diagram` ([outputs.md](outputs.md#energy-diagrams)).
+
+Pitfalls:
+
+- `-l` reads residue names, so it is rejected on bare `.xyz`/`.gjf`. Give a stage a `.pdb` or `.cif` (stages write one when the input had residues), or pass `-q`, or keep `-l` and add `--ref-pdb` with the cluster PDB.
+- Standalone `irc` does not write `reactant.pdb`/`product.pdb`; use `all` for the `segments/seg_NN/` layout and automatic R/P orientation.
+- In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0, non-convergence, or a failed PHVA stops the segment before IRC and keeps the TS files. A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
+- After a walltime stop, rerun `all` with the same MEP settings and `--resume-segment N` ([all.md](../pdb2reaction-cli/all.md)), or continue with the stage commands. On any status other than `success`, read `summary.log` and then the stage outputs under `segments/seg_NN/` before retrying.
+- A large dense Hessian can exceed GPU memory. Freezing a justified boundary (PHVA) or `--hessian-calc-mode FiniteDifference` lowers the peak, but the Hessian of the moving atoms stays dense.
+
+## What it does
+
+`pdb2reaction` runs MLIP reaction-path calculations on enzyme active-site cluster models. With `-c`, `all` cuts the cluster from a protein–ligand PDB; without it, the PDB/mmCIF/XYZ/GJF model is used as is. It optimizes the endpoints, searches the minimum-energy path (MEP), and stops at the MEP's highest-energy image, a TS candidate; `--tsopt`, `--thermo`, and `--dft` add the later stages. Each stage is also its own subcommand.
+
+- **PDB-native setup**: a residue-aware extractor cuts the cluster, sums residue and ligand charges, and adds cap H at carbon cut points, with no manual atom mapping.
+- **Bundled pysisyphus fork**: optimizers, TS search (RS-P-RFO by default, Dimer as an alternative), and IRC have GPU code paths for the MLIP backends; which operations stay on the GPU depends on the backend.
+- **Bond-change path splitting**: with `--refine-path`, when R and P differ by more than one step, the path search finds bond changes along the MEP and splits it into narrower segments. These segments are candidates; check each HEI with TS optimization, n_imag, and IRC.
+
+## When to use it, and when not
+
+Use it for:
+
+- Cluster-model enzyme mechanisms, one step or several: `all`.
+- Checking a TS candidate with IRC and thermochemistry: TS-only mode, or `tsopt` → `irc` → `freq`.
+- DFT//MLIP barriers: DFT on the IRC-refined R, TS, and P (`all --dft`); a TS single point alone is not a barrier.
+- A single-point energy on any geometry: `sp` (MLIP energy and forces, `--hess` for a Hessian) or `dft`.
+
+Not for:
+
+- QM methods that PySCF/GPU4PySCF does not provide; use a dedicated QM code (plain DFT runs with `-b dft`).
+- Explicit-solvent QM/MM with a force-field environment; pdb2reaction uses cluster models only.
+- Free-energy simulations such as umbrella sampling or metadynamics.
 
 ## Quick check
 
 ```bash
-pdb2reaction --version           # confirm install
-pdb2reaction --help              # list subcommands
-pdb2reaction all --help          # end-to-end primary flags
-pdb2reaction all --help-advanced # every flag (--mep-mode, --opt-mode, --precision, ...)
+pdb2reaction --version
+pdb2reaction --help               # subcommands
+pdb2reaction all --help           # main flags
+pdb2reaction all --help-advanced  # every flag
 ```
 
-If `pdb2reaction` is not on PATH, see the `pdb2reaction-install-backends`
-skill (`SKILL.md` plus `core.md`) before doing anything else.
+If `pdb2reaction` is not on PATH, start with [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md).
 
-## Pipeline at a glance
+## Backend choice
 
-| Stage | Role |
-|---|---|
-| `extract` | active-site cluster + cap-H atoms + total charge |
-| `path-opt` / `path-search` | MEP (GSM or DMF): single-pass `path-opt` by default; `--refine-path` runs recursive `path-search` with bond-change-based candidate segmentation → `seg_01`, `seg_02`, … |
-| `tsopt` | TS refinement per segment (RS-P-RFO default; Dimer alternative) |
-| `irc` | forward / backward EulerPC IRC (caches endpoint Hessians) |
-| `freq` | Hessian, vibrational frequencies, QRRHO thermochemistry |
-| `dft` | (optional) ωB97M-V/def2-SVP single point on R, TS, P |
-
-`pdb2reaction all` orchestrates the stages selected by its input mode and
-flags; extraction (`-c`), TS/IRC (`--tsopt`), thermo (`--thermo`), and DFT
-(`--dft`) are conditional. Each stage is also available as its own subcommand.
-
-## Backend choices (MLIP)
-
-`pdb2reaction` ships with four MLIP backends; pick with `-b <name>`:
-
-| `-b` | Model family | Strength |
-|---|---|---|
-| `uma` (default) | UMA-s-1.1, UMA-s-1.2, UMA-m-1.1 (Meta FAIR) | Default integration; gated checkpoint access is required |
-| `mace` | MACE-OMOL-0 | OMol model integration; currently needs a separate environment because its supported package stack conflicts with `fairchem-core` |
-| `orb` | `orb_v3_conservative_omol` | Conservative model integration; pdb2reaction defaults it to fp64 because explicit fp32/TF32 can make finite-difference Hessians noisy. Validate `n_imag=1` and IRC like every backend. |
-| `aimnet2` | AIMNet2 family | Model-specific element/state domains: default 14-element organic model, with separately selected radical, Pd, and reactive models |
-
-Optional `-b dft` uses PySCF/GPU4PySCF; see `pdb2reaction-cli/dft.md`.
-
-Backend-specific install notes live in
-`pdb2reaction-install-backends/{uma,mace,orb,aimnet2}.md`. The default-value
-dictionaries are in `pdb2reaction.core.defaults` (read live, not transcribed):
-
-```bash
-python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
-```
+The default is `-b uma`; `orb`, `mace`, `aimnet2`, and `dft` (PySCF/GPU4PySCF) are the alternatives, and [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md) covers installing and choosing them.
 
 ## Where the code lives
 
-| File | What's there |
-|---|---|
-| `pdb2reaction/cli/app.py` | Click entry point, subcommand registry |
-| `pdb2reaction/core/defaults.py` | Primary source for shared calculation-default dictionaries (UMA_CALC_KW, RSIRFO_KW, IRC_KW, …); some Click presentation/workflow-local defaults remain inline, so verify live help too |
-| `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY`, `create_calculator(...)` factory |
-| `pdb2reaction/workflows/all.py` | End-to-end orchestration for `pdb2reaction all` |
-| `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, cap-H placement |
-| `pdb2reaction/workflows/path_opt.py` | Single-pass pairwise MEP (GSM or DMF) between adjacent endpoints — the default MEP route |
-| `pdb2reaction/workflows/path_search.py` | Recursive MEP search with bond-change segmentation — the `--refine-path` route |
-| `pdb2reaction/workflows/tsopt.py` | RS-P-RFO (default) / Dimer (alternative) transition-state search |
-| `pdb2reaction/workflows/irc.py` | EulerPC IRC (caches endpoint Hessians) |
-| `pdb2reaction/workflows/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
-| `pdb2reaction/workflows/dft.py` | PySCF / GPU4PySCF single-point driver |
-| bundled `pysisyphus/` | GPU-tensor pysisyphus fork |
-| bundled `thermoanalysis/` | QRRHO thermochemistry |
+Find the installed package with `python -c "import pdb2reaction, os; print(os.path.dirname(pdb2reaction.__file__))"`.
 
-## Navigation map of the skill set
+- `pdb2reaction/cli/`: command-line entry point, shared options, `--help-advanced`.
+- `pdb2reaction/workflows/`: one module per stage subcommand (`all.py`, `extract.py`, `path_opt.py`, `path_search.py`, `scan.py`, `tsopt.py`, `irc.py`, `freq.py`, `dft.py`, …).
+- `pdb2reaction/domain/`: chemistry helpers (bond changes, bond summary, element repair, residue tables).
+- `pdb2reaction/backends/`: calculator adapters for UMA, ORB, MACE, AIMNet2, and PySCF DFT.
+- `pdb2reaction/io/`: summary writer, energy diagrams, trajectory plots, charge, Hessian cache, altloc fix.
+- `pdb2reaction/core/`: `defaults.py` (most calculation defaults; some stay in the command modules, so check live `--help`) and shared utilities.
+- `pdb2reaction/mcp/`: MCP server.
+- `pysisyphus/` (optimizers, TS search, IRC) and `thermoanalysis/` (thermochemistry): bundled forks, installed as separate top-level packages. A numerical change there needs a regression test and the matching benchmark.
 
-| You want to … | Read |
-|---|---|
-| Pick a subcommand and run it | `pdb2reaction-cli/SKILL.md` then the per-subcommand md |
-| Read or edit a `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` input | `pdb2reaction-structure-io/{SKILL,pdb,cif,xyz,gjf}.md` |
-| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) — for PDB/mmCIF, name unknown ligand charges with `-l 'RES:Q'`; standard amino acids and recognized ions use internal tables. Explicit `-q` sets the total, including in `all -c`; disagreement with the extraction-derived value produces a warning. |
-| Install the toolkit or a specific backend | `pdb2reaction-install-backends/SKILL.md` + the relevant backend md |
-| Build a recipe (multi-step / scan-list / endpoint MEP) | `pdb2reaction-workflows-output/SKILL.md` |
-| Choose a TS-search strategy, or fix a bad imaginary-mode count | `pdb2reaction-ts-strategy/SKILL.md` |
-| Submit on a PBS or SLURM cluster | `pdb2reaction-hpc/SKILL.md` |
-| Detect what cluster / GPU / scheduler you are on | `pdb2reaction-env-detect/SKILL.md` |
-| Drive the tool from an MCP client (18 MCP tools, `SubcmdResult` schema) | `pdb2reaction-mcp/SKILL.md` |
-| Find which package layer to grep before touching code | `pdb2reaction-architecture/SKILL.md` |
+Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the import-graph check keeps `core` and `domain` from importing `workflows`. More: [docs/architecture.md](../../docs/architecture.md), [CONTRIBUTING.md](../../CONTRIBUTING.md), [check_engineering_markers.py](../../.github/scripts/check_engineering_markers.py), [check_import_graph.py](../../.github/scripts/check_import_graph.py).
+
+## Where to go next
+
+- [ts-strategy.md](ts-strategy.md): studying a mechanism (hypothesis, precision, TS candidates, splitting the reaction, wrong n_imag, a TS that does not come out, comparisons, barriers).
+- [outputs.md](outputs.md): `summary.json` and the output tree.
+- [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md): running and judging each subcommand.
+- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): building, trimming, and enlarging the cluster.
+- [pdb2reaction-structure-io](../pdb2reaction-structure-io/SKILL.md): file formats, residue and atom selectors, charge and multiplicity.
+- [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md): the package, backends, CUDA, and checking the environment.
+- [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): job scripts.
+- [pdb2reaction-mcp](../pdb2reaction-mcp/SKILL.md): MCP tools.
+- [colab-local-gpu-runtime](../colab-local-gpu-runtime/SKILL.md): a Colab local runtime.

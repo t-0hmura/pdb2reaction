@@ -1,15 +1,13 @@
 # HPC example: PBS + Open MPI + Ray
 
-For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node` (see {ref}`MLIP Calculator <configuration-reference>`) can be scaled across nodes by launching a Ray cluster under your scheduler.
+This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup.
 
-- `workers` — total number of UMA predictor processes across all nodes (default `1`).
-- `workers-per-node` — how many of those run on each node (default `1`); controls per-node GPU/memory pressure.
+Two settings control the workers:
 
-```{warning}
-When you run the UMA backend with `workers > 1`, requesting `hessian_calc_mode="Analytical"` raises `BackendError` (a `RuntimeError` subclass) because the parallel predictor exposes no autograd model. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule. See {ref}`hessian-evaluation`.
-```
+- `--uma-workers` — total number of worker processes that compute UMA energies and forces, across all nodes.
+- `--uma-workers-per-node` — how many of those run on each node; controls per-node GPU/memory pressure.
 
-The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system. **Treat it as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment.
+**Treat the script below as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment. Replace `test.pdb` and `-q -5 -m 1` in the last command with your cluster model and its total charge and multiplicity. Save the script as `run_p2r.pbs` next to the input, and submit it from that directory with `qsub run_p2r.pbs`.
 
 ```bash
 #!/usr/bin/env bash
@@ -190,29 +188,31 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 \
  --uma-workers "${TOTAL_WORKERS}" --uma-workers-per-node "${GPUS_PER_NODE}"
 ```
 
+The job succeeded when its log shows `[opt] Converged!` and the job exits with code 0. The final geometry is `result_opt/final_geometry.xyz`.
+
 ## Walltime budgeting
 
-The 24 h template above is an example ceiling, not a measured target. Pick a budget from representative pilots on the target stack:
+The 24 h limit in the script is an example ceiling, not a measured value. Set the budget from short trial runs on the target system:
 
-- **Cluster-model `opt` / `tsopt`**: time the selected backend/model, Hessian mode, precision, and convergence settings on a representative structure.
-- **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT): time a representative segment. The bundled DFT command is not a general multi-GPU SCF driver, so requesting more GPUs does not make that stage scale automatically.
-- **MEP (`path-search` / `path-opt`)**: cost grows with `--max-nodes`, optimizer iterations, and recursive segment count; measure one representative segment before budgeting the full mechanism.
+- **Cluster-model `opt` / `tsopt`**: time the chosen backend and model, Hessian mode, precision, and convergence settings on a representative structure.
+- **`pdb2reaction all` end-to-end** (extract → MEP → TS → IRC → freq → DFT): time one representative segment. The DFT stage is not a multi-GPU SCF driver, so requesting more GPUs does not make it faster.
+- **MEP (`path-search` / `path-opt`)**: cost grows with `--max-nodes`, optimizer iterations, and the number of recursive segments; time one segment before budgeting the full mechanism.
 
-UMA `workers` can improve inference throughput for suitable large/batched work,
-but optimizer stages contain sequential work and do not scale inversely with
-worker count. Benchmark before reserving more nodes. ORB / MACE / AIMNet2 do
-not use pdb2reaction's UMA worker pool.
+pdb2reaction passes one structure at a time to UMA: each optimization step, path image, and finite-difference Hessian displacement. More workers can only speed up each single evaluation; they do not run several structures at once. Benchmark before reserving more nodes.
 
 ## Precision in scheduled jobs
 
-Choose precision by backend and purpose, then measure its cost on the allocated
-GPU. Leaving it unset preserves the backend defaults (UMA/AIMNet2 fp32,
-ORB/MACE fp64). Explicit fp32 is useful for screening but downgrades ORB/MACE
-and their finite-difference Hessians; it is not a final-validation setting.
-Precision does not imply determinism or prove a first-order saddle. See
-[Reproducibility → Choosing precision by backend and purpose](reproducibility.md#choosing-precision-by-backend-and-purpose).
+Choose precision by backend and purpose, then measure its cost on the allocated GPU; see [MLIP Backends › Precision](backends.md#precision).
+
+## Notes
+
+* **One node**: the job script only runs the `pdb2reaction` command, with the default `--uma-workers 1` for one GPU, or with `--uma-workers N --uma-workers-per-node N` to use N GPUs of that node. A one-GPU job template is in [`skills/pdb2reaction-hpc`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-hpc/SKILL.md).
+* **Ray cluster not ready**: if the Ray cluster does not come up, the script stops with exit code 2 before `opt` starts.
+* **Analytical Hessian needs one worker**: with `--uma-workers` above 1, the analytical Hessian is not available, and `--hessian-calc-mode Analytical` stops with an error. Use `--uma-workers 1`, or the `FiniteDifference` Hessian.
+* **Only UMA uses workers**: with ORB / MACE / AIMNet2, `workers` / `workers_per_node` values other than 1 are ignored with a warning.
 
 ## See Also
 
-- [MLIP Calculator](uma-pysis.md) — configuration reference and Hessian evaluation notes
-- [opt](opt.md) / [all](all.md) — subcommands that honor `workers` / `workers_per_node`
+- [MLIP Backends](backends.md) — configuration reference and Hessian evaluation notes
+- [Troubleshooting](troubleshooting.md) — workers with analytical Hessians, GPU memory, and other run errors
+- [opt](opt.md) · [tsopt](tsopt.md) · [irc](irc.md) · [freq](freq.md) · [sp](sp.md) · [all](all.md) · [path-opt](path-opt.md) · [path-search](path-search.md) · [scan](scan.md) · [scan2d](scan2d.md) · [scan3d](scan3d.md) — subcommands that take `--uma-workers` / `--uma-workers-per-node`

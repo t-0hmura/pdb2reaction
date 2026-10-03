@@ -83,7 +83,7 @@ cover common contributor changes.
 | 1 | Add a Python module `pdb2reaction/workflows/myaction.py` with a top-level `@click.command(...)` named `cli` | new file in L2 |
 | 2 | Register shared/numerical defaults in `pdb2reaction/core/defaults.py`; keep a command-local default only when its scope is genuinely local and document the exception | `pdb2reaction/core/defaults.py` or the new module |
 | 3 | Wire the command into the lazy registry — add `"myaction": ("pdb2reaction.workflows.myaction", "cli", "<short description>")` to `_LAZY_SUBCOMMANDS` | `pdb2reaction/cli/app.py` (L1) |
-| 4 | Register every boolean option in the matching `_COMMAND_BOOL_*_OPTIONS` table so `--flag` / `--no-flag` and legacy input normalization stay covered | `pdb2reaction/cli/app.py` |
+| 4 | Register every boolean option in the matching `_COMMAND_BOOL_*_OPTIONS` table so `--flag` / `--no-flag` and value-style `true`/`false` input stay covered | `pdb2reaction/cli/app.py` |
 | 5 | Add a docs page `docs/myaction.md` (and `docs/ja/myaction.md` if you maintain the JP set); add a unit test in `tests/test_myaction.py` | new files |
 
 **Gates that catch mistakes**: gate stage 1 exercises the unit/regression test;
@@ -160,7 +160,7 @@ These are **hard constraints** enforced by the release process. Violating them e
 
 ### 4.1 Chemistry rules
 
-The reaction-path correctness rules listed in [`docs/architecture.md`](docs/architecture.md) §5.1 must not be reordered, simplified, or factored out. They are marked with `# CHEMISTRY-RULE:N` inline comments and `# DOMAIN_PURE` module-docstring markers. The CI gate `.github/scripts/check_engineering_markers.py` enforces marker completeness and confines MLIP-only SDK imports (`fairchem`, `orb_models`, `mace`, `aimnet`) to the `backends/` layer. The three rules are #4 (gpu4pyscf `rks_lowmem`) in `core/dft_settings.py`, #5 (def2 auto-ECP) in `workflows/dft.py`, and #7 (`bofill_update` advanced-indexing) in `workflows/tsopt.py`.
+The reaction-path correctness rules listed in [`docs/architecture.md`](docs/architecture.md) §5.1 must not be reordered, simplified, or factored out. They are marked with `# CHEMISTRY-RULE:N` inline comments and `# DOMAIN_PURE` module-docstring markers. The CI gate `.github/scripts/check_engineering_markers.py` enforces marker completeness and confines MLIP-only SDK imports (`fairchem`, `orb_models`, `mace`, `aimnet`) to the `backends/` layer. The three rules are #4 (gpu4pyscf `rks_lowmem`) in `core/dft_settings.py`, #5 (def2 auto-ECP) in `workflows/dft.py`, and #7 (`_bofill_update_active`, an advanced-indexing assignment) in `workflows/tsopt.py`.
 
 Use the grep recipe before any patch:
 

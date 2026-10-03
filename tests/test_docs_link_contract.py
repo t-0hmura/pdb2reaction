@@ -25,6 +25,7 @@ def test_public_markdown_paths_includes_root_and_tree_pages() -> None:
     names = {p.name for p in paths}
     assert "README.md" in names
     assert "CONTRIBUTING.md" in names
+    assert "AGENTS.md" in names
     assert any(links.DOCS_ROOT in p.parents for p in paths)
     assert any((links.REPO_ROOT / "skills") in p.parents for p in paths)
 

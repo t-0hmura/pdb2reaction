@@ -1,87 +1,101 @@
-# `sp`
+# `sp`（一点計算）
 
-`pdb2reaction sp` は、単一の構造に対して選択したcalculatorのエネルギー + 原子間力（オプションで Hessian）を評価します。用途は次のとおりです。
+## 概要
 
-- 最適化の実行前に、構造のエネルギー / 原子間力 / Hessian を手早くサニティチェックする
-- バックエンド同士を直接比較する
-- optimizer のループ外で参照値 / Hessian を生成する
+`sp` サブコマンドは、選んだバックエンドで 1 つの構造の**エネルギーと原子に働く力**を計算し、`--hess` を付けると **Hessian** も計算します。構造最適化は行わず、入力の構造のまま評価します。
 
-## 実行例
+### 主な用途
 
-コマンド形式:
+* **最適化の前の確認**: 電荷と多重度が受け付けられ、バックエンドが有限のエネルギーと力を返すかを確かめる
+* **バックエンドの比較**: 同じ構造を、[MLIP](backends.md)（機械学習原子間ポテンシャル）の UMA・ORB・MACE・AIMNet2 か、DFT（`-b dft`）で評価する
+* **参照値の作成**: 力と Hessian を `.npy` ファイルとして、エネルギーを端末か `result.json` から得て、自分の解析に使う
+
+---
+
+## 基本的な実行例
+
+### 1. エネルギーと力
+
+デフォルトのバックエンド（UMA）で、中性の一重項を評価します。
 
 ```bash
-pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2|dft] [--hess] [options]
+pdb2reaction sp -i structure.pdb -q 0 -m 1 --out-json
 ```
 
-エネルギー + 原子間力（UMA バックエンド、中性閉殻）:
+端末に `[sp] energy = … a.u.  |force|_max = … a.u./bohr` が出て、`result_sp/` に `forces.npy` と、`energy_au` を持つ `result.json` があれば成功です。
+
+### 2. Hessian も計算する
+
+`--hess` を付けると Hessian も計算します。
 
 ```bash
-# energy + forces (UMA backend, neutral closed-shell)
-pdb2reaction sp -i structure.pdb -q 0 -m 1
-```
-
-完全な Hessian も計算（すべての backend で既定は有限差分）:
-
-```bash
-# also compute the full Hessian (FiniteDifference by default)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
-## 出力
+---
 
-`sp` はデフォルトで出力を `result_sp/` 以下に書き出します。計算成功後にエネルギーと `|force|_max` を stdout に出力し、`forces.npy`（`--hess` 指定時は `hessian.npy` も）を書き出します。
+## 処理の仕組みと計算仕様
 
-| ファイル | 内容 | 書き出し |
-|---|---|---|
-| _stdout_ | エネルギー（スカラー値）(a.u.) と最大力ノルム。`[sp] energy = …` の形式で出力 | 計算成功時 |
-| `forces.npy` | 原子単位 (Hartree / Bohr) の `(N, 3)` 力配列 | 計算成功時 |
-| `hessian.npy` | 質量重みなし Hessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、`--freeze-atoms` または YAML `geom.freeze_atoms` があれば active block | `--hess` 指定時のみ |
-| `result.json` / `summary.json` | 機械可読なエネルギー (a.u.)、バックエンド、電荷/スピン、npy 出力へのパス、経過時間 | `--out-json` 指定時のみ |
+1. **構造の読み込み**:
+PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCIF 入力）、YAML の `calc.charge`、`.gjf` のヘッダーのいずれかから決まります。`--freeze-atoms` で指定した原子は凍結します。
+2. **エネルギーと力**:
+入力の構造でバックエンドを 1 回呼び、エネルギーと力の最大成分を端末に表示して、力を `forces.npy` に保存します。
+3. **Hessian（`--hess` 指定時）**:
+`--hessian-calc-mode FiniteDifference` は力を数値微分し、`Analytical` は UMA・ORB・MACE・AIMNet2・DFT の解析 Hessian を使います。UMA で `--uma-workers` を 2 以上にすると `Analytical` は{ref}`使えません <ja-workers-analytical-error>`。
 
-`sp` は人間可読な `summary.log` を書き出しません。
+---
 
-### Hessian バックエンド
+## 主な出力ファイル
 
-`--hess` を設定すると、`--hessian-calc-mode` が Hessian の計算方法を選択します。
+`--out-dir` に以下のファイルを書き出します。
 
-- すべての backend で既定は `FiniteDifference` です。
-- 対応 backend の autograd 経路を使う場合は `--hessian-calc-mode Analytical` を明示します。
+| ファイル | 内容 | 書き出す条件 |
+| --- | --- | --- |
+| `forces.npy` | 力の `(N, 3)` 配列（Hartree/bohr） | 常に |
+| `hessian.npy` | 質量重み付けなしの Cartesian Hessian（Hartree/bohr²）。`(3N, 3N)`、凍結原子があるときは動ける M 原子（入力の順）の `(3M, 3M)` | `--hess` 指定時 |
+| `result.json` | エネルギー（`energy_au`）、バックエンド、モデル、電荷、多重度、原子数、`.npy` ファイルのパス、経過時間 | `--out-json` 指定時 |
+| `summary.json` | `result.json` の写し。`result.json` を読む | `--out-json` 指定時 |
 
-UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています。明示的に使う場合は `--hessian-calc-mode Analytical`、数値的なクロスチェックには `FiniteDifference` を指定します。UMA では `workers > 1` と明示的な解析 Hessian を併用できずエラーになるため、`workers = 1` または有限差分を使用してください。
+---
 
-## CLI オプション
+## 主な CLI オプション
 
-フラグの完全な一覧は自動生成された [コマンドリファレンス](../reference/commands/index.md) にあります。下表では説明が必要なオプションを扱います。
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.xyz`, `.gjf` 等） |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
+| `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1）。`.gjf` 入力ではファイルの値を使用 |
+| `-l, --ligand-charge` | 文字列 | `None` | 残基ごとの形式電荷（例: `'SAM:1,GPP:-3'`）またはリガンドの総電荷。PDB/mmCIF 入力が必要 |
+| `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`）。`-b dft` の設定は [MLIP の TS を DFT で確かめる](dft-backend.md) を参照 |
+| `--hess/--no-hess` | フラグ | `False` | Hessian も計算して `hessian.npy` に書き出す |
+| `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | Hessian の計算法（有限差分 / 解析的）。`--hess` と併用 |
+| `--freeze-atoms` | 文字列 | `None` | 凍結する原子インデックス（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
+| `-o, --out-dir` | パス | `./result_sp/` | 出力先ディレクトリ |
+| `--out-json/--no-out-json` | フラグ | `False` | `result.json` と `summary.json` を出力 |
 
-| フラグ | デフォルト | 意味 |
-|---|---|---|
-| `-i, --input FILE` | — | PDB / mmCIF / XYZ / GJF の構造ファイル（必須） |
-| `-q, --charge INT` | — | 系の総電荷。残基情報を持つPDB/mmCIFでは `-l` から導出でき、有効なGJFではheader値を継承可能 |
-| `-l, --ligand-charge TEXT` | — | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
-| `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（任意；省略時は 1。GJF はテンプレートから継承） |
-| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP バックエンドまたは任意の DFT calculator |
-| `--freeze-atoms TEXT` | 未指定 | 凍結原子を明示指定。リンク原子の自動凍結は行わない |
-| `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | Hessian モードを選択（`--hess` 指定時のみ有効） |
-| `-o, --out-dir PATH` | `./result_sp/` | 出力ディレクトリ |
-| `--precision [fp32\|fp64]` | backend依存 | backendに渡す数値精度 |
-| `--config PATH` | — | `calc.*`, `geom.*` のデフォルトを与える YAML 設定 |
-| `--out-json / --no-out-json` | `--no-out-json` | 機械可読な `result.json`（`summary.json` にもミラー）を出力ディレクトリに書き出す |
-| `--show-config / --dry-run` | off | 実効的なマージ済み設定を出力 / 実行せずに検証 |
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/sp.md) を参照してください。
 
-完全な一覧（workers、溶媒補正など）を見るには `pdb2reaction sp --help-advanced` を実行してください。
+> **補足:** YAML（`--config`）では、`calc` でバックエンドを設定し、`geom.freeze_atoms`（1 始まり）で `--freeze-atoms` に凍結原子を追加できます。
 
-## 注記
+---
 
-- `sp` は `--freeze-atoms` と 1-based の YAML
-  `geom.freeze_atoms` を反映します。凍結原子のforceはgeometry/backend契約により
-  zero化され、`--hess` はデフォルトでactive partial-Hessian blockを書き出します。
-- 一点 DFT（gpu4pyscf / PySCF）のベンチマークには、代わりに [`dft`](dft.md) を使用してください。
+## 使用上の注意点
 
-## 関連項目
+* **エネルギーがおかしいとき**: {ref}`電荷と多重度 <ja-charge-spin-problems>`を見直してください。
+* **凍結原子**に働く力は 0 になります。
+* **キャップ水素**: `sp` は `extract` が付けたキャップ水素の親原子を自動では凍結しません。固定したい場合は `--freeze-atoms` に指定してください。
+* **原子電荷**: `sp -b dft` が出すのは DFT のエネルギーと力だけです。Mulliken・meta-Löwdin・IAO の電荷が必要なときは [`dft`](dft.md) を使ってください。
+* **失敗したとき**: 1 行の `Error: …` か、トレースバック付きの `Unhandled error during single-point calculation:` が出て、0 以外の終了コードで終わります。[エラー処理](json-output.md#エラー処理)を参照してください。
+* **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
 
-- [`opt`](opt.md) — 構造を最適化する
-- [`tsopt`](tsopt.md) — TS 候補を精密化する
-- [`freq`](freq.md) — 熱化学を含む振動解析
-- [`dft`](dft.md) — 一点 DFT の対応コマンド（PySCF / gpu4pyscf を使用）
+---
+
+## 関連ドキュメント
+
+* [opt](opt.md) — 構造最適化
+* [tsopt](tsopt.md) — 遷移状態（TS）候補の構造最適化
+* [freq](freq.md) — 振動解析と熱化学
+* [dft](dft.md) — 原子電荷も出す DFT 一点計算
+* [MLIP バックエンド](backends.md) — バックエンドの選び方と、UMA に要る Hugging Face へのログイン
+* [MLIP の TS を DFT で確かめる](dft-backend.md) — `-b dft` の設定と GPU メモリ
+* [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

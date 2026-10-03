@@ -1,33 +1,35 @@
-# CLI 規約
+# 共通オプションと残基・原子の指定
+
+全コマンドに共通するフラグ、残基と原子の指定、電荷と多重度、終了コード、設定の優先順位をまとめたページです。
 
 ## ブール値オプション
 
-オン・オフは `--flag` / `--no-flag` で指定します。
+段階や動作のオン・オフは、対になったフラグで指定します。
+
+| 形 | 例 |
+|---|---|
+| 有効にする | `--tsopt` |
+| 無効にする | `--no-tsopt` |
 
 ```bash
 --tsopt --thermo --no-dft
 ```
 
-旧来の値指定も、互換性のため受け付けます。
-
 よく使うブール値オプション：
-- `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
-- `--freeze-links` — キャップ水素の親原子を凍結（デフォルト: `True`）
-- `--dump` — 軌跡ファイルの出力
-- `--preopt`, `--endopt` — 前処理/後処理最適化の切り替え
-- `--climb` — MEP 探索でクライミングイメージを有効化
-- `--convert-files` — 入力トポロジー／テンプレートに応じた PDB/CIF/GJF companion の生成
 
-## 段階的ヘルプ（`all`）
+- `--tsopt` / `--thermo` / `--dft`：後処理ステージの有効化
+- `--freeze-links`：キャップ水素の親原子を凍結（デフォルトで有効）
+- `--dump`：軌跡ファイルの出力
+- `--preopt` / `--endopt`：前処理／後処理の最適化
+- `--climb`：最小エネルギー経路の探索でクライミングイメージを使う
+- `--convert-files`：入力の形式に合わせて、出力の PDB / CIF / GJF の写しも書く
 
-`pdb2reaction all` は 2 段階ヘルプです:
+## 段階的ヘルプ
 
 ```bash
-pdb2reaction all --help # 主要オプションのみ
-pdb2reaction all --help-advanced # 全オプション
+pdb2reaction <subcmd> --help               # 主要オプションのみ
+pdb2reaction <subcmd> --help-advanced      # 全オプション
 ```
-
-以下のコマンドも同じ段階的ヘルプに対応しています（`--help` で主要オプション、`--help-advanced` で全オプション）: `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `add-elem-info`, `trj2fig`, `energy-diagram`, `bond-summary`, `extract`, `fix-altloc`。
 
 (ja-verbosity-levels)=
 
@@ -37,233 +39,157 @@ pdb2reaction all --help-advanced # 全オプション
 
 | レベル | 表示内容 |
 |---|---|
-| `-v 0` | 無出力。成功は終了コードと出力成果物で確認します。 |
-| `-v 1` | マイルストーンのみ: バージョン、入力要約、主要設定、出力先、dry-run / 最終ステータス。banner・`[command]`・`[mode]`・config dump は出ません。 |
-| `-v 2` | デフォルト。banner、`[command]`、`[mode]`、ステージ進捗、主要なオプティマイザのサイクル表、終了ステータス、Hessian 1 行要約、thermo / DFT 要約、経過時間を追加します。 |
-| `-v 3` | デバッグ: resolved config、backend DEBUG、オプティマイザ・内部座標の詳細、`[HessianTiming]`、`[HessianVRAM]`。 |
+| `-v 0` | 無出力。成功は終了コードと出力ファイルで確認します。 |
+| `-v 1` | マイルストーンのみ: バージョン、入力要約、主要設定、出力先、dry-run / 最終ステータス。バナー・`[command]`・`[mode]`・設定の一覧は出ません。 |
+| `-v 2` | デフォルト。バナー、`[command]`、`[mode]`、ステージ進捗、主要なオプティマイザのサイクル表、終了ステータス、Hessian 1 行要約、熱化学 / DFT 要約、経過時間を追加します。 |
+| `-v 3` | デバッグ: 実際に使う設定の全体、バックエンドの DEBUG、オプティマイザ・内部座標の詳細、`[HessianTiming]`、`[HessianVRAM]`。 |
 
-意味的な失敗はどのレベルでも失敗です。`-v 3` でのみ現れる `Traceback` も実行失敗を意味します。
+レベルで変わるのは表示だけで、終了コードは変わりません。成否は {ref}`終了コード <ja-exit-codes>` で判断してください。
 
 ## 残基セレクタ
 
-残基セレクタ（Residue Selector）は、基質や抽出中心として使用する残基を指定します。
+`extract` と `all` の `-c/--center` は、モデルの中心にする残基を指定します。下の表は、範囲の狭い形から順に並べています。
 
-### 残基名による指定
+| 形 | 例 | 選ばれる残基 |
+|---|---|---|
+| chain＋残基名＋番号（推奨） | `-c 'A:TYR:44'` / `-c 'A:TYR:44,A:SAM:123'` | 1 項目につき 1 残基だけを確実に選べます。 |
+| chain＋残基名 | `-c 'A:SAM'` | chain A の SAM をすべて選びます。複数あるときは警告をログに出します。 |
+| chain＋番号 | `-c 'A:123'` / `-c 'A:123,B:456'` / `-c 'A:123A'` | chain A の残基 123 を選びます。末尾の英字は挿入コードです。 |
+| 残基名だけ | `-c 'SAM,GPP'` / `-c 'LIG'` | どの chain でも、同じ名前の残基をすべて選びます。複数あるときは警告をログに出します。 |
+| 番号だけ | `-c '123,456'` / `-c '123A'` | すべての chain から同じ番号の残基を選びます。 |
+| 構造ファイル | `-c substrate.pdb` / `-c substrate.cif` | 別の PDB / mmCIF ファイルの座標と一致する残基を選びます。 |
+
+mmCIF の長い chain ID や 9999 を超える残基番号も、同じ形で指定できます。chain ID は大文字と小文字を区別します。残基名は区別しません。同梱の例の PDB のように chain 欄が空の PDB では、残基名か番号の形だけを使えます（`-c 'SAM,GPP,MG'`、`--selected-resn '44,63,186'`）。
+
 ```bash
--c 'SAM,GPP' # SAM または GPP という名前の残基をすべて選択
--c 'LIG' # LIG という名前の残基をすべて選択
-```
-
-### 残基 ID による指定
-```bash
--c '123,456' # 残基 123 と 456
--c 'A:123,B:456' # チェーン A の残基 123、チェーン B の残基 456
--c '123A' # 挿入コード A を持つ残基 123
--c 'A:123A' # チェーン A、残基 123、挿入コード A
-```
-
-### chain + 残基名による指定
-```bash
--c 'A:SAM' # chain A 内の SAM をすべて選択
--c 'A:SAM:123' # chain A、残基名 SAM、残基番号 123 の1残基
-```
-
-### PDB/mmCIF ファイルによる指定
-```bash
--c substrate.pdb # 別の PDB から座標を使用して基質を特定
--c substrate.cif # 別の mmCIF も使用可能
-```
-
-```{note}
-残基名で選択する場合、同名の残基が複数あれば**すべて**が含まれ、警告がログに出力されます。
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:SAM' -o model.pdb        # chain LONG_CHAIN の SAM をすべて
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:SAM:10001' -o model.pdb  # SAM を 1 つだけ
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb      # chain＋番号
 ```
 
 (ja-selected-resn-takes-ids)=
-### `--selected-resn` も同じ残基selectorを使う
+### `--selected-resn` も同じ残基セレクタを使う
 
-`extract` と `all` の `--selected-resn` は、残基ID・残基名・chain付き
-残基名を受け付けます。`A:123A` は挿入コード付きの1残基、`A:SAM`
-はchain A内の全SAM、`A:SAM:123` はそのうち1残基を強制包含します。
-chainを付けない `TYR` は全matchを包含し、複数match時に警告します。
-
----
+`extract` と `all` の `--selected-resn` は、指定した残基をモデルに必ず含めます。指定の形は上の表と同じです。たとえば `A:TYR:44` は 1 残基、`A:SAM` は chain A の SAM すべて、`A:123A` は挿入コード付きの 1 残基を含めます。chain を付けない `TYR` は一致する残基をすべて含め、複数あるときは警告を出します。
 
 (ja-charge-specification)=
 ## 電荷の指定
 
-PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。大きな酵素–基質系で総電荷を手動で数える必要がなくなります。
+PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。
 
-### 残基別マッピング（推奨）
 ```bash
--l 'SAM:1,GPP:-3' # SAM は +1、GPP は -3
--l 'LIG:-2' # LIG は -2
--l -3 # 単一の整数を渡すとリガンド総電荷を直接指定（マッピングの代替）
+-l 'SAM:1,GPP:-3'        # 残基ごとの指定（推奨）
+-l 'LIG:-2'              # 1 残基の指定
+-l -3                    # 整数 1 つ = リガンドの総電荷
+-q 0                     # 全系の総電荷を明示
 ```
 
-### 総電荷の明示指定
-```bash
--q 0 # 総電荷を 0 に指定
--q -1 # 総電荷を -1 に指定
-```
+**電荷の決まり方**（上ほど優先）:
 
-### 抽出を行わない場合の電荷解決順序
 1. 明示的な `-q/--charge`
-2. 明示的な `--ligand-charge/-l` と PDB/mmCIF 残基情報から導出した総電荷
-3. どちらの CLI 電荷指定もない場合の `--config` 内 `calc.charge`
-4. `.gjf` テンプレートのメタデータ
-5. 未解決の場合は実行を中断
+2. `--ligand-charge/-l` があるとき：PDB/mmCIF 入力の標準残基・イオン・指定したリガンドの電荷の合計。`all -c` では抽出したモデルの中の合計
+3. `--config` 内の `calc.charge`
+4. `-l` が無いとき：`all -c` では抽出したモデルの標準残基とイオンの電荷の合計（ほかの残基は 0 とする）、`.gjf` 入力ではテンプレートの電荷
+5. どれでも決まらなければ実行を中断
 
-この順序は `opt`/`tsopt`/`freq` などの単独サブコマンドと、
-`-c/--center` を省略した `all` に適用されます。
-
-**`all -c/--center`:** 抽出処理は、標準残基、イオン、
-`--ligand-charge/-l` を合算して総電荷を導出します。明示的な `-q` は
-ここでも最優先で、系の総電荷を設定します。抽出値と異なる場合は警告を
-表示します。`-q` を省略して `--ligand-charge/-l` を明示した場合は、
-その指定を使った抽出由来の電荷が YAML より優先します。CLI の電荷指定が
-どちらもない場合は、設定ファイルの `calc.charge` が自動抽出値を上書きし、
-それもなければ抽出値を使用します。
+導出した電荷は、端末の `Total active site model charge` の行に出ます。`extract` の後に読む行は [モデルを確かめる](model-setup.md#モデルを確かめる) にあります。
 
 ```{tip}
-非標準の残基（基質、補因子、特殊なリガンド）には必ず `--ligand-charge/-l` を指定し、電荷が正しく伝播するようにしてください。
+非標準の残基には必ず `--ligand-charge/-l` を指定し、電荷が正しく伝播するようにしてください。
 ```
 
 ## スピン多重度
 
 ```bash
--m 1 # 一重項 (singlet)（デフォルト）
--m 2 # 二重項 (doublet)
--m 3 # 三重項 (triplet)
+-m 1    # 一重項 (singlet)（デフォルト）
+-m 2    # 二重項 (doublet)
+-m 3    # 三重項 (triplet)
 ```
 
-```{note}
-`all` を含む全サブコマンドで `-m/--multiplicity` を統一して使用します。
-```
+`all` と各サブコマンドで、同じ `-m/--multiplicity` を指定してください。
 
 ## 原子セレクタ
 
-原子セレクタ（Atom Selector）は、スキャンや拘束に使用する特定の原子を指定します。指定方法は以下の通りです。
+原子セレクタは `--scan-lists` と `opt` の `--distance-restraint` で 1 つの原子を指します。`--freeze-atoms` は 1 始まりの原子番号だけを受け付けます（[原子の固定と距離の拘束](model-setup.md#原子の固定と距離の拘束)）。
 
-### 整数インデックス（デフォルトは 1 始まり）
 ```bash
---scan-lists '[(1, 5, 2.0)]' # 原子 1 と 5、ターゲット距離 2.0 Å
+--scan-lists '[(1, 5, 2.0)]'                                          # 1 始まりの整数インデックス
+--scan-lists '[("SAM,320,CS1", "GPP,321,C7", 1.60)]'                  # 残基名、残基番号、原子名
+--scan-lists '[("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)]'              # chain ID 付き
 ```
 
-### PDB 形式のセレクタ文字列
-```bash
---scan-lists '[("SAM,320,CS1", "GPP,321,C7", 1.60)]'
---scan-lists '[("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)]' # chain付き
-```
-
-セレクタのフィールドは以下で区切れます。
-- 空白: `'SAM 320 CS1'`
-- カンマ: `'SAM,320,CS1'`
-- スラッシュ: `'SAM/320/CS1'`
-- バッククォート: `` 'SAM`320`CS1' ``
-- バックスラッシュ: `'SAM\320\CS1'`
-
-3つのtoken（残基名、残基番号、原子名）は任意の順序で指定できます。残基名や番号が重複するときは、位置固定の4-field形式`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
-
----
+3 項目のセレクタは、残基名・残基番号・原子名を任意の順序で並べ、空白・カンマ・コロン・スラッシュ・バッククォート・バックスラッシュのどれでも区切れます（`"SAM,320,CS1"`、`"SAM 320 CS1"`、`"320,SAM,CS1"` は同じ原子）。3 項目に chain は入りません。chain を指定するときは、4 項目の形 `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` をこの順で書き、挿入コードは残基番号に続けます（`A:SAM:12B:C1`）。
 
 (ja-scan-list-spec)=
 ### スキャンリスト仕様
 
-`-s/--scan-lists`（`scan` / `scan2d` / `scan3d` / `all` で使用）は 1 個以上のインライン Python リテラルを受け付けます。スタンドアロンの `scan` / `scan2d` / `scan3d` はこれに加えて YAML/JSON スペックファイルパスも受け付けます。複雑な設定や複数ステージの実行にはファイルが、単純な 1 ステージのみの場合にはインラインリテラルが適しています。
+`scan` / `scan2d` / `scan3d` / `all` の `-s/--scan-lists` は 1 個以上のインライン Python リテラルを受け付けます。スタンドアロンの `scan` / `scan2d` / `scan3d` はこれに加えて YAML/JSON スペックファイルパスも受け付けます。複数ステージの実行にはファイルが、短い指定にはインラインリテラルが適しています。
 
-#### YAML/JSON スペックファイルの書式（推奨）
-
-ルートはマッピング形式で、リスト・オブ・タプルのキーは `scan` では `stages`、`scan2d`/`scan3d` では `pairs` です。
+**YAML/JSON スペックファイル**（ルートはマッピング。キーは `scan` では `stages`、`scan2d` / `scan3d` では `pairs`）:
 
 ```yaml
-one_based: true # 任意。未指定時は CLI の --one-based を使用
-stages: # scan 用
+one_based: true            # 任意。未指定時はコマンドの --one-based/--zero-based（デフォルトは 1 始まり）に従う
+stages:                    # scan 用
   - [[1, 5, 1.35]]
   - [[1, 5, 2.20], [2, 8, 1.80]]
 ```
 
 ```yaml
-one_based: true # 任意
-pairs: # scan2d（要素は 2 つちょうど） / scan3d（要素は 3 つちょうど）
+one_based: true
+pairs:                     # scan2d（要素は 2 つちょうど） / scan3d（要素は 3 つちょうど）
   - [1, 5, 1.30, 3.10]
   - [2, 8, 1.20, 3.20]
 ```
 
-- `stages` / `pairs` は必須です。
-- `scan` の各ステージは距離 target `(i, j, target_Å)` のリストです。距離・角度・二面角の range `(i,j,low,high)`・`(i,j,k,low,high)`・`(i,j,k,l,low,high)` も書けます。
-- `scan2d`/`scan3d` の各軸は距離`(i,j,low,high)`、角度`(i,j,k,low,high)`、二面角`(i,j,k,l,low,high)`のいずれかです。
-- indexは整数、3-field selector、または位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`で指定できます。
+`scan2d` / `scan3d` の各軸は `(i,j,low,high)`、`(i,j,k,low,high)`、`(i,j,k,l,low,high)` のいずれかです。インデックスは整数、3 項目のセレクタ、または位置固定の `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` で指定できます。
 
-#### インライン Python リテラルの書式
+**インラインリテラル**: シェルがカッコや空白を解釈しないように、リスト全体を**シングルクォート**で囲み、中の PDB セレクタはダブルクォートで書いてください。
 
-各リテラルは Python リストです。シェルのクォート処理に注意が必要です。
-
-```
--s '[(原子1, 原子2, ターゲット距離Å), ...]'      # scan: 3 要素タプル
--s '[(原子1, 原子2, 下限Å, 上限Å), ...]'         # 距離 range（scan では双方向。scan2d / scan3d の軸も同じ形）
+```bash
+-s '[(atom1, atom2, target_Å), ...]'             # scan: 3 要素タプル
+-s '[(atom1, atom2, low_Å, high_Å), ...]'        # 距離の range
+-s '[(atom1, atom2, atom3, low_deg, high_deg)]'  # 角度の range
+-s '[("SAM,320,CS1","GPP,321,C7",1.60)]'         # クォートしたセレクタ
+-s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"       # 非推奨: 外側をダブルクォートで囲むと内側のエスケープが必要
 ```
 
-- リスト全体を **シングルクォート** `'...'` で囲みます（シェルがカッコや空白を解釈しないようにするため）。
-- `scan` では **1 リテラル = 1 ステージ**です。複数ステージを実行するには、**1 つの `-s/--scan-lists` フラグの後に複数リテラル**を並べます。
-- `scan2d`/`scan3d` ではリテラルは **1 つだけ** を受け付けます（複数ステージは非対応）。`scan2d` ではちょうど2軸、`scan3d` ではちょうど3軸を含む必要があります。
+`scan` では **1 リテラル = 1 ステージ**です。複数ステージを実行するには、**1 つの `--scan-lists` フラグの後に複数リテラル**を並べます。`scan2d` / `scan3d` ではリテラルは **1 つだけ** を受け付けます。
 
 | コマンド | 受け付けるスキャン仕様 |
 | --- | --- |
-| `scan` | インライン3-tupleまたは双方向4-tuple。YAML/JSONにも対応 |
-| `all --scan-lists` | インラインの距離・角度・二面角の target tuple のみ（range と YAML/JSON は不可） |
+| `scan` | インラインの距離の目標値 `(i,j,target)`、または入力構造から両方向にスキャンする範囲 `(i,j,low,high)`・`(i,j,k,low,high)`・`(i,j,k,l,low,high)`（[双方向スキャン](scan.md#双方向スキャン4-tuple)）。YAML/JSON にも対応 |
+| `all --scan-lists` | インラインの目標値のみ：距離 `(i,j,target)`、角度 `(i,j,k,deg)`、二面角 `(i,j,k,l,deg)`（範囲と YAML/JSON は不可） |
 | `scan2d` | 距離・角度・二面角の軸を2本含む1リテラル/ファイル |
 | `scan3d` | 距離・角度・二面角の軸を3本含む1リテラル/ファイル |
 
-##### 原子の指定方法
-
-原子は**整数インデックス**または **PDB セレクタ文字列**で指定します。
-
-| 方法 | 例 | 備考 |
-| --- | --- | --- |
-| 整数インデックス | `(1, 5, 2.0)` | デフォルトは 1 始まり（`--one-based`） |
-| PDB セレクタ | `("SAM,320,CS1", "GPP,321,C7", 1.60)` | 残基名、残基番号、原子名の 3 要素タプル |
-| chain付きselector | `("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)` | 位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` |
-
-PDB セレクタのトークンは、カンマ `,`、スペース、スラッシュ `/`、バッククォート `` ` ``、バックスラッシュ `\` のいずれでも区切れます。トークンの順序も任意です。
-
-```bash
-# 以下はすべて同じ原子を指定:
-"SAM,320,CS1"
-"SAM 320 CS1"
-"SAM/320/CS1"
-"320,SAM,CS1" # 順序は自由
-```
-
-##### クォートの規則
-
-```bash
-# 正しい: シングルクォートでリストを囲み、セレクタはダブルクォート
--s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
-
-# 正しい: 整数インデックスなら内側のダブルクォートは不要
--s '[(1, 5, 2.0)]'
-
-# 非推奨: ダブルクォートで外側を囲むとエスケープが必要
--s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"
-```
+したがって 4 要素のタプルは、`scan` では距離の範囲、`all` では角度の目標値です。
 
 ## 入力ファイル要件
 
-### PDB ファイル
-- **水素原子**を含む必要があります（`reduce`、`pdb2pqr`、または Open Babel で追加）
-- 列 77–78 に**元素記号**が必要（欠けている場合は `pdb2reaction add-elem-info` を使用）
-- 複数の PDB は**同じ原子を同じ順序**で持つ必要があります（座標のみ異なる）
+- **PDB** — 水素原子を含み（`reduce`、`pdb2pqr`、Open Babel で追加）、列 77–78 に元素記号が必要です（欠けている場合は `pdb2reaction add-elem-info`）。複数の PDB は同じ原子を同じ順序で持つ必要があります。
+- **mmCIF** — 下の {ref}`mmCIF と大きな構造 <ja-mmcif-input>` を参照してください。
+- **XYZ / GJF** — 活性部位モデルの抽出を行わない場合（`-c/--center` を省略）に使えます。`.gjf` ファイルは埋め込みメタデータから電荷／スピンのデフォルトを与えます。
 
-### mmCIFファイル
-- multi-character chain、PDB欄を超えるresidue／atom ID、10,000残基以上では`.cif`／`.mmcif`を使用
-- 共通bridgeが内部PDBで計算し、出力CIFへ元IDを復元
-- 反応順に並べる複数入力は、形式変換後も同じ原子identityと順序が必要
+(ja-mmcif-input)=
+### mmCIF と大きな構造
 
-### XYZ および GJF ファイル
-- 活性部位モデル抽出をスキップする場合に使用可能（`-c/--center` を省略）
-- `.gjf` ファイルは埋め込みメタデータから電荷/スピンのデフォルトを提供可能
+PDB を受け付ける計算コマンドは、すべて `.cif` と `.mmcif` も受け付けます。2 文字以上の chain ID、4 桁を超える残基番号、5 桁を超える原子番号を持つ構造や、残基が 10,000 以上の構造には mmCIF を使ってください。
 
----
+`pdb2reaction` は最初の座標モデルを読み、altLoc（別位置の配座）は残基ごとに平均占有率の最も高いものを 1 つ残します。計算の間は一時的な chain ID と残基番号を使い、出力の CIF で元の chain ID・残基番号・挿入コードに戻します。残基が 10,000 以上、原子が 99,999 以上、hybrid-36 の番号、桁あふれした数字の欄などの、大きな PDB や標準の欄に収まらない PDB も同じように扱います。
+
+残基と原子のセレクタには、元の chain ID と残基番号を使います。出力の横に書かれる `.cif` については [出力ディレクトリのレイアウト](output-layout.md) を参照してください。
+
+(ja-trajectory-one-frame)=
+### 軌跡から 1 フレームを取り出す
+
+`_trj.xyz` はふつうの複数フレームの XYZ なので、k 番目（1 から数える）のフレームは次のように取り出せます。
+
+```bash
+N=$(head -1 scan_trj.xyz); k=12
+sed -n "$(( (k-1)*(N+2)+1 )),$(( k*(N+2) ))p" scan_trj.xyz > frame_12.xyz
+```
+
+PDB のトポロジーを使って続けるときは、元の PDB を次のコマンドの `--ref-pdb` に渡してください。座標はフレームのものを使います。
 
 (ja-exit-codes)=
 ## 終了コード
@@ -275,113 +201,72 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `2` | 入力・CLI 引数・設定の指定ミス |
 | `130` | ユーザー中断（SIGINT） |
 
-JSON の有無で終了コードは変わりません。IRC の上限停止だけでは失敗とせず、all は TS と端点の最適化を判定します。
+JSON の有無で終了コードは変わりません。終了コード `0` には `success` と `partial` の両方が入るので、`scientific_status` で見分けます。`all` と `path-search` はこれを `summary.log` に書き、`all` は端末にも `Scientific status:` として出します。ほかのコマンドは `--out-json` を付けたときに `result.json` に記録します（[実行と要求段階の完了状況](json-output.md#実行と要求段階の完了状況)）。`--out-json` を付けないときは、そのコマンドのページにある端末の行で見分けてください（例：`irc` では [IRC の成否の判定](irc.md#irc-の成否の判定)）。
 
 (ja-opt-mode-semantics)=
 
 ## `--opt-mode`（サブコマンド依存）
 
-```{warning}
-同じ `--opt-mode` トークンでも、サブコマンドによって**選択される最適化アルゴリズムが異なり**、デフォルトも**統一されていません**。レシピをコピーする前に必ずサブコマンドごとの表を確認してください。
-```
+`--opt-mode` は最適化法を選びます。L-BFGS（記憶制限 BFGS）と RFO（有理関数最適化）は極小を探し、Dimer、RS-P-RFO（制限ステップ分割 RFO）、RS-I-RFO（制限ステップイメージ RFO）、TRIM（信頼領域イメージ最小化）は TS（遷移状態）を探します。
 
 | サブコマンド | `grad` エイリアス | `hess` エイリアス | デフォルト |
 |------------|------------------|------------------|-----------|
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
-| `path-opt`（端点 preopt） | L-BFGS | RFO | `grad` |
-| `path-search`（HEI±1 / kink ノードの単一構造 optimizer） | L-BFGS | RFO | `grad` |
-| `scan` / `scan2d` / `scan3d`（grid relaxation） | L-BFGS | RFO | `grad` |
-| `all`（pre-opt 段階、`--opt-mode`） | L-BFGS | RFO | `grad` |
-| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` |
-| `all`（post-opt — IRC 後エンドポイント最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
+| `path-opt`（端点の事前最適化） | L-BFGS | RFO | `grad` |
+| `path-search`（HEI±1 とねじれ（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
+| `scan` / `scan2d` / `scan3d`（格子の各点の緩和） | L-BFGS | RFO | `grad` |
+| `all`（前処理の最適化、`--opt-mode`） | L-BFGS | RFO | `grad` |
+| `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess` |
+| `all`（IRC 後の端点の最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
 
-**受け付けるエイリアス**もサブコマンド固有です:
-
-- `opt` は `grad` / `lbfgs` と `hess` / `rfo` を受け付けます。
-- `tsopt` は `grad` / `dimer` と `hess` / `rsprfo` に加え、`rsirfo`（RS-I-RFO）、`trim`（TRIM/Helgaker）も単独の `--opt-mode` 値として受け付けます。
-- `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` は `grad` / `hess` のみ受け付けます（アルゴリズム名 alias なし）。`all` の `--opt-mode-post` も `grad` / `hess` のみです。
-
-したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。曖昧さを避けたい場合は、各サブコマンドが受け付けるアルゴリズム名を使用してください: `opt` では `--opt-mode lbfgs|rfo`、`tsopt` では `--opt-mode dimer|rsirfo`。（他のサブコマンドは `grad` / `hess` のみ受け付けます。）
+同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer は Hessian を周期的に計算してダイマーの方向を更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsirfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
 
 ## CLI ↔ YAML 名称の不一致
 
-一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。完全なマッピング表は {ref}`YAML リファレンスの主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特に混同されやすい 2 ケースを以下に示します:
+一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。主なフラグと YAML キーの対応は {ref}`YAML リファレンスの主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
 
 (ja-pressure-vs-pressure-atm)=
-### `--pressure` (CLI) vs `pressure_atm` (YAML)
+- **`--pressure` (CLI) と `pressure_atm` (YAML)** — `freq` のフラグは `--pressure FLOAT`、`all` では `--freq-pressure` です。YAML キーは `thermo.pressure_atm` です。どちらも値は **atm** 単位で、内部で Pa に変換されます。
 
-- **CLI フラグ:** `--pressure FLOAT`（`freq` サブコマンド; `all` では `--freq-pressure` として提供されます）。
-- **YAML キー:** `thermo.pressure_atm`（単位接尾辞付き）。
-- 両方とも値は **atm** 単位で扱われ、内部で Pa に変換されます。
-
-(ja-engine-vs-dft-engine)=
-### DFT engine
-
-単体`dft`と`all`はどちらも`--dft-engine gpu|cpu`を使います。対応するYAML
-keyは`dft.engine`です。{ref}`YAML リファレンスの dft セクション <ja-dft-section>`
-も参照してください。
+- **`--step-size` (CLI) と `step_length` (YAML)** — `irc` のフラグは `--step-size FLOAT`（bohr）、`all` では `--irc-step-size` です。YAML キーは `irc.step_length` です。
 
 ```bash
-# 単体 dft
-pdb2reaction dft -i ts.xyz -q 0 --dft-engine gpu
-
-# all ラッパー内で同じ処理
-pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu
+pdb2reaction irc -i ts.pdb -q 0 --step-size 0.05
+pdb2reaction all -i r.pdb p.pdb -c SAM -l 'SAM:1' --tsopt --irc-step-size 0.05
 ```
 
 ## YAML 設定
 
-詳細設定は多層 YAML で渡せます：
-
 ```bash
-pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
+pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
-利用可能なすべてのオプションは [YAML リファレンス](yaml-reference.md) を参照してください。
-
 (ja-configuration-precedence)=
-### 設定の優先順位
-
-設定は以下の順序で解決されます（後のものが前のものを上書き）：
 
 ```
 組み込みデフォルト  <  --config (YAML)  <  CLI オプション
 ```
 
-- **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/core/defaults.py` を参照）。
-- **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
-- **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `--backend orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
-- **既知のデフォルト例外**: `flatten_max_iter` は YAML 適用前に 0 で初期化されます。toggle 未指定なら明示した YAML 値を保持し、`--flatten` は YAML／組み込みの正値を有効化、`--no-flatten` は 0 を強制します。{ref}`ja-flatten-precedence-caveat` を参照してください。
-
-この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`YAML リファレンス: 設定の優先順位 <ja-yaml-configuration-precedence>` を参照してください。
+各オプションの組み込みデフォルトは、`pdb2reaction <subcmd> --help-advanced` と [コマンドリファレンス（英語のみ）](../reference/commands/index.md) の `[default: …]` で確かめられます。YAML を上書きするのは*明示的に指定した* CLI の値だけで、CLI のデフォルトのままのオプションは YAML の値を隠しません。この順序は `--config` を受け付けるすべてのコマンドに共通です。全設定は [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ## 出力ディレクトリ
 
-`-o/--out-dir` で結果の保存先を指定します：
+`-o/--out-dir ./my_results/` で計算コマンドの出力先を指定します。コマンドごとのデフォルトは [出力ディレクトリのレイアウト](output-layout.md) にあります。`extract` だけは `-o/--output` に 1 つ以上のファイルパスを取り、デフォルトではカレントディレクトリに書き出します。
 
-```bash
--o ./my_results/ # カスタム出力ディレクトリ
-```
+## 使用上の注意点
 
-デフォルトの出力ディレクトリ：
-- `all`: `./result_all/`
-- `extract`: カレントディレクトリまたは指定の `-o`
-- `opt`: `./result_opt/`
-- `tsopt`: `./result_tsopt/`
-- `path-opt`: `./result_path_opt/`
-- `path-search`: `./result_path_search/`
-- `scan`: `./result_scan/`
-- `scan2d`: `./result_scan2d/`
-- `scan3d`: `./result_scan3d/`
-- `freq`: `./result_freq/`
-- `irc`: `./result_irc/`
-- `dft`: `./result_dft/`
+* **値を付けたフラグ**: フラグに値（true / false）を付けた形も受け付けますが、コマンドやスクリプトには対のフラグを書いてください。
+* **残基名と番号には chain を付けてください**: `TYR:44` は「chain `TYR` の残基 44」と読まれ、「見つからない」というエラーで止まります。`A:TYR:44` と書いてください。
+* **1 つのリストには 1 種類の残基セレクタだけを使ってください**: 表の形は、残基名だけ（`SAM`）、chain＋残基名（番号の有無を問わない。`A:SAM`・`A:TYR:44`）、番号（chain の有無を問わない。`A:123`・`123`）の 3 種類に分かれ、種類の違う形は 1 つのリストに混ぜられません。`A:TYR:44,A:SAM` は通りますが、`A:SAM,SAM`・`A:44,A:SAM`・`SAM,TYR:44` はエラーで止まります。
+* **chain 欄が空の PDB での原子セレクタ**: `'SER:11:HG'` や `'SER 11 HG'` のように 3 項目で書きます。`_` は空の chain の意味にならないので、`'_:SER:11:HG'` はどの原子にも一致せず、エラーで止まります。
+* **mmCIF と大きな構造の制限**: 扱える残基は 619,938 個までです（計算の間に使う内部の PDB の、1 文字の chain ID 62 種 × 残基番号 9,999）。`fix-altloc` と `add-elem-info` は PDB だけを読みます。mmCIF では、読み込みのときに altLoc を選び、元素記号を `_atom_site.type_symbol` から取ります。この値が無い行があるとエラーで止まります。
+* **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。既定で無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、YAML に書いた `hessian_dimer.flatten_max_iter` の値が使われます。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
 
-## 関連項目
+## 関連ドキュメント
 
 - [インストール](installation.md) — セットアップと依存関係
-- [はじめに](getting-started.md) — 初回実行とワークフロー概要
-- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
+- [はじめに](getting-started.md) — 最短の実行と次に読むページ
+- [出力ディレクトリのレイアウト](output-layout.md) — ファイル名とデフォルトの出力ディレクトリ
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
 - [YAML リファレンス](yaml-reference.md) — 全設定オプション

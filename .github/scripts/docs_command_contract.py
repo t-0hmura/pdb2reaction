@@ -119,7 +119,7 @@ def authored_bool_style_paths() -> list[Path]:
     Generated command-reference pages and Sphinx build output are excluded:
     they are regenerated from the live CLI, not hand-authored.
     """
-    paths: list[Path] = [REPO_ROOT / "README.md", REPO_ROOT / "CONTRIBUTING.md"]
+    paths: list[Path] = [REPO_ROOT / "README.md", REPO_ROOT / "CONTRIBUTING.md", REPO_ROOT / "AGENTS.md"]
     docs = REPO_ROOT / "docs"
     if docs.is_dir():
         paths.extend(

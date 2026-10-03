@@ -1,65 +1,30 @@
 # `pdb2reaction tsopt`
 
-## Purpose
+## When to use
 
-Transition-state optimization. The default algorithm is RS-P-RFO
-(full-Hessian; `--opt-mode hess`/`rsprfo`). Hessian-Guided Dimer
-(`--opt-mode grad`/`dimer`) is the **alternative** TS optimizer when
-RS-P-RFO fails to converge (e.g. unstable full-Hessian eigenstructure or very
-large clusters where full-Hessian recomputation is prohibitive). The
-dimer still uses an initial Hessian to set the search direction, then
-updates the lowest mode via dimer rotation rather than recomputing the
-full Hessian each cycle. Use after `path-search` or `scan` to refine a
-HEI to a true first-order saddle, or as a standalone validator on an
-externally-generated TS guess.
+`tsopt` optimizes a TS candidate to a first-order saddle point, then computes
+the Hessian at the final geometry and counts n_imag. A successful TS
+optimization gives one imaginary mode along the reaction coordinate. Run it on
+the HEI from `path-opt` / `path-search`, on the top of a `scan`, or on a
+candidate you built. The default optimizer is RS-P-RFO; the Hessian-guided
+Dimer is the alternative.
 
-## Synopsis
-
-```bash
-pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
-    [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] \
-    [--max-cycles 100000] \
-    [-b uma|orb|mace|aimnet2|dft] [-o ./result_tsopt/]
-```
-
-## Key flags
-
-| flag | type | default | description |
-|---|---|---|---|
-| `-i, --input` | path | required | TS candidate; `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
-| `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer), `hess`/`rsprfo` (RS-P-RFO), `rsirfo` (RS-I-RFO), or `trim` (TRIM/Helgaker) |
-| `--max-cycles` | int | 100000 | Optimization step cap |
-| `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
-| `--read-hess` / `--dump-hess` | path | — | Initial Hessian from / final Hessian to a plain NumPy `.npy` array (shared with `freq`, `irc`); `--dump-hess` is written only when the final Hessian was computed |
-| `--uma-workers`, `--uma-workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` with explicit `Analytical` raises `BackendError`; it does not fall back. Other built-in backends ignore these worker kwargs. |
-| `--ref-mode` | path | none | Advanced/internal Cartesian 3N reaction direction used for initial-root selection and overlap tracking. `all` supplies it by default; with `all --no-tsopt-from-mep-tan`, TSOPT selects from the initial-structure Hessian modes. Ordinary standalone `tsopt` runs should omit it. Visible only in `--help-advanced`. |
-| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
-| `-o, --out-dir` | path | `./result_tsopt/` | Output directory |
-| `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
-
-`tsopt` always forces `reject_uphill=False`, regardless of optimizer mode or
-YAML. Uphill trial steps can be part of saddle-point mode following. The
-`--reject-uphill/--no-reject-uphill` toggle belongs only to minimum
-optimization (`opt`) and post-IRC endpoint refinement (`all`).
-
-## Examples
-
-### Default RS-P-RFO
+## Minimal run
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 -b uma --out-json -o result_tsopt
 ```
 
-### Dimer mode (alternative when RS-P-RFO fails to converge)
+Success: the console prints `[tsopt] Converged (n_imag=1).`.
+
+Dimer, when RS-P-RFO does not converge:
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 \
     --opt-mode dimer -b uma -o result_tsopt_dimer
 ```
 
-### Alternative RFO family on a difficult seed
+Another RFO-family optimizer on a difficult candidate:
 
 ```bash
 pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
@@ -67,100 +32,108 @@ pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
     -o result_tsopt_rsirfo
 ```
 
-## Output
+## Judge success
 
-| Path | When | Content |
-|---|---|---|
-| `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; it is a validated first-order saddle only when `result.json["optimization_status"] == "converged"` and the downstream IRC is correct |
-| `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
-| `<out_dir>/final_geometry.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public companion with original IDs |
-| `<out_dir>/final_geometry.gjf` | `--convert-files` and input is `.gjf` | Gaussian companion |
-| `<out_dir>/optimization_trj.xyz`, `optimization.{pdb,cif}` | `--dump`, Hessian-family mode; companions require `--convert-files`, topology, and CIF bridge metadata | full optimization trajectory |
-| `<out_dir>/optimization_all_trj.xyz`, `optimization_all.{pdb,cif}` | `--dump`, Dimer-family mode; companions require `--convert-files`, topology, and CIF bridge metadata | full optimization trajectory |
-| `<out_dir>/vib/imag_<freq>cm-1_trj.xyz`, `.pdb`, `.cif` | imaginary modes exported; companions require `--convert-files` plus topology and CIF needs a bridge | imaginary-mode displacement |
+The `[tsopt]` verdict line tells how the run ended:
 
-`result.json` (only when `--out-json` is passed) keys:
+| Verdict line | Meaning |
+|---|---|
+| `[tsopt] Converged (n_imag=1).` | First-order saddle. Check that the mode moves the reacting atoms, then run IRC |
+| `[tsopt] WARNING: Higher-order stationary point (n_imag=N, …)` | Converged with extra imaginary modes; not yet a TS |
+| `[tsopt] No imaginary mode detected. …` | Converged toward a minimum |
+| `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | Stopped on an energy plateau (`--stop-plateau`). Not converged, but the Hessian is always computed and n_imag reported |
+| `[tsopt] ERROR: Not converged.` | Reached `--max-cycles`. No Hessian is computed, so n_imag is not reported |
+| `[tsopt] Converged; terminal PHVA is unavailable.` | `--skip-final-freq` or a failed final Hessian; the saddle order is unchecked |
+
+A mode counts as imaginary below −5 cm⁻¹, the tsopt cutoff (YAML
+`freq.zero_cutoff_cm`). With `--out-json`, a first-order TS needs all of:
+`optimization_status` is `converged`, `hessian_status` is `completed`,
+`saddle_validation` is `first_order` (`n_imaginary_modes` is 1), and the
+displacement in `vib/imag_*_trj.xyz` follows the reacting atoms.
+`scientific_status` does not look at n_imag.
 
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-print(d["execution_status"])           # "completed" / "failed"
-print(d["scientific_status"])          # "success" / "partial" / "failed"
-print(d["optimization_status"])        # "converged" / "not_converged" / "stalled"
-print(d["energy_hartree"])
-print(d["n_imaginary_modes"])           # should be 1 for a real TS
-print(d["imaginary_frequencies_cm"])    # list of cm⁻¹
-print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
-print(d["rigid_projection"]["source"], d["rigid_projection"]["raw_hessian_shape"])
-print(d["files"]["final_geometry_xyz"]) # path under out_dir
+print(d["optimization_status"])      # "converged" / "not_converged" / "stalled"
+print(d["saddle_validation"])        # "first_order" / "higher_order" / "no_imaginary" / "unavailable"
+print(d["n_imaginary_modes"], d["imaginary_frequencies_cm"])
+print(d["energy_hartree"], d["files"]["final_geometry_xyz"])
 ```
 
-## `--opt-mode` choice
+With `higher_order`, `optimization_status` still reports only the optimizer.
+Watch every `vib/imag_*_trj.xyz` and do not accept the structure as a
+first-order saddle. `all` may continue a warning-labelled diagnostic IRC from
+it; that is not a first-order TS. Even a first-order TS candidate does not by
+itself establish the intended elementary reaction: confirm it with `irc`.
+
+## Choosing --opt-mode
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `hess` / `rsprfo` (default) | RS-P-RFO with full Hessian | Tested default. Full-Hessian cost and convergence relative to the other modes are system/backend dependent |
-| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-P-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. |
-| `trim` | TRIM / Helgaker | Standalone `--opt-mode` value (not an alias of grad/hess) |
-| `rsirfo` | RS-I-RFO | Standalone `--opt-mode` value (not an alias of grad/hess) |
+| `hess` / `rsprfo` (default) | RS-P-RFO, full Hessian | Tested default |
+| `grad` / `dimer` | Hessian-guided Dimer | RS-P-RFO does not converge, or recomputing the full Hessian is too costly on a large cluster. It follows the lowest mode by dimer rotation and refreshes it from an exact Hessian only at intervals |
+| `rsirfo` | RS-I-RFO | Another try on a difficult candidate |
+| `trim` | TRIM | Another try on a difficult candidate |
 
+`rsirfo` and `trim` are their own values, not aliases of `grad` or `hess`. In
+`all`, `--opt-mode-post grad` selects the same Dimer.
 
-## Validation: imaginary modes
+## Pitfalls and recovery
 
-A real TS has exactly one imaginary frequency that corresponds to the
-reaction coordinate.
+- **Not converged at `--max-cycles`.** The default of 100000 is a safety
+  bound; more cycles rarely help. Inspect the trajectory (`--dump`) and the
+  candidate, then switch `--opt-mode` or start from a better candidate.
+- **n_imag ≥ 2.** Diagnose constraints, precision, and the character of each
+  mode, then re-run with `--flatten` or get a better candidate. See
+  [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt).
+- **n_imag = 0.** The candidate is not near a saddle. From `all`,
+  `--refine-path` gives a finer HEI, but recursive segmentation can multiply
+  the MEP, TS, IRC, and freq cost, so it is off by default; inspect the coarse
+  MEP before enabling it.
+- **Precision.** Curvature is precision-sensitive on every backend. Keep the
+  backend's precision (UMA fp32, ORB and MACE fp64 by default), inspect the
+  actual mode, and check the final Hessian and IRC rather than ranking a saddle
+  by optimizer convergence alone. Use standalone `freq` for more analysis.
+- **`--ref-mode`.** This advanced option gives a Cartesian 3N reaction direction
+  for choosing the initial root and tracking overlap. `all` supplies it from
+  the MEP; with `all --no-tsopt-from-mep-tan`, its TS optimization chooses
+  from the Hessian modes of the starting structure. Ordinary standalone `tsopt` runs should omit
+  it. Do not add it because a run is difficult; it is not a convergence switch.
+  Supply it only when an external path gives a deliberate non-zero direction.
+- **Frozen atoms.** With frozen atoms, the Hessian covers the movable atoms
+  and only rigid motions that keep every frozen atom in place are removed. This
+  is separate from `--ref-mode`. See
+  [PHVA treatment](extract.md#phva-treatment)
+  and the [JSON record](../../docs/json-output.md#rigid-projection-provenance).
+- **Uphill steps.** `tsopt` always forces `reject_uphill=False`, whatever the
+  optimizer mode or YAML, because uphill steps can be part of following a
+  saddle mode. `--reject-uphill` belongs to `opt` and to endpoint optimization
+  in `all`.
+- **Analytical Hessian with UMA workers.** All four built-in backends implement
+  analytical Hessians. With UMA, `--uma-workers` above 1 plus
+  `--hessian-calc-mode Analytical` raises `BackendError`; it does not fall back.
+  Use `--uma-workers 1` or `FiniteDifference` (the default). Other backends
+  ignore the worker options.
 
-```python
-import json
-d = json.load(open("result_tsopt/result.json"))
-if d["optimization_status"] != "converged":
-    print("NOT CONVERGED:", d["optimization_status"])
-elif d["n_imaginary_modes"] == 1:
-    print("OK: single imaginary mode at", d["imaginary_frequencies_cm"][0], "cm-1")
-elif d["n_imaginary_modes"] == 0:
-    print("BAD: collapsed to a minimum during refinement")
-elif d["n_imaginary_modes"] is not None and d["n_imaginary_modes"] > 1:
-    print("NOT VALIDATED: multiple imaginary modes; inspect vib/imag_*_trj.xyz")
-```
+## Outputs
 
-For multi-imaginary cases, `optimization_status` remains the numerical optimizer
-outcome while `saddle_validation` is `higher_order`. Visualize every
-`vib/imag_*_trj.xyz`; `.pdb`/`.cif` companions exist only with conversion
-topology. Diagnose constraints, precision, and mode character, then obtain a
-better seed or use the documented flatten workflow rather than accepting it as
-a first-order saddle. `all` may run only warning-labelled diagnostic IRC when a
-valid negative root is available.
+- `final_geometry.xyz`: always written. `--convert-files` (on by default) adds
+  `.pdb` for PDB/mmCIF input, `.cif` with the original IDs for mmCIF or very
+  large PDB input, and `.gjf` for Gaussian input.
+- `vib/imag_<freq>cm-1_trj.xyz`: animation of each imaginary mode, with
+  `.pdb` / `.cif` when the input carries topology.
+- `--dump`: `optimization_trj.xyz` (RS-P-RFO, RS-I-RFO, TRIM) or
+  `optimization_all_trj.xyz` (Dimer).
+- `--dump-hess <file>.npy`: the final Hessian, written only when it was
+  computed, for `--read-hess` in `freq`, `tsopt`, or `irc`.
+- `result.json`: with `--out-json`.
 
-## Caveats
+## Next step
 
-- A converged `tsopt` is **not** a complete validation; always follow
-  with `irc.md` to confirm the TS connects the expected R and P.
-- Do not add `--ref-mode` merely because standalone TSOPT is difficult. It
-  is an MEP handoff, not a general convergence switch. Supply it manually
-  only when an external path provides a deliberate non-zero Cartesian 3N
-  reaction direction.
-- The fixed constrained treatment controls rigid-mode removal in Cartesian
-  PHVA. It is distinct from `--ref-mode`, which identifies the intended
-  reaction direction. See `freeze-atoms.md` for constrained-rank behavior.
-- `--max-cycles` defaults to 100000 as a safety upper bound; if a run
-  burns through many cycles without converging, inspect the trajectory and
-  seed rather than assuming that more cycles will repair it. Add `--flatten`
-  for surplus imaginary modes. If the seed came
-  from `all`, `--refine-path` can produce a better HEI, but recursive
-  segmentation may multiply MEP/TSOPT/IRC/freq cost and is therefore off by
-  default; inspect the coarse MEP before enabling it.
-- Curvature is precision-sensitive on every backend. Keep the backend's
-  effective precision (Orb defaults to fp64), inspect the actual mode, and
-  check terminal PHVA and IRC connectivity rather than ranking a saddle from
-  optimizer convergence alone. Use standalone `freq` for additional analysis.
-- All four built-in backends implement analytical Hessians. For UMA only, its
-  multi-worker predictor cannot expose the autograd model, so combine
-  `Analytical` with `--uma-workers 1` or use explicit finite differences.
-
-## See also
-
-- `path-search.md` — produces TS candidates for `tsopt`.
-- `irc.md`, `freq.md` — downstream validation.
-- [`pdb2reaction-install-backends/uma.md`](../pdb2reaction-install-backends/uma.md) / `mace.md` — backend-specific setup and validation notes.
+- [irc.md](irc.md): confirm that the TS connects the intended R and P.
+- [freq.md](freq.md): thermochemistry or more mode analysis.
+- [path.md](path.md): make TS candidates.
+- Backend notes: [UMA](../pdb2reaction-install-backends/backends.md#uma),
+  [MACE](../pdb2reaction-install-backends/backends.md#mace-separate-environment).
 - Defaults: `import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW, d.DIMER_KW, d.HESSIAN_DIMER_KW)`

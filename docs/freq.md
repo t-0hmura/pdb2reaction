@@ -1,155 +1,145 @@
-# `freq`
+# `freq` (vibrational analysis and thermochemistry)
 
-`frequencies_cm-1.txt`, JSON `frequencies_cm`, and `n_modes` retain the complete signed physical spectrum after the existing frozen-atom and rigid-mode projection. `--max-write` and `--sort` control only which mode files are written and their order. `n_imaginary` (YAML `num_imag_freq`) is the resolved negative count below the reporting threshold; `n_negative_modes` also includes weak negative modes. With `frequency_representation: complete`, `near_zero_frequencies_cm` is a subset of the complete array; do not append it and count modes twice.
+## Overview
 
-The default imaginary-mode criterion is ν < −5.00 cm⁻¹. `frequency_zero_cutoff_cm: 5.0`, `imaginary_mode_criterion: "frequency_cutoff_cm"`, and `imaginary_frequency_threshold_cm: -5.0` record the rule. `freq.zero_cutoff_cm` can set another magnitude explicitly. This reporting criterion is separate from the optimizer-coordinate `small_eigval_thresh` of 10⁻⁸. No sign is changed and no physical mode is removed.
+`freq` computes **harmonic vibrational frequencies** and **thermochemical corrections** (ZPE, enthalpy, Gibbs free energy) for a structure.
 
-Thermochemistry retains the existing QRRHO policy (100 cm⁻¹ rotor cutoff, no imaginary inversion and no positive-frequency floor), including positive low-frequency modes. Changing `freq.zero_cutoff_cm` does not change thermal values computed from the same complete spectrum.
+### What it is for
 
+* **Checking a stationary point**: count the imaginary frequencies (n_imag) to confirm a minimum (n_imag = 0) or a transition state (TS, n_imag = 1).
+* **Thermochemistry**: free energies and other thermodynamic quantities from the QRRHO (quasi-rigid-rotor harmonic oscillator) model.
+* **Seeing the modes**: atomic-displacement animations of the imaginary mode or any other mode.
 
-Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). Use it when full vibrational analysis is required — for example, to confirm that a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one — or when thermochemistry corrections (ZPE, Gibbs energy) are needed. Finite differences are the default. `--hessian-calc-mode Analytical` avoids displacement error but may be faster or slower and usually needs more accelerator memory; benchmark and validate the selected backend/model on the target system. Imaginary frequencies appear as negative values.
+The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md); `-b/--backend` also selects **ORB**, **MACE**, **AIMNet2**, or [**DFT**](dft-backend.md).
+
+---
 
 ## Examples
 
-Minimal run with explicit charge and spin:
+### 1. Minimal run (explicit charge and multiplicity)
 
 ```bash
-# Minimal run with explicit charge and spin
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
-PHVA with cap-hydrogen parent freezing and dump thermo payload:
+The console summary prints n_imag as `Number of Imaginary Freq = N`.
+
+### 2. Detailed thermochemistry file
+
+Add `--dump` to also write the detailed thermochemistry file `thermoanalysis.yaml`.
 
 ```bash
-# PHVA with cap-hydrogen parent freezing and dump thermo payload
-pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
+pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --dump --out-dir ./result_freq_dump
 ```
 
-Explicit analytical Hessian mode (after validating memory and runtime):
+### 3. Analytical Hessian
+
+Use this to avoid the step-size error of finite differences.
 
 ```bash
-# Explicit analytical Hessian mode
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
- --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
+  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
 
-## Workflow
+---
 
-- **Geometry loading & freeze handling**: structures pass through the common
-  structure bridge before `pysisyphus.helpers.geom_loader`. For PDB/mmCIF topology inputs, `--freeze-links` detects cap
-  hydrogens and freezes their parent atoms, then merges the resulting indices with
-  `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
-- **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
-  The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
-  For Hessian evaluation modes, see {ref}`hessian-evaluation`.
-- **PHVA & rigid modes**: with frozen atoms, eigenanalysis occurs inside the active
-  subspace. The default `constrained` treatment removes only full-system rigid motions that
-  leave every frozen anchor fixed; a normal multi-anchor cluster boundary therefore usually
-  has effective rank 0. Both 3N×3N and active-block Hessians are accepted. See
-  [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
-- **Mode export**: `--max-write` limits how many mode trajectories are written. Modes are sorted by
-  value (or absolute value with `--sort abs`). The sinusoidal trajectory amplitude
-  (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
-  trajectories are produced for every input; topology inputs also receive `.pdb` trajectories
-  when `--convert-files` remains enabled, and mmCIF/oversized-PDB bridge inputs additionally
-  receive `.cif` trajectories with the original identifiers.
-- **Thermochemistry**: a QRRHO-like summary (E, ZPE, E/H/G
-  corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
-  atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
-  also written. The console reports the structure energy in Hartree as
-  `E + G_corr = G` (electronic energy + Gibbs free-energy correction = Gibbs
-  free energy). The molecular point group and external rotational symmetry number are
-  detected from each analyzed structure and the resulting `1/sigma` correction is always
-  included. An expert can override the detected number with
-  `thermo.symmetry_number` in YAML.
-- **Frequency-treatment policy**: `freq` applies the **standalone-freq policy** — QRRHO with a
-  100 cm⁻¹ rotor cutoff, unit frequency/ZPE scaling, **no** imaginary-frequency inversion, and
-  **no** positive-frequency floor. This is deliberately different from the internal
-  `Geometry.get_thermoanalysis` policy used by some bundled-engine paths, which additionally
-  inverts small imaginaries (from −15 cm⁻¹) and floors positive frequencies below 25 cm⁻¹.
-  Neither is a universal scientific default; each is tied to its entry point. The effective
-  policy (`kind`, `rotor_cutoff_cm`, `frequency_scale`, `zpe_scale`, `invert_imag_from_cm`,
-  `positive_frequency_floor_cm`) is serialized under `thermo_policy` in `thermoanalysis.yaml`
-  and in `result.json`.
-- **Performance**: the implementation minimizes GPU memory usage by keeping a single Hessian resident.
+## How it works
 
-## Outputs
+1. **Reading the structure and freezing the boundary (PHVA)**:
+With `--freeze-links` (on by default), `freq` finds the cap hydrogens that `extract` adds (atom `HL` in residue `LKH`) and freezes their parent atoms. When any atoms are frozen, the vibrational analysis runs on the movable atoms only (PHVA, partial Hessian vibrational analysis).
+2. **Hessian mode**:
+`--hessian-calc-mode` selects `FiniteDifference` (finite differences, the default) or `Analytical`.
+3. **Thermochemistry (QRRHO)**:
+From the frequencies, the QRRHO model, which corrects the entropy of low frequencies (rotor cutoff 100 cm⁻¹), gives the Gibbs free-energy correction `G_corr`. G is E + `G_corr`, where E is the electronic energy, and always includes the translational and rotational terms of the whole structure besides the vibrational terms of the positive frequencies. The console summary prints `G_corr` and G in Hartree on the lines `Gibbs Free Energy Correction (G_corr)` and `Gibbs Free Energy (G = E + G_corr)`; `--dump` also writes them to `thermoanalysis.yaml`, and `--out-json` to `thermochemistry` in `result.json`, where G is `sum_EE_and_thermal_free_energy_ha`. The point group and rotational symmetry number are detected from the structure; YAML `thermo.symmetry_number` overrides the number.
+4. **Writing the modes**:
+Up to `--max-write` mode animations are written, starting from the imaginary or lowest modes.
+
+### Rigid modes with frozen boundaries
+
+Without frozen atoms, `freq` removes the six rigid motions (three translations and three rotations), which are not vibrations, before reporting frequencies. With frozen atoms, it removes only the rigid motions that keep every frozen atom in place. With three or more frozen atoms that do not lie on one line, the normal case for a cluster model, nothing is removed and every vibrational mode of the movable atoms is kept. With one frozen atom, three motions are removed (rotations about that atom); with two, one is removed (rotation about the axis through them).
+
+`irc`, the TS frequency check and the Dimer direction in `tsopt`, and `--flatten` (removing extra imaginary modes) in `opt` and `tsopt` treat rigid motions the same way. With `--out-json`, `result.json` records the number of removed motions and the Hessian used under `rigid_projection`; see [JSON Output Reference](json-output.md#rigid-projection-provenance).
+
+---
+
+## Reading the frequencies
+
+How `frequencies_cm-1.txt` and the JSON record treat each case:
+
+| Item | Value / behavior | Meaning |
+| --- | --- | --- |
+| **Imaginary modes** | Negative values (ν < 0 cm⁻¹) | An imaginary mode is listed as a negative frequency. |
+| **Imaginary threshold** | ν < −5.00 cm⁻¹ | Such a mode counts as imaginary (n_imag; the JSON field is `n_imaginary`). The cutoff is YAML `freq.zero_cutoff_cm` (default `5.0`). |
+| **Tiny negative modes** | −5.00 ≤ ν < 0 cm⁻¹ | Small negative modes from numerical noise do not count toward n_imag. `n_negative_modes` counts every negative frequency, including these. |
+| **Thermochemistry** | No inversion, no floor | Imaginary modes are not flipped and small positive modes are not raised. QRRHO uses only the positive modes, so imaginary modes are left out of ZPE and G. |
+
+---
+
+## Output files
+
+`freq` writes these files to `--out-dir`:
 
 ```text
-out_dir/ (default:./result_freq/)
-├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode trajectories
-├─ mode_XXXX_±freqcm-1.pdb # PDB/mmCIF topology exists and conversion is enabled
-├─ mode_XXXX_±freqcm-1.cif # mmCIF/oversized-PDB bridge input
-├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
-└─ thermoanalysis.yaml # Present when --dump is True
+result_freq/
+├─ frequencies_cm-1.txt          # All frequencies (cm⁻¹)
+├─ mode_0001_-385.20cm-1_trj.xyz # Animation of each mode (XYZ)
+├─ mode_0001_-385.20cm-1.pdb     # Same animation as PDB (PDB or mmCIF input)
+├─ mode_0001_-385.20cm-1.cif     # Same animation as mmCIF (mmCIF or very large PDB input)
+├─ thermoanalysis.yaml           # Detailed thermochemistry (with --dump)
+└─ result.json                   # Summary (--out-json)
 ```
-- Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
-## Exit codes
+* **Minimum or TS?** The console summary prints n_imag as `Number of Imaginary Freq = N`; `freq` does not judge it, so `scientific_status` in `result.json` is `success` whatever n_imag is. A successful TS optimization gives one imaginary mode along the reaction coordinate: **exactly one** clear negative value at the top of `frequencies_cm-1.txt`, and every later value positive or within the tolerance. A TS then goes to [`irc`](irc.md). If a structure meant to be a minimum has imaginary modes, optimize it again with [`opt`](opt.md) `--flatten`; if a TS has none or several, see {ref}`When the TS search fails <ts-search-fails>`.
+* **Watching the motion**: open `mode_*_trj.xyz` or `.pdb` in PyMOL, VMD, OVITO, or another viewer to animate the vibration.
 
-See {ref}`exit-codes` in CLI Conventions.
+---
 
-## CLI options
+## Main options
 
-The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md).
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.xyz`, ...) |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
+| `-l, --ligand-charge` | text | `None` | Per-residue formal charges (e.g. `'SAM:1,GPP:-3'`) |
+| `--ref-pdb` | path | `None` | Reference PDB/mmCIF topology for `.xyz` / `.gjf` input; the coordinates still come from `-i` |
+| `-o, --out-dir` | path | `./result_freq/` | Output directory |
+| `-b, --backend` | text | `uma` | Calculator backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |
+| `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | How the Hessian is computed (finite differences / analytical) |
+| `--read-hess` | path | `None` | Read the Hessian from a `.npy` file (for example one saved by `freq` or `tsopt --dump-hess`) instead of computing it |
+| `--dump-hess` | path | `None` | Save the Hessian as a `.npy` file for `--read-hess` in `freq`, `tsopt`, or `irc` |
+| `--freeze-links/--no-freeze-links` | flag | `True` | Freeze the parent atoms of cap hydrogens at the cluster boundary |
+| `--freeze-atoms` | text | `None` | Atoms to freeze (1-based, comma-separated, e.g. `'1,3,5'`) |
+| `--max-write` | integer | `10` | Maximum number of mode animations to write |
+| `--sort` | `value` / `abs` | `value` | Order of the modes (by value / by absolute value) |
+| `--temperature` | float | `298.15` | Temperature for thermochemistry (K) |
+| `--pressure` | float | `1.0` | Pressure for thermochemistry (atm) |
+| `--dump/--no-dump` | flag | `False` | Write the detailed thermochemistry file `thermoanalysis.yaml` |
+| `--out-json/--no-out-json` | flag | `False` | Write a summary to `result.json` |
 
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by the input bridge (`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.trj` / ...). | Required |
-| `-q, --charge INT` | Total charge. Explicit `-q` has highest priority; otherwise see {ref}`Charge specification <charge-specification>`. | Required unless YAML/template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--uma-workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
-| `--uma-workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). Explicit `-m` overrides YAML `calc.spin`; otherwise YAML, `.gjf`, or `1` is used. | YAML/`.gjf`/`1` |
-| `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for cap-hydrogen details. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--max-write INT` | Number of modes to export. | `10` |
-| `--amplitude-ang FLOAT` | Mode-trajectory amplitude (Å). | `0.8` |
-| `--n-frames INT` | Frames per mode trajectory. | `20` |
-| `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
-| `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
-| `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
-| `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
-| `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to off. `pdb2reaction all --thermo` always retains this internal file because the composite workflow consumes it; `all --no-dump` still controls optional scan/MEP/TS trajectories but does not suppress the thermochemistry channel. | `False` |
-| `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
-| `--read-hess PATH` | Use the Hessian in a NumPy `.npy` file instead of computing it (for example one written by `freq` or `tsopt --dump-hess`). | _None_ |
-| `--dump-hess PATH` | Save the Hessian as a NumPy `.npy` array for `--read-hess` in `freq`, `tsopt`, or `irc`, or for other programs. | _None_ |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a PDB/mmCIF topology is available (GJF is not written). | `True` |
-| `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
-| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--dry-run/--no-dry-run` | Validate options and inputs without running frequency analysis. | `False` |
+See the [generated CLI reference](reference/commands/freq.md) for every option.
 
-## YAML configuration
+> **Note:** In YAML (`--config`), the [`freq`](yaml-reference.md#freq-section) section sets the imaginary threshold `zero_cutoff_cm` and the number and amplitude of the written modes, and the [`thermo`](yaml-reference.md#thermo) section sets temperature and pressure.
 
-The `geom`, `calc`, `freq`, and `thermo` sections follow the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` forces `calc.return_partial_hessian = true` (PHVA) regardless of YAML.
-
-The only `freq`-specific default that differs from the canonical block is the output directory:
-
-```yaml
-freq:
- out_dir: ./result_freq/ # freq default
-```
+---
 
 ## Notes
 
-- `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `n_imaginary` uses the selected criterion. `n_negative_modes` records every negative sign, including modes inside that window, as a separate diagnostic; it does not override numerical convergence.
-- Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
-  and dumps details when `--dump`.
-- An all-frozen structure has no active vibrational DOF and raises an explicit error.
-- A `--read-hess` / `--dump-hess` file is one plain NumPy array (`numpy.save`): the Cartesian Hessian in Hartree/bohr², not mass-weighted, with atoms in input order. It covers all atoms (3N × 3N) or, when atoms are frozen, only the movable ones. `--read-hess` checks only that the matrix is square, finite, symmetric, and one of these two sizes, so pass a Hessian computed for the same geometry, charge, multiplicity, and calculator.
-- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
+* **`freq` or `tsopt`?** `tsopt` already checks the imaginary frequencies. Run `freq` on its own when you need detailed thermochemistry or mode animations.
+* **At least one atom must move.** If every atom is frozen there is no vibration to analyze, and `freq` stops with an error.
+* **Analytical Hessian and `--uma-workers`**: with UMA, `--hessian-calc-mode Analytical` cannot run with `--uma-workers` above 1 and stops with an error. Use `--uma-workers 1` for an analytical Hessian. It uses more GPU memory, so test it on your system first.
+* **`all --thermo` keeps the thermochemistry file**: `all` reads its thermochemistry from `thermoanalysis.yaml`, so with `--thermo` it writes this file even under `--no-dump`.
+* **The `--read-hess` / `--dump-hess` file** is one NumPy array (`numpy.save`): the Cartesian Hessian in Hartree/bohr², not mass-weighted, with atoms in input order. It covers all atoms (3N × 3N) or, when atoms are frozen, only the movable ones. `--read-hess` checks only the size, finiteness, and symmetry of the matrix, so pass a Hessian computed for the same geometry, charge, multiplicity, and calculator.
 
-## See Also
+---
 
-- [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-frequency check; follow with IRC for endpoint validation)
-- [irc](irc.md) — IRC from TS (freq is often run on IRC endpoints for thermochemistry)
-- [dft](dft.md) — Single-point DFT for higher-level energy evaluation
-- [all](all.md) — End-to-end workflow with `--thermo`
-- [YAML Reference](yaml-reference.md) — Full `freq` and `thermo` configuration options
-- [Glossary](glossary.md) — Definitions of ZPE, Gibbs Energy, Enthalpy, Entropy
-- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) — Detailed fixes for common failure modes
+## See also
+
+* [opt](opt.md) — geometry optimization to a minimum
+* [tsopt](tsopt.md) — TS optimization
+* [irc](irc.md) — IRC from a TS
+* [dft](dft.md) — DFT single-point energies
+* [all](all.md) — the full workflow: extraction, path search, TS optimization, and vibrational analysis
+* [YAML Reference](yaml-reference.md) — configuration file format
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails
+* {ref}`Exit codes <exit-codes>` — what each exit status means

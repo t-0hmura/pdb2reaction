@@ -1,10 +1,10 @@
-# CLI Conventions
+# Common options and selectors
 
-Conventions shared across all `pdb2reaction` commands.
+This page collects the conventions shared by every `pdb2reaction` command: flags, residue and atom selectors, charge and multiplicity, exit codes, and configuration precedence.
 
 ## Boolean options
 
-Use paired flags in commands, documentation, and agent instructions:
+Turn a stage or behavior on or off with paired flags:
 
 | Form | Example |
 |---|---|
@@ -15,13 +15,14 @@ Use paired flags in commands, documentation, and agent instructions:
 --tsopt --thermo --no-dft
 ```
 
-Older value-style invocations remain accepted for compatibility. Use paired flags for new commands.
+Common toggles:
 
-Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze cap-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate format-aware PDB / CIF / GJF companions).
-
-### Contributing a new bool flag
-
-When adding a boolean flag inside a subcommand, always route it through one of the `add_*_option()` factories in `pdb2reaction/cli/common_options.py` and register the long name in the matching `_COMMAND_BOOL_*_OPTIONS` table in `pdb2reaction/cli/app.py`. Avoid writing `@click.option("--foo/--no-foo", ...)` or `type=click.BOOL` directly in the subcommand body — that bypasses the registry and falls out of compatibility-test coverage.
+- `--tsopt` / `--thermo` / `--dft`: post-processing stages
+- `--freeze-links`: freeze the parent atoms of the cap hydrogens (on by default)
+- `--dump`: write trajectory files
+- `--preopt` / `--endopt`: pre- / post-optimization
+- `--climb`: climbing image in the minimum energy path search
+- `--convert-files`: also write PDB / CIF / GJF copies of the outputs in the input format
 
 ## Progressive help
 
@@ -30,40 +31,46 @@ pdb2reaction <subcmd> --help               # core options
 pdb2reaction <subcmd> --help-advanced      # full option set
 ```
 
-Supported by `all`, `scan` / `scan2d` / `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `add-elem-info`, `trj2fig`, `energy-diagram`, `bond-summary`, `extract`, `fix-altloc`.
-
 (verbosity-levels)=
 
 ## Verbosity levels
 
-`-v/--verbose LEVEL` is an integer from 0 to 3 (**default 2**) that sets how much each command prints to the console. It is a per-command option, so write it with the subcommand, e.g. `pdb2reaction opt -v 1 ...`. The same four levels apply to every command; command pages describe only their command-specific payload (e.g. the `opt` cycle table or the `freq` thermochemistry summary).
+`-v/--verbose LEVEL` is an integer from 0 to 3 (**default 2**) that sets how much each command prints to the console. It is a per-command option, so write it with the subcommand, e.g. `pdb2reaction opt -v 1 ...`. The same four levels apply to every command; command pages describe only what their own command adds.
 
 | Level | What you see |
 |---|---|
-| `-v 0` | Silent. Confirm success from the exit code and the output artifacts. |
-| `-v 1` | Milestones only: version, input summary, key settings, output location, dry-run / final status. No banner, `[command]`, `[mode]`, or config dump. |
+| `-v 0` | Silent. Confirm success from the exit code and the output files. |
+| `-v 1` | Milestones only: version, input summary, key settings, output location, dry-run / final status. No banner, `[command]`, `[mode]`, or configuration printout. |
 | `-v 2` | Default. Adds the banner, `[command]`, `[mode]`, stage progress, the main optimizer cycle table, terminal status, the one-line Hessian summary, thermo / DFT summaries, and elapsed time. |
-| `-v 3` | Debug: resolved config, backend DEBUG, raw optimizer and internal-coordinate chatter, `[HessianTiming]`, and `[HessianVRAM]`. |
+| `-v 3` | Debug: the full configuration in effect, backend DEBUG, raw optimizer and internal-coordinate output, `[HessianTiming]`, and `[HessianVRAM]`. |
 
-A semantic failure is a failure at any level: a `Traceback` that appears only at `-v 3` still means the run failed.
+The level changes only what is printed, not the exit code; judge a run by its {ref}`exit code <exit-codes>`.
 
 ## Residue selectors
 
-| Form | Example | Notes |
+`-c/--center` (on `extract` and `all`) names the residues at the center of the model. The forms below run from the most specific to the broadest:
+
+| Form | Example | What it selects |
 |---|---|---|
-| By residue name | `-c 'SAM,GPP'` / `-c 'LIG'` | If multiple residues share a name, **all** matches are included (warning logged). |
-| By residue ID | `-c '123,456'` / `-c 'A:123,B:456'` / `-c '123A'` / `-c 'A:123A'` | Optional chain prefix; trailing letter = insertion code. |
-| By chain + name | `-c 'A:SAM'` / `-c 'A:SAM:123'` | First form selects all SAM in chain A; add resSeq to select one. |
-| By structure file | `-c substrate.pdb` / `-c substrate.cif` | Use coordinates from a separate PDB/mmCIF to locate substrates. |
+| Chain + name + number (recommended) | `-c 'A:TYR:44'` / `-c 'A:TYR:44,A:SAM:123'` | Exactly one residue per entry. |
+| Chain + name | `-c 'A:SAM'` | Every SAM in chain A; a warning is logged when more than one matches. |
+| Chain + number | `-c 'A:123'` / `-c 'A:123,B:456'` / `-c 'A:123A'` | Residue 123 of chain A; a trailing letter is the insertion code. |
+| Name only | `-c 'SAM,GPP'` / `-c 'LIG'` | Every residue with that name in any chain; a warning is logged when more than one matches. |
+| Number only | `-c '123,456'` / `-c '123A'` | The residue with that number in every chain. |
+| Structure file | `-c substrate.pdb` / `-c substrate.cif` | The residues whose coordinates match a separate PDB / mmCIF file. |
+
+Long mmCIF chain IDs and residue numbers above 9999 use the same forms. Chain IDs are case-sensitive; residue names are not. A PDB with an empty chain column, such as the bundled example PDBs, takes only the name or number forms (`-c 'SAM,GPP,MG'`, `--selected-resn '44,63,186'`).
+
+```bash
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:SAM' -o model.pdb        # every SAM in chain LONG_CHAIN
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:SAM:10001' -o model.pdb  # one SAM
+pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb      # chain + number
+```
 
 (selected-resn-takes-ids)=
 ### `--selected-resn` uses the same residue selectors
 
-`--selected-resn` on `extract` and `all` accepts numeric IDs, residue names,
-and chain-qualified names. For example, `A:123A` force-includes one insertion-
-code residue, `A:SAM` includes every SAM in chain A, and `A:SAM:123` narrows
-that selection to one residue. An unqualified name such as `TYR` includes all
-matches and warns when more than one is present.
+`--selected-resn` on `extract` and `all` force-includes residues in the model and accepts the same forms. For example, `A:TYR:44` includes one residue, `A:SAM` every SAM in chain A, and `A:123A` one insertion-code residue. A name without a chain, such as `TYR`, includes every match and warns when more than one is present.
 
 (charge-specification)=
 
@@ -72,33 +79,24 @@ matches and warns when more than one is present.
 For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
 
 ```bash
--l 'SAM:1,GPP:-3'        # per-residue mapping (recommended; `=` separator also accepted)
+-l 'SAM:1,GPP:-3'        # per-residue mapping (recommended)
 -l 'LIG:-2'              # single mapping
 -l -3                    # single integer = total ligand charge
 -q 0                     # explicit total system charge
 ```
 
-**Resolution order when extraction is skipped** (highest priority first):
+**Resolution order** (highest priority first):
 
 1. Explicit `-q/--charge`.
-2. Total derived from explicit `--ligand-charge/-l` and PDB/mmCIF residue metadata.
-3. `calc.charge` from `--config` (when neither CLI charge form is supplied).
-4. `.gjf` template metadata.
-5. Abort if unresolved.
+2. With `--ligand-charge/-l`: the total of the standard residues, ions, and your ligand charges in the PDB/mmCIF input (with `all -c`, in the extracted model).
+3. `calc.charge` from `--config`.
+4. Without `-l`: with `all -c`, the total of the standard residues and ions in the extracted model, other residues counted as 0; for a `.gjf` input, the charge in its template.
+5. Otherwise, stop with an error.
 
-This branch applies to per-stage subcommands (`opt` / `tsopt` / `freq` …)
-and to `all` when `-c/--center` is omitted.
-
-**`all -c/--center`:** extraction derives a charge from standard residues,
-ions, and `--ligand-charge/-l`. Explicit `-q` still has highest priority and
-sets the total system charge; a mismatch with the extraction-derived value is
-reported as a warning. Without `-q`, an explicit `--ligand-charge/-l` mapping
-drives extraction and its derived charge takes priority over YAML. When neither
-CLI charge form is supplied, configured `calc.charge` overrides the automatic
-extractor value; if it is also absent, the extractor value is used.
+The console prints the derived charge as `Total active site model charge`; [Check the model](model-setup.md#check-the-model) lists the lines to read after `extract`.
 
 ```{tip}
-Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
+Always provide `--ligand-charge/-l` for non-standard residues to ensure correct charge propagation.
 ```
 
 ## Spin multiplicity
@@ -113,27 +111,26 @@ Use `-m/--multiplicity` consistently in `all` and per-stage subcommands.
 
 ## Atom selectors
 
+Atom selectors name single atoms in `--scan-lists` and in `--distance-restraint` of `opt`; `--freeze-atoms` takes only 1-based atom numbers (see [Freeze atoms and restrain distances](model-setup.md#freeze-atoms-and-restrain-distances)).
+
 ```bash
 --scan-lists '[(1, 5, 2.0)]'                                          # 1-based integer indices
---scan-lists '[("SAM,320,CS1", "GPP,321,C7", 1.60)]'                  # PDB-style selector strings
---scan-lists '[("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)]'              # chain-qualified
+--scan-lists '[("SAM,320,CS1", "GPP,321,C7", 1.60)]'                  # residue name, number, atom name
+--scan-lists '[("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)]'              # with chain ID
 ```
 
-Three-field selector delimiters are space · comma · slash · backtick ·
-backslash, and their residue-name / residue-number / atom-name tokens may
-appear in any order. To disambiguate repeated names or numbering, use the
-positional four-field form `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
+A three-field selector gives the residue name, residue number, and atom name in any order, separated by spaces, commas, colons, slashes, backticks, or backslashes (`"SAM,320,CS1"`, `"SAM 320 CS1"`, and `"320,SAM,CS1"` select the same atom). Three fields never include a chain; to name the chain, use the four-field form `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` in this order, with any insertion code after the number (`A:SAM:12B:C1`).
 
 (scan-list-spec)=
 
 ### Scan-list spec
 
-`--scan-lists/-s` (on `scan`, `scan2d`, `scan3d`, and `all`) accepts one or more inline Python literals. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
+On `scan`, `scan2d`, `scan3d`, and `all`, `--scan-lists/-s` accepts one or more inline Python literals. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
 
 **YAML / JSON spec file** (root = mapping; key is `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
 
 ```yaml
-one_based: true            # optional; defaults to CLI --one-based
+one_based: true            # optional; defaults to the command's --one-based/--zero-based (1-based)
 stages:                    # scan
   - [[1, 5, 1.35]]
   - [[1, 5, 2.20], [2, 8, 1.80]]
@@ -146,7 +143,7 @@ pairs:                     # scan2d (exactly 2 entries) / scan3d (exactly 3 entr
   - [2, 8, 1.20, 3.20]
 ```
 
-Each `scan` stage accepts distance targets and distance, angle, or dihedral ranges. Each `scan2d` / `scan3d` axis is `(i,j,low,high)`, `(i,j,k,low,high)`, or `(i,j,k,l,low,high)`. Indices may be integers, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` selectors.
+Each `scan2d` / `scan3d` axis is `(i,j,low,high)`, `(i,j,k,low,high)`, or `(i,j,k,l,low,high)`. Indices may be integers, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` selectors.
 
 **Inline literal**: wrap in **single quotes** so the shell does not interpret parens / spaces; use double-quoted PDB selectors inside.
 
@@ -158,20 +155,43 @@ Each `scan` stage accepts distance targets and distance, angle, or dihedral rang
 -s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"       # avoid: double-quoted outer literal requires escaping inner quotes
 ```
 
-For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted (no multi-stage support).
+For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted.
 
 | Command | Accepted scan specification |
 | --- | --- |
-| `scan` | Inline 3-tuples or bidirectional 4-tuples; YAML/JSON is also accepted |
-| `all --scan-lists` | Inline distance, angle, or dihedral target tuples only (no ranges, no YAML/JSON) |
+| `scan` | Inline distance targets `(i,j,target)`, or ranges `(i,j,low,high)`, `(i,j,k,low,high)`, and `(i,j,k,l,low,high)` scanned in both directions from the input geometry ([Bidirectional scan](scan.md#bidirectional-scan-4-tuple)); YAML/JSON is also accepted |
+| `all --scan-lists` | Inline targets only: distance `(i,j,target)`, angle `(i,j,k,deg)`, or dihedral `(i,j,k,l,deg)` (no ranges, no YAML/JSON) |
 | `scan2d` | One literal/file containing exactly two distance, angle, or dihedral axes |
 | `scan3d` | One literal/file containing exactly three distance, angle, or dihedral axes |
+
+A four-element tuple is therefore a distance range in `scan` and an angle target in `all`.
 
 ## Input file requirements
 
 - **PDB** — must contain hydrogens (add via `reduce` / `pdb2pqr` / Open Babel) and element symbols in cols 77–78 (`pdb2reaction add-elem-info` if missing). Multiple PDBs must share identical atoms in the same order.
-- **mmCIF** — use `.cif` / `.mmcif` for multi-character chains, large residue/atom identifiers, or 10,000+ residues. The common bridge calculates through an internal PDB and restores original IDs in CIF output. Reaction-ordered inputs still require identical atoms and order.
+- **mmCIF** — see {ref}`mmCIF and large structures <mmcif-input>` below.
 - **XYZ / GJF** — accepted when active-site extraction is skipped (omit `-c/--center`). `.gjf` files can provide charge / spin defaults from embedded metadata.
+
+(mmcif-input)=
+### mmCIF and large structures
+
+Every calculation command that accepts PDB also accepts `.cif` and `.mmcif`. Use mmCIF for chain IDs longer than one character, residue numbers beyond four digits, atom serial numbers beyond five digits, or structures with 10,000 or more residues.
+
+`pdb2reaction` reads the first coordinate model and keeps one alternate location (altLoc) per residue, the one with the highest mean occupancy. During the calculation the atoms carry temporary chain IDs and residue numbers; output CIF files restore the original chain IDs, residue numbers, and insertion codes. Large or non-standard PDB files are handled the same way, for example files with 10,000 or more residues, 99,999 or more atoms, hybrid-36 numbering, or numbers that overflow their columns.
+
+Residue and atom selectors use the original chain IDs and residue numbers. For the `.cif` files written next to each output, see [Output Directory Layout](output-layout.md).
+
+(trajectory-one-frame)=
+### Extract one frame from a trajectory
+
+A `_trj.xyz` file is a plain multi-frame XYZ file, so frame k (counted from 1) can be extracted with:
+
+```bash
+N=$(head -1 scan_trj.xyz); k=12
+sed -n "$(( (k-1)*(N+2)+1 )),$(( k*(N+2) ))p" scan_trj.xyz > frame_12.xyz
+```
+
+To continue with the PDB topology, pass the original PDB to `--ref-pdb` of the next command; the coordinates come from the frame.
 
 (exit-codes)=
 
@@ -184,51 +204,45 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | `2` | Invalid input, CLI arguments, or configuration |
 | `130` | User interruption (SIGINT) |
 
-Exit codes do not depend on JSON output. An IRC cycle limit alone is not a failure; all judges the TS and endpoint optimizations.
+Exit codes do not depend on JSON output. Exit code `0` covers both `success` and `partial`; tell them apart by `scientific_status`. `all` and `path-search` write it to `summary.log`, and `all` also prints `Scientific status:` on the console. The other commands record it in `result.json` when run with `--out-json` (see [Execution and requested-stage completion](json-output.md#execution-and-requested-stage-completion)). Without `--out-json`, read the console lines that the command's page lists, for example [Judging the IRC](irc.md#judging-the-irc) for `irc`.
 
 (opt-mode-semantics)=
 
 ## `--opt-mode` (subcommand-dependent)
 
-```{warning}
-The same `--opt-mode` token selects **different algorithms** by subcommand, and defaults differ. Always check the table before copying a recipe.
-```
+`--opt-mode` picks the optimizer. L-BFGS (limited-memory BFGS) and RFO (rational function optimization) find minima; Dimer, RS-P-RFO (restricted-step partitioned RFO), RS-I-RFO (restricted-step image RFO), and TRIM (trust-region image minimization) search for a TS (transition state).
 
 | Subcommand | `grad` alias selects | `hess` alias selects | Default |
 |---|---|---|---|
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
 | `path-opt` (endpoint preopt) | L-BFGS | RFO | `grad` |
-| `path-search` (HEI±1 / kink-node single-structure) | L-BFGS | RFO | `grad` |
+| `path-search` (single-structure optimization of HEI±1 and kink nodes; HEI = highest-energy image) | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
-| `all` (pre-opt, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` |
-| `all` (post-IRC endpoint, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
+| `all` (pre-optimization, `--opt-mode`) | L-BFGS | RFO | `grad` |
+| `all` (TS optimization, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` |
+| `all` (endpoint optimization after IRC, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
-Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimization — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
+The same `--opt-mode` value selects a **different algorithm** on each subcommand, and the defaults differ, so check the table before copying a recipe. Algorithm names are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. On `tsopt`, `--opt-mode grad` is therefore a **Dimer** TS search, not an L-BFGS minimization, and this Dimer periodically computes the Hessian to update its direction. Write `--opt-mode dimer` or `rsirfo` on `tsopt` and `--opt-mode lbfgs` or `rfo` on `opt` to make a recipe unambiguous.
 
 ## CLI ↔ YAML name mismatches
 
-A few CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. Full mapping table: {ref}`YAML Reference › Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`. The two most-asked cases:
+A few CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The main flags and their YAML keys are in {ref}`YAML Reference › Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`. The two most-asked cases:
 
 (pressure-vs-pressure-atm)=
 - **`--pressure` (CLI) vs `pressure_atm` (YAML)** — on `freq` the flag is `--pressure FLOAT`; in `all` it is exposed as `--freq-pressure`. YAML key: `thermo.pressure_atm`. Both carry **atm** values (converted to Pa internally).
 
-(engine-vs-dft-engine)=
-### DFT engine
-
-Standalone `dft` and `all` both use `--dft-engine gpu|cpu`. The corresponding
-YAML key is `dft.engine`.
+- **`--step-size` (CLI) vs `step_length` (YAML)** — on `irc` the flag is `--step-size FLOAT` (bohr); in `all` it is `--irc-step-size`. YAML key: `irc.step_length`.
 
 ```bash
-pdb2reaction dft -i ts.xyz -q 0 --dft-engine gpu
-pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu
+pdb2reaction irc -i ts.pdb -q 0 --step-size 0.05
+pdb2reaction all -i r.pdb p.pdb -c SAM -l 'SAM:1' --tsopt --irc-step-size 0.05
 ```
 
 ## YAML configuration
 
 ```bash
-pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
+pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
 (configuration-precedence)=
@@ -237,17 +251,25 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 built-in defaults  <  --config (YAML)  <  CLI options
 ```
 
-Built-in defaults are in `pdb2reaction/core/defaults.py`. Only *explicitly supplied* CLI values override YAML; options left at their CLI default do not mask YAML values. Applies uniformly to all calc subcommands. Full schema: [YAML Reference](yaml-reference.md).
-
-- **Known default exception**: `flatten_max_iter` starts at 0 before YAML is
-  applied. An omitted toggle therefore retains an explicit YAML value;
-  `--flatten` enables the configured/built-in positive value and
-  `--no-flatten` forces 0. See {ref}`flatten-precedence-caveat`.
+`pdb2reaction <subcmd> --help-advanced` and the [Command Reference](reference/commands/index.md) show the built-in default of each option (`[default: …]`). Only *explicitly supplied* CLI values override YAML; options left at their CLI default do not mask YAML values. This order holds for every command that takes `--config`. Full schema: [YAML Reference](yaml-reference.md).
 
 ## Output directory
 
-`-o/--out-dir ./my_results/` overrides stage-command output directories. Defaults: `all → ./result_all/`, per-stage subcommand → `./result_<subcmd>/`. `extract` instead uses repeatable file-valued `-o/--output` and defaults to the current directory.
+`-o/--out-dir ./my_results/` sets the output directory of a calculation command; each command has its own default, listed in [Output Directory Layout](output-layout.md). `extract` instead takes one or more file paths with `-o/--output` and writes to the current directory by default.
+
+## Notes
+
+* **Flags with a value**: a flag followed by a value (`true` / `false`) is also accepted; write paired flags in commands and scripts.
+* **Put the chain before a residue name and number.** `TYR:44` is read as chain `TYR`, residue 44, and stops with a "not found" error; write `A:TYR:44`.
+* **Use one kind of residue selector per list.** The forms in the table fall into three kinds: names only (`SAM`), chain + name with or without a number (`A:SAM`, `A:TYR:44`), and numbers with or without a chain (`A:123`, `123`). Kinds cannot be mixed in one list: `A:TYR:44,A:SAM` works, while `A:SAM,SAM`, `A:44,A:SAM`, and `SAM,TYR:44` stop with an error.
+* **Atom selectors on PDB files with an empty chain column** take three fields, such as `'SER:11:HG'` or `'SER 11 HG'`. `_` does not stand for an empty chain, so `'_:SER:11:HG'` matches no atom and stops with an error.
+* **mmCIF and large structures**: up to 619,938 residues can be handled (62 one-character chain IDs × 9,999 residue numbers in the internal PDB used during the calculation). `fix-altloc` and `add-elem-info` read PDB only. For mmCIF, the altLoc is chosen and element symbols are taken from `_atom_site.type_symbol` when the file is read. A row without it stops with an error.
+* **`--flatten` and YAML**: `--flatten` (`opt`, `tsopt`, and `all`; off by default) displaces the structure along extra imaginary modes and optimizes again. When neither `--flatten` nor `--no-flatten` is given, a `hessian_dimer.flatten_max_iter` value set in YAML is kept; `--no-flatten` forces 0 (see {ref}`When --flatten is on <flatten-precedence-caveat>`).
 
 ## See Also
 
-[Installation](installation.md) · [Getting Started](getting-started.md) · [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) · [YAML Reference](yaml-reference.md).
+- [Installation](installation.md) — setup and dependencies
+- [Getting Started](getting-started.md) — the shortest run and which page to read next
+- [Output Directory Layout](output-layout.md) — file names and default output directories
+- [Troubleshooting](troubleshooting.md) — common errors and fixes
+- [YAML Reference](yaml-reference.md) — all configuration options

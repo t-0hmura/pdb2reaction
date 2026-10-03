@@ -1,126 +1,134 @@
-# Quickstart: scan-seeded `pdb2reaction all` workflow
+# Quickstart: `pdb2reaction all --scan-lists`
 
-## Goal
+## Overview
 
-Run `pdb2reaction all` from a single structure by defining one or more distance coordinates with `--scan-lists/-s`. The workflow performs the restrained scan, optimizes an MEP, and optionally continues to transition-state (TS) optimization and intrinsic reaction coordinate (IRC) analysis.
+`pdb2reaction all --scan-lists` (`-s`) builds a reaction path from one structure. It drives the distances you choose to target values under harmonic restraints (a scan) and uses the scan endpoints to search the minimum energy path (MEP). With `--tsopt`, it continues to transition-state (TS) optimization and an intrinsic reaction coordinate (IRC) calculation.
 
-## Prerequisites
+The commands below use `1.R.pdb` from the bundled [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples); run them in that directory.
 
-- Input structure: PDB/mmCIF; XYZ/GJF is also accepted when extraction is omitted and atom indices are used. The commands below use `1.R.pdb` from the bundled [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory; run them there.
-- Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
+### What it is for
 
-## Selection among scan workflows
+* **No product structure**: drive the forming and breaking bonds to make the product (P) from the reactant (R).
+* **Two-step reactions**: drive one step after another, such as a methyl transfer followed by a proton transfer.
+* **MEP and TS from the scan**: go on from the scanned path to the MEP and the TS in the same run.
 
-| Objective | Command | Coordinate treatment |
-| --- | --- | --- |
-| Generate restrained endpoint structures and trajectories only | `pdb2reaction scan` | Concerted multi-distance and multistage scans are supported |
-| Continue from a scan-defined path to MEP and optional TS/IRC analysis | `pdb2reaction all -s ...` | The scan endpoints seed `path-opt` or, with `--refine-path`, `path-search` |
-| Explore a two- or three-dimensional energy landscape and map a PES | `pdb2reaction scan2d` / `scan3d` | Cartesian product of independent distance grids |
+## Choosing a scan command
 
-For `scan` and scan-seeded `all`, one literal defines one stage. Multiple tuples
-within that literal are advanced concertedly; multiple literals define
-sequential stages.
+| Goal | Command |
+| --- | --- |
+| Restrained structures and a scan trajectory only | `pdb2reaction scan` |
+| Go on from the scan to the MEP, and optionally to TS and IRC | `pdb2reaction all -s ...` |
+| A 2D or 3D energy map over two or three coordinates | `pdb2reaction scan2d` / `scan3d` |
 
-## Scan targets via `--scan-lists/-s` inline literal (default)
+## Examples
 
-`--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
+### 1. Check the input first
 
-Validate the complete `all` input, extraction, charge, and scan mapping before
-execution with:
+`--dry-run` checks the input, the model extraction, the charge and spin parity (electron count vs. multiplicity), and the mapping of the scan atoms to the model, and then stops without any calculation.
 
 ```bash
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
   -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
-Standalone `scan --dry-run` validates the input and scan specification; it does
-not validate `all`-specific extraction or atom-index remapping.
+The check has passed when the console shows `[all] --dry-run parity check OK: ...` and `[all] Planned stages: extract -> scan -> path_opt.`, and ends with `[Dry run] --dry-run completed. Input command is valid.` When the check fails, the run stops with an error such as `--dry-run parity check failed`; look up the message in [Troubleshooting](troubleshooting.md).
 
-### Basic syntax
+### 2. One stage
 
-Each literal is a list of target tuples: distance `(atom1, atom2, target_Å)`, angle `(atom1, atom2, atom3, target_deg)`, or dihedral `(atom1, atom2, atom3, atom4, target_deg)`. Distances are in **ångströms** and angles in degrees. One literal = one stage.
+Drive the distance between SAM CS1 (atom 4360) and GPP C7 (atom 4419; C6 in IUPAC numbering) to 1.60 Å. Give the atoms by number or by name; the two commands are the same scan.
 
 ```bash
-# Single stage, integer atom indices (1-based by default)
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+# Atom numbers (1-based by default)
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[(4360, 4419, 1.60)]' -o ./result_scan
 
-# Single stage, PDB selector strings
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+# Atom names
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[("SAM,320,CS1", "GPP,321,C7", 1.60)]' -o ./result_scan
 ```
 
-Use `-c/--center` when an active-site model must be extracted from a full-system
-PDB/mmCIF. Omit it for an already extracted cluster model or for XYZ/GJF input;
-in that case the supplied structure is analyzed as given. `-m/--multiplicity`
-defaults to `1` (singlet) but is shown explicitly here for clarity.
+The run succeeded when the `====== Pipeline summary ======` block near the end of the console shows `Scientific status: success`; `summary.json` holds the same value in `scientific_status`.
 
-### Multiple stages
+### 3. Two stages
 
-Pass multiple literals — each becomes one sequential stage:
+Each bracketed list after `-s` is one stage, called a literal (a list written out as text), and the stages run in order:
 
 ```bash
 # Stage 1: drive the methyl-transfer distance to 1.60 Å
 # Stage 2: then drive the proton transfer to 0.90 Å
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s \
   '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
   '[("GPP,321,H11","GLU,186,OE2",0.90)]' \
   -o ./result_scan
 ```
 
-Stages run sequentially; each starts from the previous stage's relaxed result.
+This short example drives only the bonds that form. In your own reaction, put the bonds that break and the H atoms that move in the same stage too; see {ref}`Decide how to split the reaction <mechanism-split>`.
 
-## Expected output
+## Writing `--scan-lists`
+
+* **Tuples**: each literal is a list of tuples: distance `(atom1, atom2, target_Å)`, angle `(atom1, atom2, atom3, target_deg)`, or dihedral `(atom1, atom2, atom3, atom4, target_deg)`. Distances are in ångströms, and angles and dihedrals in degrees.
+* **Atoms**: give 1-based integer atom numbers in the order of the full input structure (`--scan-zero-based` for 0-based), or atom names in double quotes. With `-c`, both are mapped to the extracted model.
+* **Stages**: the tuples in one literal move together, and each stage starts from the relaxed result of the previous one. Give `-s` once and list the literals after it; `all` stops with an error when `-s` is repeated.
+* **Quoting**: wrap each literal in single quotes so that the shell leaves the parentheses and spaces alone.
+* **Bundled PDBs**: they have an empty chain column, so use the name or number forms such as `"SAM,320,CS1"`, not the forms with a chain ID.
+
+For the full syntax of atom names and quoting, see {ref}`Scan-list spec <scan-list-spec>`.
+
+## Output files
+
+The commands above write:
 
 ```text
 result_scan/
 ├── summary.log
-├── summary.json
-├── mep_trj.pdb                        # Full MEP path (promoted to the root)
-├── energy_diagram_MEP.png         # MEP energy plot (promoted to the root)
-└── _work/                         # Pipeline scratch (safe to delete)
+├── summary.json                 # Results, with scientific_status
+├── mep_trj.pdb                  # MEP over all segments
+├── energy_diagram_MEP.png       # MEP energy profile
+└── _work/                       # Intermediate files, including the HEI (TS candidate); kept after the run
     ├── scan/
-    │   ├── preopt/                # Pre-optimized structure
-    │   ├── stage_01/              # Scan stage 1 results
-    │   │   ├── result.{xyz,pdb}   # Final restrained endpoint (unbiased only with --scan-endopt)
-    │   │   ├── scan_trj.xyz       # Scan trajectory
+    │   ├── preopt/              # Optimized starting structure
+    │   ├── stage_01/            # Scan stage 1
+    │   │   ├── result.{xyz,pdb} # Restrained endpoint (optimized without restraints only with --scan-endopt)
+    │   │   ├── scan_trj.xyz     # Scan trajectory
     │   │   └── scan.pdb
-    │   └── stage_02/              # Scan stage 2 (if multi-stage)
-    └── path_opt/                  # MEP search (path_search/ with --refine-path)
-        └── hei_seg_01.{xyz,pdb}   # Highest-energy MEP image
+    │   ├── stage_02/            # Scan stage 2 (two-stage run)
+    │   └── result.json          # Scan results of each stage
+    └── path_opt/                # MEP search (path_search/ with --refine-path, the recursive MEP search)
+        └── hei_seg_01.{xyz,pdb} # Highest-energy image of segment 1
 ```
 
-This minimal command stops after the MEP stage and does **not** create
-`segments/`. Add `--tsopt` to create canonical per-segment R/TS/P and IRC
-outputs after successful validation; add `--thermo` for `freq/` outputs.
+These commands stop after the MEP search and do not create `segments/`. Add `--tsopt` for the R/TS/P structures and IRC of each reactive segment in `segments/seg_NN/`, and `--thermo` for `freq/`.
 
-### Output validation
+## Checking the result
 
-1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
-2. `mep_trj.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
-3. `summary.json` — check [result status and reasons](json-output.md#execution-and-requested-stage-completion) before interpreting barriers and bond changes in `summary.log`
+1. **Completion**: `scientific_status` is `success` when every requested stage converged; otherwise it is `partial` or `failed`, with the [reasons](json-output.md#execution-and-requested-stage-completion) in `scientific_status_reasons`. With `--tsopt`, two checks are left for you: that the imaginary mode moves the bonds that form or break, and that the endpoints are the intended R and P.
+2. **Scan**: open `_work/scan/stage_01/scan_trj.xyz` in a viewer and check that the distances change as intended. At the end of each stage the console prints `[stage 1] Covalent-bond changes (start vs final): Yes` or `No`, and `_work/scan/result.json` records it in `stages[].bond_changes`.
+3. **MEP**: open `mep_trj.pdb` and `_work/path_opt/hei_seg_01.pdb`, the highest-energy image (HEI) and TS candidate, and check that `energy_diagram_MEP.png` shows a clear barrier.
+4. **TS (with `--tsopt`)**: a successful TS optimization gives one imaginary mode along the reaction coordinate. The console then prints `[tsopt] Converged (n_imag=1).`, and `summary.json` records the count in `post_segments[].tsopt.n_imaginary_modes`. Open `segments/seg_01/ts/vib/imag_*_trj.xyz` in a viewer and check that the mode moves the bonds that form or break.
+5. **Endpoints (with `--tsopt`)**: open `segments/seg_01/irc/finished_irc_trj.xyz` and the optimized endpoints `segments/seg_01/reactant.pdb` and `product.pdb`, and check that they are the intended R and P. Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
 
 ## Notes
 
-- `-s/--scan-lists` accepts inline Python literals when used with `all`. The standalone `scan` subcommand additionally accepts a YAML/JSON spec file path (see [scan](scan.md)).
-- The scan engine is shared, but the parent option names and preoptimization defaults differ:
+* **Input**: PDB or mmCIF. Give `-c` to cut out a cluster model from the full system; leave it out for a model you already cut out, or for XYZ or GJF input with atom numbers, and the structure is used as is.
+* **Defaults of `all` and `scan`**: the two commands share the scan engine, but the option names and the defaults for the optimizations before and after the scan differ:
 
-  | Command | Step / bias | Relaxation limit | Preopt / endopt |
+  | Command | Step / restraint | Relaxation limit | Optimization before / after the scan |
   | --- | --- | --- | --- |
-  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-restraint-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preopt inherits parent `--preopt` (on by default); endopt is off (`--no-scan-endopt`) |
-  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--restraint-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20` Å; `--scan-restraint-k 300` eV/Å² | `--scan-relax-max-cycles 100000` | before: on (`--preopt/--no-preopt`); after: off (`--scan-endopt/--no-scan-endopt`) |
+  | `pdb2reaction scan` | `--max-step-size 0.20` Å; `--restraint-k 300` eV/Å² | `--relax-max-cycles 100000` | before: off (`--preopt/--no-preopt`); after: off (`--endopt/--no-endopt`) |
 
-  Override the step width with the corresponding CLI flag. Override the bias
-  strength with that CLI flag or YAML `bias.k`. See [scan](scan.md) and
-  [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
-- Each scan stage ends with a bond-change check (`has_bond_change`) on the final relaxed geometry. The per-stage result is recorded in the scan log, and — when `--out-json` is set — also in the aggregate `result.json` (under its `stages` array) written to the scan out-dir.
-- The recursive MEP refinement (`path-search`) consumes the scan endpoints unconditionally. Whether it runs is gated by `--refine-path`, **not** by the scan-stage bond-change flag (`has_bond_change`).
-- Successful scan completion establishes only that the restrained endpoint was generated. It does not establish an unconstrained minimum, an elementary reaction, or a transition state. Validate minima by unbiased optimization and validate TS candidates by saddle-order and IRC analysis.
-- Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
-- For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
+  The restraint strength can also be set with YAML [`bias.k`](yaml-reference.md#bias).
+* **Bond changes and `--refine-path`**: every scan endpoint goes on to the MEP search, whether or not its stage shows a bond change. `--refine-path` alone decides whether the MEP is refined recursively (`path_search/`).
+* **Scan endpoints**: a finished scan gives restrained structures. They are not minima or transition states until an optimization without restraints, or a TS optimization and IRC, confirms them.
+* **`scan` on its own**: the standalone `scan` also accepts a YAML or JSON spec file and scan ranges; `all -s` takes inline target tuples only.
+* **`scan --dry-run`**: it checks the input, the charge and spin parity, and the parse of `--scan-lists`, but not the extraction or atom mapping of `all`. Use `all --dry-run` for those.
 
-## Next step
+## Next steps
 
-- Full option reference: [all](all.md)
-- TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)
-- Term definitions (MEP, TS, IRC, …): [Glossary](glossary.md)
+- [Quickstart: TS-only mode](quickstart-tsopt.md): optimize and check a TS candidate, such as the top of a scan
+- [Tips for studying reaction mechanisms](mechanism-tips.md): how to split a reaction into stages ("Decide how to split the reaction")
+- {ref}`Freeze atoms and restrain distances <freeze-atoms-and-restraints>`: what the restraint strength means
+- [`scan`](scan.md): run the scan on its own
+- [`all`](all.md): full option reference (also `pdb2reaction all --help-advanced`)
+- [Glossary](glossary.md): MEP, TS, IRC, and other terms
+- [Troubleshooting](troubleshooting.md): find an error message or symptom and its fix

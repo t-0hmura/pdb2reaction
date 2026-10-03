@@ -1,155 +1,137 @@
-# `dft`
+# `dft`（DFT 一点計算）
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーとポピュレーション解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-svp です。小規模な活性部位モデルの DFT 一点エネルギー（およびポピュレーション解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造上の DFT 一点エネルギー評価に用います。バックエンドは `--dft-engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+## 概要
 
-> **前提条件:** native CUDA 13 GPU4PySCF は `pdb2reaction[dft]`、CUDA 12 site では `pdb2reaction[dft-cuda12]` をインストールします。
+`dft` サブコマンドは、1 つの構造に対して GPU4PySCF（GPU）または PySCF（CPU）で **DFT（密度汎関数理論）一点計算**を行います。**エネルギー**と、Mulliken・meta-Löwdin・IAO（内在的原子軌道）のポピュレーション解析による**原子電荷**を出力します。デフォルトの手法は ωB97M-V/def2-svp です。DFT 用の追加パッケージが必要です。[詳細なインストール手順](installation.md#詳細なインストール手順)の手順 7 を参照してください。
 
-> **溶媒:** `--solvent NAME --solvent-model pcm|smd`はPySCF native implicit solventを
-> 使用します。MLIP backendのxTB solvent-delta補正とは別経路です。
+`all --dft` は MLIP（機械学習原子間ポテンシャル）で求めた反応物（R）・遷移状態（TS）・生成物（P）に DFT 一点計算を行います。`-b dft` はコマンドのすべての計算を DFT で行います。違いは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
 
-## 実行例
+### 主な用途
 
-コマンド形式:
+* **MLIP 構造での DFT エネルギー**: MLIP で最適化した R・TS・P の一点計算
+* **電荷分布の把握**: 原子ごとの電荷と、開殻系のスピン密度
+* **陰溶媒中のエネルギー**: `--solvent` による PySCF の PCM（分極連続体モデル）または SMD（密度に基づく溶媒和モデル）
 
-```bash
-pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
- [--func-basis 'FUNC/BASIS'] \
- [--scf-max-cycles N] [--scf-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--dft-engine gpu|cpu] \
- [--solvent NAME] [--solvent-model pcm|smd] \
- [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
-```
+---
 
-基本的な GPU 一点計算。
+## 基本的な実行例
+
+### 1. GPU での一点計算
+
+中性の一重項について、GPU でエネルギーと電荷を計算します。
 
 ```bash
-pdb2reaction dft -i input.pdb -q 0 -m 1 --dft-engine gpu --out-dir ./result_dft
+pdb2reaction dft -i input.pdb -q 0 -m 1 --out-dir ./result_dft
 ```
 
-大きい基底と厳しい SCF 条件で実行する。
+端末に `E_total (Hartree): …` と `E_total (kcal/mol): …` が出て、`result_dft/result.yaml` に `energy.converged: true` があれば成功です。
+
+### 2. SCF を厳しくし、基底を大きくする
+
+SCF（自己無撞着場）の収束を厳しくし、基底を大きくします。
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 \
- --func-basis 'wb97m-v/def2-tzvpd' --scf-tol 1e-10 --scf-max-cycles 200 \
- --dft-engine gpu --out-dir ./result_dft_tight
+  --func-basis 'wb97m-v/def2-tzvpd' --scf-tol 1e-10 --scf-max-cycles 200 \
+  --out-dir ./result_dft_tight
 ```
 
-> **注意:** 上記の `def2-tzvpd` 設定は高costです。普遍的な
-> atom-count/VRAM cutoffはないため、代表構造でpilotし、下記の注意事項を
-> 参照してください。
+### 3. CPU だけで計算する
 
-移植性重視で CPU バックエンドを強制する。
+GPU の無いマシンでは、CPU の PySCF で計算できます。
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 --dft-engine cpu --out-dir ./result_dft_cpu
 ```
 
-`-q` を省略し、リガンド定義から総電荷を導出する。
+### 4. リガンドの電荷から総電荷を求める
+
+`-q` を省略して `-l` でリガンドの形式電荷を与えると、`dft` は PDB 中のアミノ酸残基とイオンの電荷を足して総電荷を求め、その内訳を端末に表示します。
 
 ```bash
-pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
- --dft-engine gpu --out-dir ./result_dft_ligand
+pdb2reaction dft -i input.pdb -l 'SAM:1,GPP:-3' -m 1 --out-dir ./result_dft_ligand
 ```
 
-`-q` が省略され `--ligand-charge/-l` がある場合、入力は酵素−基質複合体として扱われ、`extract.py` の電荷サマリーから総電荷を計算します。明示的な `-q` は常に最優先です。どちらの CLI 電荷指定もない場合は YAML `calc.charge`、GJF ヘッダーの順に参照し、電荷が決まらなければ中断します。
+---
 
-## 処理の流れ
+## 処理の仕組みと計算仕様
 
-1. **入力処理** – 共通bridgeがPDB/mmCIFと`geom_loader`対応形式を受け入れ、座標を`input_geometry.xyz`へ再出力します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定し、原子数検証と電荷導出に使用できます。DFT 段階自体はPDB/CIF/GJF出力を生成しません。
-2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--dft-engine` で GPU/CPU を制御します。低メモリモードは既定で有効です。PCM/SMDを含むclosed-shell GPU計算は`gpu4pyscf.dft.rks_lowmem.RKS`、open-shell GPUとCPUはDF tensorを保持しない標準direct-JK RKS/UKSを使います。十分なメモリがある場合、`--no-dft-low-memory`でdensity fittingを有効にすると難しいSCFの収束が改善することがあります。CPU thread数とhost RAM上限はscheduler/process制約から自動検出し、`--dft-nprocs`と`--dft-memory`で上書きできます。これらの資源値は記録されますが、科学的checkpoint identityには入りません。
-3. **ポピュレーション解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した項目は `null` に設定され、警告が出力されます。
+1. **構造の読み込み**:
+PDB・mmCIF・XYZ・GJF を読み込み、PySCF に渡す座標を `input_geometry.xyz` に保存します。XYZ・GJF 入力では、`-l` に必要な PDB/mmCIF のトポロジーを `--ref-pdb` で与えます。`dft` は PDB・mmCIF・GJF のファイルを書き出しません。
+2. **SCF**:
+`--func-basis` で汎関数と基底を、`--dft-engine` で GPU4PySCF（`gpu`、デフォルト）か PySCF（`cpu`）を選びます。閉殻は RKS、開殻は UKS で計算します。デフォルトで有効な低メモリモードでは、密度フィッティングを使わずに J と K を直接組み立て、GPU の閉殻では GPU4PySCF の低メモリ版 RKS を使います。`--no-dft-low-memory` では密度フィッティングを使います。
+3. **電荷と結果ファイル**:
+SCF の後に Mulliken・meta-Löwdin・IAO の電荷とスピン密度を求め、Hartree と kcal/mol のエネルギーとともに `result.yaml` に書き出します。失敗した解析の列は `null` になり、警告が出ます。
 
-## 出力
+---
 
-```
-out_dir/ (デフォルト:./result_dft/)
-├─ input_geometry.xyz # PySCFに送信された構造スナップショット
-├─ result.yaml # 収束/エンジンメタデータを含むエネルギー/電荷/スピンサマリー
-```
+## 主な出力ファイル
 
-- `result.yaml` には以下が含まれます:
- - `energy`: Hartree/kcal·mol⁻¹、収束フラグ、エンジン情報（`engine`: `gpu4pyscf(rks_lowmem)`/`gpu4pyscf`/`pyscf(cpu)`、`used_gpu`、`used_lowmem`）
- - `charges`: Mulliken/meta-Löwdin/IAO 原子電荷（失敗時は `null`）
- - `spin_densities`: Mulliken/meta-Löwdin/IAO スピン密度（UKS のみ、失敗時は `null`）
-- 電荷・多重度・スピン(2S)、汎関数/基底、収束設定、出力ディレクトリも要約されます。
+`--out-dir` に以下のファイルを書き出します。
 
-## CLI オプション
-
-| オプション | 説明 | デフォルト |
-| --- | --- | --- |
-| `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb`/`.cif`/`.mmcif`/`.xyz`/`_trj.xyz`/`.gjf`/…） | 必須 |
-| `-q, --charge INT` | PySCF に提供される総電荷。優先順位は `-q` → `--ligand-charge/-l` による残基電荷の導出 → YAML `calc.charge` → GJF ヘッダー | 他の指定から電荷が決まらなければ必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | YAML `calc.spin` → GJF → `1` |
-| `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-svp` |
-| `--scf-max-cycles INT` | 最大 SCF 反復 | `100` |
-| `--scf-tol FLOAT` | SCF 収束許容値（Hartree） | `1e-9` |
-| `--grid-level INT` | PySCF 数値積分グリッドレベル | `3` |
-| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
-| `--dft-engine [gpu\|cpu]` | SCF バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。 | `gpu` |
-| `--solvent TEXT` | PySCF native implicit-solvent名。`none`で無効。 | `none` |
-| `--solvent-model [pcm\|smd]` | PySCF native implicit-solvent model。 | `smd` |
-| `--dft-low-memory/--no-dft-low-memory` | PCM/SMDを含むclosed-shell GPU経路で`gpu4pyscf.dft.rks_lowmem.RKS`を使用。open-shell GPUとCPUは標準direct-JK RKS/UKSを使い、`--no-dft-low-memory`でdensity fittingを有効化 | `True` |
-| `--dft-nprocs INT` | PySCF/OpenMP の CPU thread 数。省略時は scheduler/affinity/host から自動検出 | `auto` |
-| `--dft-memory SIZE` | PySCF host RAM 上限（例: `64GB`、`120000MB`）。GPU VRAM ではありません | `auto` |
-| `--ref-pdb FILE` | XYZ/GJF入力の原子数検証とリガンド電荷導出に使う参照PDBまたはmmCIF topology（出力変換なし） | _None_ |
-| `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
-| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
-
-## YAML 設定
-
-マッピングルートで指定します。`dft` セクション（および任意の `geom`）が存在する場合に適用されます。マージ順は次の通りです。
-
-- defaults
-- `--config`
-- 明示的に指定した CLI オプション
-
-```yaml
-geom:
- coord_type: cart # optional geom_loader settings
-dft:
- func: wb97m-v # exchange–correlation functional
- basis: def2-svp # basis set name (alternatively use func_basis: "FUNC/BASIS")
- lowmem: true # direct-JK低メモリmode。falseでdensity fitting
- nprocs: auto # 必要なら正の整数で明示
- memory: auto # 必要なら64GBなどのhost RAM上限
- conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
- max_cycle: 100 # maximum SCF iterations
- grid_level: 3 # PySCF grid level
- pyscf: {mf: {level_shift: 0.2}} # 任意の PySCF object attribute
- verbose: 0 # PySCF verbose レベル (0-9); CLI -v 2/3 では実行時 PySCF verbose レベル が >=4
- out_dir: ./result_dft/ # output directory root
+```text
+result_dft/
+├─ input_geometry.xyz   # PySCF に渡した構造
+├─ result.yaml          # エネルギー、収束、エンジン、原子ごとの電荷とスピン密度
+├─ result.json          # 機械可読な要約（--out-json 指定時）
+└─ summary.json         # result.json の写し。result.json を読む（--out-json 指定時）
 ```
 
-`dft` subcommand は `dft.pyscf` を、`-b dft` の calculator workflow は同じ PySCF object 名を `calc.dft.pyscf` から読みます。
+* **`energy`**（`result.yaml`）: `hartree`・`kcal_per_mol`・`converged`・`used_gpu`・`used_lowmem`・`engine`。`engine` は `gpu4pyscf(rks_lowmem)`・`gpu4pyscf`・`pyscf(cpu)` のいずれかです。
+* **`charges [index, element, mulliken, lowdin, iao]`**: 1 原子 1 行の表で、`index` は 0 始まりです。端末にも同じ表が出ます。
+* **`spin_densities [index, element, mulliken, lowdin, iao]`**: 同じ形の表です。閉殻でも書き出し（値はすべて 0）、端末には開殻のときだけ表示します。
+* **`result.json`**: 電荷とスピン密度を `mulliken`・`lowdin`・`iao` の配列で持ち、電荷・多重度・汎関数・基底・SCF の設定も記録します。[JSON 出力リファレンス](json-output.md#dft) を参照してください。
 
-全keyとdefaultは [YAMLリファレンス](yaml-reference.md) を参照してください。
+---
 
-## 終了コード
+## 主な CLI オプション
 
-終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.xyz`, `.gjf` 等） |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
+| `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1）。`.gjf` 入力ではファイルの値を使用 |
+| `-l, --ligand-charge` | 文字列 | `None` | 残基ごとの形式電荷（例: `'SAM:1,GPP:-3'`）またはリガンドの総電荷。PDB/mmCIF 入力か `--ref-pdb` が必要 |
+| `--func-basis` | 文字列 | `wb97m-v/def2-svp` | 汎関数と基底（`汎関数/基底` の形） |
+| `--scf-tol` | 浮動小数点数 | `1e-9` | SCF の収束閾値（Hartree） |
+| `--scf-max-cycles` | 整数 | `100` | SCF の最大反復回数 |
+| `--dft-grid-level` | 整数 | `3` | 数値積分グリッドのレベル（PySCF の `grids.level`） |
+| `--dft-engine` | `gpu` / `cpu` | `gpu` | GPU4PySCF か CPU の PySCF |
+| `--dft-low-memory/--no-dft-low-memory` | フラグ | `True` | J と K を直接組み立てる。`--no-dft-low-memory` で密度フィッティングを使用 |
+| `--solvent` | 文字列 | `none` | PySCF の PCM/SMD に渡す溶媒名（例: `water`）。`none` は気相 |
+| `--solvent-model` | `pcm` / `smd` | `smd` | 陰溶媒モデル |
+| `--dft-nprocs` | 整数 | auto | PySCF の CPU スレッド数（スケジューラとホストから自動検出） |
+| `--dft-memory` | 文字列 | auto | PySCF のホスト RAM の上限（例: `64GB`）。GPU メモリではない |
+| `-o, --out-dir` | パス | `./result_dft/` | 出力先ディレクトリ |
+
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/dft.md) を参照してください。
+
+> **補足:** YAML（`--config`）では、{ref}`dft <ja-dft-section>` の節で同じ設定を指定できます。`dft.pyscf` は PySCF のオブジェクトに属性を名前で渡し、SCF が収束しにくいときは `pyscf: {mf: {level_shift: 0.2}}` のように使えます。電荷と多重度は、ほかのコマンドと同じく `calc.charge`・`calc.spin` に書きます。`calc.spin` は多重度 2S+1 で、PySCF の 2S ではありません。優先されるのは、コマンドラインで指定した `-q`・`-l`・`-m`、YAML、`.gjf` のヘッダーの順です。
+
+---
 
 (ja-notes)=
-## 注意事項
+## 使用上の注意点
 
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+* **基底のコスト**: `def2-tzvpd` は `def2-svp` よりはるかに重い計算です。原子数や GPU メモリの決まった上限は無く、コストは基底関数の数・元素・汎関数・グリッド・GPU で決まります。まず代表構造を 1 つ計算し、メモリの最大使用量を確かめてください。足りないときは、基底を小さくするか、メモリの大きい GPU を使ってください。
+* **GPU**: GPU4PySCF が動かないとき、`dft` は `--dft-engine cpu` を勧めるエラーで止まり、自動では CPU に切り替えません。新しい世代の GPU では、メモリ不足や未対応カーネルのエラーがメモリ量ではなく GPU4PySCF と CuPy の版から来ることがあるので、まず版とトレースバックを確かめてください。
+* **CPU**: `--dft-engine cpu` で実用になる系の大きさは手法とマシンで変わるため、代表構造の一点計算で時間を測ってください。
+* **一時ファイル**: PySCF は一時ファイルを `$PYSCF_TMPDIR` に書きます。`/tmp` の小さい計算ノードでは、実行前に空き容量の十分なディスクへ向けてください。
+* **x86 以外のマシン**: GPU4PySCF のビルド済みホイールが対応しないことがあります。その場合は GPU4PySCF を[ソース](https://github.com/pyscf/gpu4pyscf)からビルドしてください。
+* **補助基底**: `--no-dft-low-memory` では、選んだ基底に対する PySCF のデフォルトの補助基底を使います。自分で指定する必要はありません。
+* **IAO 解析**は難しい系で失敗することがあります。
+* **溶媒**: この `--solvent` は PySCF の PCM・SMD で、MLIP バックエンドの xTB 溶媒補正とは別物です。`--solvent-model` は小文字の `pcm` か `smd` だけを受け付けます。PCM で `dft` が知らない溶媒名を使うときは、YAML の `dft.pyscf.with_solvent.eps` に誘電率を指定してください。
+* **SCF が収束しないとき**: `dft` は `WARNING: SCF did not converge to the requested tolerance.` を表示し、`converged: false` として `result.yaml` を書いた上で、終了コード 1 で終わります。低メモリモードでは、メモリに余裕があれば `--no-dft-low-memory` の別名 `--no-lowmem` で再実行するよう提案します。
+* **多重度**: 1 未満は受け付けません。
+* **前回の結果**: 実行の最初に、出力ディレクトリに残っている `result.yaml`・`result.json`・`summary.json` を削除します。
+* **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
 
-- **system size / basis cost:** `def2-tzvpd` は高コストですが、普遍的な atom-count/VRAM cutoff はありません。basis-function 数、元素、functional、grid、density-fitting path、GPU に依存します。代表構造をpilotし、peak memoryを監視してください。`def2-svp` など小さい基底は安価ですが method 自体が変わるため、基底変更に一律の barrier error を割り当てないでください。
-- **新しい GPU architecture:** OOM や unsupported-kernel error は、実メモリ需要だけでなく package/kernel compatibility が原因の場合があります。engine を変更する前に GPU4PySCF/CuPy version と traceback を確認し、全 Blackwell card に同じ既知不具合があると扱わないでください。
-- **CPU backend:** `--dft-engine cpu` は対応していますが、実用性は method/system/hardware に依存します。固定の atom-count cutoff ではなく代表 single point を計測してください。
-- **HPC scratch:** PySCF / GPU4PySCF は積分や中間fileを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）へ書きます。代表runの実使用量とsite quotaを確認し、必要なら `PYSCF_TMPDIR` をjob filesystem配下へ向けてください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）。
-- GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
-- 補助基底の推定は未実装です。密度フィッティングの挙動は処理の流れ（SCF ビルド）と `--dft-low-memory` CLI オプションで説明しています。
-- YAML 入力ファイルのルートはマッピングでなければなりません。`dft` セクションは任意です。マッピング以外のルートは `load_yaml_dict` でエラーになります。
-- IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当項目は `null` となり警告が出力されます。
+---
 
-## 関連項目
+## 関連ドキュメント
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-- [トラブルシューティング](troubleshooting.md) — 一般的な失敗モードの詳細な対処
-- [freq](freq.md) — MLIP ベースの振動解析（DFT 一点エネルギー評価の前に行うことが多い）
-- [all](all.md) — `--dft` を使用した一気通貫ワークフロー
-- [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
-- [用語集](glossary.md) — DFT、SP（一点計算）の定義
+* [MLIP の TS を DFT で確かめる](dft-backend.md) — ワークフローでの `-b dft` と `--dft`、DFT の設定、GPU メモリ
+* [sp](sp.md) — `-b dft` を含む任意のバックエンドでの一点エネルギーと力
+* [all](all.md) — 全工程のワークフロー。`--dft` で R・TS・P に DFT 一点計算を追加
+* [MLIP バックエンド](backends.md) — バックエンドの選び方
+* [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

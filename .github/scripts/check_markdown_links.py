@@ -2,7 +2,7 @@
 """Validate local markdown links across all public markdown roots.
 
 The set of pages checked is one explicit ``public_markdown_paths()`` contract
-(README, CONTRIBUTING, docs/**, skills/**, examples/** where present) rather
+(README, CONTRIBUTING, AGENTS, docs/**, skills/**, examples/** where present) rather
 than an implicit docs-only directory walk, so a broken link in any advertised
 page is caught. Sphinx ``{toctree}`` targets are parsed for docs pages only;
 every public page gets ordinary local-link resolution.
@@ -23,11 +23,11 @@ EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "tel:")
 def public_markdown_paths() -> list[Path]:
     """Every public markdown page whose local links must resolve.
 
-    README and CONTRIBUTING at the repo root, plus every markdown page under
+    README, CONTRIBUTING, and AGENTS at the repo root, plus every markdown page under
     ``docs/``, ``skills/`` and ``examples/`` where those roots exist.
     """
     paths: list[Path] = []
-    for name in ("README.md", "CONTRIBUTING.md"):
+    for name in ("README.md", "CONTRIBUTING.md", "AGENTS.md"):
         candidate = REPO_ROOT / name
         if candidate.exists():
             paths.append(candidate)

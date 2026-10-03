@@ -1,218 +1,172 @@
-# `scan2d`
+# `scan2d` (2D restrained grid scan)
 
-Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over `(d₁, d₂)`. Use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
+## Overview
 
-Either axis may instead be an angle `(i,j,k,low,high)` or dihedral
-`(i,j,k,l,low,high)`. Angular ranges use degrees.
+`scan2d` relaxes every point of a grid over two coordinates with harmonic restraints and records the energy without the restraints, giving a 2D energy map of the reaction.
 
-mmCIF inputs use the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology while keeping XYZ coordinates.
+### What it is for
+
+* **Locating the TS region**: see where the saddle between the reactant and product basins lies before a path search or TS optimization.
+* **Viewing the landscape before the MEP**: check whether two events, such as bond formation and proton transfer, happen together or one after the other, before refining the minimum-energy path (MEP).
+
+The default backend is **UMA** (Meta); `-b/--backend` also selects **ORB**, **MACE**, **AIMNet2**, or DFT (`dft`). For a single path driven by one or more coordinates, use [`scan`](scan.md); for three coordinates, use [`scan3d`](scan3d.md).
+
+---
 
 ## Examples
 
-Minimal run with a YAML spec file:
+The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`.
 
 ```bash
-pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
+pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-Command form:
+Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.
 
-```bash
-pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2|dft] \
- [-s/--scan-lists scan2d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
+### 1. From a YAML spec
 
-Recommended YAML/JSON spec file:
-
-```bash
-cat > scan2d.yaml << 'YAML'
-one_based: true
-pairs:
- - ["SAM,320,CS1", "GPP,321,C7", 1.50, 3.00]
- - ["GPP,321,H11", "GLU,186,OE2", 0.90, 2.50]
-YAML
-pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
-```
-
-Alternative inline Python literal:
-
-```bash
-pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]'
-```
-
-L-BFGS, dumped inner trajectories, and Plotly outputs:
-
-```bash
-pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]' \
- --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
- --preopt --baseline min
-```
-
-### Scan-list spec
-
-`scan2d` accepts exactly **two** distance, angle, or dihedral ranges (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support).
-
-For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
-see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
-
-## Workflow
-
-1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
-    run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
-    `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
-    complex and `extract.py`’s charge summary derives the total charge before the
-    scan (for PDB/mmCIF inputs, or XYZ/GJF when `--ref-pdb` is supplied). The
-    starting structure (preoptimized when enabled) is saved under
-    `grid/preopt_iDDD_jDDD.*`; its unbiased energy is always stored in
-    `surface.csv` with indices `i = j = -1`.
-2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
-    (1-based by default). For PDB/mmCIF topology inputs, each atom entry can be an integer index
-    or a selector string like `'SAM,320,CS1'`; delimiters may be spaces, commas,
-    slashes, backticks, or backslashes, and token order is flexible; use positional
-    `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated
-    names or numbering. Construct linear grids with
-    `ceil(|high − low| / h) + 1` points (both endpoints included), where
-    `h = --max-step-size`. Zero-length spans collapse to a single point.
-    Each axis is then reordered so that the distance closest to the preoptimized
-    geometry is indexed as `i = 0` / `j = 0`.
-3. Iterate over every `d1[i]` (nearest-first ordering). For each value, relax
-    the system with **only the d₁ restraint** active, snapshot that geometry, then
-    run the inner loop over `d2[j]` with **both restraints** applied starting from
-    the nearest previously converged structure.
-4. At each `(i, j)` pair, store the biased-optimization result under
-    `<out-dir>/grid/point_iDDD_jDDD.xyz` where `DDD = round(d × 100)` in Å
-    (e.g. `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`), record whether the
-    bias converged, and evaluate the MLIP energy without bias. If two points
-    have the same rounded tags, later filenames append `_grid_III_JJJ` with
-    the zero-based grid indices. Optional
-    per-outer-step inner trajectories are saved as `inner_path_d1_###_trj.xyz`
-    when `--dump` (`###` is the outer step index).
-5. After all points are visited, write `<out-dir>/surface.csv` with columns
-    `i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label`.
-    The reference row always has `i = j = -1` and `is_preopt = true`; it remains
-    in the table but is excluded from the baseline, interpolation, and plots. Shift the kcal
-    reference via `--baseline {min|first}`. With `--baseline first`, the reference
-    is the first usable grid entry (`i = j = 0` after reordering), not necessarily
-    `(low₁, low₂)`; if that point is unusable, the usable minimum is used.
-    When at least three unique, non-collinear eligible points remain, generate
-    `scan2d_map.png` (2D contour) and `scan2d_landscape.html` (3D surface) in
-    `<out-dir>/`. With insufficient support, `surface.csv` remains available
-    and plots are omitted cleanly. Use `--zmin/--zmax` to clamp the color scale.
-
-The `d1_A` / `d2_A` columns store measured coordinates after relaxation;
-`target_d1_A` / `target_d2_A` store restraint targets.
-Filename distance tags describe the targets. With usable points but insufficient
-interpolation support, the CSV is retained and the plot is omitted
-(`scientific_status: partial`, exit 0). No usable points gives
-`scientific_status: failed` and exit 1.
-
-## Outputs
-
-After a run, check `surface.csv`, the per-point structures under `grid/`, and the `scan2d_map.png` / `scan2d_landscape.html` plots.
-With `--out-json`, `result.json` also records an explicit `grid_points[]`
-mapping from each grid index to its written XYZ geometry. Notebook and other
-interactive clients should use this mapping instead of inferring filenames.
-
-```text
-out_dir/ (default:./result_scan2d/)
-├─ surface.csv # Structured grid table
-├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html # 3D surface visualization (open in a browser)
-├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
-├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
-├─ grid/point_iDDD_jDDD.cif # Bridge-input companions with original IDs
-├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
-├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (preoptimized when enabled), DDD = round(d × 100)
-├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
-├─ grid/preopt_iDDD_jDDD.cif # Bridge-input companion
-├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (format companions require topology + conversion)
-```
-
-## CLI options
-
-The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md).
-
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--uma-workers`, `--uma-workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Two distance, angle, or dihedral ranges in YAML/JSON or one inline Python literal. Atom entries can be integer indices or PDB selectors. | Required |
-| `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
-| `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
-| `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |
-| `--restraint-k FLOAT` | Harmonic bias strength `k`: eV·Å⁻² for distances and eV·rad⁻² for angles. | `300` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
-| `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions. | `True` |
-| `--ref-pdb FILE` | Reference PDB or mmCIF topology for XYZ/GJF input (keeps XYZ coordinates). | _None_ |
-| `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
-| `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
-| `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-
-## YAML configuration
+Write the two ranges under `pairs:`. With the default step of 0.2 Å, this file gives a 9 × 9 grid.
 
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/cap detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
- device: auto # MLIP device selection
-opt:
- thresh: baker # convergence preset (default: baker)
- max_cycles: 100000 # optimizer cycle cap
- dump: false # optimizer dumps (scan trajectories are controlled by --dump)
-lbfgs:
- max_step: 0.3 # maximum step length
-rfo:
- trust_radius: 0.10 # trust-region radius
-bias:
- k: 300.0 # harmonic bias strength (eV·Å⁻²)
+# scan2d.yaml
+pairs:
+  - ["SAM,320,CS1", "GPP,321,C7", 1.50, 3.00]
+  - ["GPP,321,H11", "GLU,186,OE2", 0.90, 2.50]
 ```
 
-### Shared YAML sections
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml-reference.md). Scan optimizer scratch dumps are disabled;
-  scan trajectory output is controlled by `--dump`. Set the command-owned
-  output directory with `-o/--out-dir`; optimizer `out_dir` YAML keys are ignored.
+Give the structure, the charge, and the file; add `--out-json` to also get `result.json`.
 
-More YAML options for `opt` are available in [YAML Reference](yaml-reference.md).
+```bash
+pdb2reaction scan2d -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan2d.yaml --out-json -o ./result_scan2d/
+```
+
+Open `result_scan2d/scan2d_map.png` for the contour map and `scan2d_landscape.html` for the 3D surface; `result.json` gives `scientific_status` and the number of usable points.
+
+### 2. Inline literal
+
+The same two ranges can be written on the command line as one literal.
+
+```bash
+pdb2reaction scan2d -i input.pdb -l 'SAM:1,GPP:-3' \
+    -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]'
+```
+
+### 3. Pre-optimize, dump, and set the baseline
+
+Optimize the input before the scan, keep the inner-loop trajectories, and measure the relative energies from the lowest usable point.
+
+```bash
+pdb2reaction scan2d -i input.pdb -l 'SAM:1,GPP:-3' \
+    -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]' \
+    --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
+    --preopt --baseline min
+```
+
+---
+
+## How it works
+
+1. **Starting structure and grid**:
+The {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--preopt`, the input is first optimized without restraints; if that does not converge, the input geometry is used. Each axis gets ceil(|high − low| / h) + 1 evenly spaced values, both ends included, where h is `--max-step-size` (Å) for a distance and `--max-angle-step-size` or `--max-dihedral-step-size` (degrees) for an angle or dihedral. The values are visited from the one closest to the starting structure.
+2. **Outer and inner loops**:
+For each d₁ value, the structure is relaxed with only the d₁ restraint. The inner loop then scans d₂ with both restraints, starting each point from the nearest point that has already converged.
+3. **Relaxation at each point**:
+A harmonic restraint E = ½ k (q − q_target)² holds each coordinate q at its target (k is `--restraint-k`), and L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`) relaxes the rest. The energy is then computed without the restraints, and the structure is written under `grid/`.
+4. **Table and plots**:
+After the last point, all points go into `surface.csv`. The usable points are interpolated with radial basis functions (RBF) on a 50 × 50 grid and drawn as a contour map and a 3D surface.
+
+---
+
+## Reading surface.csv
+
+`surface.csv` has one row per grid point and one reference row.
+
+| Column | Meaning |
+| --- | --- |
+| `i`, `j` | Grid indices. Index 0 is the value closest to the starting structure, so the indices follow the visiting order, not ascending values |
+| `d1_A`, `d2_A` (also `q1`, `q2`) | Coordinate values measured after the relaxation. The `_A` names are kept for every axis, so an angle axis holds degrees; `q1_unit` and `q2_unit` give the unit (`angstrom` or `degree`) |
+| `target_d1_A`, `target_d2_A` (also `target_q1`, `target_q2`) | Restraint targets of the point |
+| `energy_hartree` | Energy without the restraints (Hartree) |
+| `energy_kcal` | Energy relative to the baseline (kcal/mol) |
+| `bias_converged` | Whether the restrained relaxation converged |
+| `is_preopt` | `true` only for the reference row |
+| `d1_label`, `d2_label` | Axis labels used in the plots |
+
+* **Usable points**: a point is usable when its relaxation converged, its energy is finite, and its structure was written. Only usable points set the baseline and enter the plots.
+* **Verdict**: in `result.json` (`--out-json`), `scientific_status` is `success` when every grid point is usable, `partial` when only some are (exit status 0), and `failed` when none is (exit status 1). `n_points_attempted` and `n_points_usable` give the counts. For points that do not converge, see {ref}`max_cycles and plateau stops <troubleshooting-max-cycles>`.
+* **Next step**: the plots are interpolated, so pass a computed point near the saddle, `grid/point_*.pdb`, to [`tsopt`](tsopt.md) (for `.xyz`, add `--ref-pdb`). Points in the two basins can be inputs for [`path-search`](path-search.md).
+
+---
+
+## Output files
+
+After a run, `--out-dir` contains the following files.
+
+```text
+result_scan2d/
+├─ surface.csv                   # grid table with the reference row
+├─ scan2d_map.png                # 2D contour map
+├─ scan2d_landscape.html         # 3D surface (open in a browser)
+├─ grid/
+│  ├─ point_i150_j090.xyz        # relaxed structure of each grid point
+│  ├─ preopt_iDDD_jDDD.xyz       # starting structure (the reference row)
+│  └─ inner_path_d1_000_trj.xyz  # inner-loop trajectory for each d₁ value (--dump)
+└─ result.json                   # summary (--out-json); summary.json holds the same content
+```
+
+Start with `surface.csv` and the two plots; the structure of each point is under `grid/`. In `result.json`, `grid_points[]` maps each grid index to its values, targets, energy, convergence, and structure file; use it instead of reading values back from file names.
+
+* **File names**: the number after `i` or `j` (the tag `DDD`) is the target × 100 (Å, or degrees for an angle), padded to at least three digits, not the grid index of `surface.csv`: `d1 = 1.50 Å, d2 = 0.90 Å` gives `point_i150_j090.xyz`, and an angle of 120° gives `12000`. When two points round to the same tag, the later file name gets `_grid_III_JJJ` with the point's `i` and `j` from `surface.csv`.
+* **Other formats**: with PDB or mmCIF input, each structure is also written as `.pdb`, and with Gaussian input as `.gjf`. {ref}`mmCIF input <mmcif-input>` also gets `.cif` with the original identifiers.
+
+---
+
+## Main options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, ...) |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
+| `-l, --ligand-charge` | text | `None` | Total ligand charge (e.g. `-1`) or per-residue charges (e.g. `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
+| `-s, --scan-lists` | text | (required) | Two ranges as a YAML/JSON spec file or one inline literal: distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, or dihedral `(i,j,k,l,low,high)` |
+| `-o, --out-dir` | path | `./result_scan2d/` | Output directory |
+| `--max-step-size` | float | `0.2` | Largest grid spacing of a distance axis (Å) |
+| `--max-angle-step-size` | float | `5.0` | Largest grid spacing of an angle axis (degrees) |
+| `--max-dihedral-step-size` | float | `10.0` | Largest grid spacing of a dihedral axis (degrees) |
+| `--restraint-k` | float | `300.0` | Restraint strength k (eV/Å² for distances, eV/rad² for angles); alias `--bias-k` |
+| `--preopt/--no-preopt` | flag | `False` | Optimize the input without restraints before the scan |
+| `--opt-mode` | `grad` / `hess` | `grad` | Relaxation of each point: L-BFGS / RFO |
+| `--dump/--no-dump` | flag | `False` | Write the inner-loop trajectory for each d₁ value under `grid/` |
+| `--baseline` | `min` / `first` | `min` | Zero of `energy_kcal`: lowest usable point, or point `(0, 0)` |
+| `--zmin`, `--zmax` | float | surface min / max | Lower and upper ends of the color scale (kcal/mol) |
+| `--thresh` | text | `baker` | Convergence preset of each relaxation (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`) |
+| `--out-json/--no-out-json` | flag | `False` | Write a summary to `result.json` ([JSON Output Reference](json-output.md)) |
+
+See the [generated CLI reference](reference/commands/scan2d.md) for every option.
+
+---
 
 ## Notes
 
-- The MLIP backend (UMA by default) reuses the same
-  `HarmonicBiasCalculator` as the `scan` command.
-- Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
-  trust radii; optimizer scratch files live under temporary directories.
-- The bias is always removed before final energies are recorded so you can reuse
-  `surface.csv` in downstream fitting or visualization scripts.
-- `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
-  PDB inputs, keeping extracted active site models rigid.
-- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
+* **Two ranges in one literal**: `-s` takes exactly two ranges, in one inline literal or under `pairs:` in a YAML/JSON file. For staged scans, use [`scan`](scan.md).
+* **PDB with chains**: the {ref}`positional form <scan-list-spec>` `A:SAM:320:CS1` picks one atom without ambiguity.
+* **Restraint strength in YAML**: `bias.k` applies when `--restraint-k` is omitted.
+* **Cap hydrogens**: `--freeze-links` (default on) fixes the parent atoms of the {ref}`cap hydrogens <link-hydrogen-and-frozen-atoms>` of an extracted cluster.
+* **Cycle limit**: `--relax-max-cycles` (default `100000`) limits each relaxation; an explicit value overrides YAML `opt.max_cycles`.
+* **Reference row**: `i = j = -1` and `is_preopt = true` hold the starting structure. The row stays in the table but is never a grid point, a baseline, or a plotted point.
+* **Baseline**: `--baseline min` (default) puts zero at the lowest usable point; `--baseline first` puts it at point `(i, j) = (0, 0)`, or at the lowest usable point when `(0, 0)` is not usable.
+* **Too few usable points**: with fewer than three usable points, or with all of them on one line, only the plots are skipped. The run prints `[plot] NOTE: Plots skipped: …` and exits with status 0. With no usable point it prints `[plot] No finite data for plotting.` and exits with status 1.
+* **PNG export**: the PNG is written with Plotly and Kaleido. If the export fails, the run prints `[plot] NOTE: PNG export skipped: …`, still writes the HTML surface, and leaves the PNG out of `result.json`.
 
-## See Also
-- [scan](scan.md) -- Concerted multi-distance and multistage restrained scans
-- [scan3d](scan3d.md) -- 3D distance-grid scan
-- [opt](opt.md) -- single-structure optimization before/after scans
-- [all](all.md) -- end-to-end workflow wrapper
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
+---
+
+## See also
+
+* [scan](scan.md) — staged scans of one or more coordinates from one structure
+* [scan3d](scan3d.md) — energy grid over three coordinates
+* [opt](opt.md) — single-structure optimization before or after a scan
+* [tsopt](tsopt.md) — optimize a structure near the saddle into a TS
+* [path-search](path-search.md) — MEP through structures taken from the map
+* [all](all.md) — end-to-end workflow
+* [Troubleshooting](troubleshooting.md) — diagnosing failed runs

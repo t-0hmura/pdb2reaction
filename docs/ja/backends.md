@@ -1,12 +1,228 @@
 # MLIP バックエンド
 
-pdb2reaction は pysisyphus ベースの geometry/path ステージに
-`MLIPCalculator` を使い、DMF などの ASE ベースのステージには別の ASE
-calculator factory を使います。DFT ステージは PySCF/GPU4PySCF を直接使います。
-本ページでは、バックエンドの選択方法・バックエンドごとの kwargs・新しい
-バックエンドの追加方法を説明します。
+計算バックエンドの選び方と、バックエンドごとのインストール、モデル名、精度、再現性の設定、Hessian の計算方式をまとめたページです。既定のバックエンドは **UMA**（Meta の Universal Models for Atoms）で、`-b/--backend` で **ORB**、**MACE**、**AIMNet2** も選べます。4 つとも機械学習原子間ポテンシャル（MLIP）です。
 
-## バックエンドディスパッチャのパターン
+## バックエンドごとの特性
+
+バックエンドは、計算を行うどのコマンドでも `-b/--backend` で選びます。
+
+```bash
+# UMA（既定）
+pdb2reaction opt -i input.pdb -q 0
+
+# ORB
+pdb2reaction opt -i input.pdb -q 0 -b orb
+
+# MACE
+pdb2reaction opt -i input.pdb -q 0 -b mace
+
+# AIMNet2
+pdb2reaction opt -i input.pdb -q 0 -b aimnet2
+```
+
+| バックエンド | インストール | モデル名 | `--precision` | 解析 Hessian | 複数ワーカー |
+|---------|---------|------------------|------------------|--------------------|------------------|
+| `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2`（既定）/ `uma-m-1p1` | `fp32` / `fp64` | あり（autograd） | あり |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `fp32` / `fp64` | あり（autograd） | なし |
+| `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（この環境では UMA は動きません） | `MACE-OMOL-0` | `fp32` / `fp64` | あり | なし |
+| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` のみ | あり | なし |
+
+`--backend-model NAME` は、選んだ `--backend` のモデルを替えます（例：`--backend uma --backend-model uma-m-1p1`）。
+
+実行時には、読み込むバックエンドとモデルが `[backend] Preparing MLIP model (<backend> / <model>)...` の形で表示されます。既定のモデルでは括弧の中が `UMA / UMA-S-1.2 (OMol)`、`ORB / ORB-v3-conservative-OMol`、`MACE / MACE-OMOL-0`、`AIMNet2 / aimnet2` になります。
+
+(ja-precision-by-gpu-class)=
+### 精度（precision）
+
+`--precision fp32|fp64` は、どのバックエンドでも MLIP の推論の浮動小数点精度を決めます。値は UMA の `precision`、ORB の `precision`、MACE の `default_dtype` に渡されます。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。
+
+`--precision` を指定しないときは、バックエンドごとの既定値を使います。
+
+| バックエンド | 既定値 | 理由 |
+|---------|------|------|
+| `uma` | fp32 | 上流の fairchem の基準の設定です。 |
+| `orb` | fp64 | ORB の `float32-high` を使うときは `--precision fp32` を明示します。 |
+| `mace` | fp64 | MACE は上流で `default_dtype="float64"` を既定にしています。 |
+| `aimnet2` | fp32 | 精度の設定がありません。 |
+
+どの値を選ぶかは目的で決めます。
+
+| 目的 | 推奨 | 理由 |
+| --- | --- | --- |
+| 通常の計算 | 指定しない（`auto`） | 上の既定値（UMA・AIMNet2 は fp32、ORB・MACE は fp64）のままにします。 |
+| 速さを優先するスクリーニング | 必要なときだけ `--precision fp32` | ORB・MACE の精度が下がります（[使用上の注意点](#使用上の注意点)）。 |
+| 最終の TS と Hessian | 指定しない。UMA で n_imag ≥ 2 のときは `--precision fp64` と比べる（{ref}`tsopt <ja-wrong-imaginary-mode-count>`） | 精度によらず、`tsopt` の最後の Hessian で n_imag を確かめ、IRC と端点の最適化で TS が狙った R と P をつなぐことを確かめます。 |
+
+fp64 は次のように指定します。
+
+```bash
+pdb2reaction tsopt -i ts.pdb -q 0 --precision fp64 ...
+pdb2reaction freq  -i opt.pdb -q 0 --precision fp64 ...
+pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
+```
+
+YAML では次のように書きます。
+
+```yaml
+calc:
+  precision: fp64
+```
+
+## 決定論的実行と再現性
+
+`--deterministic` を付けると、同じソフトウェアと GPU で、同じ入力から同じ結果が得られます。付けないと、GPU では同じ入力の 2 回の計算でも最後の桁が違うことがあります。
+
+PyTorch の決定論的アルゴリズム（`torch.use_deterministic_algorithms`）を有効にし、GPU で決定論的に動く版の無い PyTorch の演算 1 つを置き換えます。DFT の計算、自作の ASE calculator、PyTorch の外の GPU のコードは制御しません。
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 --deterministic
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
+```
+
+- プロセス全体に効きます。`all` に付ければ `all` が実行する MLIP の段すべてに効くので、段ごとに付ける必要はありません。
+- 計算は遅くなります。決定論的な GPU の演算は処理が遅いので、繰り返しの計算を一致させる必要があるときだけ使ってください。
+- 実行する演算に PyTorch の決定論的な版が無いときは、再現しない結果を黙って出さずに、エラーで止まります。
+
+| バックエンド | `--deterministic` |
+|---|---|
+| `uma` | 対応 |
+| `orb` / `mace` | PyTorch の決定論的モードは有効になります。入れた版で 2 回の計算が一致するか確かめてください |
+| `aimnet2` | **非対応**：エラーで止まります（[使用上の注意点](#使用上の注意点)） |
+| `custom` | 自作の ASE calculator しだいで、このフラグでは保証できません |
+
+## ワーカーと Hessian の計算方式
+
+`--uma-workers N`（既定 1）は UMA の予測器を N 個並列に動かし、`--uma-workers-per-node`（既定 1）はそのうち 1 ノードで動かす数を決めます。どちらのフラグも `opt`、`tsopt`、`freq`、`irc`、`sp`、`all`、`path-opt`、`path-search`、`scan`、`scan2d`、`scan3d` にあります。ORB、MACE、AIMNet2 はこれらを警告を出して無視します。ワーカーを増やすと速くなるかは [HPC 実行例 › ウォールタイム見積り](hpc-example.md#ウォールタイム見積り) にあります。
+
+(ja-hessian-evaluation)=
+### Hessian の計算方式
+
+`--hessian-calc-mode` で Hessian の計算方式を選びます。`FiniteDifference`（既定）は力の中心差分を取り、`Analytical` は選んだデバイスで 2 階の自動微分を行います。UMA、ORB、MACE、AIMNet2、DFT は解析 Hessian を計算でき、自作の calculator は `FiniteDifference` だけに対応します。
+
+## xTB 溶媒補正
+
+MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネルギー `E_xTB(solvent) - E_xTB(vacuum)` と、それに対応する力と Hessian の差を MLIP のポテンシャル面に足します。主な用途は小分子の溶液中の計算です。MLIP のバックエンドでは `--solvent-model` で `alpb`（既定）か `cpcmx` を選びます。`--solvent-xtb-cmd` には追加の引数を含めた xTB のコマンドを渡せます。xTB の SCC（自己無撞着電荷）の反復が収束しないときは、`'xtb --etemp 1000'` のように指定してください。
+
+補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子くらいが実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は名前の付いたバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
+
+## DFT バックエンド
+
+`sp`、`opt`、`tsopt`、`irc`、`freq`、`scan`、`scan2d`、`scan3d`、`path-opt`、`path-search`、`all` は `-b dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`（既定は `wb97m-v/def2-svp` と `gpu`）を受け付け、すべてのエネルギーと力を PySCF/GPU4PySCF で計算します。ポピュレーション解析付きの一点計算には、別の `pdb2reaction dft` コマンドがあります。省メモリのモード、CPU のスレッド数とホスト RAM、SCF のチェックポイントは [MLIP の TS を DFT で確かめる](dft-backend.md) にあります。
+
+(ja-backends-custom-calculator)=
+## カスタムバックエンド — 任意の ASE Calculator を使う（`--calc-file`）
+
+組み込みの MLIP バックエンドのほかに、`--calc-file` で任意の [ASE](https://wiki.fysik.dtu.dk/ase/) Calculator を実行時に使えます。pdb2reaction 本体を変える必要はありません。GFN-xTB（`tblite` か `xtb-python` 経由）、DFTB+、ORCA、Psi4 など、ASE に対応した計算エンジンをつなげます。受け渡しは標準の ASE Calculator の形（エネルギーは eV、力は eV/Å）です。
+
+ASE Calculator を返す `get_calculator` 関数を持つ Python ファイルを書きます。
+
+```python
+# my_calc.py（最小の例）
+from ase.calculators.emt import EMT
+
+def get_calculator(charge=0, spin=1, device="auto", **kwargs):
+    return EMT()
+```
+
+`EMT()` を、GFN-xTB の `tblite.ase.TBLite(...)`、DFTB+ の ASE calculator、`ase.calculators.orca.ORCA(...)` など、使いたいエンジンに替えてください。このファイルを各コマンドか `all` に渡すと `custom` バックエンドが選ばれ、`--backend` の指定より優先されます。
+
+```bash
+pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction opt    -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+pdb2reaction all    -i R.pdb P.pdb -c 'A:LIG' --calc-file my_calc.py -q 0 -m 1
+```
+
+- 関数が引数か `**kwargs` で受け取れば、`charge`、`spin`、`device` が渡されるので、全電荷が要るエンジン（xTB など）も設定できます。`spin` は多重度で、`mult`・`multiplicity` の名前でも渡します。関数の名前は `--calc-file-func-name NAME` で変えられ、その名前に Calculator のインスタンスを置いてもかまいません。
+- Hessian は力の有限差分で求めるので、`freq` と `tsopt --opt-mode hess` はどのエンジンでも動きます。`--freeze-links`・`--freeze-atoms` の凍結もふつうどおり効きます。
+- `all`、`sp`、`opt`、`tsopt`、`freq`、`irc`、`scan`・`scan2d`・`scan3d`、`path-opt`、`path-search` で使えます。`all` は、calculator を使うすべての段に同じ関数を渡します。独自の `--backend` 名を持つ、インストールできるバックエンドにするときは [開発者向け](#開発者向け) を見てください。
+
+## Python API
+
+### クイックスタート
+
+```python
+import numpy as np
+from pdb2reaction.backends.uma import UMACalculator
+
+# 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2", device="auto")
+
+# UMACalculator には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
+coords_bohr = np.array([
+ [0.0, 0.0, 0.0],
+ [2.2, 0.0, 0.0], # 約 1.16 Å
+])
+
+symbols = ["C", "O"]
+
+# 注: これらのメソッドは dict を返すため、適切なキーで値を取り出します
+energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (Hartree)
+forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (Hartree/Bohr)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (Hartree/Bohr²)
+```
+
+- 座標は **Bohr** で与えます。内部で Å に変換して UMA で計算し、エネルギーと微分を Hartree、Hartree/Bohr、Hartree/Bohr² に戻します。
+- `device="auto"` は、CUDA が使えれば GPU を、使えなければ CPU を選びます。
+- `pysisyphus`（同梱の最適化ライブラリ）の geometry オブジェクトに付けるか、上のように直接呼び出します。
+
+### Calculator ファクトリ
+
+`backends` モジュールには、MLIP の calculator をプログラムから作るファクトリがあります。
+
+```python
+from pdb2reaction.backends import create_calculator, create_ase_calculator
+```
+
+| 関数 | 説明 |
+|----------|-------------|
+| `create_calculator(backend="uma", **kwargs)` | pysisyphus 用の MLIP calculator を作ります。受け付ける kwargs はバックエンドごとに違い、選んだバックエンドが受け付けないキーは警告を出して捨てます。ただし UMA 用のキー（`task_name`、`max_neigh` など）は、ほかのバックエンドでは警告なしに捨てます。Python から直接渡す `freeze_atoms` の番号は 0 始まりです（CLI と YAML は 1 始まりの値を変換します）。 |
+| `create_ase_calculator(backend="uma", **kwargs)` | ASE 用の calculator を作ります。受け付ける kwargs はバックエンドごとに違い、使えないキーは警告なしに捨てられます。UMA・ORB・MACE の calculator は構造ごとの電荷とスピンを `atoms.info` から読み、AIMNet2 は `charge`・`spin` を作るときの引数で受け取ります。 |
+
+```python
+from pdb2reaction.backends import create_calculator
+
+# 解析Hessian付き UMA 計算機
+calc = create_calculator(
+    backend="uma",
+    charge=0,
+    spin=1,
+    device="auto",
+    hessian_calc_mode="Analytical",
+)
+
+```
+
+返される calculator は pysisyphus の calculator の形を持ちます。`get_energy`、`get_forces`、`get_hessian` は `(atoms: List[str], coords: np.ndarray)` を受け取り、coords は **Bohr** 単位です。戻り値は `"energy"`（Hartree）、`"forces"`（Hartree/Bohr）、`"hessian"`（Hartree/Bohr²）を持つ dict です。凍結原子の力は 0 になり、Hessian は動ける原子のブロック（`return_partial_hessian=True`）か、凍結原子の行と列を 0 にした全体の行列です。
+
+(ja-configuration-reference)=
+### 設定リファレンス
+
+calculator の主な引数です。YAML の `calc` 節のキーと同じです。xTB の溶媒のキーを含む `calc` のすべてのキーは [YAML 設定リファレンス › calc](yaml-reference.md#calc) にあります。
+
+| オプション | 説明 | デフォルト |
+| --- | --- | --- |
+| `backend` | MLIP バックエンド | `"uma"` |
+| `charge` | 総電荷。YAML に書いたときだけ使い、`-q`・`-l` が優先 | なし |
+| `spin` | スピン多重度（2S+1） | `1` |
+| `model` | 選んだバックエンドのモデル（`--backend-model`）。UMA の既定のままなら、ORB・MACE・AIMNet2 は `orb_v3_conservative_omol`・`MACE-OMOL-0`・`aimnet2` を使います | `"uma-s-1p2"` |
+| `precision` | MLIP の数値精度（`"fp32"` か `"fp64"`）。`"auto"` は UMA・AIMNet2 で fp32、ORB・MACE で fp64 | `"auto"` |
+| `task_name` | UMA のバッチに記録するタスクの名前 | `"omol"` |
+| `device` | `"cuda"`、`"cpu"`、または自動選択 | `"auto"` |
+| `workers` / `workers_per_node` | 並列の UMA 予測器（UMA だけ。ORB・MACE・AIMNet2 は警告を出して無視します） | `1` / `1` |
+| `max_neigh`, `radius`, `r_edges` | UMA の近傍の作り方の上書き | `None`, `None`, `False` |
+| `freeze_atoms` | 凍結する原子の番号。Python API では 0 始まり（CLI と YAML は 1 始まり） | _None_ |
+| `hessian_calc_mode` | Hessian の計算方式（`"Analytical"` か `"FiniteDifference"`） | `"FiniteDifference"` |
+| `return_partial_hessian` | 全体の行列でなく、動ける原子の Hessian だけを返す | `True` |
+| `hessian_double` | Hessian を float64 で組み立てて返す | `True` |
+| `out_hess_torch` | Hessian を `torch.Tensor` で返す | `True` |
+| `print_timing` | Hessian の計算時間の内訳を表示 | `True` |
+| `print_vram` | Hessian の計算中の CUDA VRAM の使用量を表示（UMA だけ） | `True` |
+
+## 開発者向け
+
+### バックエンドディスパッチャのパターン
 
 ```python
 from pdb2reaction.backends import create_calculator, create_ase_calculator
@@ -23,189 +239,36 @@ calc = create_calculator(
 ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
 ```
 
-`create_calculator(...)` は `**kwargs` を各バックエンドの
-`_BACKEND_ACCEPTED_KEYS` セットと照合してフィルタし、未知のキーを警告付きで
-破棄します。`create_ase_calculator()` は独立した `_ASE_ACCEPTED_KEYS` を使い、
-未知のキーを警告なしでフィルタします。
+pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF（Direct Max Flux）のように ASE を使う段は `create_ase_calculator(...)` を使います。`backend="auto"` は UMA、ORB、MACE、AIMNet2 の順に試し、最初にインポートできたものを使います。YAML の `calc.backend: auto` も同じで、`-b` は `auto` を受け付けません。
 
-`backend="auto"` は UMA → Orb → MACE → AIMNet2 の順で解決し、最初にインポートに
-成功したものを選択します。
+### ファイルマップ
 
-## ファイルマップ
-
-| file | role |
+| ファイル | 役割 |
 |------|------|
-| `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY` dict + `create_calculator()` / `create_ase_calculator()` ファクトリ + `resolve_backend('auto')` の UMA 優先フォールバック |
-| `pdb2reaction/backends/base.py` | `MLIPCalculator(pysisyphus.calculators.Calculator)` ABC + FD-Hessian 組み立て + 単位変換 + `BackendError(RuntimeError)` |
-| `pdb2reaction/backends/uma.py` | UMA (Meta FAIR fairchem-core) — autograd Hessian path |
-| `pdb2reaction/backends/orb.py` | Orb (Orbital Materials) — precision / compile_model |
-| `pdb2reaction/backends/mace.py` | MACE — default_dtype |
-| `pdb2reaction/backends/aimnet2.py` | AIMNet2 — charge-aware（p2r 論文の 5-backend ベンチマークからは除外） |
-| `pdb2reaction/backends/pyscf_dft.py` | stateful PySCF/GPU4PySCF DFT/HF scanner、同一座標cache、任意SCF checkpoint |
+| `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY` の dict、`create_calculator()`・`create_ase_calculator()` のファクトリ、UMA から順に試す `resolve_backend('auto')` |
+| `pdb2reaction/backends/base.py` | `MLIPCalculator(pysisyphus.calculators.Calculator)` の基底クラス：凍結原子の扱い、有限差分 Hessian の組み立て、単位の変換、バックエンドの失敗を表すエラーの型 |
+| `pdb2reaction/backends/uma.py` | UMA（Meta FAIR の fairchem-core）：autograd の Hessian |
+| `pdb2reaction/backends/orb.py` | Orb（Orbital Materials）：precision と compile_model |
+| `pdb2reaction/backends/mace.py` | MACE：default_dtype |
+| `pdb2reaction/backends/aimnet2.py` | AIMNet2：電荷を入力に取るモデル |
+| `pdb2reaction/backends/pyscf_dft.py` | PySCF/GPU4PySCF の DFT/HF の calculator。段の間で SCF の状態を引き継ぎ、同じ座標の結果を再利用し、必要なら SCF のチェックポイントを書きます |
 
-## バックエンドごとの特性
+組み込みのバックエンドを独自の `--backend` 名で足すときは、[CONTRIBUTING](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) のレシピ 3.2「Add an MLIP backend」に従ってください。
 
-| backend | install | model identifier | precision option |
-|---------|---------|------------------|------------------|
-| `uma` | 同梱（`fairchem-core` は本体の依存）+ HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"`（`fp32` / `float32` は正規化される別名） |
-| `mace` | 専用 conda env で pdb2reaction を入れた後、`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（現行版どうしも `e3nn` 要件が競合） | `MACE-OMOL-0` | `default_dtype="float64"` |
-| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | n/a |
+## 使用上の注意点
 
-### 精度（precision）
+- ORB と MACE の `--precision fp32` はスクリーニング専用です。有限差分 Hessian のノイズが増えるので、結果を使う前に n_imag を確かめてください。
+- AIMNet2 は `--precision fp64` にも `--deterministic` にも対応せず、どちらもエラーで止まります。AIMNet2 はモデルへの入力を float32 にし、力を PyTorch の決定論的モードの外にある独自の CUDA のコードで計算するので、力はビット単位で再現しません（エネルギーは再現します）。繰り返しの計算を一致させたいときは、UMA、ORB、MACE のいずれかで `--deterministic` を付け、同じ環境で 2 回実行して比べてください。
 
-`--precision` はバックエンド非依存です。UMA の `precision` /
-ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
-fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が前段で float32 にキャストされるため）。
+(ja-workers-analytical-error)=
+- UMA で `--uma-workers` を 2 以上にすると、`--hessian-calc-mode Analytical` とは併用できず、エラーで止まります。並列の予測器は autograd のモデルを持たないためです。解析 Hessian には `--uma-workers 1` を、複数のワーカーには `FiniteDifference` を使ってください。
+- モデルの精度と Hessian の精度は別の設定です。エネルギーと力は常に float64 で返り、Hessian も既定では float64 で組み立てます。`calc.hessian_double: false` にすると、モデル本来の dtype（ふつうは float32）で返します。`--precision fp64` のときは Hessian も常に float64 になり、設定ファイルの `hessian_double: false` は警告を出して上書きされます。
+- CI のジョブや Python API の `create_calculator` では、環境変数 `PDB2REACTION_STRICT_DETERMINISTIC=1` で `--deterministic` と同じモードになります。
 
-`--precision` を指定しない場合、デフォルト値はバックエンドごとに決まります。
+## 関連ドキュメント
 
-| backend | デフォルト | 理由 |
-|---------|------|------|
-| `uma` | fp32 | 上流 fairchem のベースライン。 |
-| `orb` | fp64 | ORB の fp32 は縮約された `float32-high`（TF32）matmul であり、その力のノイズが有限差分 Hessian に偽の虚振動を生じさせる。 |
-| `mace` | fp64 | MACE は上流で `default_dtype="float64"` をデフォルトとする。 |
-| `aimnet2` | fp32 | 精度の切り替えを持たない。 |
-
-OMol で学習された UMA をデフォルトの fp32 から fp64 に切り替えると、TSopt + Hessian に
-無視できない影響が生じることがあります。以下で有効化します。
-
-```bash
-pdb2reaction tsopt -i ts.pdb -q 0 --precision fp64 ...
-pdb2reaction freq  -i opt.pdb -q 0 --precision fp64 ...
-pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
-```
-
-逆に `--precision fp32` はスループットのために ORB / MACE の精度を明示的に落とします（スクリーニング用途以外では非推奨）。使用する場合は、Hessian のノイズが増えるため、虚振動の本数を確認してください。
-
-`--backend-model NAME` は選択中の `--backend` のモデル変種を上書きします
-（例: `--backend uma --backend-model uma-s-1p2`）。未指定ならバックエンドデフォルトのモデルを使用します。
-
-または YAML 設定で:
-
-```yaml
-calc:
-  precision: fp64
-```
-
-`InferenceSettings` API は本体の依存の `fairchem-core`（≥ 2.22）に含まれます。
-
-## xTB溶媒補正
-
-MLIP backendでは、`--solvent NAME`により
-`E_xTB(solvent) - E_xTB(vacuum)`と対応するforce/Hessian差分をbase PESへ加えます。
-主な用途は小分子の溶液中計算です。補正の各評価でsolventとvacuumのxTB計算を行うため、
-大きなクラスタモデルでは高コストになります。200–300原子程度を実用上の上限目安とし、
-実際の系とhardwareで事前にbenchmarkしてください。これはハード上限ではありません。
-
-反応種、電荷、多重度、backend/model、energy基準を揃えれば、小分子の溶液中障壁と
-酵素クラスタの障壁を比較できます。酵素クラスタ研究でも省略したタンパク質環境を
-連続誘電体で近似する場合がありますが、p2rの指定は名前付きbulk solventを表します。
-酵素クラスタへ適用する場合は、その環境モデルに根拠があることを確認してください。
-xTBのSCC収束が悪い場合は、`--solvent-xtb-cmd 'xtb --etemp 1000'`のように
-追加オプションを指定できます。
-
-## Stateful DFT backend
-
-`sp`、`opt`、`tsopt`、`irc`、`freq`、`scan*`、`path-opt`、`path-search`、`all`で
-`--backend dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`を使用できます。
-population解析用の独立した`pdb2reaction dft` subcommandも維持されています。
-
-closed-shell GPU lowmem経路ではgeometryごとに`rks_lowmem.RKS`を再構築し、直前に収束した
-GPU densityを`dm0`として渡します。それ以外の経路は1個のPySCF scannerを保持します。
-両経路ともgeometry依存の中間量をresetしながら電子状態を再利用し、同一座標のenergy/force
-要求にはmemory cacheを使います。PCM/SMDはPySCF native solventです。
-
-`--dft-low-memory`が既定です。closed-shell GPUではPCM/SMDを含むenergy・gradient・Hessian計算に
-`gpu4pyscf.dft.rks_lowmem.RKS`を使います。open-shell GPUとCPUではDF tensorを保持しない
-標準direct-JKを使います。十分なmemoryがある場合は`--no-dft-low-memory`でdensity fittingを
-有効にすると難しいSCFの収束が改善することがあります。
-PySCF thread数とhost RAMはscheduler、process affinity、host/cgroup制約から自動検出し、
-`--dft-nprocs`と`--dft-memory`で上書きできます。memory指定はGPU VRAMではなくhost RAMです。
-
-disk checkpointは巨大化し得るため既定OFFです。`--save-scf-checkpoint`で有効にし、必要なら
-`--scf-checkpoint PATH`で共有先を指定します。保存を有効にしてPATHを省略した場合、leaf workflowは
-`<out-dir>/_work/dft_scf/state.chk`を使い、`all`は状態role別に保持します。method、atom順、
-座標が一致するcheckpointだけを使います。`calc.dft.pyscf`はPySCF object名ごとのattributeを
-渡します。native `.pyscf_conf.py`、`PYSCF_CONFIG_FILE`、`PYSCF_MAX_MEMORY`、
-`PYSCF_TMPDIR`もそのまま有効です。
-
-## カスタムバックエンド — 任意の ASE Calculator を使う（`--calc-file`）
-
-組み込みの MLIP バックエンドに加えて、`--calc-file` で任意の
-[ASE](https://wiki.fysik.dtu.dk/ase/) Calculator を実行時に指定できます
-（pdb2reaction 本体の変更は不要）。これにより GFN-xTB（`tblite` / `xtb-python`
-経由）、DFTB+、ORCA、Psi4 など ASE 互換の任意エンジンと結合できます。境界は標準の
-ASE Calculator インターフェース（エネルギー eV、力 eV/Å）です。
-
-ASE Calculator を返す `get_calculator` ファクトリを持つ Python ファイルを用意します:
-
-```python
-# my_calc.py（最小の例）
-from ase.calculators.emt import EMT
-
-def get_calculator(charge=0, spin=1, device="auto", **kwargs):
-    return EMT()
-```
-
-`EMT()` を使いたいエンジンに差し替えてください — 例えば GFN-xTB なら
-`tblite.ase.TBLite(...)`、DFTB+ の ASE calculator、`ase.calculators.orca.ORCA(...)`
-など。このファイルを各stageまたは`all`に渡すと、`custom`バックエンドが選択され
-`--backend`を上書きします:
-
-```bash
-pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
-pdb2reaction opt    -i model.xyz --calc-file my_calc.py -q 0 -m 1
-pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
-pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
-pdb2reaction all    -i R.pdb P.pdb -c 'LIG' --calc-file my_calc.py -q 0 -m 1
-```
-
-補足:
-
-- ファクトリには、シグネチャが受け取る場合（または `**kwargs` を宣言している場合）に
-  `charge`・`spin`（多重度。`mult` / `multiplicity` でも渡されます）・`device` が
-  渡されるため、全電荷が必要なエンジン（xTB など）も設定できます。ファクトリ名を
-  変える場合は `--calc-file-func-name NAME`、モジュール直下の Calculator インスタンスも
-  受け付けます。
-- Hessian は `MLIPCalculator` から継承する有限差分経路を使うため、`freq` や
-  `tsopt --opt-mode hess` も任意エンジンで動作します。凍結原子（`--freeze-links` /
-  `--freeze-atoms`）も通常どおり尊重されます。
-- `all`および単独subcommand（`sp`・`opt`・`tsopt`・`freq`・`irc`・`scan` /
-  `scan2d` / `scan3d`・`path-opt`・`path-search`）で利用できます。`all`は同じfactoryを
-  calculatorを使う子stageへ転送します。独自の`--backend`名を持つ恒久的なbackendに
-  する場合は、以下のレシピを参照してください。
-
-## バックエンド追加レシピ（5 ステップ）
-
-`--backend xyz` として公開する新しいバックエンド `XYZModel` を追加するには:
-
-1. **`pdb2reaction/backends/xyz.py` を作成**:
-   `XYZCalculator(MLIPCalculator)`（pysisyphus パス）と `XYZASECalculator(...)`
-   （ASE パス）を実装します。どちらも共通の kwargs である `charge / spin / device /
-   freeze_atoms / hessian_calc_mode / return_partial_hessian / hessian_double /
-   print_timing / model` と、バックエンド固有の kwargs（`precision`、
-   `default_dtype` など）を受け付ける必要があります。
-2. **`MLIPCalculator` を継承**（`backends/base.py`）し、サブクラスフックである
-   `_compute_energy_forces_ev(elem, coord_ang) -> (energy_eV,
-   forces_eV_Ang)` を実装します。バックエンドが解析的 Hessian を公開している場合は、
-   必要に応じて `_compute_analytical_hessian_ev(elem,
-   coord_ang) -> hessian_eV_Ang2` をオーバーライドします。
-   そうでなければ、基底クラスが FD-Hessian の組み立て + 単位変換
-   （eV/Å → Hartree/Bohr）を行います。
-3. **`BACKEND_REGISTRY` に登録**（`backends/__init__.py`）: 既存のエントリの隣に
-   `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
-   "ase_cls": "XYZASECalculator"}` を追加します。
-4. **受け付ける kwargs を宣言**: `_BACKEND_ACCEPTED_KEYS["xyz"]` と
-   `_ASE_ACCEPTED_KEYS["xyz"]` に set を追加します。`resolve_backend('auto')` に
-   参加させる場合は `_BACKEND_AVAILABILITY_MODULES` に import probe も登録し、
-   fallback tuple に `"xyz"` を追加します。
-5. **ドキュメント化 + smoke**: 本ページのファイルマップ / バックエンドごとの
-   表にエントリを追加し、model identifier + インストールコマンドを記載し、
-   新しいバックエンドが end-to-end で実行されるよう `tests/smoke/run.sh` に
-   `xyz` の行を追加します。
-
-## 関連項目
-
-- [アーキテクチャ](architecture.md) — 6 層のディレクトリマップ + 依存方向。
-- [CONTRIBUTING](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) — Recipe 3.2「Add an MLIP backend」、ゲートサイクルの完全な参照付き。
+- [アーキテクチャ](architecture.md)：ディレクトリの構成と依存の向き
+- [HPC 実行例](hpc-example.md)：PBS、Open MPI、Ray で `workers`・`workers_per_node` を複数のノードに広げるテンプレート
+- [MLIP の TS を DFT で確かめる](dft-backend.md)：DFT の設定、メモリ、チェックポイント
+- [トラブルシューティング](troubleshooting.md)：計算が失敗したとき
+- [opt](opt.md)、[path-opt](path-opt.md)、[all](all.md)：選んだバックエンドで動くコマンド

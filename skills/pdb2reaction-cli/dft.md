@@ -1,106 +1,109 @@
 # `pdb2reaction dft`
 
-## Purpose
+## When to use
 
-Single-point DFT energy on an arbitrary geometry, via PySCF (CPU) or
-GPU4PySCF (CUDA, x86_64). Use as a post-MLIP refinement on R / TS / P
-geometries from `irc` / `tsopt`, or as a standalone DFT driver on any
-input.
+Run one DFT single point (energy, plus Mulliken, meta-Löwdin, and IAO charges
+and spin densities) with GPU4PySCF (`--dft-engine gpu`, the default) or PySCF
+(`--dft-engine cpu`), typically on the R, TS, and P from `tsopt` or `irc` to
+get DFT//MLIP energies. `-b dft` is different: it makes DFT the calculator of
+another command (`sp`, `opt`, `tsopt`, `irc`, `freq`, scan and path commands,
+`all`), and those iterative runs reuse the last converged density.
 
-## Synopsis
-
-```bash
-pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
-    [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--func-basis 'wb97m-v/def2-svp'] \
-    [--dft-engine gpu|cpu] \
-    [--solvent NAME --solvent-model pcm|smd] \
-    [--dft-nprocs INT --dft-memory SIZE] \
-    [-o ./result_dft/]
-```
-
-## Key flags
-
-| flag | type | default | description |
-|---|---|---|---|
-| `-i, --input` | path | required | `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-q` / `-l` / `-m` | — | — | Charge / spin (required for `.xyz` without `--ref-pdb`) |
-| `--ref-pdb` | path | none | Reference PDB/mmCIF so `-l` works on `.xyz` input |
-| `--func-basis` | str | `wb97m-v/def2-svp` | `'FUNC/BASIS'` |
-| `--dft-engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
-| `--dft-low-memory / --no-dft-low-memory` | toggle | `--dft-low-memory` | Closed-shell GPU uses `rks_lowmem.RKS`, including PCM/SMD; open-shell GPU and CPU use standard direct-JK RKS/UKS. `--no-dft-low-memory` enables density fitting by default. |
-| `--solvent` / `--solvent-model` | str / choice | `none` / `smd` | Native PySCF PCM or SMD implicit solvent. |
-| `--dft-nprocs` / `--dft-memory` | int / size | auto / auto | Override scheduler/environment-derived thread count and memory limit. |
-| `--config` | path | none | YAML config file |
-| `-o, --out-dir` | path | `./result_dft/` | Output directory |
-| `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
-
-## Examples
-
-### DFT//MLIP on a TS
+## Minimal run
 
 ```bash
-pdb2reaction dft -i seg_01/ts.pdb \
-    -l 'SAM:1,GPP:-3' \
-    --func-basis 'wb97m-v/def2-tzvpd' \
-    --dft-engine gpu --out-json
+pdb2reaction dft -i seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
+    --func-basis 'wb97m-v/def2-tzvpd' --dft-engine gpu --out-json
 ```
 
-`--out-json` enables the `result.json` example below; omit it for `result.yaml` only.
-
-### CPU PySCF (aarch64 / no GPU)
+The default method is `wb97m-v/def2-svp`. XYZ input needs `-q` and `-m`, or
+`--ref-pdb` so that `-l` works. `--solvent` adds PySCF implicit solvent
+(`--solvent-model smd` by default, or `pcm`); `--dft-nprocs` and
+`--dft-memory` override the detected CPU thread count and host RAM limit.
+On a machine without a usable GPU:
 
 ```bash
-pdb2reaction dft -i ts.xyz -q 0 -m 1 \
-    --func-basis 'wb97m-v/def2-svp' \
-    --dft-engine cpu \
-    -o result_dft_cpu
+pdb2reaction dft -i ts.xyz -q 0 -m 1 --func-basis 'wb97m-v/def2-svp' \
+    --dft-engine cpu -o result_dft_cpu
 ```
 
-## Output
+## Judge success
 
-| Path | When | Content |
-|---|---|---|
-| `<out_dir>/result.yaml` | successful DFT calculation | energy + per-atom Mulliken / Loewdin / IAO charges & spin densities |
-| `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/input_geometry.xyz` | input preparation succeeds | geometry snapshot sent to PySCF |
-
-`result.json` keys (written only when `--out-json` is passed):
+The console prints `E_total (Hartree): …`, the run exits with 0, and
+`result_dft/result.yaml` has `energy.converged: true` together with the grid
+level and the per-atom charges and spin densities. `input_geometry.xyz` is the
+geometry sent to PySCF. With `--out-json`, `result.json` (and its copy
+`summary.json`) is also written:
 
 ```python
 import json
 d = json.load(open("result_dft/result.json"))
-print(d["energy_hartree"])
-print(d["xc_functional"], d["basis_set"])  # e.g. "wb97m-v", "def2-tzvpd"
-print(d["engine"])           # "gpu4pyscf(rks_lowmem)", "gpu4pyscf", or "pyscf(cpu)"
-print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell / CPU / --no-dft-low-memory)
-print(d["converged"])        # True / False (exit code 1 if False)
+print(d["energy_hartree"], d["converged"])  # exit code 1 if not converged
+print(d["xc_functional"], d["basis_set"])   # e.g. "wb97m-v", "def2-tzvpd"
+print(d["engine"])  # "gpu4pyscf(rks_lowmem)", "gpu4pyscf", or "pyscf(cpu)"
+print(d["used_gpu"], d["used_lowmem"])  # lowmem is False for open shell, CPU, or --no-dft-low-memory
 ```
 
-`result.yaml` carries the run info: grid_level, Mulliken / Loewdin /
-IAO charges, spin densities.
+## Pitfalls and recovery
 
-## Common errors
-
-| Symptom | Fix |
-|---|---|
-| `OSError: libcusolver.so.11 not found` | Capture `pip check` and compare the clean-environment library-loading test in [`env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md); do not guess a library path. |
-| `cupy ... invalid device ordinal` | Keep the scheduler-provided `CUDA_VISIBLE_DEVICES` and select a valid local ordinal (usually device 0 in a one-GPU allocation). Do not unset the scheduler's isolation variable. |
-| `RuntimeError: CUDA out of memory` | First try the same method with `--dft-engine cpu` or a larger-memory GPU. Lowering the grid or basis changes the scientific method, so do it only as an explicit new calculation and label it accordingly. |
-| aarch64 `--dft-engine gpu` raises `ClickException` ("GPU backend failed...") | PyPI wheel is x86_64-only; re-submit with `--dft-engine cpu` or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) |
-
-## Caveats
-
-- `pdb2reaction dft` remains an energy/population-analysis **single-point**
-  command. As an optional calculator backend, `sp`, `opt`, `tsopt`, `irc`,
-  `freq`, scan/path workflows, and `all` also accept `-b dft`; those iterative
-  paths reuse the last converged density/orbitals.
-- `--func-basis` follows PySCF naming. Test a basis name directly, for example
+- An unconverged SCF prints `WARNING: SCF did not converge to the requested
+  tolerance.`, writes `converged: false`, and exits with 1.
+- `OSError: libcusolver.so.11 not found`: capture `pip check` and compare with
+  the clean-environment library-loading test in
+  [backends.md](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch);
+  do not guess a library path.
+- `cupy ... invalid device ordinal`: keep the scheduler's
+  `CUDA_VISIBLE_DEVICES` and select a valid local ordinal (usually device 0 in
+  a one-GPU allocation). Do not unset it.
+- `RuntimeError: CUDA out of memory`: rerun the same method with
+  `--dft-engine cpu` or on a larger GPU. A smaller grid or basis changes the
+  method, so run it only as a new, labeled calculation.
+- When GPU4PySCF cannot run, `dft` stops with an error that suggests
+  `--dft-engine cpu`; it does not switch by itself. The PyPI wheel is
+  x86_64-only, so on aarch64 use `--dft-engine cpu` or build `gpu4pyscf` from
+  source.
+- `--func-basis` follows PySCF names. Test a basis name directly:
   `python -c "from pyscf import gto; print(len(gto.basis.load('def2-tzvpd', 'C')))"`.
 
-## See also
+## DFT//MLIP on the TS candidate
 
-- [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — install + aarch64 handling.
-- `tsopt.md`, `irc.md` — produce the geometries used for DFT single points.
-- `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP recipe.
-- Defaults: `import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT)`
+After `all --tsopt`, the structures to feed `dft` are
+`<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` (plus `.cif` for mmCIF
+input). With `result_mep` as the output directory of `all`:
+
+```bash
+LIGAND_CHARGE='SAM:1,GPP:-3'
+FUNC_BASIS='wb97m-v/def2-tzvpd'
+for state in reactant ts product; do
+  pdb2reaction dft -i result_mep/segments/seg_01/${state}.pdb \
+      -l "$LIGAND_CHARGE" --func-basis "$FUNC_BASIS" --dft-engine gpu -o dft_${state}
+done
+```
+
+To take only the segment with the highest local barrier
+(`rate_limiting_step.segment` in `summary.json`):
+
+```bash
+SUMMARY=result_mep/summary.json
+RLS_SEG=$(python - "$SUMMARY" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(int(json.load(handle)["rate_limiting_step"]["segment"]))
+PY
+)
+printf -v RLS_DIR 'seg_%02d' "$RLS_SEG"
+TS_FILE="result_mep/segments/${RLS_DIR}/ts.pdb"
+test -f "$TS_FILE"
+pdb2reaction dft -i "$TS_FILE" -l 'SAM:1,GPP:-3' \
+    --func-basis 'wb97m-v/def2-tzvpd' --dft-engine gpu
+```
+
+Combine the energies with [`energy-diagram`](utilities.md#energy-diagram).
+
+## Next step
+
+- Install, and aarch64 handling:
+  [backends.md](../pdb2reaction-install-backends/backends.md#dft-pyscf-gpu4pyscf).
+- `-b dft`, `all --dft`, and GPU memory: [docs](../../docs/dft-backend.md).
+- Geometries for the single points: [tsopt.md](tsopt.md), [irc.md](irc.md).
+- Flags and defaults: `--help-advanced` and [SKILL.md](SKILL.md#where-flags-and-defaults-live).

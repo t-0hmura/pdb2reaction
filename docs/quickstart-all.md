@@ -1,87 +1,82 @@
-# Quickstart: `pdb2reaction all` (Endpoint mode)
+# Quickstart: `pdb2reaction all`
 
-## Goal
+## Overview
 
-Run the end-to-end workflow once from two full PDB structures.
+`pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points.
 
-## Prerequisites
+The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6-methyltransferase BezA in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples): `1.R.pdb` is the reactant and `3.P.pdb` the product. Get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`. For your own reaction, replace them with your full-system structures.
 
-- pdb2reaction installed (see [Installation](installation.md))
-- Two PDB/mmCIF files (reactant R and product P) with **hydrogen atoms** already added
-- The same atom identities in the same order across all reaction-ordered input files
+### What it is for
 
-> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the geranyl pyrophosphate (GPP) C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files for multi-step runs). Replace them with the two (or more) full-system PDBs for your own reaction. To run the commands below verbatim, first fetch the bundled example: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`.
+* **A first run of the whole workflow**: run every stage once on the bundled example.
+* **The MEP between R and P**: get the path and its highest-energy image (HEI), the TS candidate.
+* **TS, IRC, frequencies, and DFT in the same run**: add `--tsopt --thermo --dft` to check the TS candidate.
 
 ## Minimal command
+
+Give R and P in reaction order, the residues to cut out around (`-c`), and the ligand charges (`-l`).
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --out-dir ./result_all
 ```
 
+The run succeeded when the `====== Pipeline summary ======` block near the end of the console shows `Scientific status: success`; `summary.json` holds the same value in `scientific_status`.
+
 ### (Optional) Add post-processing in the same run
+
+`--tsopt` adds TS optimization and IRC for each [reactive segment](glossary.md) (here `seg_01`), `--thermo` adds frequencies and thermochemistry, and `--dft` adds DFT single points on R, TS, and P. `--thermo` and `--dft` require `--tsopt`.
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs on the
-> extracted cluster. Memory use depends on the structure, basis, functional,
-> precision, and software stack; pilot a representative state and monitor peak
-> memory on the target node. On OOM, run `pdb2reaction dft` separately with a
-> smaller basis / trimmed cluster or use a larger node. The `[dft]` extra must
-> also be installed (see [Installation](installation.md) Step 7).
+## Before you run
 
-## Expected output
+The structures need every hydrogen atom, and R and P must list the same atoms in the same order; see [Before you run: the input structures](getting-started.md#before-you-run-the-input-structures).
 
-A successful run produces a directory like:
+## Output files
+
+The minimal command writes:
 
 ```text
 result_all/
-├── summary.log                    # Human-readable summary
-├── summary.json                   # Machine-readable results
-├── mep_trj.pdb                        # Concatenated MEP path (promoted to the root)
-├── energy_diagram_MEP.png         # All-segment MEP energy profile
-└── _work/                         # Pipeline scratch (safe to delete)
-    └── path_opt/                  # Raw MEP-engine output (path_search/ with --refine-path)
-        ├── hei_seg_01.{xyz,pdb}   # Highest-energy MEP image
-        └── summary.json           # MEP engine results
+├── summary.log                  # Run summary
+├── summary.json                 # Results, with scientific_status
+├── mep_trj.pdb                  # MEP over all segments
+├── energy_diagram_MEP.png       # MEP energy profile over all segments
+└── _work/                       # Intermediate files, including the HEI (TS candidate); kept after the run
+    └── path_opt/                # MEP search (path_search/ with --refine-path, the recursive MEP search)
+        ├── hei_seg_01.{xyz,pdb} # Highest-energy image of segment 1
+        └── summary.json         # MEP search results
 ```
 
-The minimal command stops after the MEP stage and therefore does **not** create
-`segments/`. With `--tsopt`, a successfully validated reactive segment adds
-`segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`, `ts/`, and `irc/`; adding
-`--thermo` also adds `freq/`.
+The minimal command stops after the MEP search and does not create `segments/`. With `--tsopt`, a reactive segment adds `segments/seg_NN/` with the R/TS/P structures (`reactant.pdb`, `ts.pdb`, `product.pdb`), `ts/`, and `irc/`; `--thermo` also adds `freq/`.
 
-### Output validation
+## Checking the result
 
-1. `summary.json` — use `scientific_status` and `scientific_status_reasons` for usability. In path mode, `segments[].barrier_kcal` is the raw MEP electronic barrier; requested post-processing results are reported under `rate_limiting_step` and `post_segments`.
-2. `_work/path_opt/hei_seg_01.pdb` — inspect the highest-energy image; with `--tsopt`, also inspect the canonical `segments/seg_01/*.pdb` R/TS/P structures
-3. `energy_diagram_*.png` — the energy profile should show a clear barrier
+1. **Completion**: `scientific_status` is `success` when every requested stage converged; otherwise it is `partial` or `failed`, with the [reasons](json-output.md#execution-and-requested-stage-completion) in `scientific_status_reasons`. With `--tsopt`, two checks are left for you: that the imaginary mode moves the bonds that form or break, and that the endpoints are the intended R and P.
+2. **TS candidate**: open `_work/path_opt/hei_seg_01.pdb`, the HEI of the first segment. With `--tsopt`, also open the optimized TS, `segments/seg_01/ts.pdb`.
+3. **Energy profile**: `energy_diagram_MEP.png` should show a clear barrier between R and P.
+4. **TS (with `--tsopt`)**: a successful TS optimization gives one imaginary mode along the reaction coordinate. The console then prints `[tsopt] Converged (n_imag=1).`, and `summary.json` records the count in `post_segments[].tsopt.n_imaginary_modes`. Open `segments/seg_01/ts/vib/imag_*_trj.xyz` in a viewer and check that the mode moves the bonds that form or break.
+5. **Endpoints (with `--tsopt`)**: open `segments/seg_01/irc/finished_irc_trj.xyz` and the optimized endpoints `segments/seg_01/reactant.pdb` and `product.pdb`, and check that they are the intended R and P. Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
 
-**Sample terminal output (successful run):**
+For how `all` judges each stage, see [Reading the run status](all.md#reading-the-run-status).
 
-```
-[time] Elapsed Time for Whole Pipeline: HH:MM:SS.sss
-```
+## Notes
 
-(Wall-clock varies with system size, GPU, and selected stages.)
+* **DFT and GPU memory**: `--dft` needs the DFT extra; for its installation and GPU memory, see the Notes of [Refine an MLIP TS with DFT](dft-backend.md#notes).
+* **Barriers in `summary.json`**: `segments[].barrier_kcal` is the barrier on the MEP, before TS optimization. With `--tsopt`, `post_segments[].mlip.barrier_kcal` is the barrier from the optimized TS and endpoints; `--thermo` adds `post_segments[].gibbs_mlip.barrier_kcal` and `--dft` adds `post_segments[].dft.barrier_kcal`.
+* **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` is the highest barrier among the segments, compared at the highest level that every segment has (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`); `rate_limiting_step.method` names that level.
 
-If `--tsopt` is enabled, you should also see:
+## Next steps
 
-```
-[Imaginary modes] n=1 ([-425.9])
-```
-
-A first-order saddle has one imaginary mode under the selected criterion. Inspect the IRC trajectory and optimized endpoints produced by `--tsopt` to determine whether they connect the intended reactant and product; execution alone does not establish that correspondence.
-
-## Tips
-
-- `pdb2reaction all --help` shows core options; `pdb2reaction all --help-advanced` shows the full list.
-
-## Next step
-
-- Scan-defined single-structure route: [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md)
-- TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)
-- Full option reference: [all](all.md)
+- [Quickstart: scan](quickstart-scan.md): start from one structure when there is no product structure
+- [Quickstart: TS-only mode](quickstart-tsopt.md): optimize and check a TS candidate you already have
+- [Building the cluster model](model-setup.md): trim the model, or extend it when residues are missing
+- [Tips for studying reaction mechanisms](mechanism-tips.md): plan the calculations, and what to try when the TS search fails
+- [Refine an MLIP TS with DFT](dft-backend.md): refine and check the TS with DFT
+- [`all`](all.md): full option reference (also `pdb2reaction all --help-advanced`)
+- [JSON Output Reference](json-output.md): the fields of `summary.json`
+- [Troubleshooting](troubleshooting.md): find an error message or symptom and its fix

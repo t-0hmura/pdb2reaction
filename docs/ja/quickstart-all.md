@@ -1,87 +1,82 @@
-# クイックスタート: `pdb2reaction all`（Endpoint モード）
+# クイックスタート: `pdb2reaction all`
 
-## 目的
+## 概要
 
-2 つの完全系 PDB（反応物 R と生成物 P）から、end-to-end のワークフローを 1 回実行します。
+`pdb2reaction all` は、反応物（R）と生成物（P）の 2 つの構造から、1 回の実行で反応経路を作ります。基質のまわりのクラスターモデルを切り出し、R と P の間の最小エネルギー経路（MEP）を探索します。`--tsopt --thermo --dft` を付けると、同じ実行のまま遷移状態（TS）の最適化・固有反応座標（IRC）の計算・振動数・DFT 一点計算まで進みます。
 
-## 前提条件
+以下のコマンドは、[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある、ゲラニル二リン酸（GPP）の C6 位をメチル化する酵素 BezA の同梱例を使います。`1.R.pdb` が反応物、`3.P.pdb` が生成物です。同梱例は `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples` で取得できます。自分の反応では、全系の構造に置き換えてください。
 
-- pdb2reaction がインストール済みであること（[インストール](installation.md) を参照）
-- **水素原子が追加済み**の 2 つの PDB ファイル（反応物 R と生成物 P）
-- すべての入力 PDB で同じ原子が同じ順序で含まれていること
+### 主な用途
 
-> **ファイル名について:** 例の `1.R.pdb` と `3.P.pdb` は geranyl pyrophosphate (GPP) C6-メチル基転移酵素 BezA のサンプルディレクトリ（[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples)）に同梱された反応物/生成物 PDB に対応します（`1.R.pdb` = 反応物状態、`3.P.pdb` = 生成物状態、追加の反応物/生成物/中間体構造を含む実行向けに `2.*.pdb` の中間状態も利用可能）。ご自身の反応では、2 つ以上の全系 PDB に置き換えてください。下記コマンドをそのまま試すには、まず同梱例を取得してください: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`。
+* **全工程を初めて通す**: 同梱例で、すべての段を 1 回実行
+* **R と P の間の MEP を作る**: 経路と、その最高エネルギーのイメージ（HEI、TS の候補）を取得
+* **同じ実行で TS・IRC・振動数・DFT まで進める**: `--tsopt --thermo --dft` を付けて TS の候補を確認
 
 ## 最小コマンド
+
+R と P を反応の順に渡し、切り出しの中心にする残基（`-c`）とリガンドの電荷（`-l`）を指定します。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --out-dir ./result_all
 ```
 
+端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
+
 ### （オプション）同一実行で後処理まで行う
+
+`--tsopt` で[反応セグメント](glossary.md)（ここでは `seg_01`）ごとの TS 最適化と IRC を、`--thermo` で振動数と熱化学を、`--dft` で R・TS・P の DFT 一点計算を追加します。`--thermo` と `--dft` には `--tsopt` が必要です。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM 注意:** `--dft` は抽出clusterに対してGPU4PySCF の一点計算を
-> 実行します。必要memoryは構造・基底・汎関数・精度・software stackに依存するため、
-> 対象nodeで代表構造をpilot実行してpeak memoryを測定してください。OOM時は、より
-> 小さい基底／縮小clusterで `pdb2reaction dft` を単独実行するか、より大きいnodeを
-> 使用します。`[dft]` extraのinstallも必要です
-> （[インストール](installation.md) 手順7）。
+## 実行の前に
 
-## 期待される出力
+構造にはすべての水素原子が要り、R と P は同じ原子を同じ順に並べている必要があります。詳しくは [入力構造に関する重要事項](getting-started.md#入力構造に関する重要事項) を参照してください。
 
-成功時のディレクトリ構造:
+## 主な出力ファイル
+
+最小コマンドは次のファイルを書き出します。
 
 ```text
 result_all/
-├── summary.log                    # テキストサマリ
-├── summary.json                   # JSON 結果
-├── mep_trj.pdb                        # 連結済み MEP 経路（ルート直下に配置）
-├── energy_diagram_MEP.png         # 全セグメントの MEP エネルギープロファイル
-└── _work/                         # パイプライン作業領域（削除可）
-    └── path_opt/                  # MEP エンジン生出力
-        ├── hei_seg_01.{xyz,pdb}   # MEP の最高エネルギー像
-        └── summary.json           # path-opt エンジンの結果
+├── summary.log                  # 実行の要約
+├── summary.json                 # 結果（scientific_status を含む）
+├── mep_trj.pdb                  # 全セグメントの MEP
+├── energy_diagram_MEP.png       # 全セグメントの MEP のエネルギープロファイル
+└── _work/                       # 途中のファイル（TS 候補の HEI を含む。実行後も残る）
+    └── path_opt/                # MEP 探索（MEP を再帰的に詰める --refine-path のときは path_search/）
+        ├── hei_seg_01.{xyz,pdb} # セグメント 1 の最高エネルギーのイメージ
+        └── summary.json         # MEP 探索の結果
 ```
 
-最小コマンドは MEP ステージ終了時に停止するため、`segments/` は作成しません。
-`--tsopt` を付け、反応セグメントの検証に成功すると
-`segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`、`ts/`、`irc/` が追加され、
-`--thermo` も付けると `freq/` が追加されます。
+最小コマンドは MEP 探索で終わるため、`segments/` は作られません。`--tsopt` を付けると、反応セグメントごとに `segments/seg_NN/` ができ、R/TS/P の構造 `reactant.pdb`・`ts.pdb`・`product.pdb` と、`ts/`、`irc/` が入ります。`--thermo` を付けると `freq/` も加わります。
 
-### 出力の検証
+## 結果の確認
 
-1. `summary.json` — 利用可否は `scientific_status` と `scientific_status_reasons` で判定します。path mode の `segments[].barrier_kcal` は生の MEP 電子障壁であり、要求した後処理の結果は `rate_limiting_step` と `post_segments` を確認します。
-2. `_work/path_opt/hei_seg_01.pdb` — 最高エネルギー像を確認。`--tsopt` 時は正規 `segments/seg_01/*.pdb` の R/TS/P も確認
-3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
+1. **完了状況**: `scientific_status` には、求めた段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行と要求段階の完了状況)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードができる結合と切れる結合を動かすかと、端点が狙った R と P かの 2 つは自分で確かめてください。
+2. **TS の候補**: 最初のセグメントの HEI `_work/path_opt/hei_seg_01.pdb` を開きます。`--tsopt` のときは、最適化した TS の `segments/seg_01/ts.pdb` も開きます。
+3. **エネルギープロファイル**: `energy_diagram_MEP.png` で、R と P の間にはっきりした障壁があるかを確かめます。
+4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
+5. **端点（`--tsopt` のとき）**: `segments/seg_01/irc/finished_irc_trj.xyz` と、最適化した端点の `segments/seg_01/reactant.pdb`・`product.pdb` を開き、狙った R と P かを確かめます。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 
-**成功時のターミナル出力例:**
+`all` が各段をどう判定するかは [実行結果の判定](all.md#実行結果の判定) を参照してください。
 
-```
-[time] Elapsed Time for Whole Pipeline: HH:MM:SS.sss
-```
+## 使用上の注意点
 
-（実行時間は系サイズ、GPU、有効化したステージで変動します。）
-
-`--tsopt` が有効な場合:
-
-```
-[Imaginary modes] n=1 ([-425.9])
-```
-
-一次鞍点は、選択した分類基準で虚振動が1本です。`--tsopt` が出力する IRC 軌跡と最適化済み端点を調べ、意図した反応物・生成物を結ぶか確認してください。実行完了だけでは、その対応は確定しません。
-
-## 補足
-
-- `pdb2reaction all --help` は主要オプション、`pdb2reaction all --help-advanced` は全オプションを表示します。
+* **DFT と GPU のメモリ**: `--dft` には DFT 用の追加パッケージが要ります。その導入と GPU メモリについては [MLIP の TS を DFT で確かめる](dft-backend.md#使用上の注意点) の使用上の注意点を参照してください。
+* **`summary.json` の障壁**: `segments[].barrier_kcal` は TS 最適化の前の、MEP の上の障壁です。`--tsopt` を付けると、最適化した TS と端点から求めた障壁が `post_segments[].mlip.barrier_kcal` に入り、`--thermo` で `post_segments[].gibbs_mlip.barrier_kcal`、`--dft` で `post_segments[].dft.barrier_kcal` が加わります。
+* **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` は、すべてのセグメントにそろっている最も高いレベル（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で比べた、最も高い障壁です。使ったレベルは `rate_limiting_step.method` に入ります。
 
 ## 次のステップ
 
-- 単一構造のスキャン定義経路: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
-- TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)
-- 全オプション: [all](all.md)
+- [クイックスタート: scan](quickstart-scan.md): 生成物の構造が無いとき、1 つの構造から始める
+- [クイックスタート: TS-only モード](quickstart-tsopt.md): 手元の TS 候補を最適化して確かめる
+- [クラスターモデルの組み方](model-setup.md): モデルを削る、残基が足りないときに広げる
+- [反応機構を調べるコツ](mechanism-tips.md): 計算の計画と、TS が取れないときに試すこと
+- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で詰めて確かめる
+- [`all`](all.md): 全オプションのリファレンス。`pdb2reaction all --help-advanced` でも見られます
+- [JSON 出力リファレンス](json-output.md): `summary.json` の欄
+- [トラブルシューティング](troubleshooting.md): エラーメッセージや症状から対処を探す

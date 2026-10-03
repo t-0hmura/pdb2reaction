@@ -10,6 +10,8 @@
 
 **pdb2reaction** is a Python CLI toolkit for exploring candidate enzymatic reaction pathways from PDB structures using machine-learning interatomic potentials (MLIPs).
 
+New to pdb2reaction? Start with [Getting Started](getting-started.md).
+
 ```{toctree}
 :maxdepth: 2
 :caption: Guides
@@ -19,10 +21,10 @@ getting-started
 installation
 quickstart-all
 quickstart-scan
-quickstart-tsopt-freq
-cif
-freeze-atoms
-recipes-common-errors
+quickstart-tsopt
+model-setup
+mechanism-tips
+dft-backend
 troubleshooting
 ```
 
@@ -57,12 +59,10 @@ energy-diagram
 :hidden:
 
 cli-conventions
-reproducibility
 reference/commands/index
 yaml-reference
 json-output
 output-layout
-uma-pysis
 backends
 hpc-example
 mcp_server
@@ -80,10 +80,10 @@ ja/getting-started
 ja/installation
 ja/quickstart-all
 ja/quickstart-scan
-ja/quickstart-tsopt-freq
-ja/cif
-ja/freeze-atoms
-ja/recipes-common-errors
+ja/quickstart-tsopt
+ja/model-setup
+ja/mechanism-tips
+ja/dft-backend
 ja/troubleshooting
 ```
 
@@ -118,11 +118,9 @@ ja/energy-diagram
 :hidden:
 
 ja/cli-conventions
-ja/reproducibility
 ja/yaml-reference
 ja/json-output
 ja/output-layout
-ja/uma-pysis
 ja/backends
 ja/hpc-example
 ja/mcp_server
@@ -132,25 +130,26 @@ ja/architecture
 
 ## Quick start
 
-| Goal | Workflow |
-|------|----------|
-| **First end-to-end run** | [Quickstart: all](quickstart-all.md) |
-| **Build an MEP from a single structure using a scan** | [Quickstart: scan](quickstart-scan.md) |
-| **TS candidate available** | [Quickstart: TS-only mode](quickstart-tsopt-freq.md) |
-| **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
-
-See [Installation](installation.md) for prerequisites.
+| Goal | Page |
+|------|------|
+| **Run the whole pathway from R and P** | [Quickstart: all](quickstart-all.md) |
+| **Start from one structure (no product structure)** | [Quickstart: scan](quickstart-scan.md) |
+| **Optimize and check a TS candidate** | [Quickstart: TS-only mode](quickstart-tsopt.md) |
+| **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
+| **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
+| **Check the TS with DFT** | [Refine an MLIP TS with DFT](dft-backend.md) |
+| **A run failed** | [Troubleshooting](troubleshooting.md) |
 
 ## Subcommands
 
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | Optional extraction; endpoint-MEP, scan-list, or TS-only entry mode; optional TS/IRC, thermochemistry, and DFT stages |
+| [`all`](all.md) | Optional extraction; one of the three [input modes](getting-started.md#choosing-an-input-mode) (multi-structure MEP search, single structure + scan, TS-only mode); optional TS/IRC, thermochemistry, and DFT stages |
 | [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
-| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO; optional flatten) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-P-RFO; optional flatten) |
+| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO; optional `--flatten` removes leftover imaginary modes) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-P-RFO; optional `--flatten` removes extra imaginary modes) |
 | [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
 | [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
 | [`scan`](scan.md) | Restrained distance scan supporting concerted multi-distance and multistage scans |
@@ -168,12 +167,17 @@ See [Installation](installation.md) for prerequisites.
 
 | Topic | Page |
 |-------|------|
-| **CLI conventions and input requirements** | [CLI Conventions](cli-conventions.md) · [mmCIF and large structures](cif.md) |
-| **Cluster boundary atoms (cap hydrogens, `--freeze-atoms`)** | [Frozen Atoms](freeze-atoms.md) |
+| **Common options and input requirements** | [Common options and selectors](cli-conventions.md) |
+| **Frozen atoms and distance restraints (`--freeze-atoms`, `--distance-restraint`)** | {ref}`Freeze atoms and restrain distances <freeze-atoms-and-restraints>` |
 | **Common errors and fixes** | [Troubleshooting](troubleshooting.md) |
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
-| **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
+| **MLIP backend settings** | [MLIP Backends](backends.md) |
+| **Files each command writes** | [Output Directory Layout](output-layout.md) |
+| **Keys of `result.json` and `summary.json`** | [JSON Output Reference](json-output.md) |
+| **Running on several GPU nodes (PBS + Ray)** | [HPC example](hpc-example.md) |
+| **Calling pdb2reaction from an AI agent (MCP)** | [MCP server](mcp_server.md) |
+| **Code structure (for developers)** | [Architecture](architecture.md) |
 | **Terminology** | [Glossary](glossary.md) |
 
 ## System requirements
@@ -182,7 +186,7 @@ See [Installation](installation.md) for prerequisites.
 
 - **OS:** Linux.
 - **GPU (recommended):** an NVIDIA driver compatible with the backend and PyTorch wheel. CPU execution is also supported but slower.
-- **VRAM / RAM:** depends on the model, system, Hessian mode, precision, and parallelism. Measure peak use on a representative calculation.
+- **VRAM / RAM:** depends on the model, the system size, and the Hessian mode; measure the peak on a representative run.
 
 ### Software
 
@@ -236,3 +240,5 @@ pdb2reaction <subcommand> --help
 # Advanced options (dry-run, internal tuning, etc.)
 pdb2reaction <subcommand> --help-advanced
 ```
+
+Report problems and feature requests on [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues).

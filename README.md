@@ -2,11 +2,11 @@
 
 [![PyPI](https://img.shields.io/pypi/v/pdb2reaction.svg)](https://pypi.org/project/pdb2reaction/) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
+`pdb2reaction` is a Python CLI that uses machine-learning interatomic potentials (MLIPs) to search for candidate **enzymatic reaction pathways** from **PDB or mmCIF structures**.
+
 ## Overview
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
-
-`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more reaction-ordered structures, (ii) one structure with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it can run an **MEP search** and optionally chain **TS optimization → IRC → thermochemical correction → DFT single-point**. Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
 Test a reaction mechanism in a single command:
 
@@ -15,45 +15,19 @@ Test a reaction mechanism in a single command:
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
-Protein structures can be supplied in **PDB** or **mmCIF** format, including mmCIF files with multi-character chains and large residue IDs. Small molecules are accepted in PDB, mmCIF, **XYZ**, or **GJF** format, and prebuilt cluster models can also be supplied as PDB/mmCIF.
+The run writes the R / TS / P structures, energy diagrams, and `summary.log` / `summary.json` to `result_all/`.
 
-> **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
+### What it is for
 
-MLIP remains the default; calculator workflows also accept optional `-b dft` through PySCF/GPU4PySCF. Select the method with `--func-basis` and pass advanced PySCF attributes through `calc.dft.pyscf` in YAML ([DFT guide](docs/dft.md)).
+* **Trial and error on reaction mechanisms**: screen large systems for which DFT alone would take too long
+* **Starting structures for quantum chemistry**: build cluster models of the reactant (R), transition state (TS), and product (P)
+* **High-throughput calculations over many systems**: explore reaction pathways systematically across substrate variants and enzyme mutants
 
-## Colab GUI workspace
-
-**An interactive GUI workspace is available in Google Colab.** It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
-
-<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/colab_workspace.png" alt="pdb2reaction Colab GUI workspace showing Mol* structure setup and active-site selection controls" width="90%">
-
-## Related tools
-
-| Tool | Use case |
-|---|---|
-| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
-| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for quick/exploratory reaction-mechanism studies (GS / TS / IRC / ΔG). |
-
-> `pdb2reaction` bundles a GPU-optimized pysisyphus fork that is **not** compatible with upstream pysisyphus — do not install it into an environment that already has upstream pysisyphus.
-
-## Documentation
-
-- [Getting Started](docs/getting-started.md) · [mmCIF and large structures](docs/cif.md) · [Installation](docs/installation.md) · [Examples](examples/) · [Troubleshooting](docs/troubleshooting.md)
-- [YAML Reference](docs/yaml-reference.md) · [JSON Output Schema](docs/json-output.md)
-- Full site: <https://t-0hmura.github.io/pdb2reaction/>
-
-## System requirements
-
-| Component | Requirement |
-|---|---|
-| OS | Linux recommended. |
-| Python | **3.12 recommended** (minimum 3.11). **ORB requires 3.11 or 3.12.** |
-| GPU / CUDA / VRAM | CUDA-capable NVIDIA GPU recommended for production, with a compatible driver and official PyTorch 2.13 CUDA wheel (`cu126`, `cu130`, or `cu132`). Required VRAM is backend/model/system/workflow dependent; pilot the real calculation. |
-| RAM / Disk | Size for the selected environment, model cache, structures, trajectories, and DFT scratch; no atom-count-only minimum is reliable. |
-
-CPU-only execution works but is usually much slower; benchmark the selected backend/model. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
+Once MLIP finds a plausible path, pdb2reaction can take that TS straight into DFT TS optimization: the TS optimization → IRC → endpoint optimization → frequency workflow runs as GPU-accelerated DFT with GPU4PySCF. See [DFT backend](docs/dft-backend.md).
 
 ## Installation
+
+Requirements: Linux, Python 3.11 or later (3.12 recommended; ORB requires 3.11 or 3.12), and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). Details: [docs/installation.md](docs/installation.md).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
@@ -76,11 +50,18 @@ hf auth login                               # interactive
 | `[dft]` / `[dft-cuda12]` | DFT calculator and standalone command with native CUDA 13 / CUDA 12 GPU4PySCF |
 | `[mcp]` | Model Context Protocol server for agent clients |
 
-The MACE backend (`-b mace`) is **not** a pip extra: `mace-torch` pins `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` (UMA), so it needs a dedicated environment — `pip uninstall -y fairchem-core && pip install mace-torch` (see [docs/installation.md](docs/installation.md)).
+The MACE backend (`-b mace`) does not install into the same environment as UMA; create a dedicated environment as described in [docs/installation.md](docs/installation.md).
 
 CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chromium, and HPC job-script templates: [docs/installation.md](docs/installation.md) and [docs/hpc-example.md](docs/hpc-example.md).
 
 ## Quick Examples
+
+> **Before you start:**
+>
+> - PDB/mmCIF inputs must already contain hydrogens.
+> - Reaction-ordered structures must share the same atom identities and order (only coordinates differ).
+> - mmCIF files (including multi-character chains and large residue IDs) and large structures: see [mmCIF and large structures](docs/cli-conventions.md#mmcif-and-large-structures).
+> - Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
 Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). Run the commands below from the repository root (`git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction`); the complete MEP and scan examples are in [`examples/run.sh`](examples/run.sh).
 
@@ -107,10 +88,7 @@ pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_
 pdb2reaction -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo --out-dir result_cluster
 ```
 
-For hand-built clusters, standardize backbone ends at Cα (`CA`), place other
-boundaries on aliphatic C–C single bonds whenever possible, avoid cutting
-peptide/polar/conjugated/metal bonds, and use the identical atom order and cap
-topology for every state. See [the cluster-boundary checklist](docs/extract.md#building-or-auditing-a-cluster-model-manually).
+For a hand-built cluster, check its boundaries with [the cluster-boundary checklist](docs/model-setup.md#building-or-auditing-a-cluster-model-manually).
 
 Each stage (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` → `dft`) also runs as its own subcommand; see [CLI Subcommands](#cli-subcommands) for the per-stage pages.
 
@@ -120,11 +98,17 @@ A non-dry `all` run writes the deliverables reached by its enabled stages to
 `--out-dir` (default `./result_all/`):
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
-- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
-- `energy_diagram_MEP.png` — MEP diagram when MEP construction and static-image export succeed
+- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for mmCIF input or very large PDB) — the merged reaction path in MEP/scan-list modes
+- `energy_diagram_MEP.png` — MEP energy diagram
 - `summary.log` / `summary.json`
 
 Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
+
+## Colab GUI workspace
+
+**An interactive GUI workspace is available in Google Colab.** It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
+
+<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/colab_workspace.png" alt="pdb2reaction Colab GUI workspace showing Mol* structure setup and active-site selection controls" width="90%">
 
 ## CLI Subcommands
 
@@ -146,6 +130,15 @@ Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename
 | `bond-summary` | Compare structures, report bond changes | [bond-summary](docs/bond-summary.md) |
 | `trj2fig` / `energy-diagram` | Energy plot / R→TS→P diagram | [trj2fig](docs/trj2fig.md) · [energy-diagram](docs/energy-diagram.md) |
 
+## Documentation
+
+- [Getting Started](docs/getting-started.md) · [Installation](docs/installation.md) · [Quickstart: all](docs/quickstart-all.md) · [Building the cluster model](docs/model-setup.md) · [DFT backend](docs/dft-backend.md) · [Troubleshooting](docs/troubleshooting.md)
+- Full site: <https://t-0hmura.github.io/pdb2reaction/>
+
+## Agent Skills
+
+`skills/` holds Agent Skills that let an AI coding agent run `pdb2reaction` workflows and subcommands. Copy the skill folders into `.claude/skills/` or `~/.claude/skills/` for Claude Code, or into `.agents/skills/` or `~/.agents/skills/` for Codex. The list and an example copy command are in [`skills/README.md`](skills/README.md).
+
 ## Getting Help
 
 ```bash
@@ -156,6 +149,21 @@ pdb2reaction <subcmd> --help-advanced     # full option set
 
 Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
+## Related tools
+
+| Tool | Use case |
+|---|---|
+| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
+| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for quick/exploratory reaction-mechanism studies (GS / TS / IRC / ΔG). |
+
+## Known limitations
+
+- **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
+- **DFT single-point cost** depends strongly on basis, functional, grid, elements, and hardware; pilot one representative structure before batching.
+- **Check every TS.** When tsopt converges or stops on an energy plateau, it computes the Hessian of the final geometry and reports n_imag; a successful TS optimization shows one imaginary mode along the reaction. IRC and endpoint optimization then confirm that it connects R and P (reaching the right R and P counts even if IRC stops early). ORB runs in fp64 by default; validate frequencies and IRC yourself if you switch to fp32/TF32.
+- **CPU-only execution** is supported but usually much slower than GPU.
+- `pdb2reaction` bundles a GPU-optimized pysisyphus fork that is **not** compatible with upstream pysisyphus — do not install it into an environment that already has upstream pysisyphus.
+
 ## Citation
 
 ```bibtex
@@ -165,17 +173,6 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
   year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
 }
 ```
-
-## Agent Skills
-
-Agent Skills for Claude Code / Codex / Cursor etc. in [`skills/`](skills/) — copy into your project's skill location (e.g. `.claude/skills/`) to let an agent drive `pdb2reaction` workflows and subcommands.
-
-## Known limitations
-
-- **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
-- **DFT single-point cost** depends strongly on basis, functional, grid, elements, and hardware; pilot one representative structure before batching.
-- **Every backend's TS** requires frequency and IRC connectivity checks. Use `tsopt`'s terminal PHVA for saddle-order validation; a separate `freq` run is optional for further analysis. The pdb2reaction ORB default is fp64; independently validate frequencies and IRC results when selecting `fp32`/TF32.
-- **CPU-only execution** is supported but usually much slower than GPU.
 
 ## Contributing
 

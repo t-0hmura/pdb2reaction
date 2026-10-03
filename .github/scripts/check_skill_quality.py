@@ -22,11 +22,36 @@ FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)", re.DOTALL)
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LONG_FLAG_RE = re.compile(r"--[a-z][a-z0-9-]*")
 
+# Command -> page in skills/pdb2reaction-cli/. The all-* pages also belong to `all`.
+CLI_COMMAND_PAGES = {
+    "all": "all.md",
+    "extract": "extract.md",
+    "opt": "opt.md",
+    "path-opt": "path.md",
+    "path-search": "path.md",
+    "scan": "scan.md",
+    "scan2d": "scan.md",
+    "scan3d": "scan.md",
+    "tsopt": "tsopt.md",
+    "irc": "irc.md",
+    "freq": "freq.md",
+    "dft": "dft.md",
+    "sp": "utilities.md",
+    "fix-altloc": "utilities.md",
+    "add-elem-info": "utilities.md",
+    "bond-summary": "utilities.md",
+    "trj2fig": "utilities.md",
+    "energy-diagram": "utilities.md",
+}
+ALL_MODE_PAGES = ("all-endpoint-mep.md", "all-scan-list.md", "all-ts-only.md")
+
 
 def _issue(errors: list[str], path: Path, message: str, line: int | None = None) -> None:
     rel = path.relative_to(REPO_ROOT)
     where = f"{rel}:{line}" if line is not None else str(rel)
-    errors.append(f"{where}: {message}")
+    entry = f"{where}: {message}"
+    if entry not in errors:
+        errors.append(entry)
 
 
 def _line_of(text: str, token: str) -> int:
@@ -119,13 +144,30 @@ def _live_subcommand_flags() -> dict[str, set[str]]:
     return flags_by_command
 
 
+def _cli_page_commands() -> dict[str, set[str]]:
+    """Map each cli page name to the commands it covers."""
+    owners: dict[str, set[str]] = {}
+    for command, page in CLI_COMMAND_PAGES.items():
+        owners.setdefault(page, set()).add(command)
+    for page in ALL_MODE_PAGES:
+        owners.setdefault(page, set()).add("all")
+    return owners
+
+
 def _validate_cli_page_coverage(errors: list[str]) -> None:
     commands = _live_subcommands()
     cli_dir = SKILLS_DIR / "pdb2reaction-cli"
-    pages = {path.stem for path in cli_dir.glob("*.md") if path.name != "SKILL.md"}
-    missing = sorted(commands - pages)
-    if missing:
-        _issue(errors, cli_dir / "SKILL.md", f"missing per-command pages: {missing}")
+    pages = {path.name for path in cli_dir.glob("*.md") if path.name != "SKILL.md"}
+    unmapped = sorted(commands - set(CLI_COMMAND_PAGES))
+    if unmapped:
+        _issue(errors, cli_dir / "SKILL.md", f"commands missing from CLI_COMMAND_PAGES: {unmapped}")
+    owners = _cli_page_commands()
+    absent = sorted(set(owners) - pages)
+    if absent:
+        _issue(errors, cli_dir / "SKILL.md", f"cli pages listed in the checker but missing: {absent}")
+    unknown = sorted(pages - set(owners))
+    if unknown:
+        _issue(errors, cli_dir / "SKILL.md", f"cli pages not assigned to a command: {unknown}")
 
 
 def _validate_cli_option_table_ownership(errors: list[str]) -> None:
@@ -136,10 +178,14 @@ def _validate_cli_option_table_ownership(errors: list[str]) -> None:
     Only a table's first cell is inspected so cross-command prose remains legal.
     """
     cli_dir = SKILLS_DIR / "pdb2reaction-cli"
-    for command_name, valid_flags in _live_subcommand_flags().items():
-        path = cli_dir / f"{command_name}.md"
+    flags_by_command = _live_subcommand_flags()
+    for page, commands in sorted(_cli_page_commands().items()):
+        path = cli_dir / page
         if not path.exists():
+            _issue(errors, path, "cli page listed in the checker is missing")
             continue
+        valid_flags = set().union(*(flags_by_command.get(c, set()) for c in commands))
+        command_name = ", ".join(sorted(commands))
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if not line.startswith("|"):
                 continue
@@ -200,33 +246,40 @@ def _validate_scan_flag_occurrences(path: Path, errors: list[str]) -> None:
             )
 
 
+def _normalize(text: str) -> str:
+    return " ".join(text.split())
+
+
 def _require(path: Path, fragments: tuple[str, ...], errors: list[str]) -> None:
-    text = path.read_text(encoding="utf-8")
+    if not path.exists():
+        _issue(errors, path, "missing file with required high-risk guidance")
+        return
+    text = _normalize(path.read_text(encoding="utf-8"))
     for fragment in fragments:
-        if fragment not in text:
+        if _normalize(fragment) not in text:
             _issue(errors, path, f"required high-risk guidance missing: {fragment!r}")
 
 
 def _validate_high_risk_semantics(errors: list[str]) -> None:
-    all_page = SKILLS_DIR / "pdb2reaction-cli" / "all.md"
-    scan_page = SKILLS_DIR / "pdb2reaction-cli" / "all-scan-list.md"
-    tsopt_page = SKILLS_DIR / "pdb2reaction-cli" / "tsopt.md"
-    opt_page = SKILLS_DIR / "pdb2reaction-cli" / "opt.md"
-    irc_page = SKILLS_DIR / "pdb2reaction-cli" / "irc.md"
-    path_opt_page = SKILLS_DIR / "pdb2reaction-cli" / "path-opt.md"
-    freq_page = SKILLS_DIR / "pdb2reaction-cli" / "freq.md"
+    cli = SKILLS_DIR / "pdb2reaction-cli"
+    install = SKILLS_DIR / "pdb2reaction-install-backends"
+    structure = SKILLS_DIR / "pdb2reaction-structure-io"
+    overview = SKILLS_DIR / "pdb2reaction-overview"
+    all_page = cli / "all.md"
+    scan_page = cli / "all-scan-list.md"
+    tsopt_page = cli / "tsopt.md"
+    opt_page = cli / "opt.md"
+    irc_page = cli / "irc.md"
+    freq_page = cli / "freq.md"
     hpc_page = SKILLS_DIR / "pdb2reaction-hpc" / "SKILL.md"
-    uma_page = SKILLS_DIR / "pdb2reaction-install-backends" / "uma.md"
-    cuda_page = SKILLS_DIR / "pdb2reaction-install-backends" / "env-cuda.md"
-    xtb_page = SKILLS_DIR / "pdb2reaction-install-backends" / "xtb.md"
-    structure_page = SKILLS_DIR / "pdb2reaction-structure-io" / "SKILL.md"
-    cif_page = SKILLS_DIR / "pdb2reaction-structure-io" / "cif.md"
-    charge_page = SKILLS_DIR / "pdb2reaction-structure-io" / "charge-multiplicity.md"
-    pdb_page = SKILLS_DIR / "pdb2reaction-structure-io" / "pdb.md"
-    extract_page = SKILLS_DIR / "pdb2reaction-cli" / "extract.md"
-    output_page = SKILLS_DIR / "pdb2reaction-workflows-output" / "SKILL.md"
-    summary_page = SKILLS_DIR / "pdb2reaction-workflows-output" / "summary-json.md"
-    ts_strategy = SKILLS_DIR / "pdb2reaction-ts-strategy" / "SKILL.md"
+    backends_page = install / "backends.md"
+    structure_page = structure / "SKILL.md"
+    formats_page = structure / "formats.md"
+    model_setup_page = SKILLS_DIR / "pdb2reaction-model-setup" / "SKILL.md"
+    extract_page = cli / "extract.md"
+    output_page = overview / "SKILL.md"
+    summary_page = overview / "outputs.md"
+    ts_strategy = overview / "ts-strategy.md"
 
     _require(all_page, ("temporary directory", "one `-s` occurrence"), errors)
     _require(
@@ -280,6 +333,9 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     for page in (irc_page, output_page, summary_page):
+        if not page.exists():
+            _issue(errors, page, "missing file checked for removed IRC verdicts")
+            continue
         text = page.read_text(encoding="utf-8")
         for obsolete in ('d["forward_status"]', 'd["backward_status"]',
                          '`*_status == "stopped"`'):
@@ -294,18 +350,17 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         ),
         errors,
     )
-    _require(path_opt_page, ("| `--max-nodes` | int | 20 |",), errors)
     _require(
         hpc_page,
         ("BackendError", "FiniteDifference", "resource syntax is not interchangeable"),
         errors,
     )
-    _require(uma_page, ("BackendError", "rather than changing the explicitly requested method"), errors)
+    _require(backends_page, ("BackendError", "rather than changing the explicitly requested method"), errors)
     _require(
-        cuda_page,
+        backends_page,
         (
             "prebuilt PyTorch wheel contains its CUDA runtime dependencies",
-            "Do not use\n`PYTORCH_NO_CUDA_PRELOAD`",
+            "Do not use `PYTORCH_NO_CUDA_PRELOAD`",
             "torch==2.13.0",
             "`cu126`, `cu130`, `cu132`, and `cpu`",
         ),
@@ -317,12 +372,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     _require(
-        SKILLS_DIR / "pdb2reaction-install-backends" / "mace.md",
-        ("torch==2.13.0",),
-        errors,
-    )
-    _require(
-        xtb_page,
+        backends_page,
         (
             "E_xTB(solvent) - E_xTB(vacuum)",
             "`trj2fig` also accepts it, but only uses it when",
@@ -336,11 +386,11 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     _require(
-        cif_page,
+        formats_page,
         (
             "619,938 residues",
             "`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`",
-            "synthetic identifiers are implementation details",
+            "the `.cif` keeps the original chain IDs and residue numbers",
             "With `--convert-files` enabled",
         ),
         errors,
@@ -351,12 +401,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     _require(
-        output_page,
-        ("mmCIF/oversized-PDB inputs also receive `.cif` companions",),
-        errors,
-    )
-    _require(
-        charge_page,
+        structure_page,
         (
             "Explicit `-q` sets the total",
             "a mismatch produces a warning",
@@ -365,7 +410,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     _require(
-        pdb_page,
+        model_setup_page,
         ("Within one R/IM/P reaction path", "WT/mutant or other cross-variant models"),
         errors,
     )
@@ -375,7 +420,6 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
             "top-level `mlip_backend` / `mlip_model`",
             "`mlip_precision`",
             "`mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers",
-            "no compatibility aliases are written",
             "filenames use `MLIP`",
         ),
         errors,
@@ -386,7 +430,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
             "--refine-path",
             "deliberately off by default",
             "`--ref-mode` is not a normal standalone",
-            "or guarantee identical\n  output across PyTorch/backend versions",
+            "or guarantee identical output across PyTorch/backend versions",
         ),
         errors,
     )

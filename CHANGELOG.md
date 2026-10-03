@@ -32,6 +32,8 @@ Target release: **0.5.0**.
 
 - Isolate browser configuration during static figure export to avoid locks in shared home directories.
 - Align English/Japanese docs and CLI skills with result-status fields, optimizer selection, element repair, and Hessian output behavior.
+- Reorganize the documentation for first-time users: each command page opens with an overview, a first example, and how to judge success. New guides cover building the cluster model (`model-setup`), studying reaction mechanisms (`mechanism-tips`), and the DFT backend (`dft-backend`); the CIF, frozen-atom, common-error, reproducibility, and UMA/PySisyphus pages are merged into the related pages, and `quickstart-tsopt-freq` is renamed `quickstart-tsopt`.
+- Merge the agent skills into eight (`pdb2reaction-overview`, `-install-backends`, `-structure-io`, `-cli`, `-model-setup`, `-hpc`, `-mcp`, and `colab-local-gpu-runtime`); `pdb2reaction-architecture`, `-env-detect`, `-ts-strategy`, and `-workflows-output` are folded into them.
 - **Breaking:** Result JSON uses `execution_status` and `scientific_status`; optimizer diagnostics remain in `optimization_status`. Generic `status` and duplicate reason fields are removed (JSON schema 4.0; MCP schema 2.0). Exit codes are 0 for success or usable partial results, 1 for non-convergence/no usable result/runtime failure, 2 for invalid input/configuration, and 130 for interruption.
 - **Breaking:** Remove `--print-parsed/--no-print-parsed` from `scan`, `scan2d`, and `scan3d`; use `--dry-run` to validate the input and scan spec without calculating.
 - Use the low-memory direct-JK GPU route by default for closed-shell DFT calculations.

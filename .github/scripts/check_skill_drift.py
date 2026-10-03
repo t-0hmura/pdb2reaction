@@ -85,8 +85,8 @@ STATUS_RE = re.compile(r'"(status|execution_status|scientific_status|optimizatio
 PDB2REACTION_CLI_DIRS = {
     "pdb2reaction-cli",
     "pdb2reaction-overview",
-    "pdb2reaction-workflows-output",
     "pdb2reaction-structure-io",
+    "pdb2reaction-model-setup",
 }
 
 

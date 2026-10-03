@@ -1,172 +1,174 @@
-# `irc`
+# `irc` (intrinsic reaction coordinate)
 
-Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from an optimized transition state (validated by `tsopt`) in both directions. IRC records trajectories, endpoint candidates and stop diagnostics. The composite `all` workflow optimizes those endpoints and records TSOPT and endpoint-OPT convergence. Use `--no-backward` (or `--no-forward`) to follow only one direction. Hessians default to finite differences; analytical autograd is an explicit alternative whose speed and memory cost depend on the backend, model, system size, precision, and GPU, so validate it on the target setup instead of treating it as a blanket recommendation. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware companion output. A typical workflow is `tsopt` → `irc`.
+## Overview
 
-IRC does not publish an independent `scientific_status` or directional success verdict. A predictor integration-budget stop can still supply finite retained candidates to endpoint OPT. Trajectories and stop reasons remain available; missing structures, nonfinite coordinates/energies and execution exceptions remain errors. Correspondence with intended R/P structures is mechanism information separate from optimizer convergence.
+`irc` traces the intrinsic reaction coordinate (IRC) from an optimized transition state (TS) in both directions with EulerPC (an Euler predictor–corrector integrator). It writes the trajectory of each branch and the two endpoint candidates. Optimizing those endpoints with [`opt`](opt.md) shows which reactant (R) and product (P) the TS connects.
+
+### What it is for
+
+* **Checking a TS**: confirm that the TS from [`tsopt`](tsopt.md) connects the intended R and P.
+* **Getting R and P**: optimize the endpoints with [`opt`](opt.md) to obtain the R and P structures of this TS.
+* **Rerunning the IRC step of `all`**: trace the IRC of an [`all`](all.md) run again on its own, with different settings.
+
+The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md); `-b/--backend` also selects **ORB**, **MACE**, **AIMNet2**, or **DFT**.
+
+---
 
 ## Examples
 
-Command synopsis:
+### 1. Both branches
+
+Trace both directions from the TS, and write a summary with `--out-json`.
 
 ```bash
-pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
- [-b/--backend uma|orb|mace|aimnet2|dft] \
- [--uma-workers N] [--uma-workers-per-node N] [-m 2S+1] \
- [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
- [--forward/--no-forward] [--backward/--no-backward] \
- [--freeze-links/--no-freeze-links] \
- [--out-dir DIR] [--config FILE] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE] \
- [--hessian-calc-mode Analytical|FiniteDifference] [--read-hess FILE] \
- [--show-config] [--dry-run]
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --out-json --out-dir ./result_irc
 ```
 
-Basic run with both branches:
+The endpoint candidates are `finished_first.xyz` and `finished_last.xyz`.
+
+### 2. Forward branch only with a larger step
+
+Trace only the forward branch, with a maximum step of 0.2 bohr.
 
 ```bash
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward --step-size 0.2 --out-dir ./result_irc_forward
 ```
 
-Forward-only branch, finite-difference Hessian, larger step size:
+### 3. Analytical Hessian
+
+Compute the starting Hessian analytically instead of by finite differences.
 
 ```bash
-# Forward-only branch, finite-difference Hessian, larger step size
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
- --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
 ```
 
-Request an analytical Hessian explicitly:
+### 4. Retry with a smaller step
+
+When a branch stops after only a few frames, retry with a maximum step of 0.05 bohr.
 
 ```bash
-# Keep workers at 1 when requesting an analytical UMA Hessian
-pdb2reaction irc -i ts.pdb -q 0 -m 1 \
- --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --out-dir ./result_irc_small_step
 ```
 
-If a branch stops after only one or two steps, first reduce the maximum
-EulerPC step. `0.05` Bohr is a useful retry value:
+### 5. Trace to the cycle limit
 
-```bash
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 \
- --out-dir ./result_irc_small_step
-```
-
-To trace unconditionally through all physical endpoint criteria, add
-`--never-stop`. This opt-in mode ignores RMS-gradient, hard-gradient,
-energy-increase, and energy-change stops. It continues until `--max-cycles`
-unless a numerical/integration failure or external interruption prevents
-further propagation:
+Add `--never-stop` to ignore the gradient and energy stop criteria and trace each branch until `--max-cycles`.
 
 ```bash
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
- --max-cycles 250 --out-dir ./result_irc_continue
+    --max-cycles 250 --out-dir ./result_irc_continue
 ```
 
-## Workflow
+---
 
-1. **Input preparation** – The common bridge accepts PDB, mmCIF, and formats supported by `geom_loader`. When a PDB/mmCIF reference topology is available, EulerPC trajectories are converted to PDB; bridge inputs also receive CIF with original IDs. `--freeze-links` augments `geom.freeze_atoms` by freezing parents of cap hydrogens for topology inputs.
-2. **EulerPC integration** – The EulerPC predictor-corrector integrator traces the IRC path from the transition state. Forward and/or backward branches are run according to `--forward`/`--backward` flags. The default `constrained` rigid-mode treatment removes only full-system translations/rotations compatible with the frozen anchors before selecting the initial mode. Each step then uses an Euler predictor along the mass-weighted steepest-descent direction (with the gradient approximated via a second-order Taylor expansion using the current Hessian), followed by a modified-Bulirsch–Stoer corrector on a distance-weighted-interpolation surface.
-3. **Trajectory output** – Finished, forward, and backward IRC trajectories are written as XYZ files. With a reference topology and `--convert-files`, PDB companions are generated; mmCIF/oversized-PDB bridge inputs also receive CIF companions.
+## How it works
 
-## Outputs
+1. **Starting direction**: `irc` computes the Hessian at the TS (or reads it with `--read-hess`), removes rigid motions as [`freq`](freq.md#rigid-modes-with-frozen-boundaries) does, and takes the eigenvector `--root` (`0` = lowest eigenvalue) as the reaction mode. If that mode is not imaginary, the run stops with an error.
+2. **EulerPC integration**: each branch (forward, then backward) starts from the TS. Every step is an Euler predictor along the mass-weighted steepest-descent direction, with the gradient estimated from a second-order Taylor expansion with the current Hessian (Bofill update). Each predictor step is followed by a modified Bulirsch–Stoer corrector on a DWI (distance-weighted interpolation) surface. A branch stops when the RMS gradient falls below 1 × 10⁻³ hartree/bohr after leaving the TS region, when the energy rises, when the energy changes by 1 × 10⁻⁶ hartree or less in one step, or at `--max-cycles`.
+3. **Writing the path**: `irc` writes each branch, the whole path through the TS, and the two end structures of that path. For PDB/mmCIF input, the trajectories are also converted to PDB.
+
+---
+
+## Judging the IRC
+
+Even if the IRC does not converge, the result is usable when the endpoints, optimized with `opt`, reach the intended R and P.
+
+| What to check | Where to look |
+| --- | --- |
+| The start was a TS | The console line `Transition vector is mode 0 with wavenumber … cm⁻¹.` shows a negative wavenumber |
+| How each branch stopped | `forward_integration_converged` / `backward_integration_converged` in `result.json`: `true` when the RMS gradient fell below the threshold, `false` for an energy stop or the cycle limit |
+| Bonds that change along the path | `bond_changes` in `result.json` (`formed` and `broken`, from `finished_first` to `finished_last`) |
+| Which end is R and which is P | Optimize `finished_first.xyz` and `finished_last.xyz` with [`opt`](opt.md) and compare them with the intended R and P. The order first / last does not decide it |
+
+`result.json` records the outcome as `scientific_status`: `success` (exit code 0) means that the integration ran without an error, however each branch stopped. `irc` does not judge the endpoints; whether they are the intended R and P is for you to check.
+
+If the endpoints are not the intended R and P, see {ref}`When the TS search fails <ts-search-fails>`.
+
+---
+
+## Output files
+
+When the run finishes, `--out-dir` contains:
 
 ```text
-out_dir/ (default:./result_irc/)
-├─ <prefix>finished_irc_trj.xyz   # Complete IRC trajectory
-├─ <prefix>finished_first.xyz     # Raw first endpoint used for endpoint comparison
-├─ <prefix>finished_last.xyz      # Raw last endpoint used for endpoint comparison
-├─ <prefix>finished_irc.pdb       # PDB companion (when ref PDB available + conversion enabled)
-├─ <prefix>finished_irc.cif       # Bridge-input companion with original IDs
-├─ <prefix>forward_irc_trj.xyz    # Present when the forward branch runs
-├─ <prefix>forward_irc.pdb        # Forward-branch PDB companion (same gating)
-├─ <prefix>forward_irc.cif        # Bridge-input companion
-├─ <prefix>backward_irc_trj.xyz   # Present when the backward branch runs
-├─ <prefix>backward_irc.pdb       # Backward-branch PDB companion (same gating)
-└─ <prefix>backward_irc.cif       # Bridge-input companion
+result_irc/
+├─ finished_irc_trj.xyz    # Whole IRC path: forward end → TS → backward end
+├─ finished_irc.pdb        # Same path as PDB (PDB/mmCIF input)
+├─ finished_first.xyz      # First frame: forward end (the TS with --no-forward)
+├─ finished_last.xyz       # Last frame: backward end (the TS with --no-backward)
+├─ {forward,backward}_{first,last}.xyz  # Ends of each branch
+├─ forward_irc_trj.xyz     # Forward branch (when it runs)
+├─ forward_irc.pdb         # Same branch as PDB (PDB/mmCIF input)
+├─ backward_irc_trj.xyz    # Backward branch (when it runs)
+├─ backward_irc.pdb        # Same branch as PDB (PDB/mmCIF input)
+└─ result.json             # Summary (--out-json)
 ```
 
-`finished_first.xyz` and `finished_last.xyz` are directional endpoint
-artifacts; their order alone does not establish chemical reactant/product
-identity.
+{ref}`mmCIF input <mmcif-input>`, and PDB input too large for the PDB columns, also get `.cif` files that keep the original identifiers.
 
-When `irc.prefix` is non-empty, EulerPC inserts one underscore before the
-filename; for example, `prefix: trial` produces
-`trial_finished_irc_trj.xyz`. `result.json.files` records the normalized names.
+* **Endpoint candidates**: `finished_first.xyz` and `finished_last.xyz` are the structures to optimize with [`opt`](opt.md). Of the ends of each branch, `forward_first.xyz` and `backward_last.xyz` are the far ends, and `forward_last.xyz` and `backward_first.xyz` are the first steps from the TS.
+* **Path**: open `finished_irc_trj.xyz` or `finished_irc.pdb` in PyMOL or VMD to watch the reaction.
+* **Summary**: with `--out-json`, [`result.json`](json-output.md) records the number of frames of each branch, how each branch stopped, `bond_changes`, and the energies of the two ends and the TS.
+* **File prefix**: with YAML `irc.prefix: trial`, the names of the trajectory and structure files start with `trial_`; `files` in `result.json` also records the prefixed names.
+* **Console**: the step table of each branch and the elapsed time; with {ref}`-v 3 <verbosity-levels>`, also the `geom`, `calc`, and `irc` settings actually used.
 
-Low-level periodic HDF5 checkpointing is available only through YAML:
-`irc.dump_every` defaults to `null` and a positive value writes
-`<prefix>irc_data.h5`. The file is overwritten with the current direction's
-coordinates, energies, and gradients; it is not a final combined IRC artifact,
-contains no Hessian, and is omitted from `result.json.files`.
+---
 
-- Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
+## Main options
 
-## CLI options
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | TS structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`). For a trajectory, extract one frame to `.xyz` first (see {ref}`Extract one frame from a trajectory <trajectory-one-frame>`) |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
+| `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
+| `-b, --backend` | text | `uma` | Backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |
+| `--max-cycles` | integer | `125` | Maximum number of IRC steps per branch |
+| `--step-size` | float | `0.10` | Maximum step length in bohr (unweighted Cartesian coordinates) |
+| `--never-stop/--no-never-stop` | flag | `False` | Ignore the gradient and energy stop criteria and trace until `--max-cycles` |
+| `--forward/--no-forward` | flag | `True` | Run the forward branch |
+| `--backward/--no-backward` | flag | `True` | Run the backward branch |
+| `--root` | integer | `0` | Hessian eigenvector used as the reaction mode, counted from 0 in ascending order of eigenvalue |
+| `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | How the starting Hessian is computed |
+| `--read-hess` | path | `None` | Start from the Hessian in a `.npy` file (for example from `freq` or `tsopt --dump-hess`) instead of computing it |
+| `--freeze-links/--no-freeze-links` | flag | `True` | Freeze the parent atoms of cap hydrogens (PDB/mmCIF input or `--ref-pdb`) |
+| `--out-json/--no-out-json` | flag | `False` | Write a summary to `result.json` ([JSON Output Reference](json-output.md)) |
+| `-o, --out-dir` | path | `./result_irc/` | Output directory |
 
-The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation.
+See the [generated CLI reference](reference/commands/irc.md) for every option.
 
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge. Explicit `-q` has highest priority; otherwise see {ref}`Charge specification <charge-specification>`. | Required unless YAML/template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--uma-workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
-| `--uma-workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). Explicit `-m` overrides YAML `calc.spin`; otherwise YAML, `.gjf`, or `1` is used. | YAML/`.gjf`/`1` |
-| `--max-cycles INT` | Maximum IRC steps. An explicit value overrides YAML `irc.max_cycles`. | `125` |
-| `--step-size FLOAT` | Step length in unweighted Cartesian coordinates (Bohr). An explicit value overrides YAML `irc.step_length`. | `0.10` |
-| `--never-stop/--no-never-stop` | Ignore RMS-gradient, hard-gradient, energy-rise, and one-step energy-change stops (`abs(E_n-E_{n-1}) <= energy_thresh`, default `1e-6` Hartree) and trace until `max_cycles`. Numerical/integration failures and external interruption still stop propagation. | `False` |
-| `--root INT` | **0-based** index into the projected Hessian's eigenvalues sorted in **ascending order** (most-negative first), used to pick the mode for the initial IRC displacement. For a validated TS with exactly one imaginary mode, leave `--root 0` (the sole negative eigenvalue). Use `--root 1`, `--root 2`, … only if you know the active imaginary mode is ranked above more-negative spurious modes. An explicit value overrides YAML `irc.root`. | `0` |
-| `--forward/--no-forward` | Run forward branch (`irc.forward`); an explicit toggle overrides YAML. | `True` |
-| `--backward/--no-backward` | Run backward branch (`irc.backward`); an explicit toggle overrides YAML. | `True` |
-| `--irc-pos-def/--no-irc-pos-def` | Opt in to requiring a positive-definite projected Hessian before accepting IRC convergence. Enable this guard when a shoulder could otherwise look converged. | `False` |
-| `--freeze-links/--no-freeze-links` | For PDB/mmCIF topology inputs, freeze cap-H parents (merged with `geom.freeze_atoms`). See [extract](extract.md) for cap-hydrogen details. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `-o, --out-dir TEXT` | Output directory (`irc.out_dir`); an explicit value overrides YAML. | `./result_irc/` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a reference PDB/mmCIF topology is available. | `True` |
-| `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
-| `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`calc.hessian_calc_mode`); an explicit value overrides YAML. | `FiniteDifference` |
-| `--read-hess PATH` | Start from the Hessian in a NumPy `.npy` file (for example from `freq` or `tsopt --dump-hess`) instead of computing it. Needs `irc.hessian_init: calc` (the default). | _None_ |
-| `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
-| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--dry-run/--no-dry-run` | Validate options and inputs without running IRC. | `False` |
+> **Note:** in YAML (`--config`), every key of the `irc` block, including the stop thresholds, is listed under [`irc`](yaml-reference.md#irc-section) in the YAML Reference.
 
-## YAML configuration
-
-See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
-
-The `geom`, `calc`, and `irc` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), and [`irc`](yaml-reference.md#irc-section). `--freeze-links` augments `geom.freeze_atoms` for PDB/mmCIF topology inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
-
-**`irc`-specific hard overrides** (applied after YAML/CLI merging, regardless of YAML values):
-
-```yaml
-geom:
- coord_type: cart # forced to cart for irc (YAML value ignored)
-calc:
- return_partial_hessian: true # forced true for irc (partial Hessian with active-DOF processing)
-```
-
-## Exit codes
-
-See {ref}`exit-codes` in CLI Conventions.
+---
 
 ## Notes
 
-- The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC. A branch that stops almost immediately should be retried with a smaller `--step-size` (for example `0.05`) before changing other controls.
-- `--never-stop` is intentionally off by default. It deliberately traces to the cycle limit instead of stopping at a physical endpoint criterion. Inspect the trajectory and optimize/validate the endpoints; increase `--max-cycles` only when the extra path is scientifically useful.
-- When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
-- `--read-hess` takes the same `.npy` file as [`freq`](freq.md) (all atoms, or only the movable ones) and checks only its size, symmetry, and finiteness. When the file is used, `result.json["rigid_projection"]["hessian_source"]` is `"file"`.
-- `result.json["rigid_projection"]` records the treatment, effective rank, and initial Hessian source and shape. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+* **A branch that stops at once**: when a branch ends after three frames or fewer, the console warns `[irc] IRC stopped after only a few frames in …`. Try example 4 first; a large step can make EulerPC unstable.
+* **`--never-stop` is off by default**: numerical failures and interruptions still stop the run. Inspect the trajectory and optimize the endpoints, and raise `--max-cycles` only when the extra path is useful.
+* **`--root` counts from 0**: a successful TS optimization gives one imaginary mode along the reaction coordinate, so for a TS with n_imag = 1 keep `--root 0` (the only negative eigenvalue). Use `1`, `2`, … only when you know that spurious modes with lower (more negative) eigenvalues come before the reaction mode.
+* **Fixed settings**: `irc` always uses Cartesian coordinates (`geom.coord_type: cart`) and the Hessian of the movable atoms only (`calc.return_partial_hessian: true`), whatever the YAML says.
+* **The `--read-hess` file** is the same `.npy` file as in [`freq`](freq.md). It needs `irc.hessian_init: calc` (the default); when the file is used, `rigid_projection.hessian_source` in `result.json` is `"file"`.
+* **Analytical Hessian and `--uma-workers`**: with UMA, `--hessian-calc-mode Analytical` cannot run with `--uma-workers` above 1 and stops with an error. Use `--uma-workers 1` for an analytical Hessian. Its speed and memory use depend on the backend, the model, and the system size, so test it on your system first.
+* **Optimizing the endpoints**: `finished_first.xyz` and `finished_last.xyz` are written only as `.xyz`, so pass the TS PDB with `--ref-pdb` to keep the parent atoms of the cap hydrogens {ref}`frozen <freeze-atoms-and-restraints>`:
 
-## See Also
+  ```bash
+  pdb2reaction opt -i result_irc/finished_first.xyz --ref-pdb ts.pdb -q 0 -m 1 --out-dir ./result_opt_first
+  pdb2reaction opt -i result_irc/finished_last.xyz --ref-pdb ts.pdb -q 0 -m 1 --out-dir ./result_opt_last
+  ```
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) — Detailed fixes for common failure modes
-- [tsopt](tsopt.md) — Optimize the TS before running IRC
-- [freq](freq.md) — Full vibrational analysis and thermochemistry
-- [opt](opt.md) — Optimize IRC endpoints to true minima
-- [all](all.md) — End-to-end workflow that runs IRC after tsopt
-- [YAML Reference](yaml-reference.md) — Full `irc` configuration options
-- [Glossary](glossary.md) — Definition of IRC (Intrinsic Reaction Coordinate)
+* **Frozen atoms**: `--freeze-atoms` (1-based) freezes atoms in addition to `--freeze-links`. `result.json` records the removed rigid motions and the starting Hessian under `rigid_projection`.
+* **Large systems**: `--hess-device cpu` keeps the starting Hessian and the IRC Hessian operations on the CPU, to stay within GPU memory.
+* **At least one branch**: `--no-forward` together with `--no-backward` stops with an error.
+
+---
+
+## See also
+
+* [tsopt](tsopt.md) — optimize the TS before running IRC
+* [opt](opt.md) — optimize the IRC endpoints to R and P
+* [freq](freq.md) — full vibrational analysis and thermochemistry
+* [all](all.md) — the full workflow, which runs IRC after `tsopt` and optimizes the endpoints
+* [Troubleshooting](troubleshooting.md) — when a run fails
+* [YAML Reference](yaml-reference.md) — every `irc` setting
+* [Glossary](glossary.md) — IRC and other terms
+* {ref}`Exit codes <exit-codes>` — what each exit status means

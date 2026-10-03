@@ -1,172 +1,150 @@
-# `path-opt`
+# `path-opt`（2 構造間の MEP 探索）
 
-`pdb2reaction path-opt` は **ちょうど 2 つの構造**間の最小エネルギー経路（MEP）を、GSM（デフォルト）または DMF（`--mep-mode dmf`）で探索します。経路軌跡を書き出し、最高エネルギー画像（HEI）を TS 候補として出力します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（虚振動数チェックを内蔵）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
+## 概要
 
-反応物と生成物の **2 端点**（R → P）が揃っており、再帰的な精密化なしで MEP の初期推定だけが必要な場面で使用します。ストリングベースの経路生成には GSM（デフォルト）を、Direct Max Flux 生成器には `--mep-mode dmf` で DMF を選択します。
+`path-opt` は、反応物と生成物の**ちょうど 2 つ**の構造の間の最小エネルギー経路（MEP）を、GSM（Growing String Method、デフォルト）または DMF（Direct Max Flux）で 1 回だけ求めます。最もエネルギーの高いイメージ（HEI）を TS 候補として書き出します。
 
-MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）で MEP image の energy/force を評価します。Hessian は選択された単一構造 optimizer の step だけで使用し、GSM/DMF path scoring では要求しません。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
+### 主な用途
 
-```{note}
-**DMF モードでの凍結原子**は、GSM で使用される pysisyphus のハード座標凍結ではなく、`HarmonicFixAtoms`（k=300 eV/Å² の調和拘束）を使用します。そのため、DMF での凍結原子は参照位置からわずかに移動する可能性があり、GSM モードの剛体凍結とは挙動が異なります。
-```
+* **R と P からの MEP の初案**: 2 つの端点構造から、再帰的な精密化なしで経路とエネルギープロファイルを得る
+* **`tsopt` に渡す TS 候補**: `hei.pdb`（または `hei.xyz`）を [`tsopt`](tsopt.md) の初期構造にする
+* **GSM と DMF の比較**: 同じ 2 構造を `--mep-mode gsm` と `--mep-mode dmf` で計算し、経路を見比べる
 
-## 実行例
+2 つ以上の構造から反応領域だけを自動で精密化したい場合は、[`path-search`](path-search.md) を使ってください。
 
-コマンド形式:
+---
+
+## 基本的な実行例
+
+### 1. 2 つの端点からの実行
+
+反応物と生成物を 1 つの `-i` の後に並べ、電荷とスピン多重度を明示します。
 
 ```bash
-pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2|dft] \
- [--uma-workers N] [--uma-workers-per-node N] \
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles-gsm N] [--dmf-max-iterations N] \
- [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--dmf-tol TOL] \
- [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode grad|hess] [--fix-ends/--no-fix-ends] \
- [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 --out-json --out-dir ./result_path_opt
 ```
 
-2 端点間の MEP 探索:
+端末に `[write] Wrote '…/hei.xyz'.` の行が出れば、TS 候補が書き出されています。`--out-json` で書き出した `result.json` の `scientific_status` には、求めた段（端点の事前最適化と MEP）がすべて収束すると `success`、そうでなければ `partial` か `failed` が入ります。`barrier_kcal` は最初のイメージを基準にした HEI のエネルギー、`hei_index` は経路上の HEI の位置です。
+
+### 2. 端点の事前最適化の上限を変える
+
+両端点はデフォルトで事前最適化され、`--preopt-max-cycles` で各回のサイクル数の上限を変えられます。端点が最適化済みなら `--no-preopt` で省けます。
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --out-dir ./result_path_opt
+  --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
 ```
 
-MEP 探索前に端点を事前最適化する:
+### 3. GSM の代わりに DMF を使う
+
+DMF には `cyipopt` が必要です。この例では可動なイメージの数も減らしています。
 
 ```bash
-# MEP 探索前に端点を事前最適化する
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
+  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
-GSM ではなく DMF モードで実行する:
+### 4. 短時間の確認（キャップ親原子を凍結し、クライミングなし）
+
+クライミングイメージ探索を省いて、経路の形をすばやく確かめます。キャップ水素の親原子は凍結したままです。
 
 ```bash
-# GSM ではなく DMF モードで実行する
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
+  --freeze-links --no-climb --out-dir ./result_path_opt_quick
 ```
 
-```{note}
-DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。デフォルトの `--dmf-backend gpu` は PyTorch/CUDA の `dmf.torch` バックエンドを使用します。GPU メモリ不足時は `--dmf-backend cpu`（`dmf`/NumPy）を指定してください。
+---
 
-```
+## 処理の仕組みと計算仕様
 
-キャップ親原子を凍結し、クライミングを無効化して短時間で確認するには `--freeze-links --no-climb` を追加します。
+1. **端点の準備**:
+各端点を、デフォルトでは L-BFGS で事前最適化します（`--opt-mode`）。続いて生成物を凍結原子で反応物に剛体で重ね合わせ、凍結原子を少しずつ反応物側の位置へ動かしながら残りの原子を緩和します。{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>` の親原子は `--freeze-links`（デフォルト）で凍結します。
+2. **経路の成長と精密化**:
+GSM は 2 つの端点の間に `--max-nodes` 個の可動なイメージのストリングを成長させ、`--thresh-gsm` まで最適化します。`--climb`（デフォルト有効）では、続くクライミングイメージ探索で最も高いイメージを鞍点へ押し上げます。DMF は補間で作った経路を IPOPT（内点法の最適化ソルバー）で `--dmf-tol` まで最適化します。
+3. **HEI の書き出し**:
+最終経路でエネルギーが最も高いイメージを HEI とし、コメント行にエネルギーを付けて `hei.xyz` に書き出します。
 
-## 処理の流れ
+---
 
-1. **事前アライメント & 凍結解決**
- - 2 番目以降のエンドポイントは最初の構造に対して Kabsch アライメントされます。いずれかのエンドポイントで `freeze_atoms` が定義されている場合、RMSD フィットにはその原子のみを使用しますが、得られた変換は全原子に適用されます。
- - `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+## HEI の判定
 
-2. **ストリング成長と HEI エクスポート**
- - 経路の成長・精密化後、全画像のうちエネルギーが最大の画像を HEI として出力します。HEI が端点の場合は内部の遷移状態候補ではないため、TS 固有の解析前に別途 TS 最適化が必要です。
- - 最高エネルギー画像（HEI）は `.xyz` として書き込まれます。PDB 参照がある場合は `.pdb`、Gaussian テンプレートがある場合は `.gjf` も出力します（いずれも `--convert-files` の設定に従います）。
+| HEI の位置 | 意味 | 次の操作 |
+| --- | --- | --- |
+| 経路の内側（`hei_index` が `1` 〜 `n_images − 2`。どちらも `result.json` のキーで、`n_images` は経路のイメージの数） | TS 候補 | [`tsopt`](tsopt.md) で最適化し、[`irc`](irc.md) を実行する |
+| 端点（`hei_index` が `0` または `n_images − 1`） | TS 候補ではない（端点の間に、高いほうの端点より上にあるイメージがない） | 端点を見直すか、別の方法で候補を作る（{ref}`TS が取れないとき <ja-ts-search-fails>` を参照） |
 
-## 出力
+HEI は近似的な経路の頂点であり、TS そのものではありません。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。`tsopt` で n_imag = 1 になり、その TS からの IRC が狙った R と P に着けば、HEI から TS が得られたことになります。
+
+---
+
+## 主な出力ファイル
+
+`--out-dir` に次のファイルを書き出します。
 
 ```text
-out_dir/
-├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
-├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合の全画像 PDB
-├─ final_geometries.gjf # GSMのみ: Gaussian template検出時（変換有効時）
-├─ hei.xyz # 最高エネルギー画像（コメント行にエネルギーを保持）
-├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
-├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
-├─ align_refine/ # 剛体アライメント/リファイン段階の中間ファイル（アライメント実行時）
-└─ <オプティマイザダンプ> # `--dump` 指定時の軌跡ダンプ（リスタート YAML は YAML の `dump_restart` 経由のみ）
+result_path_opt/
+├─ final_geometries_trj.xyz   # 最終経路の全イメージ（コメント行にエネルギー）
+├─ final_geometries.pdb       # 同じ経路の PDB（PDB・mmCIF 入力のとき。DMF では final_geometries_trj.pdb）
+├─ hei.xyz                    # HEI（TS 候補）。コメント行にエネルギー
+├─ hei.pdb                    # 同じ HEI の PDB（PDB・mmCIF 入力のとき）
+├─ align_refine/              # 端点の重ね合わせと緩和のファイル
+├─ result.json                # 結果の要約（--out-json）
+└─ summary.json               # result.json と同じ内容（--out-json）
 ```
 
-主要な出力ファイル:
+経路は `final_geometries_trj.xyz` を開いて確かめてください。PDB・mmCIF 入力では `tsopt` に `hei.pdb` を渡すと、`tsopt` でも `-l` と `--freeze-links` が使えます。`hei.xyz` を渡すときは `--ref-pdb` を付けてください。PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイルも書き出します。{ref}`mmCIF 入力 <ja-mmcif-input>` と、PDB の列に収まらない大きな PDB 入力では、元の識別子を保った `.cif` も書き出します。DMF では経路の `.gjf` は書き出しません。`--dump` を付けると、オプティマイザの軌跡も残します。
 
-- `result_path_opt/final_geometries_trj.xyz`
-- `result_path_opt/hei.xyz`
-- `result_path_opt/hei.pdb`（PDB 変換が有効な場合）
+端末には MEP の進行状況がサイクルごとに、所要時間とともに出ます。
 
-コンソールには GSM/DMF の MEP 進行状況とタイミングが報告されます。`-v 3` では解決済みの設定ブロックも出力されます。
+---
 
-設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
+## 主な CLI オプション
 
-## CLI オプション
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス 2 つ | （必須） | 反応物と生成物をこの順に 1 つの `-i` の後に並べる（`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`） |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
+| `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使う（PDB/mmCIF 入力か `--ref-pdb` のとき） |
+| `--ref-pdb` | パス | `None` | `.xyz` / `.gjf` 入力に使う PDB/mmCIF のトポロジー。両方の端点に使い、座標は `-i` から取る |
+| `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`） |
+| `-o, --out-dir` | パス | `./result_path_opt/` | 出力先ディレクトリ |
+| `--mep-mode` | `gsm` / `dmf` | `gsm` | 経路の手法（Growing String Method / Direct Max Flux） |
+| `--dmf-backend` | `gpu` / `cpu` | `gpu` | DMF の計算バックエンド（`--mep-mode dmf` のときのみ）。CUDA 上の PyTorch / NumPy |
+| `--max-nodes` | 整数 | `20` | 端点の間の可動なイメージの数。経路のイメージは全部で `max_nodes + 2` 個 |
+| `--preopt/--no-preopt` | フラグ | `True` | 重ね合わせの前に各端点を事前最適化 |
+| `--preopt-max-cycles` | 整数 | `100000` | 端点の事前最適化 1 回あたりの最大サイクル数 |
+| `--opt-mode` | `grad` / `hess` | `grad` | 端点の事前最適化の最適化法: L-BFGS / RFO |
+| `--thresh-gsm` | プリセット | `gau_loose` | GSM のストリングの収束条件（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） |
+| `--dmf-tol` | 文字列 | `tight` | DMF の経路の IPOPT の許容値: `tight`（0.04）、`middle`（0.10）、`loose`（0.20）、または正の数。別名 `--thresh-dmf` |
+| `--fix-ends/--no-fix-ends` | フラグ | `True` | GSM のストリングの最適化の間、端点を固定する（DMF では使わない） |
+| `--climb/--no-climb` | フラグ | `True` | 経路の成長後に GSM のクライミングイメージ探索を行う（DMF では使わない） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力か `--ref-pdb` のとき） |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
 
-完全なフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。以下の表は説明が必要なオプションのみを扱い、ここでは重複して記載していません。
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/path_opt.md) を参照してください。
 
-| オプション | 説明 | デフォルト |
-| --- | --- | --- |
-| `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.cif`/`.mmcif`/`.xyz`/`.gjf`）。入力は2構造のみ | 必須 |
-| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先。解決順序は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照 | テンプレート/導出がない限り必須 |
-| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時）。PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
-| `--uma-workers`, `--uma-workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
-| `-m, --multiplicity INT` | スピン多重度（`calc.spin`） | テンプレート/`1` |
-| `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）: キャップ H 親を凍結（YAML とマージ）。詳細は [extract](extract.md) を参照 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--max-nodes INT` | GSM/DMF の可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
-| `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
-| `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
-| `--gsm-param {equi\|energy}` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
-| `--max-cycles-gsm INT` | GSM string optimizer のサイクル上限（`stopt.max_cycles` と `stopt.stop_in_when_full` を設定） | `300` |
-| `--dmf-max-iterations INT` | DMF の IPOPT 反復上限（`dmf.max_cycles` を設定） | `3000` |
-| `--climb/--no-climb` | GSM の climbing-image 精密化を有効化（Lanczos 接線も同時切替）。DMF では受理するが未使用 | `True` |
-| `--dump/--no-dump` | GSM／単一構造 optimizer の軌跡を dump。DMF path solver では受理するが未使用。restart YAML は YAML で有効化した場合のみ書き出す | `False` |
-| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザ（`grad` = L-BFGS、`hess` = RFO） | `grad` |
-| `--convert-files/--no-convert-files` | 入力トポロジー／テンプレートに応じた XYZ/TRJ → PDB/CIF/GJF companion 生成の切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB/mmCIF トポロジー（XYZ 座標を保持して変換を有効化） | _None_ |
-| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
-| `--thresh TEXT` | 単一構造最適化と入力構造の整列の収束プリセット（`opt.lbfgs/rfo.thresh`）。 | `gau` |
-| `--thresh-gsm TEXT` | GSM ストリング最適化（成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
-| `--dmf-tol TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
-| `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
-| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
-| `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。 | `True` |
-| `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `100000` |
-| `--fix-ends/--no-fix-ends` | GSM 成長/精密化中に endpoint 構造を固定。DMF では受理するが未使用 | `True` |
-| `--out-json/--no-out-json` | `out_dir` に `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+> **補足:** YAML（`--config`）では、[`gs`](yaml-reference.md#gs) の節で GSM のストリングを、[`dmf`](yaml-reference.md#dmf) の節で DMF の経路を、[`stopt`](yaml-reference.md#stopt) の節でストリングのオプティマイザを設定できます。`stopt.lbfgs`・`stopt.rfo` でも、`opt.lbfgs`・`opt.rfo` と同じように端点のオプティマイザを設定できます。
 
-## YAML 設定
+---
 
-### `path-opt` で使用される YAML セクション
+## 使用上の注意点
 
-完全なキー一覧は [YAML リファレンス](yaml-reference.md) を参照:
+* **DMF では凍結原子が少し動く**: DMF は凍結原子を固定せず、YAML の `dmf.k_fix`（300 eV/Å²）の調和拘束で保持するので、参照位置からわずかにずれることがあります。GSM では固定されたままです。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
+* **DMF には `cyipopt` が必要**: `--mep-mode dmf` を使う前に conda-forge からインストールしてください。`pydmf` は `pdb2reaction` に同梱されています。デフォルトの `--dmf-backend gpu` は CUDA が使えないとエラーで停止します。その場合と GPU のメモリ不足のときは `--dmf-backend cpu` を指定してください。
+* **DMF と陰溶媒は併用できない**: MLIP バックエンドで `--mep-mode dmf` と `--solvent` を同時に指定すると、エラーで停止します。溶媒を入れた経路には GSM を使ってください。
+* **DMF で使われないオプション**: `--climb`・`--dump`・`--fix-ends` は、指定しても DMF では使われません。
+* **YAML のオプティマイザ設定の矛盾**: 同じ YAML ファイルの中で、同じキーを `opt:` と実際に動くオプティマイザの節（`lbfgs:`・`opt.lbfgs:`・`stopt.lbfgs:`、または `rfo` の同等の節）とで別の値にすると、エラーで停止します。
 
-- [`geom`](yaml-reference.md#geom) — PDB/mmCIF トポロジーでは `--freeze-links` が `freeze_atoms` にマージされます。
-- [`calc`](yaml-reference.md#calc) — MLIP バックエンド設定。
-- [`gs`](yaml-reference.md#gs) — Growing String 表現（GSM モード）。
-- [`dmf`](yaml-reference.md#dmf) — Direct Max Flux + (C)FB-ENM 補間（DMF モード）。
-- [`stopt`](yaml-reference.md#stopt) — StringOptimizer 設定。
-- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — endpoint単一構造事前最適化。CLIで `--preopt-max-cycles` を明示した場合はYAMLより優先し、省略時はYAML値を使用します。
+---
 
-### `path-opt` 固有のデフォルト
+## 関連ドキュメント
 
-`path-opt` 経由で実行した場合、以下のキーが正規デフォルトと異なります:
-
-```yaml
-stopt:
- out_dir: ./result_path_opt/ # output directory (path-opt default)
-opt:
- lbfgs:
-   out_dir: ./result_path_opt/ # output directory (path-opt default)
- rfo:
-   out_dir: ./result_path_opt/ # output directory (path-opt default)
-```
-
-## 終了コード
-
-CLI 規約の {ref}`ja-exit-codes` を参照してください。
-
-単一構造の設定は `stopt.lbfgs` / `stopt.rfo` でも指定できます。
-別の書き方と矛盾の検査は [YAML リファレンス](yaml-reference.md#stopt) を参照してください。
-
-## 関連項目
-
-- [path-search](path-search.md) — 自動精密化を伴う再帰的 MEP 探索（2+構造用）
-- [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
-- [extract](extract.md) — path-opt 入力用の活性部位モデル PDB を生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path` で再帰的 path-search に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
-- [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
-- [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義
-- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
-- [トラブルシューティング](troubleshooting.md) — 詳細な対処ガイド
+* [path-search](path-search.md) — 2 つ以上の構造を通り、結合が変わる区間を精密化する MEP 探索
+* [tsopt](tsopt.md) — HEI から TS を最適化
+* [irc](irc.md) — TS が狙った R と P につながるかを確認
+* [all](all.md) — 一貫実行のワークフロー。MEP の段は `path-opt` を使い、`--refine-path` で `path-search` に切り替えられます
+* [YAML リファレンス](yaml-reference.md) — `gs`・`dmf`・`stopt` の全設定
+* [用語集](glossary.md) — MEP、GSM、DMF、HEI などの用語
+* [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法
+* {ref}`終了コード <ja-exit-codes>` — 終了コードの意味

@@ -8,10 +8,10 @@ This pattern requires `pbsdsh`, a shared directory visible at the same path on
 every node, and a filesystem on which `flock` is reliable. Confirm all three
 site-specific assumptions first. Each task's `run.sh` must be **idempotent** or
 publish outputs atomically: recovery is deliberately at-least-once, so a task
-killed after publishing output but before its completion marker may run again.
+terminated after publishing output but before its completion marker may run again.
 
 Fill `<N_NODES>`, `<NCPU>`, `<NGPU>`, `<MEM>`, `<HH:MM:SS>`, and
-`<YOUR_QUEUE>` from the environment detection skill. Set the shell defaults
+`<YOUR_QUEUE>` as in [the environment probe](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment). Set the shell defaults
 `TASK_LIST_FILE`, `CONDA_SH`, and `P2R_CONDA_ENV` below to the verified local
 values. Leave `CUDA_MODULE` empty for prebuilt wheels; set it only when a
 locally built extension requires the site's toolkit module.
@@ -25,7 +25,7 @@ directory and records task IDs under `inflight/`, `completed/`, `failed/`, and
 marker**, not merely from commands that returned nonzero. This also recovers a
 claim abandoned by node loss, a signal, or walltime termination.
 
-If PBS kills the whole allocation before the parent epilogue runs, execute the
+If PBS stops the whole allocation before the parent epilogue runs, execute the
 preserved `recover.sh` manually with that run directory. Do not resume only
 from `next_task`; that counter records claims, not completions.
 
@@ -261,4 +261,4 @@ engine rather than this counter pattern.
 ## Cross-references
 
 - `SKILL.md` — single-job PBS / SLURM templates and cancellation safety.
-- `pdb2reaction-env-detect/SKILL.md` — how to fill site-specific placeholders.
+- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment) — how to fill site-specific placeholders.

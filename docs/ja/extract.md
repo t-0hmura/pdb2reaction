@@ -1,230 +1,190 @@
-# `extract`
+# `extract`（活性部位モデルの切り出し）
 
-タンパク質–リガンド PDB/mmCIF から活性部位クラスターモデルを切り出します。`-c/--center` は残基名、残基ID、chain付き残基名（`A:SAM`）、chain+残基名+番号（`A:SAM:123`）、または PDB/mmCIF パスを受け付けます。mmCIF および PDB 固定幅の上限に達する構造は内部で安全なPDB IDへ再割当てし、元のIDを復元したCIFも出力します。
+## 概要
 
-## 実行例
+`extract` は、タンパク質–リガンドの PDB/mmCIF から基質の周りの残基を切り出し、切った結合をキャップ水素で埋めて、できたクラスターモデルの電荷を数えます。
 
-コマンド形式:
+### 主な用途
+
+* **クラスターモデルを作る**: `all`・`opt`・`tsopt` などで計算する活性部位モデルを作ります。
+* **複数の状態を同じ境界で切る**: 原子の並びが同じ反応物と生成物を 1 回で渡すと、どのモデルも同じ残基・同じ境界になります。
+* **非標準残基を扱う**: MCPB.py などが付けた残基名を、`--modified-residue` でアミノ酸として登録します。
+
+モデルの大きさの決め方は [クラスターモデルの組み方](model-setup.md) を見てください。
+
+---
+
+## 基本的な実行例
+
+入力には、[すべての水素原子](getting-started.md#入力構造に関する重要事項)と 77–78 列の元素記号が要ります。
+
+### 1. 残基 ID と総電荷で選ぶ
+
+基質を chain:残基名:番号 で、その総電荷を 1 つの数で渡します。
 
 ```bash
-pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...] \
- -c CENTER_SPEC \
- [-o MODEL.pdb [MODEL2.pdb ...]] \
- [--radius Å] [--radius-het2het Å] \
- [--include-h2o/--no-include-h2o] \
- [--exclude-backbone/--no-exclude-backbone] \
- [--add-linkh/--no-add-linkh] \
- [--selected-resn LIST] \
- [--modified-residue LIST] \
- [-l, --ligand-charge MAP_OR_NUMBER] \
- [--out-json/--no-out-json] \
- [-v LEVEL]
+pdb2reaction extract -i complex.pdb -c 'A:GPP:301' -o model.pdb -l -3 --out-json
 ```
 
-最小（ID基準の基質）+ 明示的な総リガンド電荷:
+成功すると終了コード 0 で終わり、端末に `[extract] Atoms after truncation: N` と `[extract] Link-H to add: M` が出ます。モデルの原子数は N + M で、そのうち M 個がキャップ水素です。電荷は `[extract] Total active site model charge` の行に出ます。`model.pdb` をビューアで開き、反応に関わる残基が入っているかを確かめてください。次のコマンドには、`model.pdb` とこの総電荷を `-q` で渡します。
+
+### 2. 基質を PDB ファイルで渡す
+
+基質の PDB ファイルを中心にし、残基名ごとに電荷を渡します。
 
 ```bash
-# 最小（ID基準の基質）+ 明示的な総リガンド電荷
-pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
-```
-
-PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）:
-
-```bash
-# PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）
 pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
 ```
 
-名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）:
+基質のファイルの座標は、複合体の座標と 0.001 Å 以内で一致している必要があります。
+
+### 3. 残基名で選ぶ
+
+残基名を並べると、その名前の残基がすべて中心になります。
 
 ```bash
-# 名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）
 pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
 ```
 
-ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチ MODEL 出力:
+### 4. 複数の構造を 1 回で切る
+
+反応物と生成物を 1 つの `-i` の後に並べると、両方が同じ残基・同じキャップになり、1 つのマルチ MODEL の PDB に書き出されます。
 
 ```bash
-# ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
-pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
- -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
-# 複数出力にする場合は -o model1.pdb -o model2.pdb を指定
+pdb2reaction extract -i complex_R.pdb complex_P.pdb -c 'A:GPP:301,A:SAM:302' \
+    -o model_multi.pdb -l 'GPP:-3,SAM:1'
 ```
 
-## 処理の流れ
+入力ごとに別のファイルにするときは、`-o model_R.pdb -o model_P.pdb` を渡します。
 
-### 残基包含
+(ja-extract-modified-residue)=
+### 5. 非標準残基（`--modified-residue`）
 
-- `-c/--center` には通常、基質と触媒残基を指定します。一致した各残基を含め、その周囲へ半径展開します。
-- **標準カットオフ（`--radius`、デフォルト 2.6 Å）:**
- - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
- - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O/OXT 以外）で中心に接触する必要がある。非アミノ酸残基は任意の原子で接触判定される。
-- **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 中心のヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定距離（Å）以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
-- **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL はデフォルトで含まれる（`--include-h2o`）
-- **強制包含:** `--selected-resn` は `--center` と同じselectorを受け入れますが、半径展開は行いません。詳細は {ref}`ja-selected-resn-takes-ids` を参照。
-- **近傍セーフガード:**
- - `--no-exclude-backbone` で主鎖原子が中心に接触した場合、ペプチド隣接の N/C 側残基（C–N ≤ 1.9 Å）を自動的に含める。末端は N/H*または C/O/OXT のキャップを保持。
- - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方の Cys を包含。
- - 非末端 PRO 残基は常に N 側隣接残基を含め、主鎖除去後も CA を保持します。`--exclude-backbone` の場合は隣接残基の C/O/OXT を残し、ペプチド結合を維持。
-
-### 切断/キャッピング
-
-- 孤立残基は側鎖原子のみを保持; アミノ酸主鎖原子（N, CA, C, O, OXT + N/CA 水素）は PRO/HYP 保護を除いて除去
-- 連続ペプチドストレッチは内部主鎖原子を保持; 末端キャップ（N/H*または C/O/OXT）のみ除去
-- TER を認識し、チェーン切断を跨ぐキャッピングは行わない
-- `--exclude-backbone` の場合、**抽出中心以外の**アミノ酸の主鎖原子を除去（PRO/HYP 保護と PRO 近傍保持は適用）
-- 非アミノ酸残基は主鎖様の原子名（N/CA/HA/H/H1/H2/H3）を持つ原子を失わない
-
-### キャップ水素（`--add-linkh`）
-
-- 切断された結合ベクトル（CB–CA、CA–N、CA–C; PRO/HYP は CA–C のみ）に沿って 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない）
-- `TER` の後に残基 `LKH`（チェーン `L`）の連続した `HETATM` レコードとして `HL` という名前で挿入されます。シリアル番号は本体ブロックからの連番です
-- マルチ構造モードでは全モデルで同じ結合にキャップを付け、座標はモデルごとに保持されます
-
-### クラスターモデルを手作業で構築／監査する場合
-
-切断結合は単なる距離cutoffではなく、化学的なmodeling判断として扱います。
-
-推定されたC–C以外の共有結合がモデル境界を跨ぐ場合、extractorは警告を出します。
-
-- タンパク質主鎖断片を残す場合は、両端の主鎖末端が一貫してCα（PDB原子名
-  `CA`）になるよう残基範囲を選び、末端原子価をcapで満たします。
-- 側鎖・ligand・cofactor境界は、可能な限り非極性の**C–C単結合**
-  （典型的には`CA–CB`またはさらに外側の脂肪族C–C）で切断します。距離cutoffを
-  跨いだだけでpeptide C–N、極性C–O/C–N、芳香族／共役結合、S–S結合、
-  金属配位結合を切らず、結合相手を含めるか境界を移してください。
-- cluster側の各境界原子が意図した原子価とcap 1個を持つことを確認し、production
-  最適化ではcap親を`--freeze-links`（default）で凍結します。
-- R/IM/Pは同一原子・同一順序にします。各状態を独立に再抽出せず、1構造で決めた
-  選択／cap patternを全状態へ適用してください。
-- truncation後の総電荷とmultiplicityを再計算し、MEP/Hessian 前に境界を目視確認します。
-
-自動extractorは一般的なproteinを扱いますが、共有結合cofactor、修飾残基、metal site、
-または上記規則に反する境界は手作業で修正してください。
-
-### 電荷サマリー（`--ligand-charge/-l`）
-
-- アミノ酸と一般的なイオンは内部辞書から電荷を取得; 水はゼロ
-- 未知残基は `--ligand-charge` が総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`）を提供しない限りデフォルトで 0。総電荷が与えられた場合は未知基質残基に配分され、未知基質が無い場合は未知残基全体に配分されます。
-
-### マルチ構造アンサンブル
-
-- 複数の入力 PDB/mmCIF を受け付けます（全原子のidentity/orderを検証）。各構造は独立に処理され、選択残基の**和集合**を全モデルに適用します。
-- 出力ポリシー:
- - `-o` なし & 複数入力 → 構造ごとに `model_<original_basename>.pdb`。
- - `-o` を 1 つだけ指定 → 単一のマルチ MODEL PDB。
- - 入力数と同数の `-o` を指定 → 入力ごとに個別 PDB。
-- 診断ログにモデルごとの全原子数/保持原子数と残基 ID を出力します。
-
-## 出力
+Amber の MCPB.py などは、金属に配位する残基に非標準の名前（`HD1`、`HE1`、`CM1`、`AP1`）を付けます。`extract` はこの名前を知らないので、主鎖を切らず、キャップ水素も付けず、次の警告を出します。
 
 ```text
-<output>.pdb # TERレコード後にオプションのキャップ水素を含む活性部位モデル PDB
-<output>.cif # mmCIF/oversized-PDB入力時。元のchain/residue IDを復元
- # 単一入力 → デフォルトでmodel.pdb
- # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
- # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
- # 親出力directoryは自動作成されます
+[extract] WARNING: Residue HD1 83 may be an amino acid (has N, CA, C, O) but is not recognized as a standard residue name. Backbone truncation was not applied. Consider preparing the active site model manually.
 ```
 
-- verbose モードが有効な場合、モデル#1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
-- API 利用（`extract_api`）では `{"outputs": [...], "counts": [...], "charge_summary": {...}, "n_link_hydrogens": N}` を返します。
-
-## CLI オプション
-
-| オプション | 説明 | デフォルト |
-| --- | --- | --- |
-| `-i, --input PATH...` | 1つ以上のタンパク質–リガンド PDB/mmCIF（同一の原子identity/orderが必要） | 必須 |
-| `-c, --center SPEC` | PDB/mmCIFパス、残基ID/名、`CHAIN:RESNAME`、`CHAIN:RESNAME:RESSEQ` | 必須 |
-| `-o, --output PATH...` | 活性部位モデル PDB 出力。1 パス ⇒ マルチ MODEL、N パス ⇒ 入力ごと。複数入力で `-o` 1 つの場合は単一のマルチ MODEL PDB を生成。N 個の `-o` が N 個の入力と一致する場合は N 個の個別 PDB を生成 | 自動（`model.pdb` または `model_<input>.pdb`） |
-| `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å）。`0` では半径による拡張を無効化し、`-c` と `--selected-resn` の選択から開始（内部では `0.001 Å`） | `2.6` |
-| `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非 C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
-| `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL 水を含める | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | 抽出中心以外のアミノ酸の主鎖原子を除去 | `False` |
-| `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
-| `--selected-resn TEXT` | `--center` と同じselectorで残基を強制包含 | `""` |
-| `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
-| `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
-| `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-
-`-r 0` では半径検索による近傍残基を追加せず、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。該当する場合は、構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加されることがあります。
-
-### 中心指定（`-c/--center`）
-
-- **PDB/mmCIF パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
-- **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
-- **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
-- **chain + 残基名**: `A:SAM` はchain A内のSAMをすべて選択し、`A:SAM:123` は1残基に限定。
-
-## 注記
-
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- 対象系ごとに抽出半径の収束性と化学的完全性を検証してください。`-r` を大きくすると環境を多く含められますが、精度が単調に改善する保証はなく計算costも増えます。
-- INFO ログに残基選択、切断数、電荷内訳の要約が出力されます。
-
-## MCPB 等で生成された非標準残基を含む系
-
-Amber の `MCPB.py`（Metal Center Parameter Builder）等で金属配位残基のパラメータを生成した場合、金属配位アミノ酸に非標準の残基名（`HD1`, `HE1`, `CM1`, `AP1` 等）が割り当てられます。これらは `extract` の内部辞書 `AMINO_ACIDS` に含まれないため、**主鎖原子の切断・キャップ水素の付加が正しく行われません**。
-
-このような系では、`extract` の実行時に以下のような警告が表示されます:
-
-```
-[extract] WARNING: Residue HD1 83 may be an amino acid (has N, CA, C, O)
-but is not recognized as a standard residue name.
-Backbone truncation was not applied.
-Consider preparing the active site model manually.
-```
-
-### `--modified-residue` オプション
-
-`--modified-residue` を使用すると、非標準の残基名をアミノ酸として登録でき、
-主鎖切断と電荷割り当てが自動的に適用されます。`NAME:charge` を明示すると、
-組み込みのアミノ酸辞書に既にある残基も、この抽出に限って公称電荷を上書き
-できます。電荷を省略した `NAME` は 0 として登録されます。異なるプロトン化
-状態、リン酸化・メチル化残基、特殊名の D-アミノ酸、MCPB で改名された
-金属配位残基などに利用できます。
-
-組み込み名は、力場で正規化された Amber/CHARMM の命名を前提とします。同じ
-3文字名を持つ raw PDB CCD 化合物との自動判別は行いません。名前が衝突する
-場合は、`--modified-residue NAME:charge` で意図する公称電荷を明示してください。
+この名前をアミノ酸として登録します。`NAME:charge` で電荷を決め、電荷を書かない `NAME` は 0 になります。
 
 ```bash
-# HD1, HD2, HD3 をアミノ酸として扱う（電荷はデフォルトで 0）
-pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
-  --modified-residue 'HD1,HD2,HD3'
-
-# 各修飾残基に明示的な電荷を指定
-pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
-  --modified-residue 'HD1:0,SEP:-2'
-
-# 組み込みの公称電荷をこの抽出に限って上書き
-pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
-  --modified-residue 'LYS:0'
+pdb2reaction extract -i complex.pdb -c 'A:SUB:301' -o model.pdb \
+    --modified-residue 'HD1,HE1'
 ```
+
+`NAME:charge` は組み込みの電荷もこの実行に限って上書きします（例: `LYS:0`）。[付録](#アミノ酸)にある名前は、リン酸化残基や D-アミノ酸も含めて組み込み済みなので、登録は要りません。`--modified-residue` で足りないときは、{ref}`モデルを手で組みます <ja-model-setup-manual>`。
+
+---
+
+## 処理の仕組みと計算仕様
+
+1. **中心**: `-c` に基質・補因子・金属を並べます。各項目は残基の指定で、いちばん具体的な `A:TYR:44`（chain:残基名:番号）から、`A:SAM`、`SAM` のような名前、番号、基質の PDB/mmCIF ファイルまで使えます。`--selected-resn` は同じ形で残基を足し、そこからは距離での探索を始めません。
+2. **隣の残基**: 中心の原子から `-r`（既定 2.6 Å）以内に原子がある残基を入れます。水は `--no-include-h2o` を付けない限り数え、`--exclude-backbone` ではアミノ酸の主鎖の原子による接触を数えません。さらに、選んだシステインの S–S 結合の相手（S–S ≤ 2.5 Å）、選んだプロリンの N 側の隣、`--exclude-backbone` でないときは、主鎖の原子が中心に触れたアミノ酸とペプチド結合でつながった両隣の残基を足します。
+3. **主鎖の切断**: つながったアミノ酸の並びは内側の主鎖を残し、両端が CA で終わるように切ります。前後の残基がモデルに入らなかった残基は CB で切り、側鎖だけを残します。`-c` のアミノ酸は全部の原子を残し、プロリンは環を残します。`--exclude-backbone` では、ほかのアミノ酸の主鎖の原子をすべて除きます。水とアミノ酸でない残基は切りません。
+4. **キャップ水素**: 切断で CA か CB の結合相手が無くなった所（CB–CA、CA–N、CA–C。プロリンは CA–C だけ）に、その炭素から元の結合の向きに 1.09 Å の位置へ水素を置きます。キャップ水素は `TER` の後に、残基 `LKH`・chain `L` の `HETATM` 原子 `HL` として書かれます。
+5. **電荷**: アミノ酸とイオンは組み込みの表から、水は 0、ほかの残基は `-l` で渡さない限り 0 とします。
+
+### 電荷の内訳
+
+`-l` には `'GPP:-3,SAM:1'` のような残基名ごとの電荷か、1 つの数を渡します。未知の残基とは、付録でアミノ酸・イオン・水のどれにも挙がっていない残基です。数を渡すと、`-c` の中の未知の残基に均等に割り、`-c` に未知の残基が無ければ、すべての未知の残基に割ります。例 1 では −3 がすべて GPP に入ります。残基名で渡したときは、書かなかった未知の残基は 0 です。端末には、タンパク質・リガンド・イオンの電荷に続いて `Total active site model charge` が出ます。入力が複数のときは、最初の入力の内訳です。
+
+### 複数の構造
+
+入力が複数のときは、構造ごとに残基を選び、その和集合をすべての構造に当てるので、どのモデルも同じ原子・同じキャップになります。座標はモデルごとのものです。端末には、モデルごとに `[extract:multi] Atoms after truncation (model k): N`、全体で 1 回 `[extract:multi] link-H targets common across models: M` が出ます。
+
+(ja-link-hydrogen-and-frozen-atoms)=
+### キャップ水素と凍結原子
+
+`opt`・`tsopt`・`freq`・`irc`・`path-opt`・`path-search`・`scan`・`scan2d`・`scan3d`・`all` は、既定の `--freeze-links` でキャップ水素の親原子を固定し、構造最適化や経路探索の間も境界の形を保ちます。`sp` は固定しません。
+
+* **力**: 固定した原子の力を 0 にします。
+* **Hessian**: 固定した原子を Hessian から外します。
+* **振動解析**: 固定した原子があると、`freq` は動ける原子で PHVA（部分 Hessian 振動解析）を行います。
+
+`--freeze-atoms` と YAML の `geom.freeze_atoms`（1 始まり）で原子を足せ、どの指定も合わせて使われます。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を見てください。
+
+---
+
+## 主な出力ファイル
+
+```text
+./
+├─ model.pdb     # クラスターモデル。キャップ水素は TER の後
+├─ model.cif     # mmCIF の入力か、PDB の桁に収まらない PDB の入力のとき
+├─ result.json   # --out-json のとき。最初の出力ファイルと同じディレクトリ
+└─ summary.json  # result.json の写し。result.json を読む（--out-json のとき）
+```
+
+| 入力 | `-o` | 出力 |
+| --- | --- | --- |
+| 1 つ | なし | `model.pdb` |
+| 複数 | なし | 入力ごとに `model_<入力の名前>.pdb` |
+| 複数 | 1 つ | マルチ MODEL の PDB 1 つ |
+| 複数 | 入力と同じ数 | 入力ごとに PDB 1 つ |
+
+`-o` がこれ以外の数だとエラーで止まります。出力先の親ディレクトリは自動で作られます。`result.json` には原子数・電荷・使った設定が入ります。各欄は [JSON 出力リファレンス](json-output.md) にあります。
+
+---
+
+## 主な CLI オプション
+
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス（複数可） | （必須） | タンパク質–リガンドの PDB/mmCIF。1 つの `-i` の後に並べても、`-i` を繰り返してもよい。原子が同じ順に並んでいること |
+| `-c, --center` | 文字列 | （必須） | 中心の残基か、基質の PDB/mmCIF ファイル（例: `'A:TYR:44,A:SAM:301'`） |
+| `-o, --output` | パス（複数可） | 上の表 | 出力する PDB のパス |
+| `-r, --radius` | 浮動小数点数 | `2.6` | 中心の原子からの距離のしきい値（Å）。`0` では距離で隣の残基を足さない（[使用上の注意点](#使用上の注意点)） |
+| `--radius-het2het` | 浮動小数点数 | `0`（無効） | C・H 以外の原子どうしの 2 つ目のしきい値（Å） |
+| `--selected-resn` | 文字列 | `""` | 距離で探さずに足す残基。`-c` と同じ形 |
+| `--include-h2o/--no-include-h2o` | フラグ | `True` | 水（HOH、WAT、H2O、DOD、TIP、TIP3、SOL）を入れる |
+| `--exclude-backbone/--no-exclude-backbone` | フラグ | `False` | `-c` の外のアミノ酸から主鎖の原子を除く |
+| `--add-linkh/--no-add-linkh` | フラグ | `True` | 切断で CA か CB の相手が無くなった所にキャップ水素を付ける |
+| `--modified-residue` | 文字列 | `""` | アミノ酸として扱う残基名。`NAME` か `NAME:charge` |
+| `-l, --ligand-charge` | 文字列 | `None` | 未知の残基（リガンド）の電荷の合計か、残基名ごとの電荷（例: `'GPP:-3,SAM:1'`） |
+| `--out-json/--no-out-json` | フラグ | `False` | `result.json` と `summary.json` を書き出す |
+
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/extract.md) を参照してください。
+
+---
+
+## 使用上の注意点
+
+* **`-r 0`** では距離で隣の残基を足さず、`-c` と `--selected-resn` の残基に、手順 2 で足す S–S 結合の相手とプロリンの N 側の隣を加えたモデルになります。
+* **モデルの大きさ**: {ref}`モデルを広げて <ja-model-setup-larger>`も結果が変わらないことを系ごとに確かめてください。`-r` を大きくすると計算は重くなり、精度が上がるとは限りません。
+* **名前はすべての chain に当たる**: `TYR` のような名前は、どの chain の TYR もすべて選び、複数あれば警告を出します。
+* **`TYR:44` は chain TYR と読まれる**: 2 つの欄では最初の欄が必ず chain で、2 つ目は番号か名前なので、`A:TYR:44` と書いてください。chain の欄が空の PDB では、名前か番号だけを使います。
+* **1 つの list に 1 つの形**: `'SAM,44'` のように名前と番号を混ぜた list はエラーで止まります。
+* **キャップ水素は CA と CB だけ**: ほかの切断にはキャップ水素が付きません。非金属の原子どうしの C–C 以外の結合が境界をまたぐと、`extract` は警告を出します。主鎖を CA–N で切った所もこの警告に並びますが、対処は要りません。警告に並ぶほかの結合・キャップ・電荷を確かめてください。
+* **どの入力も同じ原子**: 原子の数や並びが違う入力は `[multi] Atom count mismatch` か `[multi] Atom order mismatch` で止まります。
+* **元素の欄**: 元素の欄が空だと `extract` は `Element symbols are missing in '…'` で止まるので、先に [`add-elem-info`](add-elem-info.md) を実行してください。
+* **altLoc（別位置の配座）**: `extract` は残基ごとに 1 つの配座を残します。規則は {ref}`mmCIF と大きな構造 <ja-mmcif-input>` にあります。
+* **組み込みの残基名**は Amber/CHARMM の命名です。PDB の残基が別の化合物と同じ名前を持つときは、`--modified-residue NAME:charge` で意図する電荷を渡してください。
+
+---
+
+## 関連ドキュメント
+
+* [クラスターモデルの組み方](model-setup.md) — モデルを削る・広げる、原子を固定する
+* [all](all.md) — 一括のワークフロー。`-c` で `extract` を実行する
+* [path-search](path-search.md) — 切り出したモデルでの最小エネルギー経路（MEP）の探索
+* [scan](scan.md) — 切り出したモデルでの段階的なスキャン
+* [add-elem-info](add-elem-info.md) — 切り出しの前に元素の欄を埋める
+* [共通オプションと残基・原子の指定](cli-conventions.md) — 残基の指定と電荷
+* [トラブルシューティング](troubleshooting.md) — 切り出しのエラー
+* [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素
+
+## 付録: PDB 命名規則と参照リスト
+
+この付録は、非標準の残基名・原子名のために `extract` が残基の分類や電荷を誤るときに使います。標準の PDB の名前なら読み飛ばしてかまいません。
 
 ```{important}
-`--modified-residue` で対応できない場合は、**活性部位モデルを手動で構築**してください。
-手動構築の手順:
-
-1. 活性部位周辺の残基を選定し、切断箇所を決定する
-2. 切断された共有結合の親原子（残る側の原子）に、キャップ水素を付加する
-3. キャップ水素は残基名 `LKH`（チェーン `L`）、原子名 `HL` で記述する
-4. 結合方向に沿って **1.09 Å** の位置に配置する
+`extract` は、アミノ酸・イオン・水・主鎖の原子を PDB の残基名と原子名で見分けます。入力は標準の PDB 化学成分の名前に従う必要があります。
 ```
 
-## 付録: PDB 命名規則と内部参照リスト
+### アミノ酸
 
-この付録は、`extract` が **非標準の残基名/原子名** により残基分類や電荷割り当てを誤る場合の調査用です。
-
-```{important}
-`extract` が正しく動作するためには、**入力 PDBの残基名と原子名が標準的なPDB命名規則に準拠している必要があります**。このツールはアミノ酸、イオン、水分子、主鎖原子を認識するために内部辞書を使用しています。非標準の命名を使用すると、残基の誤分類や電荷の誤割り当てが発生します。
-```
-
-以下の内部定数が認識される名前を定義しています：
-
-### `AMINO_ACIDS`
-
-残基名を公称整数電荷にマッピングする辞書です。この辞書に含まれるかどうかで、残基が主鎖処理、切断、電荷計算においてアミノ酸として扱われるかが決まります。
+アミノ酸として扱う残基名と、その公称電荷です。これらの残基だけが、主鎖の切断・キャップ水素・アミノ酸の電荷の対象になります。
 
 **標準 20 アミノ酸**（生理的 pH での電荷）：
 - 中性: `ALA`, `ASN`, `CYS`, `GLN`, `GLY`, `HIS`, `ILE`, `LEU`, `MET`, `PHE`, `PRO`, `SER`, `THR`, `TRP`, `TYR`, `VAL`
@@ -253,23 +213,23 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 
 **その他の修飾残基：**
 - `CGU`（−2、γ-カルボキシグルタミン酸）、`CGA`（−1）、`PCA`（0、ピログルタミン酸）、`MSE`（0、セレノメチオニン）、`OMT`（0、メチオニンスルホン）、`HYP`（0、ヒドロキシプロリン）
-- その他: `ASA`, `CIR`, `FOR`, `MVA`, `IIL`, `AIB`, `HTN`, `SAR`, `NMC`, `PFF`, `NFA`, `ALY`, `AZF`, `CNX`, `CYF`
+- その他（いずれも 0）: `ASA`, `CIR`, `FOR`, `MVA`, `IIL`, `AIB`, `HTN`, `SAR`, `NMC`, `PFF`, `NFA`, `ALY`, `AZF`, `CNX`, `CYF`
 
 **N 末端変異体**（接頭辞 `N`）: `NALA`（+1）、`NARG`（+2）、`NASP`（0）、`NGLU`（0）、`NLYS`（+2）など、および `ACE`（0）、`NTER`（+1、汎用）
 
 **C 末端変異体**（接頭辞 `C`）: `CALA`（−1）、`CARG`（0）、`CASP`（−2）、`CGLU`（−2）、`CLYS`（0）など、および `NHE`（0）、`NME`（0）、`CTER`（−1、汎用）
 
-### `BACKBONE_ATOMS`
+### 主鎖の原子
 
-アミノ酸の主鎖原子と見なされる原子名のセットです。`--exclude-backbone` の場合、抽出中心以外のアミノ酸からどの原子を除去するかを決定するために使用されます：
+アミノ酸の主鎖として扱う原子名です。`--exclude-backbone` では、`-c` の外のアミノ酸からこれらを除きます。
 
 ```
 N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
 ```
 
-### `ION`
+### イオン
 
-イオン残基名をその形式電荷にマッピングする辞書です。認識されたイオンは電荷サマリーで自動的に正しい電荷が割り当てられます。
+イオンとして扱う残基名と、その形式電荷です。
 
 | 電荷 | 残基名 |
 |------|--------|
@@ -279,34 +239,10 @@ N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
 | +4 | `U4+`, `TH`, `HF`, `ZR` |
 | −1 | `F`, `CL`, `BR`, `I`, `CL-`, `IOD` |
 
-### `WATER_RES`
+### 水
 
-水分子として認識される残基名のセットです。水はデフォルトで含まれ（`--include-h2o`）、電荷はゼロが割り当てられます：
+水として扱う残基名です。既定で入り（`--include-h2o`）、電荷は 0 です。
 
 ```
 HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ```
-
----
-
-(ja-link-hydrogen-and-frozen-atoms)=
-## キャップ水素と凍結原子
-
-pdb2reaction が活性部位モデルを抽出する際、切断された結合は**キャップ水素**でキャップされます。デフォルト（`--freeze-links`）では、キャップ水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。
-
-- **力**: 凍結原子の力はゼロ化されます。
-- **Hessian**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
-- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分 Hessian 振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
-
-凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたキャップ原子は YAML 指定の原子とマージされます。
-
-## 関連項目
-
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-
-- [all](all.md) — `-c/--center` で内部的に extract を呼び出す一気通貫ワークフロー
-- [path-search](path-search.md) — 抽出された活性部位モデルでの MEP 探索
-- [scan](scan.md) — 抽出された活性部位モデルでの段階的スキャン
-- [add-elem-info](add-elem-info.md) — 抽出前に欠落した PDB 元素列を修正
-- [トラブルシューティング](troubleshooting.md) — よくある抽出エラー
-- [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素の定義

@@ -1,332 +1,214 @@
-# `scan`
+# `scan`（拘束付き座標スキャン）
 
-調和拘束で結合長をスキャンして反応座標を駆動します。`pdb2reaction scan` は、単一構造から特定の原子間距離を駆動し、妥当な反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）で使用します。各stepで構造をL-BFGSまたはRFOptimizerで緩和します。mmCIF入力は内部PDBで計算し元IDのCIFを出力します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。
+## 概要
 
-## スキャン座標のステージ構成
+`scan` サブコマンドは、1 つの構造の中の距離・角度・二面角を調和拘束で少しずつ動かし、各点でそれ以外の自由度を緩和して、1 つの構造から反応経路の候補を作ります。1 つのリテラルや YAML の 1 つのステージに書いた座標は 1 つの**ステージ**として一緒に動きます。リテラルを複数並べるとステージが順に実行され、各ステージは前のステージの緩和後の構造から始まります。
 
-3 要素タプルの入力では、1 リテラルが 1 ステージを定義します。同一リテラル内の複数距離タプルは
-協奏的に駆動し、複数リテラルは多段階scanとして前ステージの端点から順次実行されます。
-これに対し [`scan2d`](scan2d.md) / [`scan3d`](scan3d.md) は独立な
-距離軸を用いて energy landscape を探索し、PESを描画します。
+### 主な用途
 
-角度rangeは`(i,j,k,low,high)`、二面角rangeは
-`(i,j,k,l,low,high)`で指定し、角度値には度を使います。どちらも
-下記の距離rangeと同じ2passの`low` / `high` stageとして実行します。
+* **1 つの構造からの経路づくり**: 反応物の反応する結合を動かして、中間体や生成物に近い構造を作り、[`path-search`](path-search.md) に渡す
+* **反応の順序の検討**: 結合形成とプロトン移動を 1 つのステージで動かす場合と、別のステージに分ける場合とで、エネルギーの変化を比べる
+* **`all` のスキャン段の単独実行**: [`all`](all.md) が `-s` で行うスキャンを、刻み幅や拘束を変えて単独で実行し直す
 
-## 実行例
+計算バックエンドにはデフォルトの **UMA**（Meta）のほか、`-b/--backend` オプションで **ORB**、**MACE**、**AIMNet2**、DFT（`dft`）も選択可能です。独立した 2 つまたは 3 つの座標でエネルギーの格子を作るには、[`scan2d`](scan2d.md) または [`scan3d`](scan3d.md) を使います。
 
-```bash
-# 最小例: YAML spec から実行する
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
+---
+
+## 基本的な実行例
+
+例の `input.pdb` は、同梱の酵素構造から [extract](extract.md) で切り出したクラスターモデルで、電荷は `-l 'SAM:1,GPP:-3'` から求めます。
 
 ```bash
-# リテラル入力を使う
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
+pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-```bash
-# ステージごとの軌跡を保存して確認する
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
-```
+この PDB は chain の欄が空なので、原子は残基名・残基番号・原子名の 3 項目を任意の順序で、カンマか空白で区切って `'SAM,320,CS1'` や `'CS1 SAM 320'` のように書きます。
 
-コマンド形式:
+### 1. YAML スペックファイルからの実行
 
-```bash
-pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2|dft] \
- [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
-
-> **Note:** `--dry-run` で、計算せずに入力とスキャン仕様を検証できます。
-
-## 処理の流れ
-
-1. `geom_loader` で構造を読み込み、電荷を解決します。電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
-2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
-3. `-s/--scan-lists`からstage targetを読み取り、indexを正規化します。3-field selector（例: `'SAM,320,CS1'`）は順不同です。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
-    各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は YAML `opt.max_cycles` から読み、明示した `--relax-max-cycles` がそれを上書きします。
-5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
-6. すべてのステージについて繰り返します。全ステージ連結の `scan_trj.xyz` は常に書き出されます。PDB/CIF/GJF companion には `--convert-files` と参照テンプレートが必要です。`--dump`（CLI フラグ）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
-
-## 出力
-
-```
-out_dir/ (デフォルト:./result_scan/)
-├─ preopt/ # --preopt が True の場合
-│ ├─ result.xyz
-│ ├─ result.pdb # 参照トポロジーがあり変換有効時
-│ ├─ result.cif # mmCIF/oversized-PDB bridge 入力時。元IDを復元
-│ └─ result.gjf # Gaussian テンプレートがあり変換有効時
-├─ stage_XX/ # ステージごとのフォルダ
-│ ├─ result.xyz
-│ ├─ result.pdb # 最終構造に対応する PDB（変換有効時）
-│ ├─ result.cif # bridge入力。元IDを復元
-│ ├─ result.gjf # テンプレートがある場合に対応する Gaussian（変換有効時）
-│ ├─ scan_trj.xyz # 常に生成（連結バイアス軌跡）
-│ ├─ scan.pdb # 参照トポロジーがあり変換有効時に生成（scan.gjf は生成されない）
-│ └─ scan.cif # mmCIF/oversized-PDB bridge 入力時。元IDを復元した軌跡
-├─ scan_trj.xyz # 全ステージ連結のスキャン軌跡
-├─ scan.pdb # 全ステージ連結の PDB 軌跡（変換有効時）
-└─ scan.cif # bridge入力のCIF軌跡
-```
-
-- 各ステージの結合変化レポートがコンソールに出力されます。`-v 3` では `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果も出力されます。
-
-主な確認先:
-
-- `result_scan/stage_01/result.pdb`（または `result.xyz`）
-- `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `result_scan/stage_*/scan_trj.xyz`（常に生成。参照トポロジー + 変換有効時は `scan.pdb`、bridge入力時は `scan.cif` も生成）
-
-## CLI オプション
-
-| オプション | 説明 | デフォルト |
-| --- | --- | --- |
-| `-i, --input PATH` | 共通bridgeが受け入れる構造file（PDB / mmCIF / XYZ / GJF / TRJ） | 必須 |
-| `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--uma-workers`, `--uma-workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
-| `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `-s, --scan-lists TEXT` | YAML/JSONまたはinline literal。`i`/`j`は整数、3-field selector、または位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` | 必須 |
-| `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
-| `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
-| `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
-| `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
-| `--restraint-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
-| `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。明示値は YAML `opt.max_cycles` を上書き | `100000` |
-| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-P-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
-| `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--dump/--no-dump` | ステップごとの最適化器軌跡ファイルを書き出します（`opt_cfg["dump"]` に転送）。`scan_trj.xyz` はこのフラグに関係なく常に書き出されます | `False` |
-| `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJF companionを切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF入力の参照PDBまたはmmCIF topology | _None_ |
-| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
-| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（{ref}`all → スキャンオプション <ja-scan-options-single-input-runs>` を参照） | `False` |
-| `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-
-### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は実行時スコープで常に上書きされる（YAML では設定できない）ため、ステージ軌跡の出力は `--dump`（CLI）で制御します。
-- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `100000` です。
-
-### セクション `bias`
-- `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
-
-(ja-section-bond)=
-### セクション `bond`
-`path-search` と共通の MLIP ベース結合変化検出:
-- `device`（`"auto"`）: 結合解析用 MLIP デバイス。
-- `bond_factor`（`1.20`）: 共有結合半径のスケーリング係数。
-- `margin_fraction`（`0.05`）: 比較時の相対許容値。
-- `delta_fraction`（`0.05`）: 結合の形成・切断を判定する最小相対変化量。
-
-## YAML 設定
-
-出力先は `-o/--out-dir` で指定します。YAML のオプティマイザの `out_dir` は無視されます。
+ステージをファイルに書き、`--out-json` を付けて結果の要約も出力します。
 
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true  # partial Hessian over active DOFs
-opt:
- thresh: gau # convergence preset (Gaussian/Baker-style)
- max_cycles: 100000 # optimizer cycle cap
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum norm for step acceptance
- assert_min_step: true # stop if steps fall below threshold
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
- overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
- check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
- energy_plateau_thresh: 1.0e-04 # plateau detection threshold
- energy_plateau_window: 50 # plateau detection window (cycles)
- line_search: true # enable line search
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
-lbfgs:
- thresh: gau # L-BFGS convergence preset
- max_cycles: 100000 # iteration limit
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
- check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
- energy_plateau_thresh: 1.0e-04 # plateau detection threshold
- energy_plateau_window: 50 # plateau detection window (cycles)
- line_search: true # enable line search
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- keep_last: 7 # history size for L-BFGS buffers
- beta: 1.0 # initial damping beta
- gamma_mult: false # multiplicative gamma update toggle
- max_step: 0.3 # maximum step length
- control_step: true # control step length adaptively
- double_damp: true # double damping safeguard
- mu_reg: null # regularization strength
- max_mu_reg_adaptions: 10 # cap on mu adaptations
-rfo:
- thresh: gau # RFOptimizer convergence preset
- max_cycles: 100000 # iteration cap
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
- check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
- energy_plateau_thresh: 1.0e-04 # plateau detection threshold
- energy_plateau_window: 50 # plateau detection window (cycles)
- line_search: true # enable line search
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- trust_radius: 0.10 # trust-region radius
- trust_update: true # enable trust-region updates
- trust_min: 0.0001 # minimum trust radius
- trust_max: 0.10 # maximum trust radius
- max_energy_incr: null # allowed energy increase per step
- hessian_update: ts_bfgs # Hessian update scheme
- hessian_init: calc # Hessian initialization source
- hessian_recalc: 500 # rebuild Hessian every N steps
- hessian_recalc_adapt: null # adaptive Hessian rebuild factor
- small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
- alpha0: 1.0 # initial micro step
- max_micro_cycles: 50 # RS iteration limit per step
- rfo_overlaps: false # enable RFO overlaps
- gediis: false # enable GEDIIS
- gdiis: true # enable GDIIS
- gdiis_thresh: 0.0025 # GDIIS acceptance threshold
- gediis_thresh: 0.01 # GEDIIS acceptance threshold
- gdiis_test_direction: true # test descent direction before DIIS
- adapt_step_func: true # adaptive step scaling toggle
-bias:
- k: 300 # harmonic bias strength (eV·Å⁻²)
-bond:
- device: auto # MLIP device for bond analysis
- bond_factor: 1.2 # covalent-radius scaling
- margin_fraction: 0.05 # tolerance margin for comparisons
- delta_fraction: 0.05 # minimum relative change to flag bonds
+# scan.yaml
+stages:
+  - [["SAM,320,CS1", "GPP,321,C7", 1.60]]
+  - [["GPP,321,H11", "GLU,186,OE2", 0.90]]
 ```
-
-`opt`/`lbfgs`/`rfo`/`bias`/`bond` のさらなる YAML オプションとそのデフォルトは [YAML リファレンス](yaml-reference.md) を参照してください。
-
-## スキャンリスト仕様
-
-YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については
-{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
-
-### 同期ステージと順次ステージの例
-
-機構を所定のステージへ割り当てない場合は、同期形式の後に
-[`path-search`](path-search.md)を用いて候補セグメントを構築できます。
-4-tuple `(i, j, low, high)` は別の構文であり、双方向の2ステージへ
-展開されます（[双方向スキャン](#双方向スキャン4-tuple)）。
 
 ```bash
-# 協奏的: 2 つの座標を 1 ステージで一緒に駆動
-pdb2reaction scan -i reactant.pdb \
-    -q 0 -m 1 \
-    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o result_concerted
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --out-json -o ./result_scan
 ```
 
-段階的スキャンでは 1 つの `-s/--scan-lists` フラグの後に複数のリテラルを並べます。
+端末には各ステージの共有結合の変化が出て、最後に `====== Scan summary ======` が出ます。`result_scan/result.json` には `scientific_status` が入り、`success` でないときの理由は `scientific_status_reasons` に出ます。
+
+### 2. インラインリテラルでの指定
+
+単純な 1 ステージのスキャンは、コマンドラインに直接書けます。
 
 ```bash
-# ステージ 1: メチル基転移の距離を 1.60 Å まで駆動
-# ステージ 2: 続いてプロトン移動の距離を 0.90 Å まで駆動
--s \
- '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
- '[("GPP,321,H11","GLU,186,OE2",0.90)]'
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
 ```
 
-ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。
+### 3. 2 つの座標を 1 つのステージで動かす
 
-(ja-scan-direction-barrier-sign)=
-### スキャン方向とバリアの符号
+同じリテラルの中の座標は一緒に（協奏的に）動きます。
 
-`scan` の結果は sampled/final energy を保存しますが、barrier field を認定・出力しません。`scan`（または経路）が**生成物側**から始まり、利用者がそこから障壁を算出する場合、その差は**逆方向**のバリア `E(TS) − E(product)` です。順方向のバリアを引用するには反応物から計算します。
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
+    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o ./result_concerted
+```
 
-| 実行内容 | 順方向バリア |
-| --- | --- |
-| 生成物始点のスキャン | `E(TS) − E(reactant)` — 生成物基準の差では**ない** |
+### 4. 2 つのステージを順に実行する
 
-これはフラグではなく読み取り時の解釈です。特に結晶構造の生成物複合体から開始した場合は、バリアを引用する前にスキャンがどちらの端点から始まったかを必ず確認してください。
+1 つの `-s` の後にリテラルを複数並べます。ステージ 2 はステージ 1 の緩和後の構造から始まります。
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
+    -s '[("SAM,320,CS1","GPP,321,C7",1.60)]' '[("GPP,321,H11","GLU,186,OE2",0.90)]' -o ./result_staged
+```
+
+### 5. 双方向スキャン
+
+[4-tuple](#双方向スキャン4-tuple) を使うと、1 つの距離を入力構造から両方向にスキャンします。
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[(12, 45, 1.35, 2.50)]'
+```
+
+### 6. 軌跡の保存
+
+`--dump` を付けると、各ステップの最適化の軌跡も保存します。
+
+```bash
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./result_scan_dump
+```
+
+---
+
+## 処理の仕組みと計算仕様
+
+1. **構造の読み込み**:
+{ref}`電荷 <ja-charge-specification>` は `-q` または `-l` から決まります。`--preopt` を付けると、まず拘束なしで構造を最適化します。収束しなかった場合は入力構造を使います。
+2. **ステージのステップ分割**:
+座標ごとに変化量 Δ = 目標値 − 現在値 を求め、ステージを N = ceil(max(|Δ| / h)) ステップに分けます。h は距離では `--max-step-size`（Å）、角度では `--max-angle-step-size`、二面角では `--max-dihedral-step-size`（度）です。各座標は 1 ステップに Δ / N ずつ動くので、ステージ内のすべての座標が同時に目標値に着きます。
+3. **拘束付きの緩和**:
+各ステップで、調和拘束 E = ½ k (q − q_target)² がスキャンする座標 q をそのステップの目標値に保ち（k は `--restraint-k`）、残りの構造を `--opt-mode grad`（デフォルト）では L-BFGS、`hess` では RFO で緩和します。各ステップのエネルギーは、拘束を外して計算した値を記録します。
+4. **ステージの終わり**:
+`--endopt` を付けると、ステージの最後の構造を拘束なしでもう一度最適化します。そのあと、ステージの最初と最後の構造を比べて共有結合の変化を調べ、ステージの結果を書き出します。
+5. **次のステージ**:
+次のステージはこの結果から始まります。最後のステージが終わると、全ステージの軌跡を 1 つのファイルにつなぎます。
 
 ### 双方向スキャン（4-tuple）
 
-3-tuple `(i, j, target)` の代わりに **4-tuple** `(i, j, start, end)` を指定すると、現在の構造から両方向にスキャンします。CLI は各 4-tuple を自動的に 2 ステージに展開します:
+目標値 `(i, j, target)` の代わりに範囲 `(i, j, low, high)` を指定すると、入力構造から両方向にスキャンします。範囲は 2 つのステージに展開されます。
 
-1. **パス 1:** `i`--`j` の距離を現在の値から `start` に向けて駆動。
-2. **パス 2:** 初期構造を復元し、`i`--`j` の距離を `end` に向けて駆動。
+1. **パス 1**: `i`–`j` の距離を現在の値から `low` に向けて動かす。
+2. **パス 2**: 入力構造に戻し、`i`–`j` の距離を `high` に向けて動かす。
 
-連結軌跡は `start → 初期構造 → end` の順に組み立てられ、出発構造を通る連続的な経路が得られます。
+つないだ軌跡は `low → 入力構造 → high` の順になり、出発構造を通る連続した経路になります。角度の範囲 `(i, j, k, low, high)` と二面角の範囲 `(i, j, k, l, low, high)` も同じようにスキャンします。
 
-```bash
-# 双方向スキャン: 結合 12--45 を現在の構造から
-# 1.35 Å（パス 1）と 2.50 Å（パス 2）に向けて駆動
-pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
+(ja-section-bond)=
+### 結合変化の検出
+
+両原子の共有結合半径の和に `bond_factor`（デフォルト `1.20`）を掛けた値を T とします。2 原子の距離が T − `margin_fraction` × T（デフォルト `0.05`）以下なら、結合しているとみなします。結合の形成・切断として報告するのは、距離が `delta_fraction` × T（デフォルト `0.05`）以上変わった組だけです。`path-search` も同じ基準を使います。キーは YAML の [`bond`](yaml-reference.md#bond) の節にあります。
+
+---
+
+(ja-scan-direction-barrier-sign)=
+## スキャン方向とバリアの符号
+
+(ja-scan-checking-result)=
+### 結果の判定
+
+| 確認する場所 | 見るもの |
+| --- | --- |
+| 端末（各ステージ） | `[stage k] Covalent-bond changes (start vs final): Yes` とできた結合・切れた結合の一覧、または `No` と `(no covalent changes detected)` |
+| 端末（実行の最後） | `====== Scan summary ======`：各ステージの目標値・ステップ数・結合変化 |
+| `result.json`（`--out-json`） | `scientific_status`：すべてのステージの全ステップが収束し（`--endopt` を付けたときはその最適化も収束し）、エネルギーが有限なら `success`、一部のステージだけなら `partial`、1 つも無ければ `failed` |
+| `result.json`（`--out-json`） | `stages[].converged`、`stages[].bond_changes.changed`、`stages[].final_energy_hartree`、各ステップのエネルギー `stages[].energies_hartree` |
+
+`partial` の終了コードは 0、`failed` は 1 です。収束しなかったステージについては {ref}`max_cycles とプラトー停止 <ja-troubleshooting-max-cycles>` を参照してください。収束して狙った結合変化が起きたスキャンは経路の候補になり、エネルギーが最も高いステップは [`tsopt`](tsopt.md) に渡す TS 候補になります。このステップは `scan_trj.xyz` から {ref}`取り出せます <ja-trajectory-one-frame>`。
+
+### バリアの向き
+
+`scan` はエネルギーを記録しますが、バリアは出力しません。スキャンからバリアを読む場合、順方向のバリアは常に反応物から計算します。
+
+| 実行内容 | 開始構造との差 | 順方向バリア |
+| --- | --- | --- |
+| 反応物から始めたスキャン | `E(TS) − E(reactant)` | 開始構造との差と同じ |
+| 生成物から始めたスキャン | `E(TS) − E(product)`。**逆方向**のバリア | `E(TS) − E(reactant)`。開始構造との差では**ない**。E(reactant) は最適化した反応物のエネルギー（例: [`opt`](opt.md) で最適化した IRC の端点） |
+
+これを切り替えるオプションはありません。バリアを引用する前に、スキャンがどちらの端点から始まったかを確認してください。結晶構造の生成物複合体から始めた場合は特に注意してください。
+
+---
+
+## 主な出力ファイル
+
+`--out-dir` に次のファイルを書きます。
+
+```text
+result_scan/
+├─ preopt/
+│  └─ result.xyz                    # 事前最適化した構造（--preopt 指定時）
+├─ stage_01/                        # ステージごとのディレクトリ（stage_NN）
+│  ├─ result.xyz                    # ステージの final geometry
+│  ├─ scan_trj.xyz                  # ステージ内の各ステップの構造とエネルギー
+│  └─ scan_s0001_optimization_trj.xyz  # 各ステップの最適化の軌跡（--dump 指定時）
+├─ scan_trj.xyz                     # 全ステージをつないだ軌跡
+└─ result.json                      # 結果の要約（--out-json 指定時）。summary.json も同じ内容
 ```
 
-これは 2 つの手動ステージの間にジオメトリリセットを行うのと同等ですが、スクリプトを書く必要がありません。インラインリテラルでは 3-tuple と 4-tuple を混在できません（1 つのリテラルの中でも、リテラルどうしでも）。target と range を組み合わせるときは、YAML/JSON スペックの `stages:` に並べます。
+PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz` を `scan.pdb` として同じディレクトリにも書き、Gaussian 入力では構造を `result.gjf` でも書きます。{ref}`mmCIF の入力 <ja-mmcif-input>` と、PDB の欄に入りきらない大きな PDB の入力では、元の識別子を保った `.cif` も書きます。
 
-角度rangeは`(i,j,k,low,high)`、二面角rangeは
-`(i,j,k,l,low,high)`で指定します。
+* **ステージの結果**: `stage_NN/result.*` はステージ NN の終わりの構造です。[`path-search`](path-search.md) には、`all` と同じく、開始構造に続けて `stage_NN/result.*` をステージの順に渡します。`--preopt` を付けたときの開始構造は `preopt/result.*` です。
+* **エネルギーの変化**: `scan_trj.xyz` の各フレームのコメント行には、拘束を外したエネルギー（Hartree）が入っています。[`trj2fig`](trj2fig.md) で図にできます。
 
-```{note}
-**4-tuple 使用時のステージ番号。** 1 つの 4-tuple は出力ツリー内で **2 つ** のステージに展開されます。`start` パスは `stage_NN/` に、`end` パスは `stage_NN+1/` に書き込まれます。したがって最初のリテラルとして 1 個の 4-tuple を渡した場合、1 つの統合された `stage_01/` ではなく `stage_01/` と `stage_02/` が作成されます。スペックの 1 ステージに 3-tuple と 4-tuple を混在させた場合は、各項目が別のステージとして順に実行され、カウンターは 3-tuple ごとに `+1`、4-tuple ごとに `+2` 進みます。
-```
+---
 
-## 注意事項
+## 主な CLI オプション
 
-- スキャンの入力は 1 つの構造 + `-s/--scan-lists scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラルです。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB/mmCIF トポロジーではセレクタ文字列を使用できます。3フィールドの従来形は順不同ですが、chainまで指定する4フィールド形は `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` の位置固定です。繰り返し残基では4フィールド形を使用してください。
-- `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- ステージ結果の `result.xyz` と全ステージ連結の `scan_trj.xyz` は常に書き出されます。対応する PDB/CIF/GJF companion は `--convert-files` が有効で参照トポロジーを利用できる場合に生成されます。`--dump`（CLI）を指定すると、最適化器によるステップごとのダンプが有効になります（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.mmcif`, `.xyz` 等） |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
+| `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
+| `-s, --scan-lists` | 文字列 | （必須） | YAML/JSON スペックファイル、または 1 つ以上のインラインリテラル（1 つが 1 ステージ）。距離の目標値 `(i,j,target)`、または距離 `(i,j,low,high)`・角度 `(i,j,k,low,high)`・二面角 `(i,j,k,l,low,high)` の範囲 |
+| `-o, --out-dir` | パス | `./result_scan/` | 出力先ディレクトリ |
+| `--one-based/--zero-based` | フラグ | `--one-based` | `-s` の原子インデックスを 1 始まり / 0 始まりとして読む |
+| `--max-step-size` | 浮動小数点数 | `0.2` | 1 ステップあたりの距離の最大変化量（Å） |
+| `--max-angle-step-size` | 浮動小数点数 | `5.0` | 1 ステップあたりの角度の最大変化量（度） |
+| `--max-dihedral-step-size` | 浮動小数点数 | `10.0` | 1 ステップあたりの二面角の最大変化量（度） |
+| `--restraint-k` | 浮動小数点数 | `300.0` | 拘束の強さ k（距離は eV/Å²、角度は eV/rad²）。別名 `--bias-k` |
+| `--preopt/--no-preopt` | フラグ | `False` | スキャンの前に入力構造を拘束なしで最適化 |
+| `--endopt/--no-endopt` | フラグ | `False` | 各ステージの結果を拘束なしで最適化 |
+| `--dump/--no-dump` | フラグ | `False` | 各ステップの最適化の軌跡を出力 |
+| `--opt-mode` | `grad` / `hess` | `grad` | 緩和の方法：L-BFGS / RFO（`tsopt` では同じ語が別の最適化法を指す。{ref}`コマンドごとの --opt-mode <ja-opt-mode-semantics>` を参照） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | クラスター境界のキャップ水素の親原子を自動凍結 |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
 
-## 関連項目
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/scan.md) を参照してください。
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+---
 
-- [all](all.md) — 単一構造入力に `--scan-lists` を使用した一気通貫ワークフロー
-- [scan2d](scan2d.md) — 同じ MLIP backend と YAML 設定で 2 距離（d₁, d₂）グリッドスキャン
-- [scan3d](scan3d.md) — 3 距離（d₁, d₂, d₃）グリッドスキャン + 等値面出力
-- [path-search](path-search.md) — スキャン端点を中間体として MEP を探索
-- [extract](extract.md) — スキャン前に活性部位モデル（バインディングポケット） PDB を生成
-- [YAML リファレンス](yaml-reference.md) — `bias` と `bond` の完全な設定オプション
-- [用語集](glossary.md) — MEP、セグメントの定義
+## 使用上の注意点
+
+* **`--preopt` は呼び出し方で変わる**: `scan` を単独で実行したときは、`--preopt` を付けたときだけ事前最適化をします。`all` の中では `all --preopt`（デフォルトで有効）に従い、`all --scan-preopt/--no-scan-preopt` で上書きできます。
+* **`all -s` のタプル**: {ref}`スキャンリスト仕様 <ja-scan-list-spec>` の `scan` の形で書きます。
+* **インラインでは目標値と範囲を混ぜない**: 1 つのインラインリテラルの中でも、1 回の実行のリテラルどうしでも、目標値 `(i,j,target)` と範囲のどちらか一方だけを使います。両方を組み合わせるときは、YAML/JSON スペックの `stages:` に並べてください。
+* **範囲を使うときのステージ番号**: 範囲 1 つは `low` 向きと `high` 向きの 2 つのステージになります。インラインでは、1 つのリテラルの範囲がすべてこの 2 つのステージを共有します。YAML の `stages:` では、目標値だけのステージは 1 つのままで、範囲を含むステージは、目標値 1 つにつき 1 つ、範囲 1 つにつき 2 つのステージに分かれます。
+* **目標の距離は正の値**にしてください。また、1 つのステージに同じ座標を 2 回書くことはできません。
+* **計算せずに指定を確かめる**: `--dry-run` は入力・電荷とスピン・`-s` を読み、ステージの数を表示して、最適化をせずに終了します。
+* **サイクル数の上限**: `--relax-max-cycles`（デフォルト `100000`）が各緩和のサイクル数を制限します。指定すると YAML の `opt.max_cycles` より優先されます。
+* **YAML での拘束の強さ**: `--config` では、`--restraint-k` を指定しないときに {ref}`bias.k <ja-bias-section>` が使われます。
+
+---
+
+## 関連ドキュメント
+
+* {ref}`スキャンリスト仕様 <ja-scan-list-spec>` — YAML/JSON スペックファイル、インラインリテラル、原子の指定
+* [scan2d](scan2d.md) — 2 つの座標のエネルギーマップ
+* [scan3d](scan3d.md) — 3 つの座標のエネルギー格子
+* [path-search](path-search.md) — スキャンの結果からの最小エネルギー経路（MEP）探索
+* [all](all.md) — 1 つの構造と `-s` からのスキャンを含む一貫ワークフロー
+* [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法

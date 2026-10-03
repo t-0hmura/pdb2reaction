@@ -8,7 +8,7 @@ description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — pre
 ## Purpose
 
 Submit `pdb2reaction` as a PBS / SLURM job with 1 node / 1 GPU.
-Placeholders filled from `pdb2reaction-env-detect/SKILL.md`.
+Placeholders filled from [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment).
 
 ## PBS preamble templates
 
@@ -37,7 +37,7 @@ cd "${PBS_O_WORKDIR}"
 # Replace every placeholder used by the selected runtime.
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 
-# Conda env (env-detect outputs <YOUR_ENV>)
+# Conda env (<YOUR_ENV> from the environment probe in install-backends)
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
 
@@ -134,7 +134,7 @@ For many segments, fan out independent work (parallel `seg_NN/` jobs or the
 | `pdb2reaction dft` | Supported with `--dft-engine cpu`; pilot actual method/system | GPU recommended when the GPU4PySCF stack supports the requested calculation |
 | Analytical Hessian (supported built-in backend) | Can avoid GPU memory pressure but may be impractical | Autograd can use the accelerator, but speed and peak memory are backend/model/system dependent; pilot it |
 
-Check [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) for `--dft-engine gpu` / `cpu`
+Check [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#dft-pyscf-gpu4pyscf) for `--dft-engine gpu` / `cpu`
 specifics. On aarch64 the packaged extra provides CPU PySCF; only a separately
 source-built and locally validated GPU4PySCF environment can enable GPU DFT.
 
@@ -210,15 +210,12 @@ Most subcommands that touch geometry expose `--uma-workers` and
 `--uma-workers-per-node`, which spin up a Ray cluster of UMA predictor
 workers. **Two important caveats:**
 
-1. The `workers` / `workers_per_node` flags are filtered to the UMA
-   backend (see `pdb2reaction/backends/__init__.py:_BACKEND_ACCEPTED_KEYS`).
-   ORB / MACE / AIMNet2 ignore them and emit a UserWarning when either is not 1
-   (`apply_backend_defaults` in `pdb2reaction/core/defaults.py`).
+1. The `workers` / `workers_per_node` flags apply only to the UMA backend.
+   ORB / MACE / AIMNet2 ignore them and emit a UserWarning when either is not 1.
 2. With UMA, `workers > 1` plus an explicit
-   `hessian_calc_mode=Analytical` request raises `BackendError` (a
-   `RuntimeError` subclass) before the requested method can be changed; use
+   `hessian_calc_mode=Analytical` request raises `BackendError` before the requested method can be changed; use
    `FiniteDifference` (the default) or drop to `workers = 1`.
-   See `docs/uma-pysis.md` `(workers-analytical-error)=`.
+   See `docs/backends.md` `(workers-analytical-error)=`.
 
 The full PBS + OpenMPI + Ray bootstrap is in
 `docs/hpc-example.md`; the schematic in this skill is single-node only.
@@ -231,7 +228,7 @@ The full PBS + OpenMPI + Ray bootstrap is in
 | `CUDA_VISIBLE_DEVICES` | Normally leave the scheduler-provided mapping unchanged. Set it manually only outside scheduler isolation or as part of a tested worker-launch scheme; device indices inside a job are local to that mapping. |
 | `OMP_NUM_THREADS=<NCPU>` | Limit OpenMP threads (avoid oversubscription) |
 | `MKL_NUM_THREADS=<NCPU>` | Intel MKL thread cap |
-| `LD_LIBRARY_PATH` | Leave unchanged for prebuilt wheels unless a diagnosed site-specific module/build requires it; see env-cuda.md |
+| `LD_LIBRARY_PATH` | Leave unchanged for prebuilt wheels unless a diagnosed site-specific module/build requires it; see [`backends.md`](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch) |
 
 ## ssh-based remote submission
 
@@ -242,8 +239,8 @@ embed it inside the skill template.
 ## See also
 
 - `dynamic-dispatch.md` — flock + pbsdsh template for many short tasks.
-- `pdb2reaction-env-detect/SKILL.md` — discover queue / module / env
+- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment) — discover queue / module / env
   values for the placeholders above.
-- [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — driver / torch CUDA
+- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch) — driver / torch CUDA
   pairing.
 - [`pdb2reaction-cli/all.md`](../pdb2reaction-cli/all.md) — the typical workload submitted to HPC.

@@ -1,117 +1,134 @@
-# クイックスタート: スキャンを起点とする `pdb2reaction all`
+# クイックスタート: `pdb2reaction all --scan-lists`
 
-## 目的
+## 概要
 
-単一構造に対して `-s/--scan-lists` で 1 つ以上の距離座標を定義し、`pdb2reaction all` を実行します。拘束スキャンに続いて MEP を最適化し、必要に応じて遷移状態（TS）最適化と固有反応座標（IRC）解析へ進みます。
+`pdb2reaction all --scan-lists`（`-s`）は、1 つの構造から反応経路を作ります。指定した距離を調和拘束のもとで目標値まで動かし（スキャン）、スキャンの端点から最小エネルギー経路（MEP）を探索します。`--tsopt` を付けると、遷移状態（TS）の最適化と固有反応座標（IRC）の計算まで進みます。
 
-## 事前に必要なもの
+以下のコマンドは同梱の [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある `1.R.pdb` を使うので、そのディレクトリで実行します。
 
-- 入力構造: PDB/mmCIF、XYZ、または GJF。以下のコマンドは同梱の [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある `1.R.pdb` を使うので、そのディレクトリで実行します。
-- 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
+### 主な用途
 
-## スキャンワークフローの選択
+* **生成物の構造が無い**: できる結合と切れる結合を動かして、反応物（R）から生成物（P）を作る
+* **2 段の反応**: メチル基転移の後のプロトン移動のように、1 段ずつ順に動かす
+* **スキャンから MEP と TS へ**: 同じ実行のまま、スキャンした経路から MEP と TS へ進む
 
-| 目的 | コマンド | 座標の扱い |
-| --- | --- | --- |
-| 拘束付き端点構造と軌跡のみを生成 | `pdb2reaction scan` | 複数距離の協奏scan・多段階scanに対応 |
-| スキャン定義経路から MEP と任意の TS/IRC 解析へ継続 | `pdb2reaction all -s ...` | スキャン端点を `path-opt`、または `--refine-path` 時の `path-search` へ渡す |
-| 2 次元または 3 次元の energy landscape を探索し PES を描画 | `pdb2reaction scan2d` / `scan3d` | 独立距離グリッドの直積 |
+## スキャンコマンドの選び方
 
-`scan` とスキャン起点の `all` では、1 リテラルが 1 ステージです。
-同一リテラル内の複数タプルは協奏的に駆動し、複数リテラルは多段階scanとして順次実行されます。
+| 目的 | コマンド |
+| --- | --- |
+| 拘束した構造とスキャンの軌跡だけを得る | `pdb2reaction scan` |
+| スキャンから MEP へ、必要なら TS と IRC まで進む | `pdb2reaction all -s ...` |
+| 2 つか 3 つの座標でエネルギーの 2D・3D マップを作る | `pdb2reaction scan2d` / `scan3d` |
 
-## `-s/--scan-lists` インラインリテラル
+## 基本的な実行例
 
-`-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォートのルールについては、{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
+### 1. まず入力を確かめる
 
-入力、抽出、電荷、スキャン原子対応を含む `all` 全体を事前検証します:
+`--dry-run` は、入力・モデルの切り出し・電荷とスピンの偶奇（電子数が多重度に合うか）・スキャンの原子のモデルへの対応を確かめ、計算をせずに止まります。
 
 ```bash
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
   -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
-standalone `scan --dry-run` は入力とスキャン仕様を検証し、`all` 固有の抽出や原子index remappingは検証しません。
+端末に `[all] --dry-run parity check OK: ...` と `[all] Planned stages: extract -> scan -> path_opt.` が出て、最後が `[Dry run] --dry-run completed. Input command is valid.` なら確認は通っています。通らないときは `--dry-run parity check failed` などのエラーメッセージが出て止まるので、そのメッセージを [トラブルシューティング](troubleshooting.md) で探してください。
 
-### 基本構文
+### 2. 1 段のスキャン
 
-各リテラルは target tuple のリストです。距離 `(atom1, atom2, target_Å)`、角度 `(atom1, atom2, atom3, target_deg)`、二面角 `(atom1, atom2, atom3, atom4, target_deg)` を書けます。距離は **ångström**、角度は度の単位です。1 リテラル = 1 ステージ。
+SAM の CS1（原子 4360）と GPP の C7（原子 4419）の距離を 1.60 Å まで動かします。C7 は IUPAC 番号では C6 です。原子は番号でも名前でも指定でき、次の 2 つは同じスキャンです。
 
 ```bash
-# 単一ステージ、整数原子インデックス（デフォルトで1-based）
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+# 原子の番号（既定は 1 始まり）
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[(4360, 4419, 1.60)]' -o ./result_scan
 
-# 単一ステージ、PDBセレクタ文字列
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+# 原子の名前
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[("SAM,320,CS1", "GPP,321,C7", 1.60)]' -o ./result_scan
 ```
 
-全系 PDB/mmCIF から活性部位モデルを抽出する場合は `-c/--center` を指定します。抽出済みクラスターモデル、または XYZ/GJF をそのまま解析する場合は省略します。`-m/--multiplicity` のデフォルトは `1`（一重項）ですが、ここでは明示しています。
+端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
-### 複数ステージ
+### 3. 2 段のスキャン
 
-複数のリテラルを渡すと、各リテラルが順番に 1 ステージとして実行されます:
+`-s` の後に並べる角括弧のリスト 1 つが 1 段で、段は順に実行されます。このリストは文字で書き下したものなので、リテラルと呼びます。
 
 ```bash
-# ステージ1: メチル基転移の距離を 1.60 Å まで駆動
-# ステージ2: 続いてプロトン移動の距離を 0.90 Å まで駆動
-pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
+# 段 1: メチル基転移の距離を 1.60 Å まで動かす
+# 段 2: 続いてプロトン移動の距離を 0.90 Å まで動かす
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -s \
   '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
   '[("GPP,321,H11","GLU,186,OE2",0.90)]' \
   -o ./result_scan
 ```
 
-ステージは順番に実行され、各々は前ステージの緩和結果から開始します。
+この例は、できる結合だけを動かす短い例です。自分の反応では、切れる結合と移る H も同じ段に入れてください。{ref}`反応の分け方を決める <ja-mechanism-split>` を参照してください。
 
-## 期待される出力
+## `--scan-lists` の書き方
+
+* **タプル**: 各リテラルはタプルのリストです。距離は `(atom1, atom2, target_Å)`、角度は `(atom1, atom2, atom3, target_deg)`、二面角は `(atom1, atom2, atom3, atom4, target_deg)` と書きます。距離の単位は Å、角度と二面角の単位は度です。
+* **原子**: 全系の入力構造での順番を 1 始まりの整数で書くか、原子の名前を二重引用符で囲んで書きます。`-c` を付けると、どちらも切り出したモデルの原子に対応づけられます。0 始まりは `--scan-zero-based` で指定します。
+* **段**: 同じリテラルの中のタプルは同時に動き、各段は前の段の緩和した構造から始まります。`-s` は 1 回だけ書き、その後にリテラルを並べます。`all` は `-s` を繰り返すとエラーで止まります。
+* **引用符**: 括弧や空白をシェルに解釈させないよう、各リテラルを一重引用符で囲みます。
+* **同梱の PDB**: chain 欄が空なので、chain ID を含む書き方ではなく、`"SAM,320,CS1"` のような名前か番号の書き方を使います。
+
+原子の名前と引用符の書き方の詳細は {ref}`スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
+
+## 主な出力ファイル
+
+上のコマンドは次のファイルを書き出します。
 
 ```text
 result_scan/
 ├── summary.log
-├── summary.json
-├── mep_trj.pdb                        # MEP 全体パス（ルートへ配置）
-├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ配置）
-└── _work/                         # パイプラインの作業領域（削除可）
+├── summary.json                 # 結果（scientific_status を含む）
+├── mep_trj.pdb                  # 全セグメントの MEP
+├── energy_diagram_MEP.png       # MEP のエネルギープロファイル
+└── _work/                       # 途中のファイル（TS 候補の HEI を含む。実行後も残る）
     ├── scan/
-    │   ├── preopt/                # 事前最適化構造
-    │   ├── stage_01/              # スキャンステージ 1
-    │   │   ├── result.{xyz,pdb}   # 最終拘束端点（--scan-endopt 時のみ無拘束最適化後）
-    │   │   ├── scan_trj.xyz       # スキャン軌跡
+    │   ├── preopt/              # 最適化した出発構造
+    │   ├── stage_01/            # スキャンの段 1
+    │   │   ├── result.{xyz,pdb} # 拘束した端点（--scan-endopt のときだけ拘束なしで最適化）
+    │   │   ├── scan_trj.xyz     # スキャンの軌跡
     │   │   └── scan.pdb
-    │   └── stage_02/              # スキャンステージ 2（マルチステージ時）
-    └── path_opt/                  # MEP 探索（--refine-path 時は path_search/）
-        └── hei_seg_01.{xyz,pdb}   # MEP の最高エネルギー像
+    │   ├── stage_02/            # スキャンの段 2（2 段の実行）
+    │   └── result.json          # 各段のスキャンの結果
+    └── path_opt/                # MEP 探索（MEP を再帰的に詰める --refine-path のときは path_search/）
+        └── hei_seg_01.{xyz,pdb} # セグメント 1 の最高エネルギーのイメージ
 ```
 
-この最小コマンドは MEP ステージ終了時に停止するため、`segments/` は作成しません。
-`--tsopt` を追加し、検証に成功するとセグメント別の正規 R/TS/P と IRC 出力が作成され、
-`--thermo` も追加すると `freq/` が作成されます。
+これらのコマンドは MEP 探索で終わるため、`segments/` は作られません。`--tsopt` を付けると、反応セグメントごとに `segments/seg_NN/` に R/TS/P の構造と IRC が入り、`--thermo` を付けると `freq/` も加わります。
 
-### 出力の検証
+## 結果の確認
 
-1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `mep_trj.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
-3. `summary.json` — [実行結果と理由](json-output.md#実行と要求段階の完了状況)を確認してから、`summary.log` の反応障壁と結合変化を解釈
+1. **完了状況**: `scientific_status` には、求めた段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行と要求段階の完了状況)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードができる結合と切れる結合を動かすかと、端点が狙った R と P かの 2 つは自分で確かめてください。
+2. **スキャン**: `_work/scan/stage_01/scan_trj.xyz` をビューアで開き、距離が狙いどおりに変わるかを確かめます。各段の終わりに端末に `[stage 1] Covalent-bond changes (start vs final): Yes` か `No` が出て、`_work/scan/result.json` の `stages[].bond_changes` に記録されます。
+3. **MEP**: `mep_trj.pdb` と、最高エネルギーのイメージ（HEI、TS の候補）`_work/path_opt/hei_seg_01.pdb` を開き、`energy_diagram_MEP.png` にはっきりした障壁があるかを確かめます。
+4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
+5. **端点（`--tsopt` のとき）**: `segments/seg_01/irc/finished_irc_trj.xyz` と、最適化した端点の `segments/seg_01/reactant.pdb`・`product.pdb` を開き、狙った R と P かを確かめます。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 
-## 補足
+## 使用上の注意点
 
-- `-s/--scan-lists` は `all` ではインライン Python リテラルのみを受け取ります。単独の `scan` サブコマンドはこれに加えて YAML/JSON スペックファイルパスも受け取れます（[scan](scan.md) を参照）。
-- スキャンエンジンは共通ですが、parent option名とpreopt既定値が異なります:
+* **入力**: PDB か mmCIF です。全系からクラスターモデルを切り出すときは `-c` を付けます。切り出し済みのモデルや、原子を番号で指定する XYZ・GJF の入力では `-c` を省き、構造をそのまま使います。
+* **`all` と `scan` の既定値**: 2 つのコマンドはスキャンの処理を共有しますが、オプションの名前と、スキャンの前後の最適化の既定値が違います。
 
-  | コマンド | step / bias | 緩和上限 | preopt / endopt |
+  | コマンド | 刻み幅 / 拘束 | 緩和の上限 | スキャンの前 / 後の最適化 |
   | --- | --- | --- | --- |
-  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-restraint-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preoptはparent `--preopt`（デフォルトON）を継承; endoptはOFF（`--no-scan-endopt`） |
-  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--restraint-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20` Å、`--scan-restraint-k 300` eV/Å² | `--scan-relax-max-cycles 100000` | 前: on（`--preopt/--no-preopt`）、後: off（`--scan-endopt/--no-scan-endopt`） |
+  | `pdb2reaction scan` | `--max-step-size 0.20` Å、`--restraint-k 300` eV/Å² | `--relax-max-cycles 100000` | 前: off（`--preopt/--no-preopt`）、後: off（`--endopt/--no-endopt`） |
 
-  step 幅は対応する CLI flag で上書きします。バイアス強度は CLI flag または YAML の `bias.k` で上書きできます（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
-- 各スキャンステージは、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。ステージごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
-- 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に入力として取り込みます。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
-- scanの正常終了が示すのは拘束付き端点の生成です。無拘束極小、素反応、遷移状態の成立は、無拘束最適化、鞍点次数、IRCで別途検証します。
-- `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
-- 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
+  拘束の強さは YAML の [`bias.k`](yaml-reference.md#bias) でも指定できます。
+* **結合変化と `--refine-path`**: スキャンの端点は、その段で結合変化が出たかどうかに関係なく、すべて MEP 探索に渡されます。MEP を再帰的に詰める（`path_search/`）かどうかは `--refine-path` だけで決まります。
+* **スキャンの端点**: スキャンが終わって得られるのは拘束した構造です。拘束なしの最適化、または TS 最適化と IRC で確かめるまでは、極小点とも遷移状態とも言えません。
+* **`scan` を単独で使うとき**: 単独の `scan` は YAML・JSON のスペックファイルとスキャンの範囲も受け付けます。`all -s` が受け付けるのは、インラインの目標値のタプルだけです。
+* **`scan --dry-run`**: 入力、電荷とスピンの偶奇、`--scan-lists` の解釈を確かめますが、`all` の切り出しと原子の対応づけは確かめません。それらは `all --dry-run` で確かめます。
 
 ## 次のステップ
 
-- 全オプション: [all](all.md)
-- TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)
+- [クイックスタート: TS-only モード](quickstart-tsopt.md): スキャンの最高点などの TS 候補を最適化して確かめる
+- [反応機構を調べるコツ](mechanism-tips.md): 反応の段の分け方（「反応の分け方を決める」）
+- {ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>`: 拘束の強さの意味
+- [`scan`](scan.md): スキャンを単独で実行する
+- [`all`](all.md): 全オプションのリファレンス。`pdb2reaction all --help-advanced` でも見られます
+- [用語集](glossary.md): MEP・TS・IRC などの用語
+- [トラブルシューティング](troubleshooting.md): エラーメッセージや症状から対処を探す

@@ -1,79 +1,115 @@
-# `trj2fig`
+# `trj2fig`（軌跡のエネルギープロファイル）
 
-XYZ 軌跡のコメント行に書かれたエネルギーを読み取り（または MLIP バックエンドで再計算し）、静的図・インタラクティブ図と CSV を出力します。`opt` / `scan` / `path-opt` / `path-search` / `irc` などが出力した軌跡のエネルギーを可視化するときに使います。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値（ΔE）にします。基準は最初のフレームまたは手動指定（`-r`）で、`--reverse-x` 使用時は最後のフレームが基準になります。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`-b/--backend` で選択可能）で各フレームのエネルギーを再計算します。
+## 概要
 
-## 実行例
+`trj2fig` サブコマンドは、`opt`・`scan`・`path-opt`・`path-search`・`irc` などが書き出した **XYZ 軌跡に沿ったエネルギーを図にします**。各フレームのエネルギーはコメント行から読み、`-q` か `-m` を指定したときは MLIP（機械学習原子間ポテンシャル）で計算し直します。PNG・JPEG・SVG・PDF・インタラクティブな HTML の図と CSV の表を書き出せます。デフォルトでは、最初のフレームを基準にした ΔE を kcal/mol で描きます。
 
-コマンド形式:
+### 主な用途
+
+* **経路のエネルギープロファイル**: 最小エネルギー経路（MEP）・スキャン・固有反応座標（IRC）の軌跡の ΔE の図
+* **最適化の確認**: 最適化のサイクルごとにエネルギーがどう下がったか
+* **自分の作図用のデータ**: フレームごとのエネルギーの CSV
+
+---
+
+## 基本的な実行例
+
+### 1. デフォルトの PNG
+
+最初のフレームを基準にした ΔE を描き、`energy.png` に書き出します。
 
 ```bash
-pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
+pdb2reaction trj2fig -i traj.xyz --out-json
 ```
 
+端末に `[trj2fig] Saved figure -> energy.png` が出て、`result.json` の `n_frames` に読み込んだフレーム数が入れば成功です。
+
+### 2. CSV と SVG、フレーム 5 を基準に Hartree で
+
+0 から数えたフレーム番号 5（6 番目のフレーム）を基準に、表と図を Hartree で書き出します。
+
 ```bash
-# デフォルトPNG、最初のフレームを基準としたΔE
-pdb2reaction trj2fig -i traj.xyz
-
-# CSV + SVG、フレーム5を基準、Hartree表記
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
+```
 
-# 複数形式 + x軸を反転（基準は最後のフレーム）
+### 3. 複数の形式、x 軸を反転
+
+最後のフレームを左端に置きます。このとき ΔE の基準も最後のフレームになります。
+
+```bash
 pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
+```
 
-# UMAで全フレームのエネルギーを再計算
+### 4. MLIP でエネルギーを計算し直す
+
+コメント行を読む代わりに、中性の一重項としてデフォルトの [UMA](backends.md) で全フレームを計算し直します。
+
+```bash
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
-## 処理の流れ
+---
 
-1. XYZ 軌跡を解析し、各 frame の comment line から energy を読み取ります。明示的な `E=` / `Energy:` token があればそれを優先し、なければ単一の bare numeric token だけを受理します（`1.5e-3` などの科学表記に対応）。bare number が複数ある曖昧な comment は拒否します。`-q/-m` がある場合は MLIP backend で再計算した Hartree energy を使用します。energy が取得できない場合は実行を中断します。
-2. 参照指定を正規化:
- - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
- - `None`/`none`/`null` → 絶対エネルギー（参照なし）
- - 整数リテラル → 0 始まりのフレーム番号
-3. エネルギーを kcal/mol または Hartree に変換し、参照指定がある場合は参照値を差し引いて ΔE を作成します。
-4. Plotly 図を作成（強調ティック、スプライン補間、マーカー、タイトルなし）し、指定された拡張子へ書き出します。
-5. 必要に応じて `frame`, `energy_hartree` と、指定単位での ΔE/E 列を含む CSV を出力します。
+## 処理の仕組みと計算仕様
 
-## 出力
+1. **エネルギーの読み込み**:
+各フレームのコメント行からエネルギーを読みます。`optimization_trj.xyz`（`opt --dump`）・`scan_trj.xyz`・`mep_trj.xyz`・`finished_irc_trj.xyz` など、pdb2reaction が書き出す軌跡はそのまま読めます。ほかのファイルでは `E=<値>` の形で書き、`Ha`・`Eh`・`hartree`・`eV`・`kcal/mol` の単位を付けられます。単位が無ければ Hartree ですが、コメントに `Properties=` か `Lattice=` がある拡張 XYZ の `energy=` だけは eV とします。`-q` か `-m` を指定したときは、代わりに MLIP バックエンドで全フレームを計算し直します。
+2. **基準の選択**:
+`-r init` は左端のフレームで、通常は最初のフレーム、`--reverse-x` では最後のフレームです。整数は 0 始まりのフレーム番号、`none` は絶対エネルギーです。
+3. **単位の変換**:
+エネルギーを kcal/mol（デフォルト）か Hartree に変換し、基準の値を引いて ΔE にします。y 軸は `ΔE (kcal/mol)`、絶対エネルギーでは `E (…)` になります。
+4. **書き出し**:
+出力ごとに拡張子で形式を決めます。`.png`・`.jpg`・`.jpeg`・`.svg`・`.pdf`・`.html` は図、`.csv` は表です。PNG は図の縦横 2 倍の画素数で書き出します。
+
+---
+
+## 主な出力ファイル
+
+```text
+energy.png      # 図（出力の指定が無いときのデフォルト）
+energy.csv      # エネルギーの表（.csv の出力を指定したとき）
+result.json     # 要約（--out-json 指定時）
+summary.json    # result.json の写し。result.json を読む（--out-json 指定時）
 ```
-<output>.[png|jpg|jpeg|html|svg|pdf] # 指定された拡張子すべてを出力（デフォルト: energy.png）
-<output>.csv # CSV指定時のみ
-result.json # --out-json 指定時の機械可読サマリ
-summary.json # writer 成功時に byte 単位で同一の互換ミラー
-```
-- `-o` や位置引数が無い場合は `energy.png` をカレントディレクトリに書き出します。
-- CSV には `frame`, `energy_hartree` と、参照がある場合は `delta_kcal`/`delta_hartree`、参照がない場合は `energy_kcal`/`energy_hartree` が含まれます。
-- JSON では、順序を保持する `output_files` を正規の出力一覧として使用してください。後方互換用の `files` はベース名をキーにするため、別ディレクトリにある同名出力を 2 件とも表現できません。
-- パース失敗や未対応拡張子がある場合、コンソールに診断メッセージが出力されます。
 
-再計算したエネルギーの JSON には `mlip_backend`、`mlip_model`、
-`mlip_model_label`、`mlip_task`、`mlip_precision` を記録します。
-軌跡のコメントを読む場合、これらは null です。
+* **CSV の列**: `frame`、`energy_hartree`、図に描いた値（`--unit` の単位）の 3 列です。3 列目の名前は、基準があるときは `delta_kcal` か `delta_hartree`、`-r none` では `energy_kcal` か `energy_hartree` です。
+* **`result.json`** は最初の出力と同じディレクトリに書き出します。`n_frames`・`min_energy_hartree`・`max_energy_hartree`・`energy_source`・`output_files` を持ち、`mlip_*` の欄はエネルギーを計算し直したときだけ値が入ります。[JSON 出力リファレンス](json-output.md#trj2fig)を参照してください。
 
-## CLI オプション
-| オプション | 説明 | デフォルト |
-| --- | --- | --- |
-| `-i, --input PATH` | コメント行にエネルギーを含む XYZ 軌跡 | 必須 |
-| `-o, --out PATH` | 複数指定可能な出力ファイル名（`.png/.jpg/.jpeg/.html/.svg/.pdf/.csv`） | `energy.png` |
-| _extra arguments_ | オプション後に続く位置引数（`-o` リストにマージ） | _None_ |
-| `--unit {kcal,hartree}` | 出力単位 | `kcal` |
-| `-r, --reference TEXT` | 参照指定（`init`、`None`、または 0 始まり整数） | `init` |
-| `-q, --charge INT` | 総電荷。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
-| `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
-| `--reverse-x/--no-reverse-x` | x 軸を反転して最後のフレームを左端に表示し、`init` の参照を最後のフレームに変更 | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
-| `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+---
 
-## 注記
-- エネルギーが解析できないコメント行はエラーになります（`E=` / `Energy:` トークンと素の数値の優先順位は処理の流れの手順 1 を参照）。
-- 未対応の拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
-- `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。
+## 主な CLI オプション
 
-## 関連項目
+| オプション | 引数の型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `-i, --input` | パス | （必須） | XYZ 軌跡 |
+| `-o, --output` | パス | `energy.png` | 出力ファイル（`.png`, `.jpg`, `.jpeg`, `.html`, `.svg`, `.pdf`, `.csv`）。`-o` を繰り返すか、その後にファイル名を続けて並べる（`-o energy.csv energy.svg`） |
+| `--unit` | `kcal` / `hartree` | `kcal` | 図と表の値の単位 |
+| `-r, --reference` | 文字列 | `init` | 基準: `init`、`none`、または 0 始まりのフレーム番号 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。指定すると MLIP でエネルギーを計算し直す |
+| `-m, --multiplicity` | 整数 | `None` | スピン多重度（2S+1）。指定すると MLIP でエネルギーを計算し直す |
+| `--reverse-x/--no-reverse-x` | フラグ | `False` | 最後のフレームを左端に置く |
+| `-b, --backend` | 文字列 | `uma` | 計算し直しに使う MLIP（`uma`, `orb`, `mace`, `aimnet2`。[MLIP バックエンド](backends.md)） |
+| `--backend-model` | 文字列 | `None` | 選んだバックエンドのモデル（例: `uma-s-1p2`）。省略時はそのバックエンドのデフォルトのモデル |
+| `--precision` | `fp32` / `fp64` | バックエンドごと | 計算し直しの精度（UMA は `fp32`、ORB と MACE は `fp64`）。AIMNet2 は `fp32` だけ |
+| `--out-json/--no-out-json` | フラグ | `False` | `result.json` と `summary.json` を出力 |
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
-- [path-search](path-search.md) -- MEP 軌跡のプロファイリング
-- [irc](irc.md) -- IRC 軌跡のプロファイリング
-- [all](all.md) -- 一気通貫ワークフロー
+全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/trj2fig.md) を参照してください。
+
+---
+
+## 使用上の注意点
+
+* **計算し直し**: `-q` と `-m` の片方だけのときは、もう片方を電荷 0 または多重度 1 とします。
+* **エネルギーを読めないコメント行**は、そのフレームを示すエラーで止まります。整数だけの行や、数値が複数ある行がこれに当たります。
+* **対応しない拡張子**はエラーで止まります。
+* **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
+
+---
+
+## 関連ドキュメント
+
+* [path-search](path-search.md) — 図にする MEP の軌跡
+* [irc](irc.md) — 図にする IRC の軌跡
+* [energy-diagram](energy-diagram.md) — 与えた数値から状態エネルギー図を描く
+* [all](all.md) — 全工程のワークフロー
+* [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処。図の書き出しに失敗したときは {ref}`インストール / 環境の問題 <ja-installation-environment-problems>`

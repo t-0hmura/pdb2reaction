@@ -1,171 +1,84 @@
 ---
 name: pdb2reaction-cli
-description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / sp / all / …). SKILL.md is a 1-line input→output cheatsheet; most subcommands also have their own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
+description: "Task-level guide to the 18 pdb2reaction subcommands: which command to run, a minimal working invocation, how to judge success, common pitfalls and recovery, and what to run next. SKILL.md is a one-line input-to-output cheatsheet with shared conventions (charge, spin, backend, output, dry run); all.md and its three mode pages, extract.md (with frozen atoms), opt.md, path.md (path-opt and path-search), scan.md (scan, scan2d, scan3d), tsopt.md, irc.md, freq.md, dft.md, and utilities.md (sp, fix-altloc, add-elem-info, bond-summary, trj2fig, energy-diagram) hold the details. Full flag lists come from --help-advanced and the generated CLI reference. TRIGGER on a question about a specific subcommand, a shell invocation, or a run that failed. SKIP for install, HPC, output-schema, or structure-format questions, and for choosing what goes into the cluster (pdb2reaction-model-setup)."
 ---
 
 # pdb2reaction CLI
 
-## Cheatsheet (input → output)
+Pick the command from the table, run its minimal command, then read its page
+for how to judge success. Charge and multiplicity must be chemically right for
+every run: the examples use a neutral singlet `-q 0 -m 1`, so replace those
+values with the verified charge (or `-l 'RES:Q,...'` for PDB/mmCIF) and set
+`-m` for open-shell systems.
 
-Charge and multiplicity must be chemically resolved for every run even where
-the CLI has neutral/singlet defaults. Use `-l 'RES:Q,...'` for PDB/mmCIF residue-based
-charge derivation or a verified total `-q <int>`, and set `-m <int>` explicitly
-for open-shell systems. The generic examples below use neutral singlet
-`-q 0 -m 1`; replace those values rather than copying them blindly. `-b`
-defaults to `uma`. Full flags: the matching `<sub>.md` next to this file, or
-`pdb2reaction <sub> --help`.
+| sub | role | minimal command | primary output | page |
+|---|---|---|---|---|
+| `all` | Extraction, MEP or staged scan, then TS/IRC, freq, DFT as requested | `pdb2reaction all -i 1.R.pdb 3.P.pdb -q 0 -m 1 --tsopt --thermo -o out` | `out/summary.json`, `out/segments/seg_NN/{reactant,ts,product}.*` | [all.md](all.md), [endpoint MEP](all-endpoint-mep.md), [scan](all-scan-list.md), [TS-only](all-ts-only.md) |
+| `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is a file path, not a directory) | [extract.md](extract.md) |
+| `path-opt` | Single-pass MEP between two structures | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz`, `out/hei.xyz` | [path.md](path.md) |
+| `path-search` | Recursive MEP split at bond changes | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/mep_trj.xyz`, `out/hei_seg_NN.xyz`, `out/summary.json` | [path.md](path.md) |
+| `opt` | Geometry minimization (L-BFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` | [opt.md](opt.md) |
+| `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; confirm with n_imag = 1, the mode, and IRC | [tsopt.md](tsopt.md) |
+| `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` | [irc.md](irc.md) |
+| `freq` | Hessian and QRRHO thermochemistry | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`; `thermoanalysis.yaml` with `--dump` | [freq.md](freq.md) |
+| `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb -q 0 -m 1 --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` | [dft.md](dft.md) |
+| `scan` | Staged scan under restraints | `pdb2reaction scan -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, `stage_NN/result.xyz` | [scan.md](scan.md) |
+| `scan2d` | 2D distance grid | `pdb2reaction scan2d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv`, `out/scan2d_map.png` | [scan.md](scan.md) |
+| `scan3d` | 3D distance grid | `pdb2reaction scan3d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv`, `out/scan3d_density.html` | [scan.md](scan.md) |
+| `sp` | Single-point energy and forces | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | energy on stdout, `out/forces.npy`; `hessian.npy` with `--hess` | [utilities.md](utilities.md) |
+| `trj2fig` | Energy profile from an XYZ trajectory | `pdb2reaction trj2fig -i trj.xyz` | `energy.png` | [utilities.md](utilities.md) |
+| `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7]" --label-x "['R','TS','P']"` | `energy_diagram.png` | [utilities.md](utilities.md) |
+| `add-elem-info` | Fill the PDB element column | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` | [utilities.md](utilities.md) |
+| `fix-altloc` | Keep one alternate location per residue | `pdb2reaction fix-altloc -i raw.pdb -o fixed.pdb` | `fixed.pdb` | [utilities.md](utilities.md) |
+| `bond-summary` | Bond changes between consecutive structures | `pdb2reaction bond-summary -i reactant.pdb -i product.pdb` | text on stdout; JSON with `--json` | [utilities.md](utilities.md) |
 
-| sub | role | minimal command | primary output |
-|---|---|---|---|
-| `all` | Orchestrate the selected optional extraction, path/scan, TS/IRC, thermo, and DFT stages | `pdb2reaction all -i 1.R.pdb 3.P.pdb -q 0 -m 1 --tsopt --thermo -o out` | successful segment deliverables + `out/summary.json` once the summary writer is reached |
-| `all` (scan-list) | Single reactant + staged scans | `pdb2reaction all -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.6)]' --tsopt -o out` | as above |
-| `all` (ts-only) | Pre-existing TS candidate | `pdb2reaction all -i ts.xyz -q 0 -m 1 --tsopt --thermo -o out` | `out/segments/seg_01/{ts,irc,freq}/...` + `out/segments/seg_01/structures/*.xyz` (`.pdb`/`.cif` only with topology) |
-| `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is the output file path, not a directory) |
-| `path-search` | Recursive MEP w/ bond-change segmentation | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/hei_seg_NN.xyz` + `out/summary.json` |
-| `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz` |
-| `opt` | Geometry minimization (L-BFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` |
-| `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; one imaginary mode is necessary but mode displacement and IRC connectivity are also required for TS validation |
-| `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | after successful evaluation, `out/frequencies_cm-1.txt`; `out/thermoanalysis.yaml` with `--dump` (`all --thermo` sets it) |
-| `sp` | Single-point calculator energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
-| `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
-| `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb -q 0 -m 1 --func-basis 'wb97m-v/def2-tzvpd' -o out` | after a successful calculation, `out/result.yaml`; `out/result.json` with `--out-json` |
-| `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
-| `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | grid records + `out/surface.csv`; `out/scan2d_map.png` when interpolation/export succeeds |
-| `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | grid records + `out/surface.csv`; `out/scan3d_density.html` when export succeeds |
-| `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `energy.png` (default when no `-o`) |
-| `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7]" --label-x "['R','TS','P']"` | `energy_diagram.png` |
-| `add-elem-info` | Add PDB element column (cols 77-78) | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` |
-| `fix-altloc` | Resolve PDB alternate locations | `pdb2reaction fix-altloc -i raw.pdb -o fixed.pdb` | `fixed.pdb` (single conformation per residue) |
-| `bond-summary` | Diff bonds between consecutive structures | `pdb2reaction bond-summary -i reactant.pdb -i product.pdb` (or positional `R.pdb P.pdb`) | stdout text by default; JSON to stdout with `--json` |
+mmCIF input and very large PDB input are handled as `.pdb` inside the run, so
+the `.pdb` names above still apply; the outputs also include a `.cif` that
+keeps the original chain IDs and residue numbers.
 
-For mmCIF or oversized-PDB input, geometry workflows keep a normalized `.pdb`
-for communication between pipeline stages and, with conversion enabled, add
-`.cif` companions carrying the original chain and residue identifiers. The
-`.pdb` names in the table are
-therefore workflow paths, not a claim that CIF metadata is discarded.
+## Common conventions
 
-## Cross-cutting topic guides
+- `-i, --input`: input structure(s). Geometry commands read `.pdb`, `.cif` / `.mmcif`, `.xyz`, and `.gjf`.
+- `-q, --charge`: total charge. `-l, --ligand-charge 'RES1:Q1,RES2:Q2'`: charges of non-standard residues in a PDB/mmCIF, from which the total is derived. `-m, --multiplicity`: 2S+1, default 1.
+- Charge order: explicit `-q` wins over the `-l` derivation, then the YAML value. This holds for `all -c/--center` too: extraction derives the cluster charge, an explicit `-q` sets the total, and a mismatch is reported as a warning. A bare XYZ needs `-q` (or `--ref-pdb` with `-l`); a GJF supplies its header value.
+- `-b, --backend`: `uma` (default), `orb`, `mace`, `aimnet2`, or `dft`.
+- `-o, --out-dir`: output directory; each command has its own default (`all` writes to `./result_all/`). `extract`, `add-elem-info`, `fix-altloc`, `trj2fig`, and `energy-diagram` take output file paths with `-o` instead.
+- `--config FILE`: YAML applied on top of the built-in defaults and below explicit CLI flags.
+- `--show-config`: prints the configuration and **continues** with the run. `all`, `path-search`, and `sp` print the settings after merging defaults, YAML, and CLI; the other commands that accept it print the loaded YAML and its top-level keys.
+- `--dry-run`: checks options and inputs, then exits before any MLIP or DFT stage. `all -c/--center --dry-run` also runs extraction to check the derived charge and electron parity.
+- `--ref-pdb FILE`: a PDB/mmCIF that gives residue names and topology to XYZ/GJF inputs while their coordinates are kept.
+- `--solvent NAME`: for MLIP backends, an expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, meant mainly for small molecules in solution; with `-b dft` and the `dft` command, PySCF PCM/SMD (`--solvent-model`). `none` turns it off. Install notes: [xTB solvent correction](../pdb2reaction-install-backends/backends.md#xtb-solvent-correction).
 
-| md | Topic |
-|---|---|
-| `freeze-atoms.md` | Cluster-boundary frozen atoms — cap hydrogens (`LKH/HL`), `--freeze-links`, `--freeze-atoms`, YAML `geom.freeze_atoms`. The three sources are unioned; use a chemically justified boundary and inspect it rather than assuming every cluster needs the same freeze set. |
+## Frozen atoms
 
-## Common flag conventions
+Cap hydrogens, `--freeze-links`, `--freeze-atoms`, and YAML `geom.freeze_atoms` are combined into one frozen set; choose a chemically justified boundary and inspect it rather than reusing one freeze set for every cluster. See [extract.md](extract.md#freeze-atoms-at-the-cluster-boundary).
 
-| Flag | Meaning |
-|---|---|
-| `-i, --input` | Input file(s); geometry workflows accept `.pdb`, `.cif` / `.mmcif`, `.xyz`, `.gjf` |
-| `-q, --charge` | Total charge (integer) |
-| `-l, --ligand-charge` | `'RES1:Q1,RES2:Q2'` per-residue mapping (PDB/mmCIF metadata) |
-| `-m, --multiplicity` | Spin multiplicity (2S+1), default 1 |
-| `-b, --backend` | Calculator backend: `uma` / `orb` / `mace` / `aimnet2` / `dft` |
-| `-o, --out-dir` | Output directory, subcommand-specific default |
-| `--config` | YAML configuration file applied before CLI flags |
-| `--show-config` | Print the loaded YAML file and its top-level keys (`all`, `path-search`, and `sp` print the resolved settings), then **continue** with the full run |
-| `--dry-run` | Validate options and inputs, then exit before MLIP/DFT stages. Special case: `all -c/--center ... --dry-run` runs extraction in a temporary directory so it can validate the derived charge and electron parity; it does not run scan/MEP/TSOPT/IRC/freq/DFT. |
-| `--help-advanced` | Reveal hidden / advanced flags |
-| `--ref-pdb` | Reference PDB/mmCIF used to derive residue context for XYZ/GJF inputs while retaining their coordinates |
-| `--solvent` | MLIP backends: computationally expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, intended mainly for small-molecule solution calculations. `-b dft` and the `dft` subcommand: native PySCF PCM/SMD (`--solvent-model`). `none` disables it. See `pdb2reaction-install-backends/xtb.md`. |
+## Cross-cutting pitfalls
 
-For calculation commands, explicit `-q` takes precedence over
-`-l 'RES:Q'` derivation, then config/defaults. This includes
-`all -c/--center`: extraction derives the cluster charge, but explicit `-q`
-sets the total and a mismatch is reported as a warning. A per-resname `-l` mapping can
-derive charge from a residue-bearing PDB/mmCIF whether or not extraction runs; bare
-XYZ needs an explicit total, while a valid GJF supplies its header value.
+- **`--scan-lists` syntax error.** Each value is a Python literal. Wrap it in single quotes and use double quotes inside; do not confuse a backtick (`` ` ``) with a backslash (`\`).
+- **Wrong charge with no error.** Settle protonation and oxidation states and read the per-residue charge breakdown. `--dry-run` prints the charge and checks electron parity, but it cannot prove the chemistry is right.
+- **Backend left to the default.** Pass `-b` explicitly in production scripts so a change of default cannot reroute the run.
+- **YAML value seems ignored.** The order is built-in defaults, then `--config`, then explicit CLI flags; a value also given on the command line overrides the YAML.
+- **Flag not in `--help`.** Advanced flags are listed only by `--help-advanced`; pin the package version when a workflow is shared.
+- **Out of memory in the Hessian step.** Keep the default `--hessian-calc-mode FiniteDifference` rather than `Analytical`, which builds an autograd graph; use a justified frozen boundary (PHVA) or a smaller model. The Hessian of the active atoms stays dense, so measure memory on a representative system.
+- **UMA with `--uma-workers` above 1 and an explicit `Analytical` Hessian.** This raises `BackendError`; the requested method is never changed silently. Use `--uma-workers 1` for `Analytical`, or keep `FiniteDifference`. ORB, MACE, and AIMNet2 ignore the worker flags, and all four built-in backends implement analytical Hessians.
 
-## Canonical recipes
+## Where flags and defaults live
 
-### Multi-input MEP for a 1-step reaction
+- `pdb2reaction <sub> --help-advanced` lists every flag with its default; `docs/reference/commands/` holds the same text.
+- `pdb2reaction.core.defaults` holds the shared defaults as `*_KW` dictionaries and `OUT_DIR_*` paths; some command-only defaults live in the command module, so check `--help-advanced` too:
 
 ```bash
-pdb2reaction all -i 1.R.pdb 3.P.pdb \
-    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --tsopt --thermo \
-    --out-dir result_mep
+python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
+python -c "import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW)"   # or LBFGS_KW, IRC_KW, UMA_CALC_KW
 ```
 
-### Single-input scan-list (when only the reactant is available)
+## Next step
 
-```bash
-pdb2reaction all -i 1.R.pdb \
-    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
-                 '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
-    --tsopt --thermo \
-    --out-dir result_scan
-```
-
-### Validate a TS candidate without re-running path search
-
-```bash
-pdb2reaction tsopt -i ts_guess.xyz -q -1 -m 1 -b uma -o result_tsopt
-pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq  # optional: full modes / thermochemistry
-pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
-```
-
-### DFT//MLIP single point on the highest-local-barrier TS candidate
-
-```bash
-SUMMARY=result_mep/summary.json
-RLS_SEG=$(python - "$SUMMARY" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as handle:
-    print(int(json.load(handle)["rate_limiting_step"]["segment"]))
-PY
-)
-printf -v RLS_DIR 'seg_%02d' "$RLS_SEG"
-TS_FILE="result_mep/segments/${RLS_DIR}/ts.pdb"
-test -f "$TS_FILE"
-pdb2reaction dft -i "$TS_FILE" \
-    -l 'SAM:1,GPP:-3' \
-    --func-basis 'wb97m-v/def2-tzvpd' \
-    --dft-engine gpu
-```
-
-### Bond-change report between R and P
-
-```bash
-pdb2reaction bond-summary -i reactant.pdb -i product.pdb
-```
-
-## Cross-cutting caveats
-
-| Pitfall | Fix |
-|---|---|
-| `--scan-lists` syntax error | The list is a Python literal-eval expression. Quote with single-quotes outside, double-quotes inside, and do not confuse the backtick (`` ` ``) with the backslash (`\`). |
-| Wrong charge silently | Resolve protonation/oxidation state and inspect the residue charge breakdown. `--dry-run` reports the resolved value and checks electron parity but cannot prove that the chemistry is correct. For `all -c/--center`, it performs temporary extraction, validates the derived charge/parity, removes the temporary data, and exits before computational stages. |
-| Forgetting to pin `-b` for production | The default is `-b uma`; specify `-b uma` / `-b orb` / `-b mace` / `-b aimnet2` explicitly so a future default change cannot silently re-route the run. |
-| `--config` YAML ignored | YAML is read **after** built-in defaults but **before** explicit CLI flags. Anything also given on CLI overrides YAML. |
-| `--help-advanced` flags differ between versions | They are subject to change; if a flag isn't in `--help`, check `--help-advanced` and version-pin if the workflow is shared. |
-| OOM on the Hessian step | Try `--hessian-calc-mode FiniteDifference` to avoid the analytical autograd graph, use a justified frozen boundary/PHVA, or select a smaller backend model. The active-space Hessian itself remains dense, so benchmark memory rather than assuming any one switch is sufficient. |
-| UMA `--uma-workers > 1` with an explicit analytical Hessian | This raises `BackendError`; it never silently changes the requested method. Use `--uma-workers 1` for `Analytical`, or explicitly select `FiniteDifference`. ORB/MACE/AIMNet2 do not use these worker flags. All four built-in backends implement analytical Hessians when used in a supported configuration. |
-
-## Defaults
-
-Most calculation defaults are exported from `pdb2reaction.core.defaults`; Click-only presentation defaults may live in the subcommand module. Use live `--help` plus the relevant config dict rather than assuming every flag is in one dict:
-
-```bash
-python -c "import pdb2reaction.core.defaults as d; print([n for n in dir(d) if n.endswith('_KW') or n.startswith('OUT_DIR')])"
-
-# Examples:
-python -c "import pdb2reaction.core.defaults as d; print(d.LBFGS_KW)"
-python -c "import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW)"
-python -c "import pdb2reaction.core.defaults as d; print(d.IRC_KW)"
-python -c "import pdb2reaction.core.defaults as d; print(d.UMA_CALC_KW)"
-```
-
-Each per-subcommand md points at the relevant `_KW` dict in the
-"See also" section.
-
-## See also
-
-- `pdb2reaction-overview/SKILL.md` — what `pdb2reaction` is and when to
-  use it.
-- `pdb2reaction-structure-io/` — input file formats and charge / spin.
-- `pdb2reaction-install-backends/` — `<tool>` / backend installation.
-- `pdb2reaction-workflows-output/SKILL.md` — what comes out of each
-  invocation, six canonical workflows, energy diagrams. The `summary.json`
-  schema, R/TS/P canonical paths, and bond-change interpretation are in
-  [`pdb2reaction-workflows-output/summary-json.md`](../pdb2reaction-workflows-output/summary-json.md).
-- `pdb2reaction-hpc/SKILL.md` — running these recipes on PBS / SLURM.
+- [pdb2reaction-overview](../pdb2reaction-overview/SKILL.md): which `all` mode to use, and how to run and judge the stages one by one.
+- [Reading outputs](../pdb2reaction-overview/outputs.md): `summary.json` keys, R/TS/P paths, bond changes, energy diagrams.
+- [TS strategy](../pdb2reaction-overview/ts-strategy.md): wrong n_imag, or no TS.
+- [pdb2reaction-structure-io](../pdb2reaction-structure-io/SKILL.md): input formats, charge and multiplicity.
+- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): what goes into the cluster.
+- [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md): install and backends.
+- [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): running on PBS or SLURM.

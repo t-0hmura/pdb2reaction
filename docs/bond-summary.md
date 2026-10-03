@@ -1,28 +1,32 @@
-# `bond-summary`
+# `bond-summary` (bond changes between structures)
 
-Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) via element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to check which covalent bonds form or break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, **mmCIF**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
+## Overview
+
+`bond-summary` reports which **covalent bonds form and break** between consecutive structures, such as reactant (R) → product (P), or R → intermediates IM1 → IM2 → P. For *N* input files it prints *N* − 1 comparison blocks (A → B, B → C, …) with each changed bond and its distance before and after, in Å.
+
+### What it is for
+
+* **Checking IRC endpoints**: confirm that the two ends of an intrinsic reaction coordinate (IRC) differ by the intended bonds.
+* **Screening multistep mechanisms**: list the bonds that change in each step of a chain of intermediates.
+* **Checking a workflow by hand**: compare the R, transition state (TS), and P that `all` wrote under [`segments/seg_NN/`](output-layout.md).
+
+---
 
 ## Examples
 
-Two-structure comparison (R → P):
+### 1. Compare two structures
+
+Compare the reactant and the product.
 
 ```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
+pdb2reaction bond-summary -i reactant.xyz product.xyz
 ```
 
-Multi-structure chain — produces three comparison blocks (R→IM1, IM1→IM2, IM2→P):
+The report lists the bonds under `Bond formed (k):` and `Bond broken (k):`. `Bond formed: None` means that no bond formed.
 
-```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
-```
-
-## Outputs
-
-`bond-summary` writes no files. It prints a text report to stdout (one comparison block per consecutive pair), or machine-readable JSON to stdout with `--json`. Each text block lists the formed and broken bonds with their before/after distances in Å:
-
-```
+```text
 ============================================================
-  1.R.xyz  →  3.P.xyz
+  reactant.xyz  →  product.xyz
 ============================================================
 Bond formed (2):
   - O14-H106 : 1.502 Å --> 1.011 Å
@@ -32,56 +36,58 @@ Bond broken (2):
   - H106-O107 : 1.034 Å --> 1.673 Å
 ```
 
-## Python API
+### 2. A multistep chain
 
-The bond change detection functions can also be used programmatically:
+Four structures give three blocks: R → IM1, IM1 → IM2, and IM2 → P.
 
-```python
-from pdb2reaction.domain.bond_changes import compare_structures, has_bond_change, summarize_changes
+```bash
+pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 ```
 
-| Function | Description |
-|----------|-------------|
-| `compare_structures(geom1, geom2, device="cuda", bond_factor=1.20)` | Detect covalent bonds formed or broken between two pysisyphus geometries. Returns a `BondChangeResult` with `formed_covalent` and `broken_covalent` (sets of 0-based index pairs). |
-| `has_bond_change(geom_start, geom_end, bond_cfg)` | Convenience wrapper: returns `(has_changes: bool, summary_text: str)`. `bond_cfg` accepts keys: `device`, `bond_factor`, `margin_fraction`, `delta_fraction`. |
-| `summarize_changes(geom, result, one_based=True)` | Format bond changes as a text report with distances in Angstrom. |
+---
 
-### Example
+## How it works
 
-```python
-from pysisyphus.helpers import geom_loader
-from pdb2reaction.domain.bond_changes import has_bond_change
+1. **Reading the structures**:
+The files are read in the order given; XYZ, PDB, mmCIF, and GJF are recognized by their extension. At least two files are needed.
+2. **Bond criterion**:
+A pair is bonded when its distance is at most 0.95 *T*, where *T* is `--bond-factor` (default `1.20`) times the sum of the two covalent radii of [Cordero et al. (2008)](https://doi.org/10.1039/b801115j), with 0.40 Å for H.
+3. **Counting a change**:
+A pair counts as formed (broken) when it is unbonded (bonded) in the first structure, bonded (unbonded) in the next, and its distance changes by at least 0.05 *T*, so a small move across the threshold is not counted. `irc` and `all` use the same criterion for the bond changes they report.
 
-geom_r = geom_loader("R.xyz")
-geom_p = geom_loader("P.xyz")
+---
 
-changed, summary = has_bond_change(geom_r, geom_p, {"device": "cpu", "bond_factor": 1.20})
-if changed:
-    print(summary)
-```
+## Output files
 
-## CLI options
+`bond-summary` writes no files. It prints one text block per consecutive pair to stdout, as in example 1; atom labels are the element and the atom index (1-based by default). With `--json`, it prints a JSON object to stdout instead, with `scientific_status`, `execution_status`, and, for each pair, `structure_a`, `structure_b`, `bonds_formed`, and `bonds_broken` (counts); see [JSON Output Reference](json-output.md#bond-summary). Redirect stdout to keep it.
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-i, --input FILE` | Input structure file in XYZ, PDB, mmCIF, or GJF format (auto-detected by extension; repeat for each file, ≥ 2 required) | — |
-| `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
-| `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
-| `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
-| `--json / --no-json` | **Emit machine-readable JSON to stdout** instead of the text report. See [JSON Output Schema → bond-summary](json-output.md#bond-summary) for the schema and stdout/persistence behavior. | `False` |
+---
 
-The full flag list is in the generated [command reference](reference/commands/index.md).
+## Main options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | Two or more structures in order, listed after one `-i` (`-i` may also be repeated) |
+| `--bond-factor` | float | `1.20` | Scale factor for the sum of covalent radii |
+| `--json/--no-json` | flag | `False` | Print JSON to stdout instead of the text report |
+| `--one-based/--zero-based` | flag | `--one-based` | Atom numbering in the report |
+
+See the [generated CLI reference](reference/commands/bond_summary.md) for every option.
+
+---
 
 ## Notes
 
-- All input structures must have **identical atom counts and element ordering**.
-- Bond detection uses the same algorithm the `all` workflow applies for IRC endpoint validation.
-- To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å), increase `--bond-factor` (e.g., `1.30`).
+* **Same atoms in the same order**: a pair that differs prints `ERROR: Atom types and ordering must be identical.` to stderr; see {ref}`Input / extraction <input-extraction-problems>`.
+* **Borderline bonds**: to count longer contacts such as metal coordination at 2.0–2.4 Å, raise `--bond-factor` (for example `1.30`).
+* **Failed pairs**: a pair that cannot be compared, such as one whose atoms differ, is skipped, and the other pairs are still reported. The run then exits with code 1 because `execution_status` is `failed`; the JSON `scientific_status` is `partial` when some pairs were compared and `failed` when none were.
+* **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 
-## See Also
+---
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-- [irc](irc.md) -- IRC trajectories whose endpoints are validated by bond detection
-- [all](all.md) -- End-to-end workflow that uses bond-change validation internally
-- [trj2fig](trj2fig.md) -- Visualize energy profiles from trajectories
+## See also
+
+* [irc](irc.md) — IRC, whose endpoints are checked with the same criterion
+* [all](all.md) — the full workflow, which reports bond changes for each step
+* [trj2fig](trj2fig.md) — plot the energy profile of a trajectory
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails

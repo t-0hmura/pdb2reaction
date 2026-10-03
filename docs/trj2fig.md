@@ -1,93 +1,115 @@
-# `trj2fig`
+# `trj2fig` (energy profile of a trajectory)
 
-Plot energies from an XYZ trajectory's comment lines (or recompute them via an MLIP backend) and export the series as static / interactive figures and CSV tables. Use it to visualize energies along a trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`. By default it reads the per-frame energies (in hartree) from each comment line, converts them to kcal/mol or hartree, and optionally references all values to a chosen frame to produce ΔE. Supplying `-q/--charge` and/or `-m/--multiplicity` instead recomputes every frame's energy with the MLIP backend (default UMA) using the given charge/spin.
+## Overview
+
+`trj2fig` **plots the energy along an XYZ trajectory**, such as one written by `opt`, `scan`, `path-opt`, `path-search`, or `irc`. It reads the energy of each frame from its comment line, or recomputes it with an MLIP (machine-learning interatomic potential) when `-q` or `-m` is given. It exports PNG, JPEG, SVG, PDF, or interactive HTML figures and a CSV table. By default it plots ΔE in kcal/mol relative to the first frame.
+
+### What it is for
+
+* **Energy profiles of paths**: minimum energy path (MEP), scan, and intrinsic reaction coordinate (IRC) trajectories as ΔE plots.
+* **Checking an optimization**: how the energy fell over the optimization cycles.
+* **Data for your own plots**: per-frame energies as CSV.
+
+---
 
 ## Examples
 
-Command form:
+### 1. Default PNG
+
+Plot ΔE relative to the first frame and write `energy.png`.
 
 ```bash
-pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
+pdb2reaction trj2fig -i traj.xyz --out-json
 ```
 
+The console prints `[trj2fig] Saved figure -> energy.png`, and `result.json` has `n_frames`, the number of frames read.
+
+### 2. CSV and SVG relative to frame 5, in hartree
+
+Write a table and a figure in hartree, relative to frame index 5 (counted from 0, so the sixth frame).
+
 ```bash
-# Default PNG, ΔE relative to the first frame
-pdb2reaction trj2fig -i traj.xyz
-
-# CSV + SVG with ΔE relative to frame 5, reported in hartree
 pdb2reaction trj2fig -i traj.xyz -o energy.csv energy.svg -r 5 --unit hartree
+```
 
-# Multiple figure formats with the x-axis reversed (reference becomes last frame)
+### 3. Several formats, x-axis reversed
+
+Put the last frame on the left; ΔE is then relative to the last frame.
+
+```bash
 pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pdf
+```
 
-# Recompute all frame energies with UMA before plotting
+### 4. Recompute energies with an MLIP
+
+Recompute every frame with the default MLIP, [UMA](backends.md), for a neutral singlet instead of reading the comments.
+
+```bash
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
-## Workflow
+---
 
-1. Parse the XYZ trajectory. By default, read the energy from every frame
-    comment: an explicit `E=`/`Energy:` token takes precedence, otherwise a comment containing only one numeric token is accepted (scientific notation such as `1.5e-3` is supported). Multiple bare numbers are ambiguous and rejected. If
-    `-q/-m` is present, recompute energies (in hartree) for each frame with
-    the MLIP backend using those charge/spin values instead of the comment.
-    If no energies are found or produced, the run aborts.
-2. Normalize the reference specification:
-   - `init` → frame `0` (or the last frame when `--reverse-x` is active).
-   - `None`/`none`/`null` → absolute energies (no referencing).
-   - Integer literal → the corresponding 0-based frame index.
-3. Convert energies to either kcal/mol (default) or hartree and, when a
-    reference is active, subtract the reference value to produce ΔE.
-4. Build the Plotly figure (strong ticks, spline interpolation, markers, no
-    title) and export it in every requested output format.
-5. Optionally emit a CSV table with columns `frame`, `energy_hartree`, and the
-    appropriate ΔE/E column in the requested unit.
+## How it works
 
-## Outputs
+1. **Reading the energies**:
+Each frame's comment line gives its energy. Trajectories written by pdb2reaction, such as `optimization_trj.xyz` (`opt --dump`), `scan_trj.xyz`, `mep_trj.xyz`, and `finished_irc_trj.xyz`, are read as they are. In other files, write `E=<value>` with an optional unit (`Ha`, `Eh`, `hartree`, `eV`, `kcal/mol`); without a unit it is hartree, except that `energy=` in a comment with `Properties=` or `Lattice=` (extended XYZ) is eV. With `-q` or `-m`, the MLIP backend recomputes every frame instead.
+2. **Choosing the reference**:
+`-r init` is the frame at the left end: the first frame, or the last with `--reverse-x`; an integer is a 0-based frame index; `none` plots absolute energies.
+3. **Converting the unit**:
+The energies are converted to kcal/mol (default) or hartree, and the reference is subtracted to give ΔE. The y-axis reads `ΔE (kcal/mol)`, or `E (…)` for absolute energies.
+4. **Exporting**:
+Each output gets its format from its extension: `.png`, `.jpg`, `.jpeg`, `.svg`, `.pdf`, and `.html` are figures, and `.csv` is a table. PNG is written at twice the pixel width and height of the figure.
 
+---
+
+## Output files
+
+```text
+energy.png      # Figure (default when no output is given)
+energy.csv      # Energy table (when a .csv output is given)
+result.json     # Summary (with --out-json)
+summary.json    # Copy of result.json; read result.json (with --out-json)
 ```
-<output>.[png|jpg|jpeg|html|svg|pdf] # Plotly export for every requested extension (defaults to energy.png)
-<output>.csv                         # Optional energy table when CSV is requested
-result.json                          # Machine-readable summary when --out-json is set
-summary.json                         # Byte-identical compatibility mirror on success
-```
-- CSV exports include `frame`, `energy_hartree`, and either a ΔE column
-  (`delta_kcal`/`delta_hartree`) or an absolute column (`energy_kcal`/`energy_hartree`)
-  when no reference is applied.
-- In the JSON payload, consume the ordered `output_files` list. The legacy
-  basename-keyed `files` map is retained for compatibility and cannot represent
-  two outputs with the same basename in different directories.
-- Console diagnostics describing parsing failures or unsupported extensions.
 
-JSON records `mlip_backend`, `mlip_model`, `mlip_model_label`, `mlip_task`,
-and `mlip_precision` for recomputed energies. These fields are null when
-reading trajectory comments.
+* **CSV columns**: `frame`, `energy_hartree`, and the plotted value in the `--unit` unit. The third column is named `delta_kcal` or `delta_hartree` with a reference, and `energy_kcal` or `energy_hartree` with `-r none`.
+* **`result.json`** is written in the directory of the first output. It has `n_frames`, `min_energy_hartree`, `max_energy_hartree`, `energy_source`, and `output_files`; the `mlip_*` fields are null unless the energies were recomputed. See [JSON Output Reference](json-output.md#trj2fig).
 
-## CLI options
+---
 
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | XYZ trajectory whose second line stores energies. | Required |
-| `-o, --out PATH` | Repeatable output filenames; supports `.png/.jpg/.jpeg/.html/.svg/.pdf/.csv`. | `energy.png` |
-| _extra arguments_ | Positional filenames listed after options; merged with the `-o` list. | _None_ |
-| `--unit {kcal,hartree}` | Target unit for the plotted/exported values. | `kcal` |
-| `-r, --reference TEXT` | Reference specification (`init`, `None`, or 0-based integer). | `init` |
-| `-q, --charge INT` | Total charge; triggers energy recomputation when provided. | _None_ |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation when provided. | _None_ |
-| `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
+## Main options
 
-The full flag list is in the generated [command reference](reference/commands/index.md).
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `-i, --input` | path | (required) | XYZ trajectory |
+| `-o, --output` | path | `energy.png` | Output files (`.png`, `.jpg`, `.jpeg`, `.html`, `.svg`, `.pdf`, `.csv`); repeat `-o`, or list more file names after it (`-o energy.csv energy.svg`) |
+| `--unit` | `kcal` / `hartree` | `kcal` | Unit of the plotted and exported values |
+| `-r, --reference` | text | `init` | Reference: `init`, `none`, or a 0-based frame index |
+| `-q, --charge` | integer | `None` | Total charge; recomputes the energies with the MLIP when given |
+| `-m, --multiplicity` | integer | `None` | Spin multiplicity (2S+1); recomputes the energies with the MLIP when given |
+| `--reverse-x/--no-reverse-x` | flag | `False` | Put the last frame on the left |
+| `-b, --backend` | text | `uma` | MLIP for recomputation (`uma`, `orb`, `mace`, `aimnet2`; see [MLIP Backends](backends.md)) |
+| `--backend-model` | text | `None` | Model of the selected backend (e.g. `uma-s-1p2`); without it, the backend's default model |
+| `--precision` | `fp32` / `fp64` | per backend | Precision of the recomputation (UMA `fp32`; ORB and MACE `fp64`); AIMNet2 accepts only `fp32` |
+| `--out-json/--no-out-json` | flag | `False` | Write `result.json` and `summary.json` |
+
+See the [generated CLI reference](reference/commands/trj2fig.md) for every option.
+
+---
 
 ## Notes
-- A comment with no parseable energy raises an error (see Workflow step 1 for the `E=`/`Energy:` vs. bare-number precedence).
-- Unsupported extensions abort the run; `.png` uses Plotly’s PNG export with
-  `scale=2` for sharper output.
 
-## See Also
+* **Recomputation**: with only one of `-q` and `-m`, the other is taken as charge 0 or multiplicity 1.
+* **Comments without a readable energy**, such as one that holds only an integer or several numbers, stop the run with an error that names the frame.
+* **Unsupported extensions** stop the run with an error.
+* **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-- [path-search](path-search.md) -- MEP trajectories for profiling
-- [irc](irc.md) -- IRC trajectories for profiling
-- [all](all.md) -- End-to-end workflow
+---
+
+## See also
+
+* [path-search](path-search.md) — MEP trajectories to plot
+* [irc](irc.md) — IRC trajectories to plot
+* [energy-diagram](energy-diagram.md) — a state energy diagram from numbers you give
+* [all](all.md) — the full workflow
+* [Troubleshooting](troubleshooting.md) — what to do when a run fails; for a failed figure export, see {ref}`Installation / environment <installation-environment-problems>`

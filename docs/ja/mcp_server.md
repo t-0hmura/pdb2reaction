@@ -1,10 +1,6 @@
 # pdb2reaction MCP サーバー
 
-`pdb2reaction-mcp`（エイリアス `p2r-mcp`）は、[MCP](https://modelcontextprotocol.io/)
-サーバーであり、MCP に対応した任意のエージェントが stdio 上の JSON-RPC を介して
-すべての `pdb2reaction` CLI サブコマンドを駆動できるようにします。Claude Desktop /
-Claude Code / Cursor / Codeium のほか、公式の Python または TypeScript MCP SDK で
-構築したカスタムエージェントからも利用できます。
+AI エージェントから MCP（Model Context Protocol）で pdb2reaction の 18 個のツールを呼ぶための、インストール、ツールの一覧、クライアントの設定をまとめたページです。サーバー `pdb2reaction-mcp`（別名 `p2r-mcp`）は stdio 上の JSON-RPC でやりとりするので、[MCP](https://modelcontextprotocol.io/) に対応したどのクライアントからも使えます。Claude Desktop、Claude Code、Cursor、Codeium のほか、公式の Python や TypeScript の MCP SDK で作ったエージェントからも使えます。
 
 ## インストール
 
@@ -12,115 +8,99 @@ Claude Code / Cursor / Codeium のほか、公式の Python または TypeScript
 pip install "pdb2reaction[mcp]"
 ```
 
-これにより `mcp[cli]` 依存関係が追加され、2 つのコンソールスクリプト
-`pdb2reaction-mcp` および `p2r-mcp`（エイリアス）が登録されます。
+これにより `mcp[cli]` 依存関係が追加され、`pdb2reaction-mcp` / `p2r-mcp` のコマンドが登録されます。
 
 ## ツール
 
 18 個のツールがあり、それぞれが CLI サブコマンドに 1 対 1 で対応します。各ツールは次のフィールドを持つ構造化された dict を返します。
 
-- `schema_version`: エンベロープのバージョン。クライアントは各レスポンスの値を読み、対応するバージョンと照合してください。Python では `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION` も照合に利用できます。
+- `schema_version`: 結果の形式の版
 - `execution_status`: `completed` | `failed`
 - `scientific_status`: `success` | `partial` | `failed`
-- `summary_status`: `ok` | `not_required` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
-- `exit_code`: サブプロセスの終了コード
-- `out_dir`: stage tool の管理ディレクトリ。成功した helper tool では null
-- `summary`: パース済みの `summary.json`。管理 summary を持たない成功 helper では空 object
+- `summary_status`: 中身のある `summary` が返るのは `ok` のときだけです
+  - `ok`: この呼び出しの `summary` を読めた
+  - `not_required`: 要約を書かない構造 / I/O ヘルパー
+  - `summary_missing`: `out_dir` に `summary.json` が無い
+  - `summary_parse_error`: `summary.json` を JSON の object として読めない
+  - `summary_run_mismatch`: ファイルが別の実行のもの
+- `exit_code`: CLI のプロセスの終了コード
+- `out_dir`: ステージランナーとスキャン / 経路 / パイプラインのツールの出力ディレクトリ。構造 / I/O ヘルパーでは null
+- `summary`: 読み込んだ `summary.json`。構造 / I/O ヘルパーでは空の object
 - `stderr_tail` / `stdout_tail`: プロセス出力の末尾約 60 行
-- `hint`: CLI エラーメッセージから抽出した `; recover: <hint>` サフィックス（存在する場合）
-- `argv`: 実行された完全な argv（再現性のため）
-- `run_id`: 各 subprocess 呼び出しの UUID。summary の ID が一致しない場合は
-  `summary_run_mismatch` と空の `summary` を返します
+- `hint`: CLI のエラーメッセージの末尾の `; recover: <hint>` にある対処のヒント（ある場合）
+- `argv`: 実行したコマンドライン全体
+- `run_id`: この呼び出しの UUID
 
-product CLI alias は MCP server と同じ Python interpreter の
-`python -m pdb2reaction` に固定され、import 済み package root を child
-`PYTHONPATH` の先頭へ置きます。child は caller の current working directory
-を維持するため、relative scientific input path の意味も変わりません。
+各ツールは CLI をサブプロセスで実行し、作業ディレクトリは呼び出した側のままなので、入力の相対パスの意味は変わりません。各ツールの必須の引数は下の表にあります。すべての引数とその型は、クライアントがツールの一覧と一緒に受け取る入力スキーマにあります。
+
+- `input_pdb`・`ts_pdb`・`reactant_pdb` などの入力のパスはそのコマンドの `-i` に渡るので、XYZ など `-i` が読む形式を渡せます。
+- 省略できる引数はそのコマンドの CLI オプションを指定します。例えば `charge` は `-q`、`max_cycles` は `--max-cycles` です。
 
 ### 構造化されたエラーエンベロープ
 
-サブコマンドが失敗した場合、パース済みの `summary`（または同階層の `result.json`）に拡張エラーエンベロープが含まれます。これにより、エージェントはテキストをパースせずに例外クラスの階層をパターンマッチできます。
+ステージランナーとスキャン / 経路 / パイプラインのツールが失敗すると、返された `summary` に次のエラーのフィールドが入ります。エージェントはテキストをパースせずに、エラーのクラスで場合分けできます。構造 / I/O ヘルパーと、`summary.json` を書く前に止まった実行（`summary_missing`）にはエラーのフィールドが無いので、`stderr_tail` と `hint` を読んでください。
 
-- `error`: 元の例外の `str(exc)`
-- `error_type`: 例外クラス名（例: `"OptimizationError"`）
-- `error_class_chain`: MRO のクラス名（例: `["OptimizationError", "RuntimeError", "Exception", "BaseException"]`）
+- `error`: エラーメッセージ
+- `error_type`: 例外クラス名
+- `error_class_chain`: そのクラスと親クラスの名前を、具体的なものから順に並べたもの
 - `error_module`: 例外クラスが定義されているモジュール
 - `error_label`: 上位レベルの CLI ステージラベル
 
 ### ステージランナー
 
-| MCP ツール | CLI サブコマンド | 目的 |
-|---|---|---|
-| `optimize_geometry` | `pdb2reaction opt` | 単一の分子構造を最適化 |
-| `find_transition_state` | `pdb2reaction tsopt` | TS 探索（RS-P-RFO / Dimer / TRIM / RS-I-RFO） |
-| `run_irc` | `pdb2reaction irc` | TS 構造からの IRC 積分 |
-| `compute_frequencies` | `pdb2reaction freq` | 振動解析 + 熱化学 |
-| `run_single_point` | `pdb2reaction sp` | MLIP の一点エネルギー + 原子間力（+ オプションで Hessian） |
+| MCP ツール | 必須の引数 | CLI サブコマンド | 目的 |
+|---|---|---|---|
+| `optimize_geometry` | `input_pdb` | `pdb2reaction opt` | 単一の分子構造を最適化 |
+| `find_transition_state` | `ts_pdb` | `pdb2reaction tsopt` | TS 探索（RS-P-RFO / Dimer / TRIM / RS-I-RFO） |
+| `run_irc` | `ts_pdb` | `pdb2reaction irc` | TS 構造からの IRC 積分 |
+| `compute_frequencies` | `input_pdb` | `pdb2reaction freq` | 振動解析 + 熱化学 |
+| `run_single_point` | `input_pdb` | `pdb2reaction sp` | 選んだ `backend` での一点エネルギー + 原子間力（+ オプションで Hessian） |
 
 ### スキャン / 経路 / パイプライン
 
-| MCP ツール | CLI サブコマンド | 目的 |
-|---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | 拘束駆動の距離スキャン |
-| `optimize_path` | `pdb2reaction path-opt` | 2 端点間の MEP 最適化 |
-| `search_paths` | `pdb2reaction path-search` | 再帰的な反応経路探索 |
-| `run_full_pipeline` | `pdb2reaction`（`all` サブコマンド） | エンドツーエンド: extract → MEP → TS → IRC → freq → DFT |
-| `run_single_point_dft` | `pdb2reaction dft` | gpu4pyscf による一点 DFT |
+| MCP ツール | 必須の引数 | CLI サブコマンド | 目的 |
+|---|---|---|---|
+| `scan_1d` / `scan_2d` / `scan_3d` | `input_pdb`, `scan_lists` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | 拘束駆動の距離スキャン |
+| `optimize_path` | `reactant_pdb`, `product_pdb` | `pdb2reaction path-opt` | 2 端点間の MEP 最適化 |
+| `search_paths` | `input_pdb`, `product_pdb` | `pdb2reaction path-search` | 再帰的な反応経路探索 |
+| `run_full_pipeline` | `reactant_pdb` | `pdb2reaction`（`all` サブコマンド） | エンドツーエンド: extract → MEP → TS → IRC → freq → DFT |
+| `run_single_point_dft` | `input_pdb` | `pdb2reaction dft` | 一点 DFT のエネルギーと原子電荷（GPU4PySCF または PySCF） |
 
 ### 構造 / I/O ヘルパー
 
-| MCP ツール | CLI サブコマンド | 目的 |
-|---|---|---|
-| `extract_active_site` | `pdb2reaction extract` | リガンド周辺の球を切り出す |
-| `add_element_info` | `pdb2reaction add-elem-info` | PDB の元素列を修復 |
-| `fix_altloc` | `pdb2reaction fix-altloc` | PDB の代替位置（altloc）を解決 |
-| `plot_trajectory` | `pdb2reaction trj2fig` | エネルギープロファイル図（デフォルトは PNG。SVG/PDF/HTML/CSV も可） |
-| `plot_energy_diagram` | `pdb2reaction energy-diagram` | カテゴリ別エネルギーダイアグラム |
-| `detect_bond_changes` | `pdb2reaction bond-summary` | 2 つの PDB 間の結合変化の差分 |
+| MCP ツール | 必須の引数 | CLI サブコマンド | 目的 |
+|---|---|---|---|
+| `extract_active_site` | `complex_pdb`, `ligand_id`, `radius_angstrom`, `output_pdb` | `pdb2reaction extract` | 活性部位モデル: リガンドの近くの残基を切り出し、キャップ水素を付ける |
+| `add_element_info` | `input_pdb`, `output_pdb` | `pdb2reaction add-elem-info` | PDB の元素列を修復 |
+| `fix_altloc` | `input_pdb`, `output_pdb` | `pdb2reaction fix-altloc` | PDB の代替位置（altloc）を解決 |
+| `plot_trajectory` | `input_trj_xyz`, `output_png` | `pdb2reaction trj2fig` | エネルギープロファイル図（デフォルトは PNG。JPEG/SVG/PDF/HTML/CSV も可） |
+| `plot_energy_diagram` | `energies`, `output_png` | `pdb2reaction energy-diagram` | 与えた値からの状態エネルギー図 |
+| `detect_bond_changes` | `reactant_pdb`, `product_pdb` | `pdb2reaction bond-summary` | 2 つの構造（XYZ / PDB / mmCIF / GJF）の間の結合変化 |
 
 ### 電荷と順序付き入力
 
-`charge` と `ligand_charge` を公開する tool では、PDB の残基情報から導出する
-場合は `charge` を省略して per-resname `ligand_charge` mapping を渡します。
-residue context のない XYZ は明示的な total `charge` が必要です。有効な GJF
-header は charge/multiplicity を供給します。両方を指定した場合は明示的な
-`charge` が優先します。
+`charge` と `ligand_charge` を持つツールで、PDB の残基名から全電荷を求めたいときは、`charge` を省いて残基名ごとの `ligand_charge` を渡します。PDB の残基情報が無い XYZ の入力には、全電荷の `charge` を明示してください。有効な GJF の電荷・多重度の行があれば、上書きしない限り両方の値をそこから取ります。`charge` と `ligand_charge` の両方を渡すと、明示した `charge` が優先されます。
 
-`search_paths` は reactant の `input_pdb` と `product_pdb` を必要とし、順序付き
-intermediate は `intermediate_pdbs` に渡します。1D/full-pipeline の staged scan
-では最初の literal を `scan_lists`、後続を `additional_scan_stages` に入れます。
+`search_paths` では、反応物の `input_pdb` と `product_pdb` の間に入る中間体を、順番に並べて `intermediate_pdbs` に渡します。`scan_1d` と `run_full_pipeline` で段階的にスキャンするときは、最初の段を `scan_lists` に、後の段を `additional_scan_stages` に入れます。CLI には `--scan-lists` が 1 回だけ渡され、その後にすべての段の値が続きます。
 
-## オプトインの IRC 収束ガード
+## IRC と TS 最適化の設定
 
-`run_irc` の `irc_pos_def=True` は、RMS勾配による停止に、質量重み付き
-Hessianの正定値性を追加で要求します。これは積分の停止診断であり、
-ワークフロー全体の成功判定ではありません。既定では無効です。
-`None` は未指定を表し、端点OPTの収束は別に記録します。
+IRC と TS の引数は同じ名前の CLI オプションです。意味とデフォルトは各コマンドのページにあります。
 
-`run_irc` は `step_size` と `never_stop` も受け付けます。branch が数 frame で
-停止する場合はまず `step_size` を小さくします（典型値 `0.05`）。
-`never_stop=True` は gradient/energy endpoint criteria を無視して max-cycle まで
-追跡しますが、数値・積分 failure は停止します。`run_full_pipeline` は同じ制御を
-`irc_step_size` / `irc_never_stop` として転送し、TS recovery 用の `flatten` と
-`refine_path` も公開します。
-
-`find_transition_state`（CLI: `pdb2reaction tsopt`）は `opt_mode`（CLI の `--opt-mode`）で
-TS オプティマイザを選びます。
-
-- `opt_mode="hess"`（既定、`"rsprfo"` と同じ）— Banerjee (1985) の restricted-step P-RFO
-- `opt_mode="grad"` / `"dimer"` — Hessian を使う Dimer
-- `opt_mode="trim"` — Helgaker (1991) の trust-region image minimization
-- `opt_mode="rsirfo"` — RS-I-RFO
+- `run_irc` — `step_size`・`never_stop`・`irc_pos_def`: [`irc`](irc.md)。`--irc-pos-def` は [自動生成 CLI リファレンス](../reference/commands/irc.md) にあります
+- `find_transition_state` — `opt_mode`: [`tsopt`](tsopt.md) の `--opt-mode`。デフォルトは `hess`（RS-P-RFO）です。{ref}`コマンドごとの --opt-mode <ja-opt-mode-semantics>` も参照してください
+- `run_full_pipeline` — `irc_step_size`・`irc_never_stop`・`flatten`・`refine_path`: [`all`](all.md)。`--irc-step-size` と `--irc-never-stop` は [自動生成 CLI リファレンス](../reference/commands/all.md) にあります
 
 ## クライアント設定
 
-クライアントごとに設定スキーマは異なります。次のスニペットはトップレベルの
-`mcpServers` オブジェクトを受け付けるクライアント用です。設定ファイルと
-スキーマは各クライアントの MCP ドキュメントで確認してください。
+クライアントごとに設定スキーマは異なります。次のスニペットはトップレベルの `mcpServers` オブジェクトを受け付けるクライアント用です。
 
 - Claude Desktop — `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） / `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
 - Cursor — `~/.cursor/mcp.json`
+- Claude Code — ファイルは編集せず、`claude mcp add pdb2reaction -- pdb2reaction-mcp` を実行します。登録できると、`claude mcp list` でこのサーバーに `✔ Connected` が出ます
 - その他のクライアント — 各クライアント自身の MCP サーバードキュメントを参照
+
+クライアントがサーバーを起動すると、ツールの一覧に 18 個のツールが出ます。
 
 ```json
 {
@@ -133,12 +113,9 @@ TS オプティマイザを選びます。
 }
 ```
 
-明示的な環境変数の上書き（PATH / CUDA_VISIBLE_DEVICES）を含む完全な例は
-[`examples/mcp_client_config.json`](../../examples/mcp_client_config.json)
-を参照してください。
+環境変数 PATH と CUDA_VISIBLE_DEVICES を設定する完全な例は [`examples/mcp_client_config.json`](https://github.com/t-0hmura/pdb2reaction/blob/main/examples/mcp_client_config.json) を参照してください。
 
-VS Code は `.vscode/mcp.json` でトップレベルの `servers` オブジェクトを使います
-（[VS Code MCP 設定リファレンス](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)）。
+VS Code は `.vscode/mcp.json` で[トップレベルの `servers` オブジェクト](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)を使います。
 
 ```json
 {
@@ -179,16 +156,13 @@ asyncio.run(main())
 
 ## サンドボックス / 安全性に関する注意
 
-- MCP サーバーは呼び出し元の環境の PATH、conda 環境、CUDA セットアップを継承します。
-  長時間実行されるツール（opt / tsopt / irc）は `pdb2reaction` CLI をサブプロセスで
-  起動するため、エージェントは各ツール呼び出しで `timeout_seconds` を設定し、
-  暴走する計算を制限してください。
-- stage tool の出力ファイルは `out_dir` キーワード引数の配下に置かれます（デフォルトは一意の
-  `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` で、同時並行のエージェント呼び出しが
-  衝突しないようになっています）。
-- helper tool は `out_dir` を持たず、指定された出力 path へ書き込みます。expert
-  `extra_args` は追加の非管理 CLI 動作を要求できますが、typed output path、
-  `--out-dir`、管理された `--out-json/--no-out-json` toggle は上書きできません。
-  filesystem policy を適用するときは返却 `argv` を確認してください。
-- サーバーは `~/.bashrc` / ログイン環境を変更したり、ソフトウェアをインストールしたりしません。すべての MLIP の重みや PDB 入力は
-  あらかじめディスク上に存在している必要があります。
+- サーバーは呼び出した側の PATH、conda 環境、CUDA の設定を引き継ぎます。opt・tsopt・irc のように時間のかかる呼び出しには `timeout_seconds` を設定し、止まらない計算を打ち切ってください（既定は時間制限なし）。
+- ステージランナーとスキャン / 経路 / パイプラインのツールの出力は `out_dir` の下に置かれます。指定しないときは呼び出しごとに別の一時ディレクトリ `p2r_mcp_<subcmd>_…` を使うので、同時の呼び出しがぶつかりません。
+- 構造 / I/O ヘルパーは `out_dir` を持たず、指定した出力パスに書きます。`extra_args` で CLI のフラグを追加できますが、型付きの出力パス、`--out-dir`、`--out-json/--no-out-json` は上書きできません。コマンドに渡したパスは、返された `argv` ですべて確かめられます。
+- サーバーは `~/.bashrc` やログイン環境を変えず、ソフトウェアのインストールやモデルの配布元へのログインもしません。MLIP の重みと入力の PDB は、前もってディスクに置いてください。
+
+## 関連ドキュメント
+
+* [JSON 出力リファレンス](json-output.md) — ツールが返す状態の欄と `summary.json`
+* [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処
+* [コマンドリファレンス（英語のみ）](../reference/commands/index.md) — 各ツールの元の CLI オプション（`extra_args` 用）

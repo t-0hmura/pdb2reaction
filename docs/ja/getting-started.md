@@ -4,207 +4,195 @@
 
 <img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB / mmCIF 構造から酵素反応経路の候補を探索する** Python 製の CLI ツールキットです。MLIP は DFT 参照データ（エネルギー・原子間力、および周期境界条件の学習データを持つ foundation model では応力テンソルも）で学習されたニューラルネットワークモデルで、DFT のポテンシャルエネルギー曲面をごくわずかな計算コストで近似します。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を活用し、**PDB / mmCIF 構造から酵素の反応経路候補を自動探索する** Python 製 CLI ツールキットです。
+
+DFT（密度汎関数法）の計算データを学習したニューラルネットワークを用いることで、DFT レベルのポテンシャルエネルギー曲面をごくわずかな計算コストで近似し、高速な経路探索を実現します。
 
 多くのケースでは、次のような **1 コマンド** で反応経路の初期案を得られます。
+
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
+端末の出力の最後のほうに `Scientific status: success` と出れば、求めた段はすべて収束しています。
+
 ---
-さらに `--tsopt --thermo --dft` を追加すると、**最小エネルギー経路（MEP: Minimum Energy Path）探索 → 遷移状態（TS: Transition State）最適化 → 固有反応座標（IRC: Intrinsic Reaction Coordinate） → 熱化学補正 → DFT 一点計算** までまとめて実行できます。
+
+さらに `--tsopt --thermo --dft` を付けると、**最小エネルギー経路（MEP）探索 → 遷移状態（TS）最適化 → 固有反応座標（IRC） → 振動解析・熱化学補正 → DFT 一点計算** までを一貫して自動実行できます。
+
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
+
 ---
 
-> **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
+> **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに、上のコマンドで使う構造（`1.R.pdb`、`3.P.pdb`）と、GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）を題材とした一連のワークフロースクリプト（MEP 探索とスキャン）を用意しています。[インストール](installation.md)の後、`git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples` で取得し、その中で上のコマンドを実行してください。
 
-入力として、(i) 反応順に並べた PDB / mmCIF 構造を 2 つ以上（R → … → P）、(ii) `--scan-lists/-s` を指定した 1 構造、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
+### 主な用途
 
-- ユーザーが指定した基質の周辺から **活性部位モデル（バインディングポケット）** を切り出し、計算用の **クラスターモデル**（Cluster Model）を構築
-- Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
-- 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
+* **反応機構解析の試行錯誤**: DFT 計算では時間がかかりすぎる大規模系のスクリーニング
+* **量子化学計算の初期構造作成**: 反応物（R）・遷移状態（TS）・生成物（P）のクラスターモデル構築
+* **多検体のハイスループット計算**: 基質バリアントや酵素変異体にわたる反応経路の網羅的探索
 
-計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。クラスターモデルの TS 最適化・IRC 検証・QRRHO 熱化学を単一の GPU で実行できるかは、系の大きさ、バックエンド／モデル、Hessian の計算法、計算精度、ハードウェアに依存します。
+### 主な自動化機能
 
-- DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
-- 量子化学計算に向けた**初期構造の作成**（反応物・ TS ・生成物のクラスターモデル）
-- 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
+入力として「(1) 反応順に並べた複数の PDB 構造（R → … → P）」「(2) 単一構造 ＋ 距離スキャン指定」「(3) 単一構造 ＋ TS 最適化指定」のいずれかを与えることで、以下を自動処理します。
 
-本 CLI は多段階反応経路の候補を探索し、TS・IRC 計算による検証を支援します。小分子系や、ユーザーが自分で構築したクラスターモデルにも適用できます。活性部位抽出を行わない場合は `--center/-c` を省略します。総電荷は `-q`、PDB/mmCIF 全体へ適用する `-l`、YAML の `calc.charge`、または `.gjf` の設定から決定します。
+1. **クラスターモデル構築**: 指定した基質周辺から活性部位（バインディングポケット）を自動切り出し
+2. **最小エネルギー経路（MEP）探索**: Growing String Method (GSM) や Direct Max Flux (DMF) による経路探索
+3. **高精度検証**: 遷移状態（TS）の構造最適化、IRC 計算、振動解析、DFT 一点計算
 
-**HPC クラスターやマルチ GPU 環境**では、`workers` と
-`workers_per_node` により UMA 推論をノード間で並列化できます。扱える系の規模は
-モデル、VRAM、Hessian の計算法、通信負荷に依存し、全タンパク質を扱えるとは
-限りません（[MLIP バックエンド](uma-pysis.md)）。
+MLIP で妥当な経路が見つかったら、その TS をそのまま DFT での TS 構造最適化にもっていくことにも `pdb2reaction` は対応しています。TS 最適化 → IRC → 端点の最適化 → 振動数計算のワークフローを、GPU4PySCF を用いることで GPU で高速化された DFT 計算により実行可能です。詳しくは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
 
-### パイプライン概要
+---
 
-`all` サブコマンドは以下のステージを自動実行します:
+## ワークフローとパイプライン
+
+### パイプラインの流れ
+
+全工程を一括実行する `all` サブコマンド（デフォルト動作）は、以下のステージを順次実行します。
 
 ```text
-入力構造
-  |
-  v
-[extract]  `-c` 指定時のみ活性部位モデルを抽出
-  |
-  v
-[scan]  `--scan-lists/-s` 指定時のみ段階的距離拘束スキャン
-  |
-  v
-[path-opt/path-search]  TS-only 以外で MEP 探索
-  |
-  v
-[tsopt]  `--tsopt` 指定時のみ TS 最適化
-  |
-  v
-[irc]  `--tsopt` 指定時のみ固有反応座標
-  |
-  v
-[freq]  `--tsopt --thermo` 指定時のみ振動解析 + 熱化学
-  |
-  v
-[dft]  `--tsopt --dft` 指定時のみ一点 DFT エネルギー
+入力構造（PDB / mmCIF）
+  │
+  ▼
+[extract] 抽出ステージ: -c 指定時のみ活性部位モデルを切り出し
+  │
+  ▼
+[scan] スキャンステージ: -s 指定時のみ段階的距離拘束スキャンを実施
+  │
+  ▼
+[path-opt / path-search] 経路探索: TS-only モード以外で MEP（最小エネルギー経路）を探索
+  │
+  ▼
+[tsopt] TS 最適化: --tsopt 指定時のみ遷移状態を精密化
+  │
+  ▼
+[irc] IRC 計算: --tsopt 指定時のみ固有反応座標を追跡し、端点を最適化
+  │
+  ▼
+[freq] 振動解析: --tsopt --thermo 指定時のみ熱化学補正を計算
+  │
+  ▼
+[dft] DFT 一点計算: --tsopt --dft 指定時のみ DFT エネルギーを算出
 ```
 
-名前の付いた計算ステージ（`extract`、scan 系、path 系、`tsopt`、`irc`、`freq`、`dft`）は単独のサブコマンドとしても実行できます。`all` は選択されたステージを統合し、`summary.json` と `summary.log` を出力します。
+各ステージは [`extract`](extract.md)、[`tsopt`](tsopt.md)、[`irc`](irc.md) などのサブコマンドとして単独でも実行できます。一覧は [サブコマンド](index.md#サブコマンド) にあります。
 
-### 主要な出力ファイル
+---
 
-| ファイル | 説明 |
-|---------|------|
-| `summary.json` | 反応障壁、エネルギー、結合変化、環境情報 |
-| `summary.log` | ディレクトリツリー付きテキストサマリ |
-| `segments/seg_XX/` | 反応セグメントの後処理結果。R/TS/P 構造は TSOPT・IRC・端点処理の成功後に生成 |
-| `mep_trj.pdb` / `mep_trj.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
-| `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
+## クイックスタート導線
 
-```{important}
-- 入力 PDB / mmCIF には**水素原子**が含まれている必要があります。
-- 複数構造には**同じ原子が同じ順序**で含まれている必要があります（座標のみが異なる状態）。
-```
+環境構築の詳細は [インストールガイド](installation.md) を参照してください。
 
-```{tip}
-症状から切り分ける場合は、まず [典型エラー別レシピ](recipes-common-errors.md) を参照してください。
-セットアップや実行でエラーに遭遇したら [トラブルシューティング](troubleshooting.md) も参照してください。
-```
+* **Web ブラウザで手軽に試す**: [Colab GUI ノートブック](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)（3D プレビューで残基を選択）
+* **複数の PDB 構造から始める**: [クイックスタート: `pdb2reaction all`](quickstart-all.md)
+* **1 つの PDB 構造からスキャンで探索する**: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
+* **TS 候補構造を最適化・検証する**: [クイックスタート: TS-only モード](quickstart-tsopt.md)
 
-### CLI の規約
-
-| 規約 | 例 | 備考 |
-|-----|-----|------|
-| **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
-| **電荷マッピング** | `-l 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
-| **原子セレクタ** | `'SAM,320,CS1'` または `'A:SAM:320:CS1'` | 重複時は位置固定の `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` |
-
-詳細は [CLI 規約](cli-conventions.md) を参照してください。
-
-### 水素原子付与の推奨ツール
-
-PDB に水素原子がない場合は、pdb2reaction を実行する前に次のいずれかを使ってください。
-
-| ツール | コマンド例 | 備考 |
-|--------|------------|------|
-| **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速、結晶構造に広く使用 |
-| **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用化学情報処理ツールキット |
-| **PyMOL** | `h_add`（PyMOL 内） | 分子可視化ツール（水素付加機能あり） |
-| **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場準備ツール |
-
-複数の PDB 入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
-
-## 推奨クイックスタート導線
-
-セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
-
-- [クイックスタート: `pdb2reaction all`](quickstart-all.md)
-- [クイックスタート: スキャンを起点とする `pdb2reaction all`](quickstart-scan.md)
-- [クイックスタート: TS のみモード（`pdb2reaction all --tsopt`）](quickstart-tsopt-freq.md)
-- [Colab GUI](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb) — PDB/mmCIF upload、3Dでchain付き選択、Validate、実行
+---
 
 ## コマンドの基本構成
 
-`pip install pdb2reaction` で `pdb2reaction` と短縮名 `p2r` が使えます。どちらも同じコマンドを実行し、サブコマンドを省略すると `all` が選ばれます。
-
-つまり:
+インストール後は `pdb2reaction` および短縮コマンド `p2r` が利用できます。サブコマンドを省略した場合、自動的に `all` が呼び出されます。
 
 ```bash
+# 以下の 2 つは同一の処理を行います
 pdb2reaction [OPTIONS]...
-# は以下と同等
 pdb2reaction all [OPTIONS]...
 ```
 
-[`all`](all.md) は、クラスター抽出、MEP 探索、TS 最適化、振動解析、必要に応じた DFT までを 1 コマンドで一括実行するサブコマンドです。
+### 入力モードの選び方
 
-クラスター抽出を行う場合、ワークフロー全体で共通の重要オプションが 2 つあります:
+| 実行モード | 入力条件 | 主な動作 |
+| --- | --- | --- |
+| **複数構造 MEP 探索** | 2 つ以上の PDB（`-i R.pdb P.pdb`） | 各構造から同じクラスターモデルを切り出し（`-c` のとき）、その間の MEP を探索 |
+| **単一構造 ＋ スキャン** | 1 つの PDB ＋ `--scan-lists`（`-s`） | 指定結合の距離を段階的に変化させて経路を生成 |
+| **TS-only モード** | 1 つの PDB ＋ `--tsopt` | MEP 探索をスキップし、TS 候補の最適化・IRC を直接実行 |
 
-- `-i/--input`: 1 つ以上の**完全構造**（反応物、中間体、生成物）
-- `-c/--center`: **基質/抽出中心**の定義方法（例: 残基名または残基 ID）
+> **注意:** 単一構造を入力するときは、`--scan-lists/-s` か `--tsopt` が必要です。どちらも無いとエラーになります。
 
-`--center/-c` を省略すると、クラスター抽出はスキップされ、**完全な入力構造**が直接使用されます。
+---
 
-## 主要なワークフロー
+## 基本的な CLI オプション
 
-| モード | 概要 | クイックスタート |
-|------|-----|--------------|
-| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → MEP 探索（デフォルトは単一パス path-opt; `--refine-path` で再帰的 path-search）→ 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
-| **単一構造 + スキャン定義**（1 構造 + `--scan-lists/-s`） | 1 つの構造を距離拘束スキャンにかけ、各ステージを単一パス `path-opt`（`--refine-path` で再帰的 `path-search`）に渡して MEP を構築 | [クイックスタート: スキャン起点ワークフロー](quickstart-scan.md) |
-| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
+| オプション | 引数の例 | 説明 |
+| --- | --- | --- |
+| `-i, --input` | `1.R.pdb 3.P.pdb` | 入力構造ファイル（PDB / mmCIF）。複数指定可能 |
+| `-c, --center` | `'SAM,GPP'` / `'A:SAM:123'` | 抽出中心（基質残基名・残基 ID・入力と同じ座標の基質だけを入れた PDB ファイル）。省略時は切り出しを行わず構造全体を使用 |
+| `-l, --ligand-charge` | `'SAM:1,GPP:-3'` | リガンドごとの形式電荷マッピング（標準残基とイオンの電荷は自動で数えます） |
+| `-q, --charge` | `-2` | 抽出モデル全体の総電荷（自動判定を上書きする場合に指定） |
+| `-m, --multiplicity` | `1` | スピン多重度（デフォルト: `1`、一重項） |
+| `--tsopt` | （フラグ） | TS 最適化と IRC 計算を有効化 |
+| `--thermo` | （フラグ） | 振動解析と QRRHO（準剛体ローター・調和振動子）モデルによる熱化学補正を実行（`--tsopt` と併用） |
+| `--dft` | （フラグ） | 得られた構造に対して一点 DFT 計算を実行（`--tsopt` と併用） |
+| `-b, --backend` | `uma` / `orb` / `mace` | 使用する MLIP バックエンドを指定（デフォルト: `uma`） |
 
-```{important}
-単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
-```
+`--dft` には、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 で入れる DFT 用の追加パッケージが要ります。
 
-## 重要な CLI オプションと動作
+構文ルールの詳細は [共通オプションと残基・原子の指定](cli-conventions.md)、全オプションの一覧は [`all` の CLI リファレンス](../reference/commands/all.md) を参照してください。
 
-以下はワークフロー全体で最もよく使用されるオプションです。
+---
 
-| オプション | 説明 |
-|----------|------|
-| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists/-s`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
-| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基 ID（`A:123,B:456`）、または PDB パスをサポート |
-| `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
-| `-q, --charge INT` | 総電荷の強制上書き |
-| `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`） |
-| `--tsopt` | TS 最適化と IRC を有効化 |
-| `-b, --backend TEXT` | MLIP バックエンドの選択（任意で `dft`） |
+## 入力構造に関する重要事項
 
-オプションの完全な一覧は [CLI 規約](cli-conventions.md) と [自動生成 CLI リファレンス](../reference/commands/index.md) を参照してください。
+### 1. 水素原子の付加（必須）
 
-## サマリーファイル
+入力構造には**全原子の水素が含まれている必要があります**。結晶構造など水素が欠落している構造を使用する場合は、事前に以下のツール等で付加してください。
 
-実行全体の結果は、出力ディレクトリ直下の次のファイルで確認します。入力検証などで早期に停止すると、作成されない場合があります。
+| 推奨ツール | コマンド例 | 特徴 |
+| --- | --- | --- |
+| **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速で結晶構造の水素付加に広く使われる |
+| **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用的な化学情報処理ツール |
+| **PyMOL** | コマンドラインで `h_add` | ビジュアルを確認しながら付加可能 |
+| **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場に基づく精密な付加 |
 
-- `summary.log` – 結果要約
-- `summary.json` – JSON 結果
+`all` は空の元素欄（77–78 列）を自分で埋めます。`extract` などのコマンドを単独で使う前には、[`add-elem-info`](add-elem-info.md) で埋めてください。代替位置（altLoc）は、どのコマンドも PDB を読むときに残基ごとに {ref}`平均占有率の最も高いもの <ja-mmcif-input>` を 1 つ選びます。選んだ結果をファイルに残すには [`fix-altloc`](fix-altloc.md) を使います。
 
-主な記載内容:
+### 2. 原子の並び順の一致（複数構造入力時）
 
-- 実行した CLI コマンド
-- MEP 全体の統計（最大障壁、経路長など）
-- セグメントごとの障壁高さと主要な結合変化
-- MLIP バックエンド、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
+反応物（R）や生成物（P）など複数の構造を入力する場合、**すべての構造で同一の原子が同じ順序で並んでいる必要があります**（座標値のみが異なる状態）。水素付加ツールを用いる際は、すべての構造に対して同一の設定で処理してください。反応で別の残基に移る原子も、R での残基名と原子名のままにします。同梱例では、GPP から Glu186 に移る水素は `3.P.pdb` でも `GPP 321` の `H11` です。
 
-`segments/seg_NN/` には、指定した後処理の結果が保存されます。各セグメントに実行全体のサマリーがあるとは限らないため、出力ディレクトリ直下の `summary.log` / `summary.json` と各処理の結果を確認してください。
+mmCIF（`.cif`・`.mmcif`）と、残基が 10,000 以上や原子が 99,999 以上の大きな構造も、PDB と同じコマンドで扱えます。詳しくは {ref}`mmCIF の入力 <ja-mmcif-input>` を参照してください。
 
-## CLI サブコマンド
+---
 
-ほとんどのユーザーは `pdb2reaction all` を主に使います。CLI は個別サブコマンドも提供しており、各コマンドは `-h/--help` に対応しています（計算/スキャン/抽出/ユーティリティ系は `--help-advanced` で全オプションを表示）。サブコマンド一覧と各ドキュメントへのリンクは [ドキュメントトップ](index.md#サブコマンド) を参照してください。
+## 出力ファイルの構成
 
-## エージェントスキル
+実行が終わると、`-o` の出力ディレクトリに次のファイルができます。既定は `./result_all/` です。主なファイルは [出力ディレクトリのレイアウト](output-layout.md)、`summary.json` のすべての欄は {ref}`JSON 出力リファレンス <ja-summary-json-path-search-all>` にあります。
 
-`pdb2reaction` は `skills/` に AI エージェント向けの指示書を同梱しており、CLI サブコマンド、構造 I/O（PDB / mmCIF / XYZ / GJF）、バックエンドインストール（UMA / Orb / MACE / AIMNet2 / DFT / xtb）、標準的なワークフロー、出力解析、HPC 運用をカバーしています。Claude Code・Codex・Cursor などのエージェントで使うには、`skills/` をプロジェクト直下に（例: Claude Code なら `.claude/skills/` に）または `~/.claude/skills/` にコピーしてください。
+| 出力ファイル / フォルダ | 内容 |
+| --- | --- |
+| `summary.log` | テキスト形式のサマリー（ディレクトリ構成、各段階の進行状況） |
+| `summary.json` | 機械可読形式の結果（反応障壁、各状態のエネルギー、結合変化） |
+| `energy_diagram_*.png` | 生成されたエネルギープロファイル図（電子エネルギー / Gibbs 補正） |
+| `mep_trj.pdb` / `mep_trj.cif` | 最小エネルギー経路（MEP）のアニメーション軌跡ファイル |
+| `segments/seg_NN/` | 反応セグメントごとの詳細結果（最適化された R/TS/P 構造、IRC 軌跡など。`--tsopt` のとき） |
 
-## ヘルプ
+端末の出力の最後のほうにある `====== Pipeline summary ======` の下の `Scientific status:` の行は、`summary.json` の `scientific_status` と同じ値です。求めた段がすべて収束すると `success` になり、`--tsopt` のときは TS の n_imag が 1 であることも条件です。そうでなければ `partial` か `failed` になり、理由は `scientific_status_reasons` に出ます。虚振動のモードが狙った結合を動かしているか、IRC の両端が狙った R と P かは、`segments[].bond_changes` を見て自分で確かめてください。開くファイルは各クイックスタートにあります。
 
-任意のサブコマンドについて:
+---
+
+## AI エージェント連携（Skills）
+
+`pdb2reaction` には、AI エージェント（Claude Code、Codex、Cursor など）向けの設定指示書が `skills/` ディレクトリに同梱されています。
+
+CLI サブコマンドの仕様、PDB/mmCIF/XYZ/GJF の入出力ルール、バックエンドの環境構築手順、HPC 並列化のベストプラクティスが定義されています。`skills/` をエージェントに読み込ませることで、エージェントを通じた自然言語指示による計算実行・解析が可能になります。配置場所とスキルの一覧は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。MCP のクライアントからコマンドをツールとして呼ぶ方法は [MCP サーバー](mcp_server.md) にあります。
+
+---
+
+## トラブルシューティングとサポート
+
+実行中にエラーが発生した場合は、以下のドキュメントを参照してください。
+
+* {ref}`トラブルシューティング <ja-troubleshooting-quick-table>`: エラー症状別の対処法と、インストールや環境起因の不具合の解決手順
+* [MLIP バックエンド](backends.md): GPU メモリや並列計算に関する詳細。複数の GPU ノードで動かすジョブスクリプトは [HPC 実行例](hpc-example.md)
+
+コマンドの全オプションを確認したい場合は、ヘルプオプションを利用してください。
 
 ```bash
 pdb2reaction <subcommand> --help
-pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-MLIP バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
-
-問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) で Issue を開いてください。
+解決しない問題やバグの報告は、[GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues) にて受け付けています。
