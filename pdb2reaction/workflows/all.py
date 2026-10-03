@@ -305,6 +305,24 @@ def _charge_override_message(
     return message
 
 
+def _raise_if_uncapped_boundaries(extract_result: Any) -> None:
+    """Stop before calculations when extract cut a bond that no cap hydrogen closes."""
+    cuts = (
+        extract_result.get("uncapped_boundaries") or []
+        if isinstance(extract_result, dict)
+        else []
+    )
+    if not cuts:
+        return
+    shown = "; ".join(f"{cut['kept']}--{cut['removed']}" for cut in cuts[:5])
+    remainder = f"; +{len(cuts) - 5} more" if len(cuts) > 5 else ""
+    raise click.ClickException(
+        f"[all] The extracted model has {len(cuts)} covalent bond(s) cut without a cap "
+        f"hydrogen (kept--removed): {shown}{remainder}. Build the model by hand, check "
+        "its boundary, caps, and charge/multiplicity, and pass it to all without -c."
+    )
+
+
 def _echo_section(message: str, **kwargs) -> None:
     """Echo a section header (narrative) with a leading blank line unless first."""
     _echo_state.section(message, **kwargs)
@@ -4213,7 +4231,10 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "exclude_backbone",
     default=False,
     show_default=True,
-    help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).",
+    help=(
+        "Delete main-chain atoms from amino acids; only the main chain between "
+        "peptide-bonded extraction centers is kept."
+    ),
 )
 @click.option(
     "--add-linkh/--no-add-linkh",
@@ -5750,6 +5771,7 @@ def cli(
                 raise
             except Exception as e:
                 raise click.ClickException(f"[all] --dry-run extract pre-check failed: {e}")
+            _raise_if_uncapped_boundaries(_ex)
             if _FREEZE_ATOMS_YAML:
                 _convert_freeze_atoms_to_model_indices(
                     _FREEZE_ATOMS_YAML,
@@ -6089,6 +6111,7 @@ def cli(
         _echo("[all] Active site model files:")
         for op in model_outputs:
             _echo(f"  - {op}")
+        _raise_if_uncapped_boundaries(ex_res)
 
         try:
             cs = ex_res.get("charge_summary", {})

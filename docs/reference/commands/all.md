@@ -51,9 +51,10 @@ Options:
                                   in the active site model.  [default:
                                   include-h2o]
   --exclude-backbone / --no-exclude-backbone
-                                  Remove backbone atoms on non‑substrate amino
-                                  acids (with PRO/HYP safeguards).  [default:
-                                  no-exclude-backbone]
+                                  Delete main-chain atoms from amino acids; only
+                                  the main chain between peptide-bonded
+                                  extraction centers is kept.  [default: no-
+                                  exclude-backbone]
   --add-linkh / --no-add-linkh    Add cap hydrogens for severed bonds (carbon
                                   boundaries only) in active site models.
                                   [default: add-linkh]

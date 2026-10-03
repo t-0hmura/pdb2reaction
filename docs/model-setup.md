@@ -27,7 +27,7 @@ This is the bundled example in [`examples/`](https://github.com/t-0hmura/pdb2rea
 The default model is built as follows:
 
 - **Radius**: a residue joins the model when any of its atoms lies within `-r` (default 2.6 Å) of an atom in `-c`; when that atom is a main-chain atom, the residues on both sides join too. Waters are included (`--include-h2o`).
-- **Cuts**: a run of consecutive amino acids keeps its main chain and is cut at CA at both ends; a residue whose neighbors are not in the model is cut at CB and keeps only its side chain. Amino acids in `-c` keep all their atoms.
+- **Cuts**: a run of consecutive amino acids keeps its main chain and is cut at CA at both ends; a residue whose neighbors are not in the model is cut at CB and keeps only its side chain. Amino acids in `-c` keep all their atoms, because the residues peptide-bonded to them lie within the radius.
 - **Cap hydrogens**: each bond cut at CA or CB gets a hydrogen 1.09 Å from the carbon (atom `HL` in residue `LKH`).
 - **Several structures**: give the reactant and product in one run, and the union of the residues selected in each structure is used for all of them, so every model has the same boundary. The inputs must list the same atoms in the same order. In the bundled example, `1.R.pdb` alone gives 632 atoms with charge +1, and `1.R.pdb` with `3.P.pdb` gives 669 atoms with charge 0. In `3.P.pdb` a main-chain hydrogen of Cys167 lies within the radius, so Cys167, Val166, and Asp168 (−1) join every model of the run.
 
@@ -43,7 +43,7 @@ With `-c`, `--dry-run` extracts the model in a temporary directory and checks th
 
 - **Atom count**: `Atoms after truncation: N` counts the atoms before the cap hydrogens. Add the number of cap hydrogens from `[extract] Link-H to add: M` (one input) or `[extract:multi] link-H targets common across models: M` (several inputs). For `1.R.pdb` alone, N + M = 608 + 24 = 632.
 - **Charge**: `Total active site model charge`. With `--dry-run`, `[all] --dry-run extract: model total_charge = …` also appears.
-- **Warnings**: `extract` warns when a bond other than C–C crosses the boundary, and when a residue looks like an amino acid but has an {ref}`unknown name <extract-modified-residue>`. Look at the boundary, the caps, and the charge.
+- **Warnings**: `extract` warns when a bond is cut where no cap hydrogen goes (`all` stops instead), and when a residue looks like an amino acid but has an {ref}`unknown name <extract-modified-residue>`. Look at the boundary, the caps, and the charge.
 
 After a real `all` run with `-c`, the model is kept as `_work/models/model_<input name>.pdb` in the output directory. Open it in a viewer and check that the residues of the reaction are in the model.
 
@@ -59,7 +59,7 @@ DFT optimization is practical up to roughly 300 atoms. For `1.R.pdb` alone with 
 | Pick residues yourself | `-r 0 --selected-resn '44,63,186'` | 129 | −1 |
 | Edit by hand | Open an extracted PDB in PyMOL, delete what you do not need, and save | — | — |
 
-- **`--exclude-backbone`** removes the main-chain atoms (N, CA, C, O, and their hydrogens) from amino acids outside `-c`, so each side chain is cut at CB; prolines keep their ring. A residue whose only atoms near the center are main-chain atoms is not selected.
+- **`--exclude-backbone`** removes the main-chain atoms (N, CA, C, O, and their hydrogens) from amino acids, so each side chain is cut at CB; prolines keep their ring, and the main chain between peptide-bonded amino acids in `-c` stays. A residue whose only atoms near the center are main-chain atoms is not selected.
 - **`--no-include-h2o`** leaves out the waters.
 - **`-r 0 --selected-resn`** adds no residues by distance: the model holds the `-c` residues and the residues you list. In the bundled example, residues 44, 63, and 186 are the three closest to the methyl carbon of SAM (CS1); for your own system, pick the residues that take part in the reaction.
 - **By hand**: delete residues in PyMOL or another viewer, save the file, and use it as in [Use a model you built yourself](#use-a-model-you-built-yourself).
@@ -72,7 +72,7 @@ Make the model larger when a residue of the reaction is missing, or when only a 
 
 - **Raise `-r`** (default 2.6 Å), for example to 3.5 Å or 4.0 Å.
 - **`--radius-het2het`** (default 0, off) adds a second cutoff measured only between atoms other than C and H, on both the center side and the neighbor side. It picks up close N and O partners without enlarging the whole radius.
-- **Add the residue to `-c`** to keep it whole. Amino acids in `-c` keep all their atoms, main chain included, and start their own distance search. A residue added with `--selected-resn` is not a center, so without a neighbor in the model it keeps only its side chain.
+- **Add the residue to `-c`** to keep it whole. Amino acids in `-c` start their own distance search and, without `--exclude-backbone`, keep all their atoms, main chain included. A residue added with `--selected-resn` is not a center, so without a neighbor in the model it keeps only its side chain.
 - **Residues of a partner chain** that lie outside the radius: add them to `-c` with their chain, such as `-c 'A:SAM,A:GPP,A:MG,B:MET:38'`.
 
 A larger model costs more, and accuracy does not always improve with size. Check for your system that the barrier does not change when the model grows. To include the whole protein as the environment, use the ML/MM toolkit [mlmm-toolkit](https://github.com/t-0hmura/mlmm_toolkit).
@@ -148,7 +148,6 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 - **300 atoms** is a rule of thumb for DFT, not a limit in the code. GPU memory does not follow from the atom count alone; measure {ref}`GPU memory <troubleshooting-gpu-memory>` on a short trial with the same settings.
 - **Chain column**: the bundled PDB has an empty chain column; in such a PDB, give residues by name or by number. In a PDB with chains, write each residue as [chain:name:number](cli-conventions.md#residue-selectors), such as `-c 'A:TYR:44'`.
 - **Caps only at CA and CB**: `extract` adds cap hydrogens only where it cuts an amino acid at CA or CB. Other cut bonds get no cap.
-- **CA–N warnings in the default model**: the default cut also prints the warning about bonds other than C–C at each main-chain CA–N cut. The cap hydrogen there goes on CA; these cuts are the main-chain ends of the checklist and need no action, so look at the other bonds that the warning lists.
 - **Same atoms in every input**: inputs with different atom counts or order stop with `[multi] Atom count mismatch` or `[multi] Atom order mismatch`.
 - **`--no-freeze-links`** is for diagnostic runs that let the boundary relax on purpose. Keep `--freeze-links` on for production runs.
 

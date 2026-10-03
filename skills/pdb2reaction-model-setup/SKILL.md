@@ -24,11 +24,11 @@ Success: the console prints `[extract] Atoms after truncation: N`, `[extract] Li
 - One cap H per cut bond, with the intended valence; cap parents are [frozen by default](../pdb2reaction-cli/extract.md#freeze-atoms-at-the-cluster-boundary).
 - Recount charge and multiplicity; a wrong electron count makes the model invalid.
 
-`extract` caps only CA and CB cuts and warns about other non-C–C bonds crossing the boundary; the main-chain CA–N cuts in that warning need no action. `--no-freeze-links` is for diagnostics only.
+`extract` caps only CA and CB cuts; another cut bond between nonmetal atoms makes `extract` warn and `all` stop. `--no-freeze-links` is for diagnostics only.
 
 ## Trim to lower cost
 
-DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chains outside `-c` (`--exclude-backbone`) or waters (`--no-include-h2o`); keep only chosen residues with `-r 0 --selected-resn` (disulfide partners and a proline's N-side neighbor still join); or trim an extracted PDB by hand and run `all` without `-c`, with `-q` or `-l`. Freezing distant atoms with `--freeze-atoms` makes `freq` a PHVA on the movable block, and the UMA finite-difference Hessian displaces only movable atoms.
+DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chains except between peptide-bonded `-c` residues (`--exclude-backbone`) or waters (`--no-include-h2o`); keep only chosen residues with `-r 0 --selected-resn` (disulfide partners and a proline's N-side neighbor still join); or trim an extracted PDB by hand and run `all` without `-c`, with `-q` or `-l`. Freezing distant atoms with `--freeze-atoms` makes `freq` a PHVA on the movable block, and the UMA finite-difference Hessian displaces only movable atoms.
 
 Each removal changes the charge. Delete the cap H of removed residues, or the run stops with `isolated LKH/HL`; a model built without `extract` has no cap H, so freeze its boundary with `--freeze-atoms`, and regenerate those indices after re-extraction (`all` with `-c` numbers the original input). If `freq` runs out of CUDA memory, keep the default `--hessian-calc-mode FiniteDifference` or shrink the movable region. DFT cost does not follow atom count; time one structure before a batch.
 

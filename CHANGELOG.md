@@ -65,6 +65,7 @@ Target release: **0.5.0**.
 
 ### Fixed
 
+- `extract` cuts amino-acid centers at the model boundary like other residues, so no peptide bond is left without a cap hydrogen; with `--exclude-backbone`, only the main chain between peptide-bonded centers is kept. Hydrogens now follow their parent atom (the HA before a proline was lost), hydroxyproline adds its N-side neighbor like proline, and a bond cut without a cap hydrogen warns in `extract` and stops `all`.
 - Finalize `all` summaries after a completed but non-converged TS optimization, retaining the TS diagnostics and stopping before IRC.
 
 - Identify the affected path-search interval in endpoint-maximum warnings instead of implying that the whole path has no reactive segment.

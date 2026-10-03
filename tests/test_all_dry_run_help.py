@@ -285,6 +285,26 @@ def test_all_dry_run_cleans_extract_tempdir_on_failure(tmp_path, monkeypatch):
     assert not dry_dir.exists()
 
 
+def test_all_dry_run_stops_on_bond_cut_without_cap_hydrogen(tmp_path):
+    pdb = tmp_path / "input.pdb"
+    pdb.write_text(
+        "HETATM    1  C1  ONE A   1       0.000   0.000   0.000  1.00  0.00           C  \n"
+        "HETATM    2  N1  TWO A   2       1.400   0.000   0.000  1.00  0.00           N  \n"
+        "END\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["all", "-i", str(pdb), "-c", "A:ONE:1", "-r", "0", "--tsopt", "--dry-run"],
+    )
+
+    assert result.exit_code != 0
+    assert "cut without a cap hydrogen" in result.output
+    assert "A:ONE:1:C1--A:TWO:2:N1" in result.output
+    assert "Build the model by hand" in result.output
+
+
 def test_all_dry_run_uses_explicit_charge_over_derived_value_and_cleans_tempdir(
     tmp_path, monkeypatch,
 ):
