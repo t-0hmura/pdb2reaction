@@ -60,6 +60,7 @@ from pdb2reaction.io.structure_formats import (
     register_coordinate_template,
     render_mmcif_frames,
     render_pdb_coordinate_frames,
+    restore_pdb_terminal_resnames,
     unregister_coordinate_template,
 )
 from pdb2reaction.core.result_commit import commit_payloads
@@ -2373,6 +2374,8 @@ def _derive_charge_from_ligand_charge(
         complex_struct = parser.get_structure("complex", str(prepared.source_path))
         if prepared.structure_template is not None:
             attach_template_metadata(complex_struct, prepared.structure_template)
+        else:
+            restore_pdb_terminal_resnames(complex_struct, prepared.source_path)
         models = list(complex_struct.get_models())
         if len(models) > 1:
             # Refuse rather than derive from the first model: the geometry loader used for the

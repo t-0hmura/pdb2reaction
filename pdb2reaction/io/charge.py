@@ -23,6 +23,7 @@ from pdb2reaction.domain.residue_data import (
     ION,
     N_TERMINAL_RESNAMES,
     ResidueKey,
+    TERMINAL_RESNAME_BASE,
     WATER_RES,
 )
 from pdb2reaction.io.structure_formats import residue_auth_identity
@@ -77,7 +78,14 @@ def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
 
 
 def _residue_name(res) -> str:
-    return residue_auth_identity(res)[3].upper()
+    name = residue_auth_identity(res)[3].upper()
+    return TERMINAL_RESNAME_BASE.get(name, name)
+
+
+def _has_n_terminal_hydrogens(resname: str, atom_names: Set[str]) -> bool:
+    """NH3+ has H1-H3; the PRO/HYP ring NH2+ has two of them (Amber: H2, H3)."""
+    count = len({"H1", "H2", "H3"} & atom_names)
+    return count >= 2 if resname in {"PRO", "HYP"} else count == 3
 
 
 # ---- helper for parsing --ligand-charge (number or 'RES:Q' mapping) ----
@@ -160,20 +168,21 @@ def infer_present_terminal_cap_ids(
 
     This helper is for full/model structures that were not produced by the
     extraction truncation logic.  It deliberately infers only from explicit
-    OXT or H1/H2/H3 atoms; it does not guess terminal protonation from chain
-    position alone.
+    OXT or N-terminal H atoms; it does not guess terminal protonation from
+    chain position alone.
     """
 
     keep_ncap_ids: Set[Tuple] = set()
     keep_ccap_ids: Set[Tuple] = set()
     for fid in selected_ids:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        if _residue_name(res) not in AMINO_ACIDS:
+        rn = _residue_name(res)
+        if rn not in AMINO_ACIDS:
             continue
         atom_names = {atom.get_name().strip().upper() for atom in res}
         if "OXT" in atom_names:
             keep_ccap_ids.add(fid)
-        if {"H1", "H2", "H3"} <= atom_names:
+        if _has_n_terminal_hydrogens(rn, atom_names):
             keep_ncap_ids.add(fid)
     return keep_ncap_ids, keep_ccap_ids
 
@@ -240,7 +249,8 @@ def compute_charge_summary(structure,
             # the internal AMINO_ACIDS value omits. Mirror the cap atoms the
             # truncation preserves (N-cap N/H*; C-cap C/O/OXT):
             #   C-terminus carboxylate (COO-, has OXT)       -> -1
-            #   N-terminus ammonium    (NH3+, has H1/H2/H3)  -> +1
+            #   N-terminus ammonium    (NH3+, has H1/H2/H3;
+            #                           PRO/HYP NH2+, two)    -> +1
             # TER-break caps have neither OXT nor NH3+ Hs, so they stay neutral.
             if keep_ccap_ids or keep_ncap_ids:
                 atom_names = {a.get_name() for a in res}
@@ -250,7 +260,7 @@ def compute_charge_summary(structure,
                     terminal_corrections.append(
                         (residue_auth_identity(res)[3], res.id[1], -1)
                     )
-                if fid in keep_ncap_ids and {"H1", "H2", "H3"} <= atom_names \
+                if fid in keep_ncap_ids and _has_n_terminal_hydrogens(rn, atom_names) \
                         and rn not in N_TERMINAL_RESNAMES:
                     q += 1.0
                     terminal_corrections.append(

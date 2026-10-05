@@ -219,6 +219,8 @@ pdb2reaction extract -i complex.pdb -c 'A:SUB:301' -o model.pdb \
 
 **C 末端変異体**（接頭辞 `C`）: `CALA`（−1）、`CARG`（0）、`CASP`（−2）、`CGLU`（−2）、`CLYS`（0）など、および `NHE`（0）、`NME`（0）、`CTER`（−1、汎用）
 
+接頭辞 `N`・`C` の Amber の名前は標準の残基として読み（`NALA` → `ALA`）、末端の電荷は、モデルに N 末端の H1〜H3（プロリンは H2 と H3）か OXT が残るときだけ数えます。
+
 ### 主鎖の原子
 
 アミノ酸の主鎖として扱う原子名です。`--exclude-backbone` では、ペプチド結合でつながった `-c` のアミノ酸どうしの間を除き、これらの原子を除きます。
