@@ -157,6 +157,9 @@ def _coherent_altloc_records(
 ) -> tuple[list[AtomSiteRecord], int]:
     """Choose one labelled conformer per residue and retain shared atoms."""
 
+    if not any(record.altloc.strip() for record in records):
+        return list(records), 0
+
     grouped: dict[tuple[str, str, str, str], list[AtomSiteRecord]] = {}
     order: list[tuple[str, str, str, str]] = []
     for record in records:

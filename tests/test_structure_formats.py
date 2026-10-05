@@ -7,6 +7,30 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+def test_appended_hydrogen_keeps_noncontiguous_residue_order(tmp_path: Path) -> None:
+    from pdb2reaction.io.structure_formats import read_pdb_atom_sites, render_pdb_coordinate_frames
+
+    source = tmp_path / "appended-hydrogen.pdb"
+    source.write_text(
+        "ATOM      1  C1  MOL A   1       0.000   0.000   0.000                       C\n"
+        "ATOM      2  O1  MOL A   2       2.000   0.000   0.000                       O\n"
+        "ATOM      3  H1  MOL A   1       1.000   0.000   0.000                       H\n"
+        "END\n",
+        encoding="utf-8",
+    )
+    records, nonstandard = read_pdb_atom_sites(source)
+    assert not nonstandard
+    assert [record.element for record in records] == ["C", "O", "H"]
+    assert [(record.resseq, record.atom_name) for record in records] == [
+        ("1", "C1"), ("2", "O1"), ("1", "H1")
+    ]
+    rendered = render_pdb_coordinate_frames(
+        source, [["C", "O", "H"]], [np.array([[0., 0., 0.], [2., 0., 0.], [1., 0., 0.]])]
+    )
+    assert [line for line in rendered.splitlines() if line.startswith("ATOM  ")] == [
+        line for line in source.read_text().splitlines() if line.startswith("ATOM  ")
+    ]
+
 
 def _write_minimal_cif(path: Path) -> None:
     path.write_text(

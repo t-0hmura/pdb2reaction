@@ -89,6 +89,7 @@ Target release: **0.5.0**.
 - Dimer `tsopt` fills `flatten_skip_reason` in `result.json` (budget used up before or during flattening, or no eligible extra imaginary mode) instead of always writing null.
 - Optimizer restart data written on a GPU that is unavailable when loading (no CUDA, or fewer devices than the writer) are restored on the CPU instead of failing mid-load.
 - `irc` with a `hessian_init` other than `calc` no longer loads the cached TS Hessian from `tsopt`, and its `result.json` no longer reports `hessian_source: cache`.
+- PDB inputs without alternate locations keep their atom order when a residue's atoms are not contiguous (for example hydrogens added at the end of the file); writing the output PDB failed with `Ordered elements differ from the reference topology`.
 
 ## [0.4.16] — 2026-09-19
 
