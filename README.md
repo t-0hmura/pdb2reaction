@@ -102,7 +102,7 @@ A non-dry `all` run writes the deliverables reached by its enabled stages to
 - `energy_diagram_MEP.png` — MEP energy diagram
 - `summary.log` / `summary.json`
 
-Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
+Pipeline scratch lives under `_work/`; keep it if you may redo the post-processing with `--resume-segment`. Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
 
 ## Colab GUI workspace
 

@@ -70,7 +70,7 @@
 
 - **症状**：切り出したモデルが想定より小さい、または触媒残基が含まれない。
 - **原因**：この部位には半径 `-r/--radius`（既定 2.6 Å）が小さすぎる、または `--exclude-backbone` で削りすぎた。
-- **対処**：`--radius` を大きくするか（例：2.6 → 3.5 Å）、残基を足してください。`--selected-resn 'A:TYR:44'` は少なくともその側鎖を足し、`-c` に足すと残基が丸ごと残ります。詳しくは {ref}`モデルを広げる <ja-model-setup-larger>` と [残基セレクタ](cli-conventions.md#残基セレクタ) にあります。`--exclude-backbone` を付けていて削りすぎる場合は、`--no-exclude-backbone` を渡してください。
+- **対処**：`--radius` を大きくするか（例：2.6 → 3.5 Å）、残基を足してください。`--selected-resn 'A:TYR:44'` は少なくともその側鎖を足し、`-c` に足すと、`-r` が 0 より大きければ残基が丸ごと残ります。詳しくは {ref}`モデルを広げる <ja-model-setup-larger>` と [残基セレクタ](cli-conventions.md#残基セレクタ) にあります。`--exclude-backbone` を付けていて削りすぎる場合は、`--no-exclude-backbone` を渡してください。
 
 ### エネルギーや障壁がモデルの大きさで変わる
 

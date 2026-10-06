@@ -13,7 +13,7 @@ Start from `-c` (substrate and catalytic residues) at the default `-r 2.6`, chec
 pdb2reaction extract -i complex.pdb -c 'A:SAM:321,A:GPP:322,A:MG:323' -l 'SAM:1,GPP:-3' -o model.pdb --out-json
 ```
 
-Give `-c` the substrate, cofactors, metals, and catalytic residues as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Extract R, IM, and P in one run so all models share the same residues and caps. `all` without `-c` uses the input as the cluster.
+Give `-c` the substrate, cofactors, metals, and catalytic residues as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole when `-r` is above 0. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Extract R, IM, and P in one run so all models share the same residues and caps. `all` without `-c` uses the input as the cluster.
 
 ## Check the boundary and the charge
 
@@ -34,7 +34,7 @@ Each removal changes the charge. Delete the cap H of removed residues, or the ru
 
 ## Enlarge when the model is too small
 
-Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
+Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole when `-r` is above 0) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
 
 ## Same atoms across states and variants
 

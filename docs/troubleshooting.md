@@ -70,7 +70,7 @@ Before a long run, check that:
 
 - **Symptom**: the extracted model is smaller than expected, or catalytic residues are missing.
 - **Cause**: the radius (`-r/--radius`, default 2.6 Å) is too small for this site, or `--exclude-backbone` removed too much.
-- **Fix**: raise `--radius` (for example 2.6 → 3.5 Å), or add the residue. `--selected-resn 'A:TYR:44'` adds at least its side chain, and adding it to `-c` keeps it whole. See [Make the model larger](model-setup.md#make-the-model-larger) and [Residue selectors](cli-conventions.md#residue-selectors). If you passed `--exclude-backbone` and it trims too much, pass `--no-exclude-backbone`.
+- **Fix**: raise `--radius` (for example 2.6 → 3.5 Å), or add the residue. `--selected-resn 'A:TYR:44'` adds at least its side chain, and adding it to `-c` keeps it whole when `-r` is above 0. See [Make the model larger](model-setup.md#make-the-model-larger) and [Residue selectors](cli-conventions.md#residue-selectors). If you passed `--exclude-backbone` and it trims too much, pass `--no-exclude-backbone`.
 
 ### Energies or barriers shift with model size
 

@@ -64,8 +64,8 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 ### scan3d
 
 ```bash
-pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
-    -s '[("OH TYR 100","HC TYR 100",1.50,2.40), ("HC TYR 100","O ASP 50",1.20,2.20), ("FE HEM 200","O ASP 50",2.10,3.10)]' \
+pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
+    -s '[("CS1 SAM 320","C7 GPP 321",1.50,3.00), ("H11 GPP 321","OE2 GLU 186",0.90,2.50), ("SD SAM 320","CS1 SAM 320",1.80,3.00)]' \
     -b uma -o result_scan3d
 ```
 

@@ -72,7 +72,7 @@ Make the model larger when a residue of the reaction is missing, or when only a 
 
 - **Raise `-r`** (default 2.6 Å), for example to 3.5 Å or 4.0 Å.
 - **`--radius-het2het`** (default 0, off) adds a second cutoff measured only between atoms other than C and H, on both the center side and the neighbor side. It picks up close N and O partners without enlarging the whole radius.
-- **Add the residue to `-c`** to keep it whole. Amino acids in `-c` start their own distance search and, without `--exclude-backbone`, keep all their atoms, main chain included. A residue added with `--selected-resn` is not a center, so without a neighbor in the model it keeps only its side chain.
+- **Add the residue to `-c`** to keep it whole. Amino acids in `-c` start their own distance search; with `-r` above 0 their peptide-bonded neighbors join, so without `--exclude-backbone` they keep all their atoms, main chain included. A residue added with `--selected-resn` is not a center, so without a neighbor in the model it keeps only its side chain.
 - **Residues of a partner chain** that lie outside the radius: add them to `-c` with their chain, such as `-c 'A:SAM,A:GPP,A:MG,B:MET:38'`.
 
 A larger model costs more, and accuracy does not always improve with size. Check for your system that the barrier does not change when the model grows. To include the whole protein as the environment, use the ML/MM toolkit [mlmm-toolkit](https://github.com/t-0hmura/mlmm_toolkit).
