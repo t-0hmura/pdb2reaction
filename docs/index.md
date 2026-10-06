@@ -75,7 +75,6 @@ architecture
 :caption: ガイド
 :hidden:
 
-ja/index
 ja/getting-started
 ja/installation
 ja/quickstart-all
@@ -132,12 +131,12 @@ ja/architecture
 
 | Goal | Page |
 |------|------|
-| **Run the whole pathway from R and P** | [Quickstart: all](quickstart-all.md) |
-| **Start from one structure (no product structure)** | [Quickstart: scan](quickstart-scan.md) |
-| **Optimize and check a TS candidate** | [Quickstart: TS-only mode](quickstart-tsopt.md) |
+| **Analyze the mechanism end to end from the structures before and after the reaction** | [Quickstart: all in Endpoint mode](quickstart-all.md) |
+| **Analyze the mechanism end to end from one structure** | [Quickstart: all in Scan-list mode](quickstart-scan.md) |
+| **Analyze the mechanism end to end from a TS structure** | [Quickstart: TS-only mode](quickstart-tsopt.md) |
 | **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
 | **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
-| **Check the TS with DFT** | [Refine an MLIP TS with DFT](dft-backend.md) |
+| **Optimize the TS structure with DFT** | [Optimize the TS structure with DFT](dft-backend.md) |
 | **A run failed** | [Troubleshooting](troubleshooting.md) |
 
 ## Subcommands
@@ -198,7 +197,11 @@ See [Installation](installation.md) for setup.
 ## Agent skills
 
 `skills/` contains guides for CLI commands, structure I/O, backends, workflows, output analysis, and HPC use.
-See the [Skills index](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) for installation and the full list.
+To install them, tell your AI agent:
+
+> Import `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` as skills.
+
+If you cloned the repository, you can give the local `skills/` path instead.
 
 ## Citation
 

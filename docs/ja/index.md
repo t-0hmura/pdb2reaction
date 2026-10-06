@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # pdb2reaction ドキュメント
 
 [GitHub](https://github.com/t-0hmura/pdb2reaction) · [ChemRxiv 論文](https://doi.org/10.26434/chemrxiv.15003538/v1) · [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
@@ -16,12 +20,12 @@
 
 | 目的 | ページ |
 |------|------|
-| **R と P から経路を一気に求める** | [クイックスタート: all](quickstart-all.md) |
-| **1 つの構造から始める（P の構造が無い）** | [クイックスタート: scan](quickstart-scan.md) |
-| **TS 候補を最適化して確かめる** | [クイックスタート: TS-only モード](quickstart-tsopt.md) |
+| **反応の前後の構造から反応機構解析を一気通貫で行う** | [クイックスタート: all の Endpoint モード](quickstart-all.md) |
+| **1 つの構造から一気通貫で反応機構解析を行う** | [クイックスタート: all の Scan-list モード](quickstart-scan.md) |
+| **TS 構造から一気通貫で反応機構解析を行う** | [クイックスタート: TS-only モード](quickstart-tsopt.md) |
 | **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
 | **反応機構を調べる・TS が取れない** | [反応機構を調べるコツ](mechanism-tips.md) |
-| **TS を DFT で確かめる** | [MLIP の TS を DFT で確かめる](dft-backend.md) |
+| **求めた TS 構造を DFT で構造最適化する** | [求めた TS 構造を DFT で構造最適化する](dft-backend.md) |
 | **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
 
 ## サブコマンド
@@ -79,7 +83,11 @@
 
 ## エージェントスキル
 
-`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向けの手順書を `skills/` に同梱しています。完全なスキル索引とインストール手順は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。
+`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向けの手順書を `skills/` に同梱しています。導入するときは、AI エージェントに次のように指示してください。
+
+> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込んで
+
+clone 済みなら、URL の代わりに手元の `skills/` の path を渡しても構いません。
 
 ## 引用
 
