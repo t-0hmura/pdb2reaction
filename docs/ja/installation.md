@@ -100,27 +100,32 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
+    **ORB**（Python 3.11／3.12 が必要、3.12 推奨）:
+
     ```bash
-    # ORB バックエンド（Python 3.11／3.12 が必要、3.12 推奨）
-    pip install --only-binary=dm-tree "pdb2reaction[orb]"
+    pip install "pdb2reaction[orb]"
+    ```
 
-    # AIMNet2 バックエンド
+    **AIMNet2**:
+
+    ```bash
     pip install "pdb2reaction[aimnet]"
+    ```
 
-    # MACE バックエンド（mace-torch が要求する e3nn==0.4.4 が UMA の
-    # fairchem-core と衝突するため、別 conda 環境で実施してください。
-    # PyTorch の wheel は手順 4 と同じように選びます）
-    conda create -n <mace-env> python=3.11 -y && conda activate <mace-env> \
-        && pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130 \
-        && pip install pdb2reaction \
-        && pip uninstall -y fairchem-core \
-        && pip install 'mace-torch>=0.3.8'
+    **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。環境の名前 `mace-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
-    # DFT バックエンドと後処理（`-b dft`、`--dft`、`pdb2reaction dft`）
-    # [dft] は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 の
-    # PyTorch 向け）。cu126 の wheel を使うときは、代わりに [dft-cuda12] を導入します。
-    # aarch64 では GPU4PySCF をソースからビルドしてください (https://github.com/pyscf/gpu4pyscf)。
-    # GPU の無い機械でも [dft] で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。
+    ```bash
+    conda create -n mace-env python=3.11 -y
+    conda activate mace-env
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
+    pip install pdb2reaction
+    pip uninstall -y fairchem-core
+    pip install 'mace-torch>=0.3.8'
+    ```
+
+    **DFT**（`-b dft`、`--dft`、`pdb2reaction dft`）: `[dft]` は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 の PyTorch 向け）。cu126 の wheel を使うときは、代わりに `[dft-cuda12]` を導入します。aarch64 では [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) をソースからビルドしてください。GPU のない環境でも `[dft]` で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。
+
+    ```bash
     pip install "pdb2reaction[dft]"
     ```
 

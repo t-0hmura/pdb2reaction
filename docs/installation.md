@@ -103,27 +103,32 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
+    **ORB** (requires Python 3.11 or 3.12; 3.12 recommended):
+
     ```bash
-    # ORB backend (Requires Python 3.11 or 3.12; 3.12 recommended)
-    pip install --only-binary=dm-tree "pdb2reaction[orb]"
+    pip install "pdb2reaction[orb]"
+    ```
 
-    # AIMNet2 backend
+    **AIMNet2**:
+
+    ```bash
     pip install "pdb2reaction[aimnet]"
+    ```
 
-    # MACE backend (use a separate conda environment because mace-torch
-    # pins e3nn==0.4.4 which conflicts with UMA's fairchem-core;
-    # pick the PyTorch wheel as in step 4)
-    conda create -n <mace-env> python=3.11 -y && conda activate <mace-env> \
-        && pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130 \
-        && pip install pdb2reaction \
-        && pip uninstall -y fairchem-core \
-        && pip install 'mace-torch>=0.3.8'
+    **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may rename the environment `mace-env`. Pick the PyTorch wheel as in step 4.
 
-    # DFT calculator and post-processing (`-b dft`, `--dft`, `pdb2reaction dft`)
-    # [dft] installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132
-    # PyTorch wheels of step 4; with the cu126 wheel, install [dft-cuda12] instead.
-    # On aarch64, GPU4PySCF must be built from source (https://github.com/pyscf/gpu4pyscf).
-    # Without a GPU, [dft] still installs PySCF; run DFT with `--dft-engine cpu`.
+    ```bash
+    conda create -n mace-env python=3.11 -y
+    conda activate mace-env
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
+    pip install pdb2reaction
+    pip uninstall -y fairchem-core
+    pip install 'mace-torch>=0.3.8'
+    ```
+
+    **DFT** (`-b dft`, `--dft`, `pdb2reaction dft`): `[dft]` installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132 PyTorch wheels of step 4; with the cu126 wheel, install `[dft-cuda12]` instead. On aarch64, build [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) from source. Without a GPU, `[dft]` still installs PySCF; run DFT with `--dft-engine cpu`.
+
+    ```bash
     pip install "pdb2reaction[dft]"
     ```
 
