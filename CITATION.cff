@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: >-
-  If you use this software, please cite the accompanying preprint shown
+  If you use this software, please cite the accompanying article shown
   under preferred-citation. The metadata below describes the software
   package itself.
 title: pdb2reaction
@@ -24,8 +24,7 @@ preferred-citation:
     - family-names: Terada
       given-names: Tohru
   year: 2026
-  month: 5
-  journal: "ChemRxiv"
-  doi: "10.26434/chemrxiv.15003538/v1"
-  url: "https://doi.org/10.26434/chemrxiv.15003538/v1"
-  notes: "Preprint"
+  month: 10
+  journal: "ACS Omega"
+  doi: "10.1021/acsomega.6c08242"
+  url: "https://doi.org/10.1021/acsomega.6c08242"

@@ -274,8 +274,8 @@ _CITATION_RECORDS: Dict[str, tuple[str, str]] = {
         "pdb2reaction",
         "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path "
         "Elucidation from PDB Structures Using Machine-Learning Interatomic "
-        "Potentials. ChemRxiv (2026). "
-        "https://doi.org/10.26434/chemrxiv.15003538/v1",
+        "Potentials. ACS Omega (2026). "
+        "https://doi.org/10.1021/acsomega.6c08242",
     ),
     "pysisyphus": (
         "pysisyphus engine",

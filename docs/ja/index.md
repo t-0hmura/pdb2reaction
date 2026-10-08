@@ -4,7 +4,7 @@ orphan: true
 
 # pdb2reaction ドキュメント
 
-[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ChemRxiv 論文](https://doi.org/10.26434/chemrxiv.15003538/v1) · [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ACS Omega 論文](https://doi.org/10.1021/acsomega.6c08242) · [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
 *バージョン: v{{ release }}*
 
@@ -91,15 +91,15 @@ clone 済みなら、URL の代わりに手元の `skills/` の path を渡し�
 
 ## 引用
 
-`pdb2reaction` を研究で利用する場合は、ChemRxiv プレプリントを引用してください:
+`pdb2reaction` を研究で利用する場合は、ACS Omega の論文を引用してください:
 
 ```bibtex
-@misc{ohmura2026pdb2reaction,
+@article{ohmura2026pdb2reaction,
   author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
   title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  journal      = {ACS Omega},
   year         = {2026},
-  doi          = {10.26434/chemrxiv.15003538/v1},
-  note         = {ChemRxiv preprint}
+  doi          = {10.1021/acsomega.6c08242}
 }
 ```
 

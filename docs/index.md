@@ -1,6 +1,6 @@
 # pdb2reaction Documentation
 
-[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ChemRxiv preprint](https://doi.org/10.26434/chemrxiv.15003538/v1) · [Open in Google Colab](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ACS Omega paper](https://doi.org/10.1021/acsomega.6c08242) · [Open in Google Colab](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
 *Version: v{{ release }}*
 
@@ -206,10 +206,10 @@ If you cloned the repository, you can give the local `skills/` path instead.
 ## Citation
 
 ```bibtex
-@misc{ohmura2026pdb2reaction,
-  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
-  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
+@article{ohmura2026pdb2reaction,
+  author  = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title   = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  journal = {ACS Omega}, year = {2026}, doi = {10.1021/acsomega.6c08242}
 }
 ```
 

@@ -682,8 +682,8 @@ def test_colab_notebook_has_valid_code_cells_and_gpu_metadata() -> None:
     assert "PDB/mmCIF or small-molecule XYZ/GJF structures" in introduction
     assert "**① Input → ② Setup → ③ Options → (Run) → ④ Results**" in introduction
     assert (
-        "[DOI: 10.26434/chemrxiv.15003538/v1]"
-        "(https://doi.org/10.26434/chemrxiv.15003538/v1)"
+        "[DOI: 10.1021/acsomega.6c08242]"
+        "(https://doi.org/10.1021/acsomega.6c08242)"
     ) in introduction
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":

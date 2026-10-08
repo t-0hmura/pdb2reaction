@@ -181,10 +181,10 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 ## Citation
 
 ```bibtex
-@misc{ohmura2026pdb2reaction,
-  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
-  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
+@article{ohmura2026pdb2reaction,
+  author  = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title   = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  journal = {ACS Omega}, year = {2026}, doi = {10.1021/acsomega.6c08242}
 }
 ```
 
