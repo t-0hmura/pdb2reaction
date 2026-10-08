@@ -101,7 +101,7 @@ orphan: true
 ## システム要件
 
 ### ハードウェア
-- **OS**: Linux
+- **OS**: Linux（Windows では WSL2 上の Linux に導入してください）
 - **GPU**: 使用するバックエンドと PyTorch wheel に対応する NVIDIA ドライバー。CPU のみでも実行可能ですが低速です
 - **VRAM / RAM**: モデル、系の大きさ、Hessian の計算方式で変わります。代表的な計算で最大使用量を測ってください
 
