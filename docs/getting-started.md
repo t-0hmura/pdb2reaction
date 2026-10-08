@@ -30,9 +30,9 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 ### What it is for
 
-* **Trial and error on reaction mechanisms**: screen large systems for which DFT alone would take too long
-* **Starting structures for quantum chemistry**: build cluster models of the reactant (R), transition state (TS), and product (P)
-* **High-throughput calculations over many systems**: explore reaction pathways systematically across substrate variants and enzyme mutants
+* **Trial and error on reaction mechanisms** at a scale that DFT or other quantum chemistry takes too long to check
+* **Starting structures** for quantum chemistry (cluster models of the reactant, TS, and product)
+* **Many reaction-path calculations** across substrate variants and enzyme mutants
 
 ### What it automates
 
