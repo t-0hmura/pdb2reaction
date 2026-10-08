@@ -109,8 +109,9 @@ Each stage (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` 
 
 ## Output
 
-A non-dry `all` run writes the deliverables reached by its enabled stages to
-`--out-dir` (default `./result_all/`):
+Each calculation command writes to its own directory, `./result_<command>/` by default (for example `./result_opt/`, `./result_tsopt/`, or `./result_path_opt/`); `-o/--out-dir` sets another. `extract` writes `model.pdb` to the current directory.
+
+A non-dry `all` run writes the deliverables reached by its enabled stages to `./result_all/`:
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
 - `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for mmCIF input or very large PDB) — the merged reaction path in MEP/scan-list modes
