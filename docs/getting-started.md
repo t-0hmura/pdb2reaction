@@ -1,7 +1,5 @@
 # Getting Started
 
-## Overview
-
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` is a Python command-line toolkit that uses machine-learning interatomic potentials (MLIPs) to **search automatically for candidate enzyme reaction pathways, starting from PDB / mmCIF structures**.
@@ -28,13 +26,13 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 > **Examples:** the [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory holds the structures used above (`1.R.pdb`, `3.P.pdb`) and a set of workflow scripts (MEP search and scan pipelines) built around the GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). After [installation](installation.md), get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples` and run the commands above there.
 
-### What it is for
+## What it is for
 
 * **Trial and error on reaction mechanisms** at a scale that DFT or other quantum chemistry takes too long to check
 * **Starting structures** for quantum chemistry (cluster models of the reactant, TS, and product)
 * **Many reaction-path calculations** across substrate variants and enzyme mutants
 
-### What it automates
+## What it automates
 
 Provide one of three inputs: (1) several PDB structures in reaction order (R → … → P), (2) one structure plus a distance scan, or (3) one structure plus TS optimization. `pdb2reaction` then handles the following automatically.
 

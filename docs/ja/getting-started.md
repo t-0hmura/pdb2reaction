@@ -1,7 +1,5 @@
 # はじめに
 
-## 概要
-
 <img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を活用し、**PDB / mmCIF 構造から酵素の反応経路候補を自動探索する** Python 製 CLI ツールキットです。
@@ -28,13 +26,13 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 > **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに、上のコマンドで使う構造（`1.R.pdb`、`3.P.pdb`）と、GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）を題材とした一連のワークフロースクリプト（MEP 探索とスキャン）を用意しています。[インストール](installation.md)の後、`git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples` で取得し、その中で上のコマンドを実行してください。
 
-### 主な用途
+## 主な用途
 
 * DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 * 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
 * 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-### 主な自動化機能
+## 主な自動化機能
 
 入力として「(1) 反応順に並べた複数の PDB 構造（R → … → P）」「(2) 単一構造 ＋ 距離スキャン指定」「(3) 単一構造 ＋ TS 最適化指定」のいずれかを与えることで、以下を自動処理します。
 

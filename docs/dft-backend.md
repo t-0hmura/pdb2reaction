@@ -1,12 +1,10 @@
 # Refine an MLIP TS with DFT
 
-## Overview
-
 Once MLIP has found a reasonable pathway, pdb2reaction can take its TS straight into a DFT TS optimization. It runs the TS optimization → IRC → endpoint optimization → frequency workflow with GPU-accelerated DFT through GPU4PySCF.
 
 The MLIP pathway search is the main tool; DFT is an add-on that checks the TS candidate you found with MLIP.
 
-### What it is for
+## What it is for
 
 - **Refine the TS at the DFT level**: run TS optimization → IRC → endpoint optimization → frequencies with DFT (`-b dft`).
 - **Add DFT energies to an MLIP run**: run DFT single points on the MLIP R, TS, and P (`--dft`).

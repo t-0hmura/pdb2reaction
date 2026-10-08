@@ -1,7 +1,5 @@
 # Installation
 
-## Overview
-
 `pdb2reaction` is intended for Linux environments (local workstations or HPC clusters), and production runs normally use a CUDA-capable GPU. Prebuilt **PyTorch** wheels include their CUDA runtime libraries: they need a compatible NVIDIA driver, but not a local CUDA toolkit.
 
 ## Quick start

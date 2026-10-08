@@ -1,12 +1,10 @@
 # Quickstart: `pdb2reaction all --scan-lists`
 
-## Overview
-
 `pdb2reaction all --scan-lists` (`-s`) builds a reaction path from one structure. It drives the distances you choose to target values under harmonic restraints (a scan) and uses the scan endpoints to search the minimum energy path (MEP). With `--tsopt`, it continues to transition-state (TS) optimization and an intrinsic reaction coordinate (IRC) calculation.
 
 The commands below use `1.R.pdb` from the bundled [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples); run them in that directory.
 
-### What it is for
+## What it is for
 
 * **No product structure**: drive the forming and breaking bonds to make the product (P) from the reactant (R).
 * **Two-step reactions**: drive one step after another, such as a methyl transfer followed by a proton transfer.

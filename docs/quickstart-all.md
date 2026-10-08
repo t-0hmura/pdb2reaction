@@ -1,12 +1,10 @@
 # Quickstart: `pdb2reaction all`
 
-## Overview
-
 `pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points.
 
 The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6-methyltransferase BezA in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples): `1.R.pdb` is the reactant and `3.P.pdb` the product. Get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`. For your own reaction, replace them with your full-system structures.
 
-### What it is for
+## What it is for
 
 * **A first run of the whole workflow**: run every stage once on the bundled example.
 * **The MEP between R and P**: get the path and its highest-energy image (HEI), the TS candidate.

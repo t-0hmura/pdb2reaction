@@ -1,10 +1,8 @@
 # `sp` (single point)
 
-## Overview
-
 `sp` computes the **energy and atomic forces** of one structure with the selected backend, and with `--hess` also the **Hessian**. It runs no optimization: the geometry stays as given.
 
-### What it is for
+## What it is for
 
 * **Check before an optimization**: confirm that the charge and multiplicity are accepted and that the backend returns a finite energy and forces.
 * **Compare backends**: evaluate the same structure with the [MLIPs](backends.md) (machine-learning interatomic potentials) UMA, ORB, MACE, and AIMNet2, or with DFT (`-b dft`).

@@ -1,10 +1,8 @@
 # `scan3d` (3D restrained grid scan)
 
-## Overview
-
 `scan3d` relaxes every point of a grid over three coordinates with harmonic restraints, records the energy without the restraints, and draws the energy volume as isosurfaces in an HTML page.
 
-### What it is for
+## What it is for
 
 * **Reactions that involve three coordinates at once**: see the energy landscape when, for example, a bond forms, another breaks, and a proton moves in the same step.
 * **Redrawing a finished grid**: plot an existing `surface.csv` again over another energy range (`--csv`).

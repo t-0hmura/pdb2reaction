@@ -1,12 +1,10 @@
 # `all` (end-to-end workflow)
 
-## Overview
-
 `all` runs the whole workflow in one command: it extracts the active-site model and builds the minimum energy path (MEP). When asked, it also optimizes the transition state (TS) of each reaction step and runs the intrinsic reaction coordinate (IRC), frequency, and DFT calculations on it.
 
 Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
 
-### What it is for
+## What it is for
 
 What you pass selects the mode:
 

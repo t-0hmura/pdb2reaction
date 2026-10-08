@@ -1,10 +1,8 @@
 # `irc` (intrinsic reaction coordinate)
 
-## Overview
-
 `irc` traces the intrinsic reaction coordinate (IRC) from an optimized transition state (TS) in both directions with EulerPC (an Euler predictor–corrector integrator). It writes the trajectory of each branch and the two endpoint candidates. Optimizing those endpoints with [`opt`](opt.md) shows which reactant (R) and product (P) the TS connects.
 
-### What it is for
+## What it is for
 
 * **Checking a TS**: confirm that the TS from [`tsopt`](tsopt.md) connects the intended R and P.
 * **Getting R and P**: optimize the endpoints with [`opt`](opt.md) to obtain the R and P structures of this TS.
