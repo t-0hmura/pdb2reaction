@@ -10,7 +10,7 @@
 * **`tsopt` に渡す TS 候補**: `hei.pdb`（または `hei.xyz`）を [`tsopt`](tsopt.md) の初期構造にする
 * **GSM と DMF の比較**: 同じ 2 構造を `--mep-mode gsm` と `--mep-mode dmf` で計算し、経路を見比べる
 
-2 つ以上の構造から反応領域だけを自動で精密化したい場合は、[`path-search`](path-search.md) を使ってください。
+3 つ以上の構造を一度に入力したいときは、`all` の [Endpoint モード](quickstart-all.md) を使ってください。R と P の間にありうる中間体を自動で検知できるか試したいなら、[`path-search`](path-search.md) を使うとよいでしょう。
 
 ---
 
