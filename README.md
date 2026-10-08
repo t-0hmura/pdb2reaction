@@ -167,7 +167,7 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
 | Tool | Use case |
 |---|---|
-| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
+| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM by ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
 | [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for quick/exploratory reaction-mechanism studies (GS / TS / IRC / ΔG). |
 
 ## Known limitations
