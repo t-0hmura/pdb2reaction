@@ -1322,3 +1322,45 @@ html {
         min-width: var(--p2r-toc-w);
     }
 }
+
+/* Wide screens: the top-page hero in two columns, text on the left and the figure on the right. */
+@media (min-width: 112.5em) {
+    [role="main"] .p2r-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        grid-template-rows: 1fr auto auto auto 1fr;
+        grid-template-areas:
+            ".    fig"
+            "tag  fig"
+            "lead fig"
+            "cta  fig"
+            ".    fig";
+        column-gap: 2.25rem;
+        padding: 1.5rem 1.6rem;
+    }
+
+    .p2r-hero img.p2r-hero-figure {
+        grid-area: fig;
+        align-self: center;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .p2r-hero > p.p2r-tagline {
+        grid-area: tag;
+        margin-top: 0;
+    }
+
+    .p2r-hero > p.p2r-lead {
+        grid-area: lead;
+    }
+
+    .p2r-hero > p.p2r-cta {
+        grid-area: cta;
+        gap: 0.5rem;
+    }
+
+    .p2r-hero a.p2r-btn {
+        padding: 0 0.9rem;
+    }
+}
