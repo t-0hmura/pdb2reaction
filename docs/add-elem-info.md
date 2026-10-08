@@ -2,6 +2,8 @@
 
 `add-elem-info` **fills in or corrects the element symbols** (columns 77–78) of the ATOM and HETATM records in a PDB file.
 
+---
+
 ## What it is for
 
 * **PDB files without element columns**: structures from modeling tools or molecular dynamics (MD) that leave columns 77–78 blank.

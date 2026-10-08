@@ -2,6 +2,8 @@
 
 `fix-altloc` **removes alternate locations (altLoc)** from PDB files. For each residue it keeps one altLoc label, the one with the highest mean occupancy, so each residue is one conformer that was actually deposited. Commands that read a PDB apply the same rule on their own when they read it. Use `fix-altloc` when you need the cleaned file itself.
 
+---
+
 ## What it is for
 
 * **A clean PDB file to keep**: one conformer per residue, for other programs or for your records.

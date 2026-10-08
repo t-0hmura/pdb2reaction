@@ -2,6 +2,8 @@
 
 `extract` cuts the residues around a substrate out of a protein–ligand PDB/mmCIF file, caps each cut bond with a hydrogen, and counts the charge of the resulting cluster model.
 
+---
+
 ## What it is for
 
 * **Building a cluster model**: make the active-site model that `all`, `opt`, `tsopt`, and the other commands compute on.

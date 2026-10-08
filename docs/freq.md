@@ -2,6 +2,8 @@
 
 `freq` computes **harmonic vibrational frequencies** and **thermochemical corrections** (ZPE, enthalpy, Gibbs free energy) for a structure.
 
+---
+
 ## What it is for
 
 * **Checking a stationary point**: count the imaginary frequencies (n_imag) to confirm a minimum (n_imag = 0) or a transition state (TS, n_imag = 1).

@@ -4,6 +4,8 @@
 
 Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
 
+---
+
 ## What it is for
 
 What you pass selects the mode:

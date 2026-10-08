@@ -4,6 +4,8 @@ Once MLIP has found a reasonable pathway, pdb2reaction can take its TS straight 
 
 The MLIP pathway search is the main tool; DFT is an add-on that checks the TS candidate you found with MLIP.
 
+---
+
 ## What it is for
 
 - **Refine the TS at the DFT level**: run TS optimization → IRC → endpoint optimization → frequencies with DFT (`-b dft`).

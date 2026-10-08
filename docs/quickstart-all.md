@@ -4,6 +4,8 @@
 
 The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6-methyltransferase BezA in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples): `1.R.pdb` is the reactant and `3.P.pdb` the product. Get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`. For your own reaction, replace them with your full-system structures.
 
+---
+
 ## What it is for
 
 * **A first run of the whole workflow**: run every stage once on the bundled example.

@@ -4,6 +4,8 @@
 
 `all --dft` runs DFT single points on the reactant (R), transition state (TS), and product (P) of an MLIP (machine-learning interatomic potential) run. `-b dft` uses DFT for every calculation of a command; see [Refine an MLIP TS with DFT](dft-backend.md).
 
+---
+
 ## What it is for
 
 * **DFT energies on MLIP geometries**: single points on the R, TS, and P optimized with an MLIP.

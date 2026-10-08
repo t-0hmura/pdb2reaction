@@ -2,6 +2,8 @@
 
 `opt` optimizes one structure to a local minimum.
 
+---
+
 ## What it is for
 
 * **Preparing R, P, and intermediates**: relax the reactant, product, and intermediate structures before a path search or a frequency calculation, and confirm each minimum (n_imag = 0) with [`freq`](freq.md).

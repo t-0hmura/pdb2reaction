@@ -4,6 +4,8 @@
 
 以下のコマンドは同梱の [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある `1.R.pdb` を使うので、そのディレクトリで実行します。
 
+---
+
 ## 主な用途
 
 * **生成物の構造が無い**: できる結合と切れる結合を動かして、反応物（R）から生成物（P）を作る

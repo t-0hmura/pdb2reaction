@@ -2,6 +2,8 @@
 
 `scan2d` relaxes every point of a grid over two coordinates with harmonic restraints and records the energy without the restraints, giving a 2D energy map of the reaction.
 
+---
+
 ## What it is for
 
 * **Locating the TS region**: see where the saddle between the reactant and product basins lies before a path search or TS optimization.
