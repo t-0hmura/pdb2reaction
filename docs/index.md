@@ -1,14 +1,14 @@
 # [pdb2reaction]{.p2r-wordmark} Documentation
 
 :::{container} p2r-hero-meta
-[Version: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} · [ACS Omega paper](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
+[Version: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} [ACS Omega paper](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
 :::
 
 :::{container} p2r-hero
 <img src="./overview.png" alt="pdb2reaction workflow overview" class="p2r-hero-figure">
 
 {.p2r-tagline}
-**pdb2reaction** is a Python CLI toolkit for exploring candidate enzymatic reaction pathways from PDB structures using machine-learning interatomic potentials (MLIPs).
+**pdb2reaction** is a Python CLI toolkit for reaction-mechanism analysis from structures such as PDB files of enzyme complexes and XYZ files of small molecules, using machine-learning interatomic potentials (MLIPs).
 
 {.p2r-lead}
 New to pdb2reaction? Start with [Getting Started](getting-started.md).
@@ -146,7 +146,7 @@ ja/energy-diagram
 
 ```{toctree}
 :maxdepth: 2
-:caption: リファレンス
+:caption: 参照資料
 :hidden:
 
 ja/cli-conventions

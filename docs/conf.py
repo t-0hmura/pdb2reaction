@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'pdb2reaction'
-copyright = '2025, Takuto Ohmura'
+copyright = '2026, Takuto Ohmura'
 author = 'Takuto Ohmura'
 
 # Hardcoded release version (setuptools_scm is unavailable in the docs build env)

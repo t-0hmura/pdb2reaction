@@ -5,14 +5,14 @@ orphan: true
 # [pdb2reaction]{.p2r-wordmark} ドキュメント
 
 :::{container} p2r-hero-meta
-[バージョン: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} · [ACS Omega 論文](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
+[バージョン: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} [ACS Omega 論文](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
 :::
 
 :::{container} p2r-hero
 <img src="../overview.png" alt="pdb2reaction ワークフロー概要" class="p2r-hero-figure">
 
 {.p2r-tagline}
-**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP）を使用して、PDB 構造から酵素反応経路の候補を探索する Python 製 CLI ツールキットです。
+**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP）を使用して、酵素複合体などの PDB 構造や小分子の XYZ 構造などから反応機構解析を行うための Python 製 CLI ツールキットです。
 
 {.p2r-lead}
 初めての方は [はじめに](getting-started.md) からお読みください。

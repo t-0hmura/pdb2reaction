@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-pdb2reaction のコードを直す人向けに、パッケージの層、ファイルの置き場、直す前に守る制約をまとめたページです。直したあとは、CONTRIBUTING の [gate cycle](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md#11-gate-cycle) の検査を走らせてください。計算を実行するだけなら、[はじめに](getting-started.md)から読んでください。
+pdb2reaction の開発者向けに、パッケージの層、ファイルの置き場、開発するときに守る制約をまとめたページです。変更したあとは、CONTRIBUTING の [gate cycle](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md#11-gate-cycle) の検査を走らせてください。計算を実行するだけなら、[はじめに](getting-started.md)から読んでください。
 
 `pdb2reaction` は、活性部位のクラスターモデルで酵素反応の経路を解析する Python の CLI です。構造と経路の段には組み込みの MLIP か自作の ASE calculator を使い、PySCF/GPU4PySCF による DFT の一点計算も追加できます。
 

@@ -531,11 +531,32 @@ article .admonition.warning > .admonition-title { color: var(--color-admonition-
 
 .p2r-icon-link {
     display: inline-flex;
+    text-decoration: none;
 }
 
 .p2r-icon-link svg {
+    flex: none;
     width: 1.15rem;
     height: 1.15rem;
+}
+
+/* the GitHub link shows its name next to the icon where the bar has room */
+.p2r-icon-link .p2r-icon-text {
+    display: none;
+}
+
+@media (min-width: 82em) {
+    .p2r-icon-link {
+        width: auto;
+        gap: 0.4rem;
+        padding: 0 0.6rem;
+    }
+
+    .p2r-icon-link .p2r-icon-text {
+        display: inline;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
 }
 
 .p2r-icon-link:hover,

@@ -2,9 +2,9 @@
 
 ## 1. Overview
 
-This page is for people who change the pdb2reaction code: it describes the
-package layers, where each file lives, and the constraints to respect before
-you patch. After a patch, run the checks in the
+This page is for pdb2reaction developers: it describes the package layers,
+where each file lives, and the constraints to respect while developing. After
+a change, run the checks in the
 [gate cycle](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md#11-gate-cycle)
 of CONTRIBUTING. To run calculations instead, start from
 [Getting Started](getting-started.md).
