@@ -83,7 +83,7 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 `-c` を省くと、`all` は切り出しを行わず、入力をそのまま使います。電荷は、全体を `-q` で渡すか、PDB/mmCIF の入力なら残基名ごとに `-l` で渡してください。
 
 ```bash
-pdb2reaction all -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo
+pdb2reaction all -i cluster_R.pdb cluster_P.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo
 ```
 
 切り出した PDB を削ったときは、残したキャップ水素の親原子はそのまま固定されます。消した残基のキャップ水素も消してください。親原子の無いキャップ水素があると `isolated LKH/HL` で止まります。新しく切った所には、下のチェックリストのとおりにキャップ水素を付けます。`extract` を使わずに組んだモデルには、自分で付けない限り `LKH`/`HL` のキャップ水素が無いので、`--freeze-links` は何も固定しません。境界の原子は `--freeze-atoms` で固定してください。

@@ -82,7 +82,7 @@ A larger model costs more, and accuracy does not always improve with size. Check
 Omit `-c`, and `all` skips the extraction and uses the input as it is. Give the total charge with `-q`, or the charge of each residue name with `-l` (PDB/mmCIF input only).
 
 ```bash
-pdb2reaction all -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo
+pdb2reaction all -i cluster_R.pdb cluster_P.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo
 ```
 
 When you trim an extracted PDB, the cap hydrogens you keep still freeze their parents. Delete the cap hydrogens of the residues you removed; a cap hydrogen without its parent stops the run with `isolated LKH/HL`. Cap each new cut as in the checklist below. A model built without `extract` has no `LKH`/`HL` cap hydrogens unless you add them, so `--freeze-links` freezes nothing; freeze its boundary atoms with `--freeze-atoms`.
