@@ -166,7 +166,7 @@ pdb2reaction extract -i complex.pdb -c 'A:SUB:301' -o model.pdb \
 ## 関連ドキュメント
 
 * [クラスターモデルの組み方](model-setup.md) — モデルを削る・広げる、原子を固定する
-* [all](all.md) — 一括のワークフロー。`-c` で `extract` を実行する
+* [all](all.md) — 一気通貫のワークフロー。`-c` で `extract` を実行する
 * [path-search](path-search.md) — 切り出したモデルでの最小エネルギー経路（MEP）の探索
 * [scan](scan.md) — 切り出したモデルでの段階的なスキャン
 * [add-elem-info](add-elem-info.md) — 切り出しの前に元素の欄を埋める

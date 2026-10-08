@@ -156,7 +156,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 ## 関連ドキュメント
 
 - [`extract`](extract.md) — 切り出しのオプション、キャップ水素、非標準の残基名
-- [`all`](all.md) — 一括のワークフロー。`-c` でモデルを切り出す
+- [`all`](all.md) — 一気通貫のワークフロー。`-c` でモデルを切り出す
 - [`opt`](opt.md) — 距離の拘束を付けた構造最適化
 - [`scan`](scan.md) — 拘束を付けた段階的なスキャン
 - [`freq`](freq.md) — 固定した原子があるときの PHVA と剛体モード
