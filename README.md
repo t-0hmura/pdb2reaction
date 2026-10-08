@@ -2,8 +2,6 @@
 
 [![PyPI](https://img.shields.io/pypi/v/pdb2reaction.svg)](https://pypi.org/project/pdb2reaction/) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
-`pdb2reaction` is a Python CLI that uses machine-learning interatomic potentials (MLIPs) to search for candidate **enzymatic reaction pathways** from **PDB or mmCIF structures**.
-
 ## Overview
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
