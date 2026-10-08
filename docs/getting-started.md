@@ -13,8 +13,6 @@ In many cases, a **single command** like this one gives a first draft of the rea
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
-
-`Scientific status: success` near the end of the terminal output means that every requested stage converged.
 :::
 ::::
 

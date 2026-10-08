@@ -13,8 +13,6 @@ DFT（密度汎関数法）の計算データを学習したニューラルネ�
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
-
-端末の出力の最後のほうに `Scientific status: success` と出れば、求めた段はすべて収束しています。
 :::
 ::::
 
