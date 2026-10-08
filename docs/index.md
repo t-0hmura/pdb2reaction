@@ -1,16 +1,21 @@
-# pdb2reaction Documentation
+# [pdb2reaction]{.p2r-wordmark} Documentation
 
-[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ACS Omega paper](https://doi.org/10.1021/acsomega.6c08242) · [Open in Google Colab](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+:::{container} p2r-hero-meta
+[Version: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} · [ACS Omega paper](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
+:::
 
-*Version: v{{ release }}*
+:::{container} p2r-hero
+<img src="./overview.png" alt="pdb2reaction workflow overview" class="p2r-hero-figure">
 
----
-
-<img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
-
+{.p2r-tagline}
 **pdb2reaction** is a Python CLI toolkit for exploring candidate enzymatic reaction pathways from PDB structures using machine-learning interatomic potentials (MLIPs).
 
+{.p2r-lead}
 New to pdb2reaction? Start with [Getting Started](getting-started.md).
+
+{.p2r-cta}
+[Getting Started](getting-started.md){.p2r-btn .p2r-btn-primary} [Installation](installation.md){.p2r-btn .p2r-btn-install} [Open in Google Colab](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb){.p2r-btn .p2r-btn-colab}
+:::
 
 ```{toctree}
 :maxdepth: 2
@@ -129,17 +134,42 @@ ja/architecture
 
 ## Quick start
 
+::::{container} p2r-cards
+:::{container} p2r-card p2r-card-endpoint
+**Analyze the mechanism end to end from the structures before and after the reaction**
+
+<!-- p2r-mode-stages endpoint -->
+
+[Quickstart: all in Endpoint mode](quickstart-all.md)
+:::
+
+:::{container} p2r-card p2r-card-scan
+**Analyze the mechanism end to end from one structure**
+
+<!-- p2r-mode-stages scan -->
+
+[Quickstart: all in Scan-list mode](quickstart-scan.md)
+:::
+
+:::{container} p2r-card p2r-card-tsonly
+**Analyze the mechanism end to end from a TS structure**
+
+<!-- p2r-mode-stages tsonly -->
+
+[Quickstart: TS-only mode](quickstart-tsopt.md)
+:::
+::::
+
 | Goal | Page |
 |------|------|
-| **Analyze the mechanism end to end from the structures before and after the reaction** | [Quickstart: all in Endpoint mode](quickstart-all.md) |
-| **Analyze the mechanism end to end from one structure** | [Quickstart: all in Scan-list mode](quickstart-scan.md) |
-| **Analyze the mechanism end to end from a TS structure** | [Quickstart: TS-only mode](quickstart-tsopt.md) |
 | **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
 | **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
 | **Optimize the TS structure with DFT** | [Optimize the TS structure with DFT](dft-backend.md) |
 | **A run failed** | [Troubleshooting](troubleshooting.md) |
 
 ## Subcommands
+
+<!-- p2r-stage-strip -->
 
 | Subcommand | Description |
 |------------|-------------|

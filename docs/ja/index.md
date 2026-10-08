@@ -2,33 +2,63 @@
 orphan: true
 ---
 
-# pdb2reaction ドキュメント
+# [pdb2reaction]{.p2r-wordmark} ドキュメント
 
-[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ACS Omega 論文](https://doi.org/10.1021/acsomega.6c08242) · [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+:::{container} p2r-hero-meta
+[バージョン: v{{ release }}]{.p2r-pill} [GitHub](https://github.com/t-0hmura/pdb2reaction){.p2r-meta-gh} · [ACS Omega 論文](https://doi.org/10.1021/acsomega.6c08242){.p2r-meta-paper}
+:::
 
-*バージョン: v{{ release }}*
+:::{container} p2r-hero
+<img src="../overview.png" alt="pdb2reaction ワークフロー概要" class="p2r-hero-figure">
 
----
-
-<img src="../overview.png" alt="pdb2reaction ワークフロー概要" width="90%">
-
+{.p2r-tagline}
 **pdb2reaction** は、機械学習原子間ポテンシャル（MLIP）を使用して、PDB 構造から酵素反応経路の候補を探索する Python 製 CLI ツールキットです。
 
+{.p2r-lead}
 初めての方は [はじめに](getting-started.md) からお読みください。
+
+{.p2r-cta}
+[はじめに](getting-started.md){.p2r-btn .p2r-btn-primary} [インストール](installation.md){.p2r-btn .p2r-btn-install} [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb){.p2r-btn .p2r-btn-colab}
+:::
 
 ## クイックスタート
 
+::::{container} p2r-cards
+:::{container} p2r-card p2r-card-endpoint
+**反応の前後の構造から反応機構解析を一気通貫で行う**
+
+<!-- p2r-mode-stages endpoint -->
+
+[クイックスタート: all の Endpoint モード](quickstart-all.md)
+:::
+
+:::{container} p2r-card p2r-card-scan
+**1 つの構造から一気通貫で反応機構解析を行う**
+
+<!-- p2r-mode-stages scan -->
+
+[クイックスタート: all の Scan-list モード](quickstart-scan.md)
+:::
+
+:::{container} p2r-card p2r-card-tsonly
+**TS 構造から一気通貫で反応機構解析を行う**
+
+<!-- p2r-mode-stages tsonly -->
+
+[クイックスタート: TS-only モード](quickstart-tsopt.md)
+:::
+::::
+
 | 目的 | ページ |
 |------|------|
-| **反応の前後の構造から反応機構解析を一気通貫で行う** | [クイックスタート: all の Endpoint モード](quickstart-all.md) |
-| **1 つの構造から一気通貫で反応機構解析を行う** | [クイックスタート: all の Scan-list モード](quickstart-scan.md) |
-| **TS 構造から一気通貫で反応機構解析を行う** | [クイックスタート: TS-only モード](quickstart-tsopt.md) |
 | **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
 | **反応機構を調べる・TS が取れない** | [反応機構を調べるコツ](mechanism-tips.md) |
 | **求めた TS 構造を DFT で構造最適化する** | [求めた TS 構造を DFT で構造最適化する](dft-backend.md) |
 | **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
 
 ## サブコマンド
+
+<!-- p2r-stage-strip -->
 
 | サブコマンド | 説明 |
 |---------|------|
