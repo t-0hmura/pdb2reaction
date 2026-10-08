@@ -1,6 +1,6 @@
 # クイックスタート: `pdb2reaction all`
 
-`pdb2reaction all` は、反応物（R）と生成物（P）の 2 つの構造から、1 回の実行で反応経路を作ります。基質のまわりのクラスターモデルを切り出し、R と P の間の最小エネルギー経路（MEP）を探索します。`--tsopt --thermo --dft` を付けると、同じ実行のまま遷移状態（TS）の最適化・固有反応座標（IRC）の計算・振動数・DFT 一点計算まで進みます。
+`pdb2reaction all` は、反応物（R）と生成物（P）の 2 つの構造から、1 回の実行で反応経路を作ります。基質のまわりのクラスターモデルを切り出し、R と P の間の最小エネルギー経路（MEP）を探索します。`--tsopt --thermo --dft` を付けると、同じ実行のまま遷移状態（TS）の最適化・固有反応座標（IRC）の計算・振動数・DFT 一点計算まで進みます。反応座標の定義が手間なときに向いています。中間体や生成物の構造を PyMOL や GaussView で自分で作って入力できます。反応座標を自分で決めずに MEP を探索するので、新しい反応機構の候補が見つかることもあります。
 
 以下のコマンドは、[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある、ゲラニル二リン酸（GPP）の C6 位をメチル化する酵素 BezA の同梱例を使います。`1.R.pdb` が反応物、`3.P.pdb` が生成物です。同梱例は `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples` で取得できます。自分の反応では、全系の構造に置き換えてください。
 

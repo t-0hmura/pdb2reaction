@@ -1,6 +1,6 @@
 # Quickstart: `pdb2reaction all`
 
-`pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points.
+`pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points. Use this mode when a reaction coordinate is hard to define: build the intermediates or products yourself in PyMOL or GaussView and give them as inputs. Because no coordinate is fixed in advance, the search may also show mechanism candidates you did not expect.
 
 The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6-methyltransferase BezA in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples): `1.R.pdb` is the reactant and `3.P.pdb` the product. Get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`. For your own reaction, replace them with your full-system structures.
 
