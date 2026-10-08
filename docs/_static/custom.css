@@ -1094,6 +1094,11 @@ article a.p2r-btn-primary:hover::after {
     .p2r-topnav {
         padding-left: 1em;
     }
+
+    /* a narrower search box leaves room for the three links */
+    .p2r-search-input {
+        width: 10rem;
+    }
 }
 
 /* Furo collapses the sidebar into the drawer here: the bar keeps brand, EN/JA and theme */

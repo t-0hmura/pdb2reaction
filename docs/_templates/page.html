@@ -157,9 +157,11 @@
   </div>
   <nav class="p2r-topnav" aria-label="Primary">
     {% if is_ja %}
+    <a href="{{ pathto('ja/index') }}"{% if pagename == 'ja/index' %} class="is-active" aria-current="page"{% endif %}>ホーム</a>
     <a href="{{ pathto('ja/getting-started') }}"{% if pagename == 'ja/getting-started' %} class="is-active" aria-current="page"{% endif %}>はじめに</a>
     <a href="{{ pathto('ja/installation') }}"{% if pagename == 'ja/installation' %} class="is-active" aria-current="page"{% endif %}>インストール</a>
     {% else %}
+    <a href="{{ pathto(master_doc) }}"{% if pagename == master_doc %} class="is-active" aria-current="page"{% endif %}>Home</a>
     <a href="{{ pathto('getting-started') }}"{% if pagename == 'getting-started' %} class="is-active" aria-current="page"{% endif %}>Getting Started</a>
     <a href="{{ pathto('installation') }}"{% if pagename == 'installation' %} class="is-active" aria-current="page"{% endif %}>Installation</a>
     {% endif %}
