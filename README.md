@@ -8,6 +8,8 @@
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
+`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more reaction-ordered structures, (ii) one structure with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it can run an **MEP search** and optionally chain **TS optimization → IRC → thermochemical correction → DFT single-point**. Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
+
 Test a reaction mechanism in a single command:
 
 ```bash
@@ -16,12 +18,6 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
 The run writes the R / TS / P structures, energy diagrams, and `summary.log` / `summary.json` to `result_all/`.
-
-### What it is for
-
-* **Trial and error on reaction mechanisms**: screen large systems for which DFT alone would take too long
-* **Starting structures for quantum chemistry**: build cluster models of the reactant (R), transition state (TS), and product (P)
-* **High-throughput calculations over many systems**: explore reaction pathways systematically across substrate variants and enzyme mutants
 
 Once MLIP finds a plausible path, pdb2reaction can take that TS straight into DFT TS optimization: the TS optimization → IRC → endpoint optimization → frequency workflow runs as GPU-accelerated DFT with GPU4PySCF. See [DFT backend](docs/dft-backend.md).
 
