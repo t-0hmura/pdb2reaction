@@ -160,7 +160,7 @@ pdb2reaction --help
 # コマンドのヘルプ
 pdb2reaction <subcommand> --help
 
-# 詳細オプション（dry-run、内部チューニング等）
+# 詳細オプション（内部チューニング用）
 pdb2reaction <subcommand> --help-advanced
 ```
 

@@ -1,7 +1,9 @@
 # Getting Started
 
-<img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
+::::{container} p2r-intro
+<img src="./overview.png" alt="pdb2reaction workflow overview" class="p2r-intro-figure">
 
+:::{container} p2r-intro-text
 `pdb2reaction` is a Python command-line toolkit that uses machine-learning interatomic potentials (MLIPs) to **search automatically for candidate enzyme reaction pathways, starting from PDB / mmCIF structures**.
 
 The MLIPs are neural networks trained on DFT data. They approximate a DFT-level potential energy surface at a tiny fraction of the cost, which makes pathway searches fast.
@@ -13,6 +15,8 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 `Scientific status: success` near the end of the terminal output means that every requested stage converged.
+:::
+::::
 
 ---
 

@@ -1,7 +1,9 @@
 # はじめに
 
-<img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
+::::{container} p2r-intro
+<img src="../overview.png" alt="pdb2reaction workflow overview" class="p2r-intro-figure">
 
+:::{container} p2r-intro-text
 `pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を活用し、**PDB / mmCIF 構造から酵素の反応経路候補を自動探索する** Python 製 CLI ツールキットです。
 
 DFT（密度汎関数法）の計算データを学習したニューラルネットワークを用いることで、DFT レベルのポテンシャルエネルギー曲面をごくわずかな計算コストで近似し、高速な経路探索を実現します。
@@ -13,6 +15,8 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 端末の出力の最後のほうに `Scientific status: success` と出れば、求めた段はすべて収束しています。
+:::
+::::
 
 ---
 

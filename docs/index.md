@@ -298,7 +298,7 @@ pdb2reaction --help
 # Command help
 pdb2reaction <subcommand> --help
 
-# Advanced options (dry-run, internal tuning, etc.)
+# Advanced options (internal tuning)
 pdb2reaction <subcommand> --help-advanced
 ```
 

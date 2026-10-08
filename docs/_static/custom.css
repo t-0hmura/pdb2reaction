@@ -1364,3 +1364,34 @@ html {
         padding: 0 0.9rem;
     }
 }
+
+/* Getting Started: the overview figure above the opening text, at most 46rem wide; on wide
+   screens the text on the left and the figure on the right, as in the top-page hero. */
+article .p2r-intro img.p2r-intro-figure {
+    display: block;
+    max-width: min(100%, 46rem);
+    height: auto;
+    margin: 0 auto 1.2rem;
+}
+
+@media (min-width: 112.5em) {
+    article .p2r-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        column-gap: 2.25rem;
+        align-items: center;
+    }
+
+    article .p2r-intro img.p2r-intro-figure {
+        grid-column: 2;
+        grid-row: 1;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    article .p2r-intro > .p2r-intro-text {
+        grid-column: 1;
+        grid-row: 1;
+        min-width: 0;
+    }
+}
