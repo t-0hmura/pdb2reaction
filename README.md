@@ -30,12 +30,15 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ---
 
-- Start from **two or more structures** along the reaction, from **one structure with a staged bond scan** (`--scan-lists`), or from **one TS candidate** (`--tsopt`).
-- With `-c`, an **active-site cluster model** is cut from the PDB/mmCIF file, each cut bond is capped with a hydrogen, and the total charge is counted; without `-c`, your own model is used as it is.
-- **Multi-step reactions** are split into segments by a recursive MEP search, and each segment is refined (`--refine-path`).
-- The MLIP is **UMA** by default; **ORB**, **MACE**, and **AIMNet2** are available with `-b`.
-- A TS found with the MLIP can be taken into **GPU-accelerated DFT** (GPU4PySCF) for TS optimization → IRC → endpoint optimization → frequencies. See [DFT backend](docs/dft-backend.md).
-- Every stage is also an [individual subcommand](#cli-subcommands), and each run writes `summary.json` for scripts, HPC jobs, and AI agents.
+- In **Endpoint mode**, you give two or more structures along the reaction (R, P, and any intermediates), and the MEP search connects the structural changes between them across the potential energy surface to find the TS. When a reaction coordinate is hard to define, build the intermediates or products yourself in PyMOL or GaussView; without a predefined coordinate, the search may also show mechanism candidates you did not expect.
+- With `--refine-path`, the recursive MEP search splits the path where bonds form or break, so each step of a multi-step reaction gets its own TS candidate.
+- In **Scan-list mode**, you start from one structure (a reactant, intermediate, or product), define the reaction coordinate yourself with atom indices or PDB atom IDs, and drive bond distances or angles to target values to build the structures of the next step. Because you choose the coordinate, the rest of the model changes less and the intended TS is easier to reach.
+- In **TS-only mode**, you give a TS candidate and the TS search starts directly.
+- `-c` names the active site or catalytic residues. Give only the substrate charges with `-l`; the total charge of the model is set automatically.
+- The MLIP is chosen with `-b`: UMA, ORB, MACE, or AIMNet2.
+- Once the MLIP gives a plausible path and TS, switch the backend with `-b dft` to run TS optimization and IRC with DFT (GPU4PySCF) in the same tool. See [DFT backend](docs/dft-backend.md).
+- Each stage, and many other functions, can be called as [subcommands](#cli-subcommands).
+- The bundled [agent skills](#agent-skills) let AI agents run pdb2reaction, which can raise the throughput of reaction-mechanism studies.
 
 ## Installation
 
