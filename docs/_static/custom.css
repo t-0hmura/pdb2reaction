@@ -845,14 +845,14 @@ article.p2r-home {
     background: linear-gradient(90deg, #7BA3D7, #2E5B96 60%, #1B365D);
 }
 
-/* The overview figure stays at the width of the text column (about 690 px here). */
+/* The overview figure fills the text column up to 46rem, then stays centred at that width. */
 .p2r-hero img.p2r-hero-figure {
     display: block;
     box-sizing: border-box;
     width: 100%;
-    max-width: 100%;
+    max-width: min(100%, 46rem);
     height: auto;
-    margin: 0.15rem 0 0;
+    margin: 0.15rem auto 0;
     padding: 0.6rem;
     background: #fff;
     border-radius: 12px;
@@ -1260,4 +1260,65 @@ body[data-theme="dark"] .p2r-wordmark {
 
 .sidebar-tree .p2r-home-list {
     margin-bottom: 0.4rem;
+}
+
+/* ==========================================================================
+   Fluid layout: the sidebar sits on the left edge and the table of contents on
+   the right edge at fixed widths; the article column takes the rest (text up to
+   72rem wide, centred in it). Text grows slightly on large screens.
+   ========================================================================== */
+:root {
+    --p2r-side-w: 17.5rem;
+    --p2r-toc-w: 15.5rem;
+}
+
+html {
+    font-size: clamp(16px, calc(14px + 0.15vw), 18px);
+}
+
+@media (min-width: 63em) {
+    .p2r-topbar {
+        grid-template-columns: var(--p2r-side-w) minmax(0, 1fr) auto;
+    }
+
+    .p2r-topbar-left {
+        justify-self: start;
+        width: var(--p2r-side-w);
+    }
+
+    .sidebar-drawer {
+        width: var(--p2r-side-w);
+        min-width: var(--p2r-side-w);
+        justify-content: flex-start;
+    }
+
+    .sidebar-container {
+        width: 100%;
+    }
+
+    /* let the main row shrink to the window (large figures must not widen it) */
+    .main {
+        min-width: 0;
+    }
+
+    .main .content {
+        width: auto;
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 clamp(1.5rem, 3vw, 4rem);
+    }
+
+    .content > .article-container,
+    .content > footer {
+        width: 100%;
+        max-width: 72rem;
+        margin-inline: auto;
+    }
+}
+
+@media (min-width: 82em) {
+    .toc-drawer {
+        width: var(--p2r-toc-w);
+        min-width: var(--p2r-toc-w);
+    }
 }
