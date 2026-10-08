@@ -30,13 +30,12 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ---
 
-Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
-
-The run writes the R / TS / P structures, energy diagrams, and `summary.log` / `summary.json` to `result_all/`.
-
-Protein structures can be supplied in **PDB** or **mmCIF** format, including mmCIF files with multi-character chains and large residue IDs. Small molecules are accepted in PDB, mmCIF, **XYZ**, or **GJF** format, and prebuilt cluster models can also be supplied as PDB/mmCIF.
-
-Once MLIP finds a plausible path, pdb2reaction can take that TS straight into DFT TS optimization: the TS optimization → IRC → endpoint optimization → frequency workflow runs as GPU-accelerated DFT with GPU4PySCF. See [DFT backend](docs/dft-backend.md).
+- Start from **two or more structures** along the reaction, from **one structure with a staged bond scan** (`--scan-lists`), or from **one TS candidate** (`--tsopt`).
+- With `-c`, an **active-site cluster model** is cut from the PDB/mmCIF file, each cut bond is capped with a hydrogen, and the total charge is counted; without `-c`, your own model is used as it is.
+- **Multi-step reactions** are split into segments by a recursive MEP search, and each segment is refined (`--refine-path`).
+- The MLIP is **UMA** by default; **ORB**, **MACE**, and **AIMNet2** are available with `-b`.
+- A TS found with the MLIP can be taken into **GPU-accelerated DFT** (GPU4PySCF) for TS optimization → IRC → endpoint optimization → frequencies. See [DFT backend](docs/dft-backend.md).
+- Every stage is also an [individual subcommand](#cli-subcommands), and each run writes `summary.json` for scripts, HPC jobs, and AI agents.
 
 ## Installation
 
