@@ -242,7 +242,7 @@ ja/architecture
 ### Hardware
 
 - **OS:** Linux.
-- **GPU (recommended):** an NVIDIA driver compatible with the backend and PyTorch wheel. CPU execution is also supported but slower.
+- **GPU:** an NVIDIA driver compatible with the backend and PyTorch wheel. CPU execution is also supported but slower.
 - **VRAM / RAM:** depends on the model, the system size, and the Hessian mode; measure the peak on a representative run.
 
 ### Software
@@ -259,7 +259,7 @@ To install them, tell your AI agent:
 
 > Import `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` as skills, and install pdb2reaction by following `pdb2reaction-install-backends`.
 
-If you cloned the repository, you can give the local `skills/` path instead. Then you can ask, for example:
+If you cloned the GitHub repository, you can give the local `skills/` path instead. Then you can ask, for example:
 
 > Read *the paper*, build a model from the PDB structure *PDB ID*, and study the mechanism of *the reaction step* with the pdb2reaction skills.
 

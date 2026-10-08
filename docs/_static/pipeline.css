@@ -371,7 +371,32 @@ article .p2r-badge__cmds a.is-current code {
 
 .p2r-deco .sidebar-tree a[data-p2r-stage="all"]::before,
 .p2r-deco article td:first-child a[data-p2r-stage="all"]::before {
-    background: var(--p2r-navy);
+    background: var(--p2r-blue);
+    opacity: 1;
+}
+
+/* a small neutral mark on the other sidebar entries (introduction, quick start, guides, reference);
+   the current page takes the brand colour */
+.p2r-deco .sidebar-tree li.toctree-l1:not(.p2r-home) > a.reference:not([data-p2r-stage]) {
+    padding-left: calc(var(--sidebar-item-spacing-horizontal) - 0.1rem + 0.85rem);
+    text-indent: -0.85rem;
+}
+
+.p2r-deco .sidebar-tree li.toctree-l1:not(.p2r-home) > a.reference:not([data-p2r-stage])::before {
+    content: "";
+    display: inline-block;
+    width: 0.32rem;
+    height: 0.32rem;
+    margin-right: 0.53rem;
+    vertical-align: 0.14em;
+    border-radius: 50%;
+    background: var(--color-foreground-muted);
+    opacity: 0.6;
+}
+
+.p2r-deco .sidebar-tree li.toctree-l1.current-page:not(.p2r-home) > a.reference:not([data-p2r-stage])::before {
+    background: var(--color-brand-primary);
+    opacity: 1;
 }
 
 .p2r-deco .sidebar-tree a[data-p2r-stage="none"]::before,

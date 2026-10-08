@@ -102,7 +102,7 @@ orphan: true
 
 ### ハードウェア
 - **OS**: Linux
-- **GPU（本番計算で推奨）**: 使用するバックエンドと PyTorch wheel に対応する NVIDIA ドライバー。CPU のみでも実行可能ですが低速です
+- **GPU**: 使用するバックエンドと PyTorch wheel に対応する NVIDIA ドライバー。CPU のみでも実行可能ですが低速です
 - **VRAM / RAM**: モデル、系の大きさ、Hessian の計算方式で変わります。代表的な計算で最大使用量を測ってください
 
 ### ソフトウェア
@@ -117,7 +117,7 @@ orphan: true
 
 > `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install-backends` の手順に従って pdb2reaction をインストールして
 
-clone 済みなら、URL の代わりに手元の `skills/` の path を渡しても構いません。導入した後は、たとえば次のように頼めます。
+GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `skills/` の path を渡しても構いません。導入した後は、たとえば次のように頼めます。
 
 > 〈論文〉を読んで、〈PDB ID〉の構造からモデルを作成し、〈反応段階〉の経路について、pdb2reaction のスキルを用いて反応機構解析を行ってください。
 

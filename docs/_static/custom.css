@@ -800,23 +800,28 @@ article.p2r-home {
 .p2r-hero-meta a {
     display: inline-flex;
     align-items: center;
-    gap: 0.38rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-foreground-secondary);
+    gap: 0.45rem;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid var(--p2r-border-strong);
+    border-radius: 999px;
+    background: var(--p2r-surface);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-foreground-primary);
     text-decoration: none;
-    transition: color 0.15s ease;
+    transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .p2r-hero-meta a:hover {
     color: var(--color-brand-primary);
+    border-color: color-mix(in srgb, var(--p2r-navy) 45%, var(--p2r-border-strong));
 }
 
 .p2r-hero-meta a::before {
     content: "";
     flex: none;
-    width: 0.95rem;
-    height: 0.95rem;
+    width: 1.05rem;
+    height: 1.05rem;
     background-color: currentColor;
     -webkit-mask: var(--p2r-icon) center / contain no-repeat;
     mask: var(--p2r-icon) center / contain no-repeat;

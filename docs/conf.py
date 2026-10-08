@@ -167,6 +167,7 @@ html_theme_options = {
         'p2r-rose': '#B0396E',
         'p2r-on-stage': '#FFFFFF',
         'p2r-tint': '#EEF3FA',
+        'p2r-blue': '#1F6FEB',   # the dot of `all` in the sidebar and tables
         'p2r-tint-strong': '#DCE7F5',
         'p2r-hero-from': '#F3F7FD',
         'p2r-hero-to': '#E3ECF8',
@@ -236,6 +237,7 @@ html_theme_options = {
         'p2r-rose': '#F29BC2',
         'p2r-on-stage': '#0D131F',
         'p2r-tint': '#16233A',
+        'p2r-blue': '#58A6FF',
         'p2r-tint-strong': '#1D2D49',
         'p2r-hero-from': '#121D31',
         'p2r-hero-to': '#0F182A',
