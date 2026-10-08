@@ -99,10 +99,9 @@ _FONTS = {
 p2r_pipeline = [
     {'id': 'prep', 'en': 'Preparing the input', 'ja': '入力の準備',
      'pages': ['extract', 'fix-altloc', 'add-elem-info'], 'color': 'navy', 'icon': 'extract'},
-    # Scan comes right before the MEP search and only the Scan-list mode goes through it
-    # (optional: drawn with a dashed ring).
+    # Scan comes right before the MEP search; only the Scan-list mode goes through it.
     {'id': 'scan', 'en': 'Scan', 'ja': 'スキャン',
-     'pages': ['scan', 'scan2d', 'scan3d'], 'color': 'scan', 'icon': 'scan', 'optional': True},
+     'pages': ['scan', 'scan2d', 'scan3d'], 'color': 'scan', 'icon': 'scan'},
     {'id': 'path', 'en': 'Building the path', 'ja': '経路の作成',
      'pages': ['path-opt', 'path-search'], 'color': 'green', 'icon': 'mep'},
     {'id': 'ts', 'en': 'Optimizing the TS', 'ja': 'TS の最適化',
@@ -121,7 +120,7 @@ p2r_icon_set = 'u50'
 # Stages of each numbered step of "How it works" in all.md (step 5 covers two).
 p2r_all_steps = [['prep'], ['scan', 'path'], ['ts'], ['irc'], ['thermo', 'dft']]
 p2r_pipeline_all = 'all'      # the page that runs every stage (label: its title)
-p2r_pipeline_all_label = {'en': 'end-to-end workflow', 'ja': '一括ワークフロー'}
+p2r_pipeline_all_label = {'en': 'End-to-end workflow', 'ja': '一気通貫ワークフロー'}
 
 # Stage decorations: stage dots in the sidebar, tables and headings, and the hairline in the
 # stage colours under the top bar (pipeline.css, under the html class p2r-deco).

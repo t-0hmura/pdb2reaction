@@ -30,7 +30,7 @@
 <div class="p2r-strip" style="--p2r-n: {{ p2r_pipeline|length }}">
   <ol class="p2r-strip__steps">
     {%- for s in p2r_pipeline %}
-    <li class="p2r-strip__step{% if s.optional %} p2r-strip__step--optional{% endif %}" style="--p2r-c: var(--p2r-{{ s.id }})">
+    <li class="p2r-strip__step" style="--p2r-c: var(--p2r-{{ s.id }})">
       <a class="p2r-strip__icon" href="{{ pathto(prefix ~ s.pages[0]) }}" tabindex="-1" aria-hidden="true"><span class="p2r-ico p2r-ico--{{ s.id }}"></span></a>
       <div class="p2r-strip__body">
         <a class="p2r-strip__label" href="{{ pathto(prefix ~ s.pages[0]) }}"><span class="p2r-strip__num">{{ loop.index }}</span>{{ label(s, is_ja) }}</a>
@@ -41,7 +41,7 @@
     </li>
     {%- endfor %}
   </ol>
-  <a class="p2r-strip__all" href="{{ pathto(prefix ~ p2r_pipeline_all) }}"><code>{{ p2r_pipeline_all }}</code><span>{{ p2r_pipeline_all_label.ja if is_ja else p2r_pipeline_all_label.en }}</span></a>
+  <a class="p2r-strip__all" href="{{ pathto(prefix ~ p2r_pipeline_all) }}"><span>{{ p2r_pipeline_all_label.ja if is_ja else p2r_pipeline_all_label.en }}</span><code>{{ p2r_pipeline_all }}</code></a>
 </div>
 {%- endmacro -%}
 

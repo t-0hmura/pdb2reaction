@@ -131,8 +131,8 @@ body[data-lang="ja"] .p2r-strip__label {
 
 .p2r-strip__cmds {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     gap: 0.25rem;
     margin-top: 0.45rem;
 }
@@ -165,7 +165,7 @@ body[data-lang="ja"] .p2r-strip__label {
     gap: 0.6rem;
     margin-top: 1.1rem;
     padding: 0.5rem 1rem;
-    border: 1.5px solid transparent;
+    border: 2.5px solid transparent;
     border-radius: 999px;
     background:
         linear-gradient(color-mix(in srgb, var(--color-background-primary) 90%, transparent),
@@ -185,6 +185,10 @@ body[data-lang="ja"] .p2r-strip__label {
 }
 
 .p2r-strip__all code {
+    padding: 0.1rem 0.6rem;
+    border: 1.5px solid color-mix(in srgb, var(--p2r-navy) 45%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p2r-navy) 7%, var(--color-background-primary));
     font-size: 0.85rem;
     font-weight: 700;
 }
@@ -367,7 +371,7 @@ article .p2r-badge__cmds a.is-current code {
 
 .p2r-deco .sidebar-tree a[data-p2r-stage="all"]::before,
 .p2r-deco article td:first-child a[data-p2r-stage="all"]::before {
-    background: var(--p2r-gradient);
+    background: var(--p2r-navy);
 }
 
 .p2r-deco .sidebar-tree a[data-p2r-stage="none"]::before,
@@ -467,7 +471,7 @@ article .p2r-badge__cmds a.is-current code {
     }
 
     .p2r-strip__cmds {
-        justify-content: flex-start;
+        align-items: flex-start;
     }
 }
 
@@ -526,11 +530,6 @@ article .p2r-badge__cmds a.is-current code {
     border: 1px solid var(--color-background-border);
     border-radius: 16px;
     background: var(--color-background-secondary);
-}
-
-/* A stage that only some input modes go through (scan: Scan-list mode). */
-.p2r-strip__step--optional .p2r-strip__icon {
-    border-style: dashed;
 }
 
 /* Seven stages (with scan) fit one row of an entry card. */
