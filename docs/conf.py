@@ -388,11 +388,24 @@ def _p2r_icon_css(app, exception):
     (Path(app.outdir) / '_static' / 'p2r-icons.css').write_text('\n'.join(rules) + '\n', encoding='utf-8')
 
 
-_NAV_CMD = re.compile(r'(<a class="[^"]*reference internal[^"]*" href="[^"]*")(>)(<code[^>]*>.*?</code>)\s*([（(][^<]*[）)])(</a>)', re.S)
+# The <code> part stays inside one link, so a match never runs on into the next entries.
+_NAV_CMD = re.compile(r'(<a class="[^"]*reference internal[^"]*" href="[^"]*")(>)(<code[^>]*>(?:(?!</a>).)*?</code>)\s*([（(][^<]*[）)])(</a>)', re.S)
+
+# Hover text of the quick-start entries, whose mode names alone do not say what they are for
+# (the purposes on the entry cards of the top page).
+p2r_nav_purpose = {
+    'quickstart-all': 'Analyze the mechanism end to end from the structures before and after the reaction',
+    'quickstart-scan': 'Analyze the mechanism end to end from one structure',
+    'quickstart-tsopt': 'Analyze the mechanism end to end from a TS structure',
+    'ja/quickstart-all': '反応の前後の構造から反応機構解析を一気通貫で行う',
+    'ja/quickstart-scan': '1 つの構造から一気通貫で反応機構解析を行う',
+    'ja/quickstart-tsopt': 'TS 構造から一気通貫で反応機構解析を行う',
+}
 
 
 def _p2r_sidebar(app, pagename, templatename, context, doctree):
-    """Sidebar: a Home item on top, and command entries shown as the command name only.
+    """Sidebar: a Home item on top, command entries shown as the command name only, and the
+    purpose of each quick-start entry as its hover text (p2r_nav_purpose).
 
     A command entry "`extract`（...）" keeps its full title as the hover text (title attribute);
     the description stays in the markup but is hidden by CSS (.p2r-nav-desc).
@@ -407,6 +420,9 @@ def _p2r_sidebar(app, pagename, templatename, context, doctree):
                 f'<span class="p2r-nav-desc">{m.group(4)}</span>{m.group(5)}')
 
     tree = _NAV_CMD.sub(short, tree)
+    for doc, text in p2r_nav_purpose.items():
+        href = '#' if doc == pagename else context['pathto'](doc)
+        tree = tree.replace(f'href="{href}">', f'href="{href}" title="{html.escape(text, quote=True)}">', 1)
     is_ja = pagename.startswith('ja/')
     home = 'ja/index' if is_ja else master_doc
     cur = ' current current-page' if pagename == home else ''
