@@ -52,6 +52,7 @@ orphan: true
 | 目的 | ページ |
 |------|------|
 | **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
+| **小分子の反応機構を解析する** | [小分子の反応機構解析](small-molecules.md) |
 | **反応機構を調べる・TS が取れない** | [反応機構を調べるコツ](mechanism-tips.md) |
 | **求めた TS 構造を DFT で構造最適化する** | [求めた TS 構造を DFT で構造最適化する](dft-backend.md) |
 | **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
@@ -81,18 +82,18 @@ orphan: true
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
 | [`bond-summary`](bond-summary.md) | 連続構造間の共有結合変化を検出・レポート |
 
-## 設定・リファレンス
+## 設定・参照資料
 
 | トピック | ページ |
 |-------|------|
 | **共通オプションと入力要件** | [共通オプションと残基・原子の指定](cli-conventions.md) |
 | **原子の固定と距離の拘束（`--freeze-atoms`・`--distance-restraint`）** | {ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
-| **CLI コマンドリファレンス（英語のみ、自動生成）** | [コマンドリファレンス（英語のみ）](../reference/commands/index.md) |
-| **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
+| **CLI コマンドの一覧（英語のみ、自動生成）** | [コマンドの一覧（英語のみ）](../reference/commands/index.md) |
+| **YAML 設定オプション** | [YAML 設定の一覧](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP バックエンド](backends.md) |
 | **各コマンドが書き出すファイル** | [出力ディレクトリのレイアウト](output-layout.md) |
-| **`result.json` と `summary.json` の欄** | [JSON 出力リファレンス](json-output.md) |
+| **`result.json` と `summary.json` の欄** | [JSON 出力の一覧](json-output.md) |
 | **複数の GPU ノードで動かす（PBS + Ray）** | [HPC 実行例](hpc-example.md) |
 | **AI エージェントから呼ぶ（MCP）** | [MCP サーバー](mcp_server.md) |
 | **コードの構成（開発者向け）** | [アーキテクチャ](architecture.md) |

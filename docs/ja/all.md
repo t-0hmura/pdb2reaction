@@ -198,9 +198,9 @@ result_all/
 | `--dry-run/--no-dry-run` | フラグ | `False` | 計算をせずにオプションを確かめ、計画を表示。`-c` のときは一時ディレクトリで抽出を行い、電荷を確かめる |
 | `-o, --out-dir` | パス | `./result_all/` | 出力先ディレクトリ |
 
-全オプションの一覧は `pdb2reaction all --help-advanced` か [自動生成 CLI リファレンス](../reference/commands/all.md) を参照してください。
+全オプションは `pdb2reaction all --help-advanced` か [自動生成のオプションの一覧（英語のみ）](../reference/commands/all.md) を参照してください。
 
-> **補足:** YAML（`--config`）では、上の表のオプションに無い設定もできます。節とキーの一覧は [YAML 設定リファレンス](yaml-reference.md) にあります。
+> **補足:** YAML（`--config`）では、上の表のオプションに無い設定もできます。節とキーの一覧は [YAML 設定の一覧](yaml-reference.md) にあります。
 
 ---
 

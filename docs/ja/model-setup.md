@@ -102,6 +102,10 @@ pdb2reaction all -i cluster_R.pdb cluster_P.pdb -l 'LIG:+1' --tsopt --thermo
 - 切った後は電荷と多重度を数え直し、最小エネルギー経路（MEP）や Hessian の計算の前に境界を目で見ます。
 - 共有結合した補因子、修飾残基、金属の部位、上の決まりに合わない境界は、自動の切り出しの後に手で直します。
 
+## 切り出さずに酵素全体で計算する
+
+クラスターモデルを切り出さずに、酵素全体の構造で反応経路を見ることもできます。このときは [`path-opt`](path-opt.md)・[`path-search`](path-search.md) の GSM・DMF による最小エネルギー経路（MEP）の探索までで、虚振動 1 つの遷移状態（TS）は求められません。
+
 (ja-freeze-atoms-and-restraints)=
 ## 原子の固定と距離の拘束
 
@@ -163,6 +167,6 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 - [反応機構を調べるコツ](mechanism-tips.md) — モデルを広げるとき
 - [MLIP の TS を DFT で確かめる](dft-backend.md) — DFT で扱える大きさのモデル
 - [共通オプションと残基・原子の指定](cli-conventions.md) — 残基と原子の指定
-- [YAML 設定リファレンス](yaml-reference.md) — `geom.freeze_atoms` とほかの設定
+- [YAML 設定の一覧](yaml-reference.md) — `geom.freeze_atoms` とほかの設定
 - [トラブルシューティング](troubleshooting.md) — 切り出しのエラー
 - [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素

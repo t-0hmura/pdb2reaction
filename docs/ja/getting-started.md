@@ -132,7 +132,7 @@ pdb2reaction all [OPTIONS]...
 
 `--dft` には、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 で入れる DFT 用の追加パッケージが要ります。
 
-構文ルールの詳細は [共通オプションと残基・原子の指定](cli-conventions.md)、全オプションの一覧は [`all` の CLI リファレンス](../reference/commands/all.md) を参照してください。
+構文ルールの詳細は [共通オプションと残基・原子の指定](cli-conventions.md)、全オプションは [`all` のオプションの一覧（英語のみ）](../reference/commands/all.md) を参照してください。
 
 ---
 
@@ -161,7 +161,7 @@ mmCIF（`.cif`・`.mmcif`）と、残基が 10,000 以上や原子が 99,999 以
 
 ## 出力ファイルの構成
 
-実行が終わると、`-o` の出力ディレクトリに次のファイルができます。既定は `./result_all/` です。主なファイルは [出力ディレクトリのレイアウト](output-layout.md)、`summary.json` のすべての欄は {ref}`JSON 出力リファレンス <ja-summary-json-path-search-all>` にあります。
+実行が終わると、`-o` の出力ディレクトリに次のファイルができます。既定は `./result_all/` です。主なファイルは [出力ディレクトリのレイアウト](output-layout.md)、`summary.json` のすべての欄は {ref}`JSON 出力の一覧 <ja-summary-json-path-search-all>` にあります。
 
 | 出力ファイル / フォルダ | 内容 |
 | --- | --- |

@@ -87,9 +87,9 @@ pip install "pdb2reaction[mcp]"
 
 IRC と TS の引数は同じ名前の CLI オプションです。意味とデフォルトは各コマンドのページにあります。
 
-- `run_irc` — `step_size`・`never_stop`・`irc_pos_def`: [`irc`](irc.md)。`--irc-pos-def` は [自動生成 CLI リファレンス](../reference/commands/irc.md) にあります
+- `run_irc` — `step_size`・`never_stop`・`irc_pos_def`: [`irc`](irc.md)。`--irc-pos-def` は [自動生成のオプションの一覧（英語のみ）](../reference/commands/irc.md) にあります
 - `find_transition_state` — `opt_mode`: [`tsopt`](tsopt.md) の `--opt-mode`。デフォルトは `hess`（RS-P-RFO）です。{ref}`コマンドごとの --opt-mode <ja-opt-mode-semantics>` も参照してください
-- `run_full_pipeline` — `irc_step_size`・`irc_never_stop`・`flatten`・`refine_path`: [`all`](all.md)。`--irc-step-size` と `--irc-never-stop` は [自動生成 CLI リファレンス](../reference/commands/all.md) にあります
+- `run_full_pipeline` — `irc_step_size`・`irc_never_stop`・`flatten`・`refine_path`: [`all`](all.md)。`--irc-step-size` と `--irc-never-stop` は [自動生成のオプションの一覧（英語のみ）](../reference/commands/all.md) にあります
 
 ## クライアント設定
 
@@ -163,6 +163,6 @@ asyncio.run(main())
 
 ## 関連ドキュメント
 
-* [JSON 出力リファレンス](json-output.md) — ツールが返す状態の欄と `summary.json`
+* [JSON 出力の一覧](json-output.md) — ツールが返す状態の欄と `summary.json`
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処
-* [コマンドリファレンス（英語のみ）](../reference/commands/index.md) — 各ツールの元の CLI オプション（`extra_args` 用）
+* [コマンドの一覧（英語のみ）](../reference/commands/index.md) — 各ツールの元の CLI オプション（`extra_args` 用）

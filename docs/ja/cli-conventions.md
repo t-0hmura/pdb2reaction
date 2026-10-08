@@ -224,7 +224,7 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 
 ## CLI ↔ YAML 名称の不一致
 
-一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。主なフラグと YAML キーの対応は {ref}`YAML リファレンスの主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
+一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。主なフラグと YAML キーの対応は {ref}`YAML 設定の一覧の主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
 
 (ja-pressure-vs-pressure-atm)=
 - **`--pressure` (CLI) と `pressure_atm` (YAML)** — `freq` のフラグは `--pressure FLOAT`、`all` では `--freq-pressure` です。YAML キーは `thermo.pressure_atm` です。どちらも値は **atm** 単位で、内部で Pa に変換されます。
@@ -248,7 +248,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 組み込みデフォルト  <  --config (YAML)  <  CLI オプション
 ```
 
-各オプションの組み込みデフォルトは、`pdb2reaction <subcmd> --help-advanced` と [コマンドリファレンス（英語のみ）](../reference/commands/index.md) の `[default: …]` で確かめられます。YAML を上書きするのは*明示的に指定した* CLI の値だけで、CLI のデフォルトのままのオプションは YAML の値を隠しません。この順序は `--config` を受け付けるすべてのコマンドに共通です。全設定は [YAML リファレンス](yaml-reference.md) を参照してください。
+各オプションの組み込みデフォルトは、`pdb2reaction <subcmd> --help-advanced` と [コマンドの一覧（英語のみ）](../reference/commands/index.md) の `[default: …]` で確かめられます。YAML を上書きするのは*明示的に指定した* CLI の値だけで、CLI のデフォルトのままのオプションは YAML の値を隠しません。この順序は `--config` を受け付けるすべてのコマンドに共通です。全設定は [YAML 設定の一覧](yaml-reference.md) を参照してください。
 
 ## 出力ディレクトリ
 
@@ -269,4 +269,4 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 - [はじめに](getting-started.md) — 最短の実行と次に読むページ
 - [出力ディレクトリのレイアウト](output-layout.md) — ファイル名とデフォルトの出力ディレクトリ
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml-reference.md) — 全設定オプション
+- [YAML 設定の一覧](yaml-reference.md) — 全設定オプション

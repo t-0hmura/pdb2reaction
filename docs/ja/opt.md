@@ -127,9 +127,9 @@ result_opt/
 | `--stop-plateau/--no-stop-plateau` | フラグ | `False` | エネルギーが変わらなくなったら（直近 50 サイクルの幅が 1e-4 hartree 未満）止め、`stalled` と報告 |
 | `-o, --out-dir` | パス | `./result_opt/` | 出力先ディレクトリ |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/opt.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/opt.md) を参照してください。
 
-> **補足:** YAML（`--config`）では、`geom.freeze_atoms` で凍結する原子（1 始まり）を足せます。足した原子は `--freeze-links` と `--freeze-atoms` の原子と合わせて凍結されます。キーの一覧は YAML リファレンスの [`geom`](yaml-reference.md#geom)、[`opt`](yaml-reference.md#opt)、[`lbfgs`](yaml-reference.md#lbfgs)、[`rfo`](yaml-reference.md#rfo) にあります。
+> **補足:** YAML（`--config`）では、`geom.freeze_atoms` で凍結する原子（1 始まり）を足せます。足した原子は `--freeze-links` と `--freeze-atoms` の原子と合わせて凍結されます。キーは YAML 設定の一覧の [`geom`](yaml-reference.md#geom)、[`opt`](yaml-reference.md#opt)、[`lbfgs`](yaml-reference.md#lbfgs)、[`rfo`](yaml-reference.md#rfo) にあります。
 
 ---
 
@@ -139,7 +139,7 @@ result_opt/
 * **凍結原子があるときの剛体運動**: Cartesian 座標での RFO の曲率の確認と `--flatten` は、剛体運動を [`freq`](freq.md#凍結境界での剛体モード) と同じように扱います。L-BFGS には影響しません。
 * **凍結原子と拘束の全体**: クラスターモデルで凍結する原子や拘束の選び方は、{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
 * **オプティマイザの状態の書き出し**: `--dump` を付け、YAML の `opt.dump_restart` に正の整数 N を指定すると、N サイクルごとに `restart_NNN.yaml` を書きます。pdb2reaction はこのファイルを読み戻さないので、止まった計算は final geometry から `opt` をやり直してください。
-* **モデルと精度**: `--backend-model` でバックエンドのモデルを、`--precision` で精度（`fp32`・`fp64`）を選べます。詳しくは自動生成 CLI リファレンスを参照してください。
+* **モデルと精度**: `--backend-model` でバックエンドのモデルを、`--precision` で精度（`fp32`・`fp64`）を選べます。詳しくは自動生成のオプションの一覧（英語のみ）を参照してください。
 
 ---
 
@@ -151,6 +151,6 @@ result_opt/
 * [extract](extract.md) — 最適化の前に活性部位モデルを切り出す
 * [all](all.md) — IRC の端点の最適化まで含む一連のワークフロー
 * [トラブルシューティング](troubleshooting.md) — 実行が失敗したときの切り分け
-* [YAML リファレンス](yaml-reference.md) — `opt`、`lbfgs`、`rfo` のすべての設定
+* [YAML 設定の一覧](yaml-reference.md) — `opt`、`lbfgs`、`rfo` のすべての設定
 * [用語集](glossary.md) — L-BFGS、RFO などの用語
 * {ref}`終了コード <ja-exit-codes>` — 終了ステータスの意味

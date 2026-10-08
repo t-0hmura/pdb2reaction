@@ -161,11 +161,11 @@ result_tsopt/
 | `--coord-type` | `cart` / `redund` / `dlc` / `tric` | `cart` | 最適化に使う座標系：デカルト座標 / 冗長内部座標 / 非局在化内部座標（DLC）/ 並進・回転を含む内部座標（TRIC） |
 | `--config` | パス | `None` | コマンドラインのオプションより前に適用する YAML ファイル |
 | `--dump` | フラグ | `False` | 最適化の軌跡を書き出す |
-| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 
-全オプションは `pdb2reaction tsopt --help-advanced` または [自動生成 CLI リファレンス](../reference/commands/tsopt.md) を参照してください。
+全オプションは `pdb2reaction tsopt --help-advanced` または [自動生成のオプションの一覧（英語のみ）](../reference/commands/tsopt.md) を参照してください。
 
-> **補足:** YAML では、Dimer 法は `hessian_dimer:` ブロックを読み、RS-P-RFO・RS-I-RFO・TRIM は `rsirfo:` ブロックを共用します。キーの一覧は YAML リファレンスの [`rsirfo`](yaml-reference.md#rsirfo) と [`hessian_dimer`](yaml-reference.md#hessian_dimer) にあります。
+> **補足:** YAML では、Dimer 法は `hessian_dimer:` ブロックを読み、RS-P-RFO・RS-I-RFO・TRIM は `rsirfo:` ブロックを共用します。キーは YAML 設定の一覧の [`rsirfo`](yaml-reference.md#rsirfo) と [`hessian_dimer`](yaml-reference.md#hessian_dimer) にあります。
 
 > **補足:** 最適化の途中で反応モードが別の Hessian 固有ベクトル（root）に入れ替わる場合は、`rsirfo.track_mode_by_overlap: true` を設定してください。
 
@@ -211,6 +211,6 @@ flatten の回数は、Dimer 法でも RS-P-RFO・RS-I-RFO・TRIM でも、YAML 
 * [all](all.md) — 抽出・MEP・TS 最適化・IRC・振動解析を一度に実行するワークフロー
 * [反応機構を調べるコツ](mechanism-tips.md) — TS が取れないときに試すこと
 * [トラブルシューティング](troubleshooting.md) — 実行が失敗したときの切り分け
-* [YAML リファレンス](yaml-reference.md) — `rsirfo` と `hessian_dimer` のすべての設定
+* [YAML 設定の一覧](yaml-reference.md) — `rsirfo` と `hessian_dimer` のすべての設定
 * [用語集](glossary.md) — TS、Dimer、Hessian などの用語
 * {ref}`終了コード <ja-exit-codes>` — 終了ステータスの意味

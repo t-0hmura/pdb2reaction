@@ -150,7 +150,7 @@ IPOPT/MUMPS が並列版 BLIS を使う環境では、入れ子の並列化で�
 - **報告される内容**：RS-P-RFO・RS-I-RFO・TRIM・Dimer の TS 最適化が max cycles に達して未収束のときは Hessian を計算しないので、n_imag は出ません。エネルギーが変わらなくなって止まったときは、必ず Hessian を計算して n_imag を出します。
 - **最適化が収束しないときの対処**：次を順に試してください。
   1. オプティマイザを RS-P-RFO（既定）と Dimer 法の間で切り替える：単独では `tsopt --opt-mode hess` / `dimer`、`all` では `--opt-mode-post hess` / `grad`（Dimer）。
-  2. YAML でステップサイズを小さくする：RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.trust_radius` / `trust_min` / `trust_max`、Dimer では `hessian_dimer.lbfgs.max_step`。[YAML リファレンス](yaml-reference.md#ts-最適化セクション) を参照してください。
+  2. YAML でステップサイズを小さくする：RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.trust_radius` / `trust_min` / `trust_max`、Dimer では `hessian_dimer.lbfgs.max_step`。[YAML 設定の一覧](yaml-reference.md#ts-最適化セクション) を参照してください。
   3. 経路のよりよい HEI（最高エネルギーのイメージ）など、別の候補から始める。
 - **n_imag ≥ 2 が残るときの対処**：`--flatten` を付けて最適化し直すか、単独では `tsopt --thresh`、`all` では `--thresh-post` で、収束の基準を既定の `baker` から `gau_tight` か `gau_vtight` に締めてください。`--refine-path`、反応を段に分ける、初期構造を作り直すなどのほかの手は、{ref}`TS が取れないとき <ja-ts-search-fails>` にあります。
 

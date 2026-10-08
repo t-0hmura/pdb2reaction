@@ -141,9 +141,9 @@ result_scan2d/
 | `--baseline` | `min` / `first` | `min` | `energy_kcal` の 0 点：使える点の最小値、または点 `(0, 0)` |
 | `--zmin`, `--zmax` | 浮動小数点数 | 曲面の最小値 / 最大値 | カラースケールの下限と上限（kcal/mol） |
 | `--thresh` | 文字列 | `baker` | 各緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） |
-| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/scan2d.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/scan2d.md) を参照してください。
 
 ---
 

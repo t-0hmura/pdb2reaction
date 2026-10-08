@@ -197,9 +197,9 @@ calc = create_calculator(
 返される calculator は pysisyphus の calculator の形を持ちます。`get_energy`、`get_forces`、`get_hessian` は `(atoms: List[str], coords: np.ndarray)` を受け取り、coords は **Bohr** 単位です。戻り値は `"energy"`（Hartree）、`"forces"`（Hartree/Bohr）、`"hessian"`（Hartree/Bohr²）を持つ dict です。凍結原子の力は 0 になり、Hessian は動ける原子のブロック（`return_partial_hessian=True`）か、凍結原子の行と列を 0 にした全体の行列です。
 
 (ja-configuration-reference)=
-### 設定リファレンス
+### 設定の一覧
 
-calculator の主な引数です。YAML の `calc` 節のキーと同じです。xTB の溶媒のキーを含む `calc` のすべてのキーは [YAML 設定リファレンス › calc](yaml-reference.md#calc) にあります。
+calculator の主な引数です。YAML の `calc` 節のキーと同じです。xTB の溶媒のキーを含む `calc` のすべてのキーは [YAML 設定の一覧 › calc](yaml-reference.md#calc) にあります。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |

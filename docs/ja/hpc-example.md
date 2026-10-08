@@ -213,6 +213,6 @@ pdb2reaction は、最適化の各ステップ、経路の各イメージ、有�
 
 ## 関連ドキュメント
 
-- [MLIP バックエンド](backends.md) — 設定リファレンスと Hessian 評価モード
+- [MLIP バックエンド](backends.md) — 設定の一覧と Hessian 評価モード
 - [トラブルシューティング](troubleshooting.md) — ワーカーと解析 Hessian、GPU メモリなど、実行時のエラー
 - [opt](opt.md) · [tsopt](tsopt.md) · [irc](irc.md) · [freq](freq.md) · [sp](sp.md) · [all](all.md) · [path-opt](path-opt.md) · [path-search](path-search.md) · [scan](scan.md) · [scan2d](scan2d.md) · [scan3d](scan3d.md) — `--uma-workers` / `--uma-workers-per-node` を取るサブコマンド

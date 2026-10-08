@@ -126,7 +126,7 @@ PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイル�
 | `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力のみ） |
 | `--climb/--no-climb` | フラグ | `True` | 反応区間で GSM のクライミングイメージ探索を行う。接続経路では常に行わない |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/path_search.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/path_search.md) を参照してください。
 
 > **補足:** YAML（`--config`）では、`--max-depth` を指定しないときに `search.max_depth` が階層の上限になり、`search.kink_max_nodes`（デフォルト `3`）がねじれに入れるノードの数を、`bond.bond_factor`（デフォルト `1.20`）が結合の変化の判定に使う共有結合半径の倍率を決めます。
 
@@ -150,7 +150,7 @@ PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイル�
 * [tsopt](tsopt.md) — 区間ごとの HEI から TS を最適化
 * [extract](extract.md) — 入力に使う活性部位モデルの PDB を作る
 * [all](all.md) — 一貫実行のワークフロー。`all --refine-path` で MEP の段に `path-search` を使います
-* [YAML リファレンス](yaml-reference.md) — `search`・`bond`・`gs`・`dmf` の全設定
+* [YAML 設定の一覧](yaml-reference.md) — `search`・`bond`・`gs`・`dmf` の全設定
 * [用語集](glossary.md) — MEP、GSM、DMF、HEI、ねじれなどの用語
 * [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法
 * {ref}`終了コード <ja-exit-codes>` — 終了コードの意味

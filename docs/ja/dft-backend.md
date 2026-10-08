@@ -75,9 +75,9 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 | `--dft/--no-dft` | R・TS・P に DFT の一点計算を足します（`all` だけ）。 | `--no-dft` |
 | `--dft-solvent TEXT`、`--dft-solvent-model [pcm\|smd]` | `--dft` の一点計算だけの連続溶媒です。`--dft` なしで指定するとエラーで止まります。 | `none`、`smd` |
 
-ほかの DFT のオプションは [`all` のリファレンス](../reference/commands/all.md)にあります。
+ほかの DFT のオプションは [`all` のオプションの一覧（英語のみ）](../reference/commands/all.md)にあります。
 
-> **補足:** YAML では、`-b dft` の設定は `calc.dft` に書き、`--dft` の一点計算は `dft` コマンドと同じく最上位の `dft` セクションを読みます。どちらのブロックでも、`pyscf` で PySCF のオブジェクトに名前ごとに属性を渡せます。たとえば収束しにくい SCF には、`calc.dft.pyscf` か `dft.pyscf` の下に `mf: {level_shift: 0.2}` と書きます。キーの一覧は [YAML 設定リファレンス](yaml-reference.md#calc)と {ref}`dft セクション <ja-dft-section>` にあります。
+> **補足:** YAML では、`-b dft` の設定は `calc.dft` に書き、`--dft` の一点計算は `dft` コマンドと同じく最上位の `dft` セクションを読みます。どちらのブロックでも、`pyscf` で PySCF のオブジェクトに名前ごとに属性を渡せます。たとえば収束しにくい SCF には、`calc.dft.pyscf` か `dft.pyscf` の下に `mf: {level_shift: 0.2}` と書きます。キーの一覧は [YAML 設定の一覧](yaml-reference.md#calc)と {ref}`dft セクション <ja-dft-section>` にあります。
 
 ## 使用上の注意点
 

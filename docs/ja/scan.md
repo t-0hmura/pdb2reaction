@@ -185,9 +185,9 @@ PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz
 | `--dump/--no-dump` | フラグ | `False` | 各ステップの最適化の軌跡を出力 |
 | `--opt-mode` | `grad` / `hess` | `grad` | 緩和の方法：L-BFGS / RFO（`tsopt` では同じ語が別の最適化法を指す。{ref}`コマンドごとの --opt-mode <ja-opt-mode-semantics>` を参照） |
 | `--freeze-links/--no-freeze-links` | フラグ | `True` | クラスター境界のキャップ水素の親原子を自動凍結 |
-| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/scan.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/scan.md) を参照してください。
 
 ---
 

@@ -59,7 +59,7 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 
 ## 主な出力ファイル
 
-`bond-summary` はファイルを書き出しません。連続する組ごとのテキストブロックを、実行例 1 の形で標準出力に表示します。原子は元素と原子インデックス（デフォルトは 1 始まり）で示します。`--json` では代わりに JSON を標準出力に表示し、`scientific_status`、`execution_status`、組ごとの `structure_a`・`structure_b`・`bonds_formed`・`bonds_broken`（件数）を持ちます。[JSON 出力リファレンス](json-output.md#bond-summary)を参照してください。保存したいときは標準出力をリダイレクトしてください。
+`bond-summary` はファイルを書き出しません。連続する組ごとのテキストブロックを、実行例 1 の形で標準出力に表示します。原子は元素と原子インデックス（デフォルトは 1 始まり）で示します。`--json` では代わりに JSON を標準出力に表示し、`scientific_status`、`execution_status`、組ごとの `structure_a`・`structure_b`・`bonds_formed`・`bonds_broken`（件数）を持ちます。[JSON 出力の一覧](json-output.md#bond-summary)を参照してください。保存したいときは標準出力をリダイレクトしてください。
 
 ---
 
@@ -72,7 +72,7 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 | `--json/--no-json` | フラグ | `False` | テキストの代わりに JSON を標準出力に表示 |
 | `--one-based/--zero-based` | フラグ | `--one-based` | 報告での原子の番号付け |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/bond_summary.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/bond_summary.md) を参照してください。
 
 ---
 

@@ -42,6 +42,7 @@ TS-only mode <quickstart-tsopt>
 :hidden:
 
 model-setup
+small-molecules
 mechanism-tips
 dft-backend
 troubleshooting
@@ -114,6 +115,7 @@ TS-only モード <ja/quickstart-tsopt>
 :hidden:
 
 ja/model-setup
+ja/small-molecules
 ja/mechanism-tips
 ja/dft-backend
 ja/troubleshooting
@@ -191,6 +193,7 @@ ja/architecture
 | Goal | Page |
 |------|------|
 | **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
+| **Analyze a small-molecule reaction** | [Small-molecule reactions](small-molecules.md) |
 | **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
 | **Optimize the TS structure with DFT** | [Optimize the TS structure with DFT](dft-backend.md) |
 | **A run failed** | [Troubleshooting](troubleshooting.md) |

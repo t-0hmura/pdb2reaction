@@ -80,7 +80,7 @@ result_dft/
 * **`energy`**（`result.yaml`）: `hartree`・`kcal_per_mol`・`converged`・`used_gpu`・`used_lowmem`・`engine`。`engine` は `gpu4pyscf(rks_lowmem)`・`gpu4pyscf`・`pyscf(cpu)` のいずれかです。
 * **`charges [index, element, mulliken, lowdin, iao]`**: 1 原子 1 行の表で、`index` は 0 始まりです。端末にも同じ表が出ます。
 * **`spin_densities [index, element, mulliken, lowdin, iao]`**: 同じ形の表です。閉殻でも書き出し（値はすべて 0）、端末には開殻のときだけ表示します。
-* **`result.json`**: 電荷とスピン密度を `mulliken`・`lowdin`・`iao` の配列で持ち、電荷・多重度・汎関数・基底・SCF の設定も記録します。[JSON 出力リファレンス](json-output.md#dft) を参照してください。
+* **`result.json`**: 電荷とスピン密度を `mulliken`・`lowdin`・`iao` の配列で持ち、電荷・多重度・汎関数・基底・SCF の設定も記録します。[JSON 出力の一覧](json-output.md#dft) を参照してください。
 
 ---
 
@@ -104,7 +104,7 @@ result_dft/
 | `--dft-memory` | 文字列 | auto | PySCF のホスト RAM の上限（例: `64GB`）。GPU メモリではない |
 | `-o, --out-dir` | パス | `./result_dft/` | 出力先ディレクトリ |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/dft.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/dft.md) を参照してください。
 
 > **補足:** YAML（`--config`）では、{ref}`dft <ja-dft-section>` の節で同じ設定を指定できます。`dft.pyscf` は PySCF のオブジェクトに属性を名前で渡し、SCF が収束しにくいときは `pyscf: {mf: {level_shift: 0.2}}` のように使えます。電荷と多重度は、ほかのコマンドと同じく `calc.charge`・`calc.spin` に書きます。`calc.spin` は多重度 2S+1 で、PySCF の 2S ではありません。優先されるのは、コマンドラインで指定した `-q`・`-l`・`-m`、YAML、`.gjf` のヘッダーの順です。
 

@@ -100,6 +100,10 @@ Use this list when you decide the boundary yourself, or when you check a model t
 - After cutting, count the charge and the multiplicity again, and inspect the boundary before any minimum-energy path (MEP) or Hessian calculation.
 - Covalently bound cofactors, modified residues, metal sites, and boundaries that do not fit these rules need hand edits after the automatic extraction.
 
+## Compute the whole enzyme without extraction
+
+You can also follow a reaction path on the whole enzyme structure without cutting out a cluster model. This is limited to the minimum energy path (MEP) search with GSM or DMF in [`path-opt`](path-opt.md) / [`path-search`](path-search.md); a transition state (TS) with one imaginary mode cannot be obtained.
+
 (freeze-atoms-and-restraints)=
 ## Freeze atoms and restrain distances
 

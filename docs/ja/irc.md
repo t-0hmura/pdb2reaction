@@ -132,12 +132,12 @@ result_irc/
 | `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | 最初の Hessian の計算方法 |
 | `--read-hess` | パス | `None` | Hessian を計算せず、`.npy` ファイル（`freq` や `tsopt --dump-hess` で書いたものなど）から読んで始める |
 | `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力または `--ref-pdb`） |
-| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力リファレンス](json-output.md)） |
+| `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 | `-o, --out-dir` | パス | `./result_irc/` | 出力先ディレクトリ |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/irc.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/irc.md) を参照してください。
 
-> **補足:** YAML（`--config`）の `irc` ブロックのキーは、停止の閾値も含めて YAML リファレンスの {ref}`irc <ja-irc-section>` にすべて載っています。
+> **補足:** YAML（`--config`）の `irc` ブロックのキーは、停止の閾値も含めて YAML 設定の一覧の {ref}`irc <ja-irc-section>` にすべて載っています。
 
 ---
 
@@ -169,6 +169,6 @@ result_irc/
 * [freq](freq.md) — 振動解析と熱化学補正
 * [all](all.md) — `tsopt` の後に IRC を実行し、端点まで最適化する一連のワークフロー
 * [トラブルシューティング](troubleshooting.md) — 実行が失敗したときの切り分け
-* [YAML リファレンス](yaml-reference.md) — `irc` のすべての設定
+* [YAML 設定の一覧](yaml-reference.md) — `irc` のすべての設定
 * [用語集](glossary.md) — IRC などの用語
 * {ref}`終了コード <ja-exit-codes>` — 終了ステータスの意味

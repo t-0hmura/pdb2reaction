@@ -129,6 +129,6 @@ result_scan/
 - [反応機構を調べるコツ](mechanism-tips.md): 反応の段の分け方（「反応の分け方を決める」）
 - {ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>`: 拘束の強さの意味
 - [`scan`](scan.md): スキャンを単独で実行する
-- [`all`](all.md): 全オプションのリファレンス。`pdb2reaction all --help-advanced` でも見られます
+- [`all`](all.md): オプションの説明。`pdb2reaction all --help-advanced` でも見られます
 - [用語集](glossary.md): MEP・TS・IRC などの用語
 - [トラブルシューティング](troubleshooting.md): エラーメッセージや症状から対処を探す

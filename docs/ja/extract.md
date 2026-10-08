@@ -123,7 +123,7 @@ pdb2reaction extract -i complex.pdb -c 'A:SUB:301' -o model.pdb \
 | 複数 | 1 つ | マルチ MODEL の PDB 1 つ |
 | 複数 | 入力と同じ数 | 入力ごとに PDB 1 つ |
 
-`-o` がこれ以外の数だとエラーで止まります。出力先の親ディレクトリは自動で作られます。`result.json` には原子数・電荷・使った設定が入ります。各欄は [JSON 出力リファレンス](json-output.md) にあります。
+`-o` がこれ以外の数だとエラーで止まります。出力先の親ディレクトリは自動で作られます。`result.json` には原子数・電荷・使った設定が入ります。各欄は [JSON 出力の一覧](json-output.md) にあります。
 
 ---
 
@@ -144,7 +144,7 @@ pdb2reaction extract -i complex.pdb -c 'A:SUB:301' -o model.pdb \
 | `-l, --ligand-charge` | 文字列 | `None` | 未知の残基（リガンド）の電荷の合計か、残基名ごとの電荷（例: `'GPP:-3,SAM:1'`） |
 | `--out-json/--no-out-json` | フラグ | `False` | `result.json` と `summary.json` を書き出す |
 
-全オプションの一覧は [自動生成 CLI リファレンス](../reference/commands/extract.md) を参照してください。
+全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/extract.md) を参照してください。
 
 ---
 
