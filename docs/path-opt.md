@@ -1,6 +1,6 @@
 # `path-opt` (MEP between two structures)
 
-`path-opt` finds a minimum-energy path (MEP) between **exactly two** structures, a reactant and a product, in one pass with GSM (growing string method, the default) or DMF (direct max flux). It writes the highest-energy image (HEI) as a TS candidate.
+`path-opt` finds a minimum-energy path (MEP) between two structures, a reactant and a product, in one pass with GSM (growing string method, the default) or DMF (direct max flux). It writes the highest-energy image (HEI) as a TS candidate.
 
 ---
 
