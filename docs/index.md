@@ -19,14 +19,28 @@ New to pdb2reaction? Start with [Getting Started](getting-started.md).
 
 ```{toctree}
 :maxdepth: 2
-:caption: Guides
+:caption: Introduction
 :hidden:
 
 getting-started
 installation
-quickstart-all
-quickstart-scan
-quickstart-tsopt
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Quickstart
+:hidden:
+
+Endpoint mode <quickstart-all>
+Scan-list mode <quickstart-scan>
+TS-only mode <quickstart-tsopt>
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Guides
+:hidden:
+
 model-setup
 mechanism-tips
 dft-backend
@@ -77,14 +91,28 @@ architecture
 
 ```{toctree}
 :maxdepth: 2
-:caption: ガイド
+:caption: 導入
 :hidden:
 
 ja/getting-started
 ja/installation
-ja/quickstart-all
-ja/quickstart-scan
-ja/quickstart-tsopt
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: クイックスタート
+:hidden:
+
+Endpoint モード <ja/quickstart-all>
+Scan-list モード <ja/quickstart-scan>
+TS-only モード <ja/quickstart-tsopt>
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: ガイド
+:hidden:
+
 ja/model-setup
 ja/mechanism-tips
 ja/dft-backend
