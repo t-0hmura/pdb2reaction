@@ -1,6 +1,6 @@
 # Small-molecule reactions
 
-`pdb2reaction` also analyzes reaction paths of small molecules, not only enzyme cluster models. Give the reactant (R) and product (P) as XYZ/GJF/PDB/CIF structures and run `all` without `-c`; with no `-c`, the cluster-model extraction is skipped.
+`pdb2reaction` also analyzes reaction paths of small molecules, not only enzyme cluster models. Give the reactant (R) and product (P) as XYZ/GJF/PDB/CIF structures and run `all` without `-c`; with no `-c`, the cluster-model extraction is skipped and the input structures are analyzed as they are.
 
 ## First example
 
