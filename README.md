@@ -6,16 +6,31 @@
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more reaction-ordered structures, (ii) one structure with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it can run an **MEP search** and optionally chain **TS optimization → IRC → thermochemical correction → DFT single-point**.
+`pdb2reaction` is a Python CLI for elucidating **reaction pathways**, especially for enzymes, from **PDB/mmCIF/XYZ/GJF** structures using machine-learning interatomic potentials (MLIPs).
 
-Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
-
-Test a reaction mechanism in a single command:
+You can test a reaction mechanism in a **single command** like:
 
 ```bash
-# Multi-PDB mode (R + P endpoints → MEP, with TS optimization + thermo)
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
+
+Starting from the reactant (R) and product (P) structures, the command above runs:
+
+**Active-site cluster model setup → Minimum energy path (MEP) search → TS optimization → IRC → Thermochemistry**
+
+It also works for small molecules:
+
+```bash
+pdb2reaction all -i R.xyz P.xyz -q +1 --tsopt --thermo --dft
+```
+
+**MEP search → TS optimization → IRC → Thermochemistry → DFT single-point**
+
+Without `-c`, the input structures are used as they are; set the total charge with `-q`.
+
+---
+
+Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
 The run writes the R / TS / P structures, energy diagrams, and `summary.log` / `summary.json` to `result_all/`.
 
