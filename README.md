@@ -26,6 +26,8 @@ pdb2reaction all -i R.xyz P.xyz -q +1 --tsopt --thermo --dft
 
 Without `-c`, the input structures are used as they are; set the total charge with `-q`.
 
+---
+
 ## Features
 
 - Find a reaction path and its TS from two or more structures you built, without defining a reaction coordinate ([Endpoint mode](docs/quickstart-all.md)).
