@@ -98,7 +98,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --the
 pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_small
 
 # Your own cluster model (already-trimmed PDB): omit -c to use it as-is
-pdb2reaction -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo --out-dir result_cluster
+pdb2reaction -i cluster_R.pdb cluster_P.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo --out-dir result_cluster
 ```
 
 For a hand-built cluster, check its boundaries with [the cluster-boundary checklist](docs/model-setup.md#building-or-auditing-a-cluster-model-manually).
