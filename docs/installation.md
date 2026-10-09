@@ -159,7 +159,7 @@ If you prefer to build the environment piece by piece:
 
 **GPU / CUDA.** An NVIDIA GPU whose driver supports the chosen wheel (see Quick start); newer GPU architectures may need a newer wheel. CPU-only execution works but is usually much slower.
 
-**VRAM, RAM, and disk.** Memory grows with the model, the atom count, and the Hessian mode, and the disk holds the environment, the model weights, and the trajectories and Hessians. As a rough guide for a Hessian with the default UMA model, the default finite-difference Hessian (`FiniteDifference`) fits about 900 atoms in 8 GB, 2,000 in 16 GB, 3,000 in 24 GB, and 10,000 in 96 GB of VRAM, and an analytical Hessian (`Analytical`) about 200, 400, 600, and 1,500 atoms. Run one representative calculation on the target node and watch the peak use.
+**VRAM, RAM, and disk.** Memory grows with the model, the atom count, and the Hessian mode, and the disk holds the environment, the model weights, and the trajectories and Hessians. As a rough guide for a Hessian with the default UMA model, the default finite-difference Hessian (`FiniteDifference`) fits about 900 atoms in 8 GB, 2,000 in 16 GB, 3,000 in 24 GB, and 10,000 in 96 GB of VRAM, and an analytical Hessian (`Analytical`) about 200, 400, 600, and 1,500 atoms. Even when the model fits in VRAM, above about 1,000 atoms each Hessian takes an hour or more, and a full mechanism study becomes slow (a rule of thumb). Run one representative calculation on the target node and watch the peak use.
 
 ## Next steps
 
