@@ -3128,6 +3128,7 @@ def _run_dft_for_state(
     _append_cli_arg(args, "--solvent", overrides.get("solvent"))
     _append_cli_arg(args, "--solvent-model", overrides.get("solvent_model"))
     _append_toggle_arg(args, "--lowmem", overrides.get("lowmem"))
+    _append_toggle_arg(args, "--scf-stepwise-grid", overrides.get("scf_stepwise_grid"))
     _append_cli_arg(args, "--dft-nprocs", overrides.get("nprocs"))
     _append_cli_arg(args, "--dft-mem", overrides.get("memory"))
 
@@ -5202,7 +5203,7 @@ def cli(
         from pdb2reaction.core.dft_settings import DFT_CLI_META_KEY
 
         _dft_cli_meta = ctx.meta.get(DFT_CLI_META_KEY, {})
-        for _resource_name in ("lowmem", "nprocs", "memory"):
+        for _resource_name in ("lowmem", "scf_stepwise_grid", "nprocs", "memory"):
             if _resource_name in _dft_cli_meta:
                 _post_dft_resource_cli[_resource_name] = _dft_cli_meta.pop(
                     _resource_name

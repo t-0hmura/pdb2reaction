@@ -190,6 +190,7 @@ def test_all_dft_child_omits_wrapper_defaults_for_yaml_resolution(
             "solvent": "water",
             "solvent_model": "pcm",
             "lowmem": False,
+            "scf_stepwise_grid": True,
             "nprocs": 8,
             "memory": "64GB",
         },
@@ -201,6 +202,7 @@ def test_all_dft_child_omits_wrapper_defaults_for_yaml_resolution(
     assert captured["cmd"][captured["cmd"].index("--solvent") + 1] == "water"
     assert captured["cmd"][captured["cmd"].index("--solvent-model") + 1] == "pcm"
     assert "--no-lowmem" in captured["cmd"]
+    assert "--scf-stepwise-grid" in captured["cmd"]
     assert captured["cmd"][captured["cmd"].index("--dft-nprocs") + 1] == "8"
     assert captured["cmd"][captured["cmd"].index("--dft-mem") + 1] == "64GB"
     assert captured["cmd"][-2:] == ["--config", str(config)]

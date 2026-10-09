@@ -59,6 +59,7 @@ _TOP_LEVEL_FIELDS = {
     "grid_level",
     "verbose",
     "lowmem",
+    "scf_stepwise_grid",
     "density_fit",
     "auxbasis",
     "solvent",
@@ -93,6 +94,7 @@ _STANDALONE_FIELDS = {
     "grid_level",
     "verbose",
     "lowmem",
+    "scf_stepwise_grid",
     "density_fit",
     "auxbasis",
     "solvent",
@@ -321,6 +323,7 @@ class DFTSettings:
     grid_level: int = 3
     verbose: int = 0
     lowmem: bool = True
+    scf_stepwise_grid: bool = False
     density_fit: bool = False
     auxbasis: Optional[str] = None
     solvent: str = "none"
@@ -490,6 +493,9 @@ def resolve_dft_settings(
             ) from exc
 
     lowmem = _strict_bool(raw.get("lowmem", True), "calc.dft.lowmem")
+    scf_stepwise_grid = _strict_bool(
+        raw.get("scf_stepwise_grid", False), "calc.dft.scf_stepwise_grid"
+    )
     density_cfg = pyscf_cfg.get("density_fit", {})
     direct_density = raw.get("density_fit")
     if isinstance(direct_density, Mapping):
@@ -622,6 +628,7 @@ def resolve_dft_settings(
         grid_level=int(resolved_simple["grid_level"]),
         verbose=int(resolved_simple["verbose"]),
         lowmem=lowmem,
+        scf_stepwise_grid=scf_stepwise_grid,
         density_fit=density_fit,
         auxbasis=auxbasis,
         solvent=solvent,

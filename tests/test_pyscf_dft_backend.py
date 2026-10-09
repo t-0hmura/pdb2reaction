@@ -285,3 +285,92 @@ def test_checkpoint_path_is_assigned_by_the_workflow_not_the_settings() -> None:
         {"backend": "dft", "dft": {"save_scf_checkpoint": True}}
     )
     assert settings.checkpoint_path is None
+
+
+def test_stepwise_grid_density_converges_a_coarse_stage_first() -> None:
+    from pyscf import dft, gto
+
+    from pdb2reaction.backends.pyscf_dft import (
+        SCF_STEPWISE_CONV_TOL,
+        SCF_STEPWISE_GRID_LEVEL,
+        stepwise_grid_density,
+    )
+
+    mol = gto.M(
+        atom="O 0 0 0; H 0 0.76 0.59; H 0 -0.76 0.59", basis="sto-3g", verbose=0
+    )
+    built = []
+
+    def make_method():
+        mf = dft.RKS(mol)
+        mf.xc = "lda"
+        mf.grids.level = 3
+        built.append(mf)
+        return mf
+
+    density = stepwise_grid_density(make_method)
+
+    assert density is not None
+    assert len(built) == 1
+    assert built[0].grids.level == SCF_STEPWISE_GRID_LEVEL
+    assert built[0].nlcgrids.level == SCF_STEPWISE_GRID_LEVEL
+    assert built[0].conv_tol == SCF_STEPWISE_CONV_TOL
+
+
+def test_stepwise_grid_density_falls_back_without_grid_or_convergence() -> None:
+    from pdb2reaction.backends.pyscf_dft import stepwise_grid_density
+
+    class Grids:
+        level = 3
+
+    class Unconverged:
+        converged = False
+        grids = Grids()
+
+        def kernel(self):
+            return 0.0
+
+    class NoGrid:
+        def kernel(self):
+            raise AssertionError("a method without a grid is not run")
+
+    assert stepwise_grid_density(Unconverged) is None
+    assert stepwise_grid_density(NoGrid) is None
+
+
+def test_stepwise_grid_applies_only_to_the_first_scf() -> None:
+    from pdb2reaction.backends import create_calculator
+
+    first = np.array([0.0, 0.0, -0.7, 0.0, 0.0, 0.7])
+    second = np.array([0.0, 0.0, -0.72, 0.0, 0.0, 0.72])
+    normal = create_calculator(
+        backend="dft", dft_settings=_settings(func_basis="lda/sto-3g"), print_timing=False
+    )
+    staged = create_calculator(
+        backend="dft",
+        dft_settings=_settings(func_basis="lda/sto-3g", scf_stepwise_grid=True),
+        print_timing=False,
+    )
+    e_normal = normal.get_energy(["H", "H"], first)["energy"]
+    e_staged = staged.get_energy(["H", "H"], first)["energy"]
+    staged.get_energy(["H", "H"], second)
+
+    assert e_staged == pytest.approx(e_normal, abs=1.0e-6)
+    assert staged.session.metrics[0]["cycles"] < normal.session.metrics[0]["cycles"]
+    assert staged.session.metrics[0]["guess_source"] == "fresh"
+    assert staged.session.metrics[1]["guess_source"] == "previous_density"
+
+
+def test_stepwise_grid_is_skipped_for_hartree_fock() -> None:
+    from pdb2reaction.backends import create_calculator
+
+    plain = create_calculator(backend="dft", dft_settings=_settings(), print_timing=False)
+    calc = create_calculator(
+        backend="dft",
+        dft_settings=_settings(scf_stepwise_grid=True),
+        print_timing=False,
+    )
+    plain.get_energy(["He"], np.zeros(3))
+    calc.get_energy(["He"], np.zeros(3))
+
+    assert calc.session.metrics[0]["cycles"] == plain.session.metrics[0]["cycles"]

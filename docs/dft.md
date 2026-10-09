@@ -98,6 +98,7 @@ result_dft/
 | `--dft-grid-level` | integer | `3` | Integration grid level (PySCF `grids.level`) |
 | `--dft-engine` | `gpu` / `cpu` | `gpu` | GPU4PySCF or CPU PySCF |
 | `--dft-low-memory/--no-dft-low-memory` | flag | `True` | Build J and K directly; `--no-dft-low-memory` uses density fitting |
+| `--scf-stepwise-grid/--no-scf-stepwise-grid` | flag | `False` | Converge the SCF on a [coarse grid](dft-backend.md#notes) first, then on the final grid |
 | `--solvent` | text | `none` | Solvent name for PySCF PCM/SMD (e.g. `water`); `none` is the gas phase |
 | `--solvent-model` | `pcm` / `smd` | `smd` | Implicit-solvent model |
 | `--dft-nprocs` | integer | auto | PySCF CPU threads (detected from the scheduler and the host) |

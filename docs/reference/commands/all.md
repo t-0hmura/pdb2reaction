@@ -409,6 +409,11 @@ Options:
                                   (default: disabled).  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
                                   checkpoint at PATH.
+  --scf-stepwise-grid / --no-scf-stepwise-grid
+                                  Converge the first SCF on a coarse grid, then
+                                  on the final grid (later SCFs reuse the
+                                  previous density as usual).  [default:
+                                  (disabled)]
   --dft-low-memory, --lowmem / --no-dft-low-memory, --no-lowmem
                                   Use GPU4PySCF rks_lowmem for closed-shell GPU
                                   DFT; open-shell GPU and CPU use standard

@@ -17,6 +17,35 @@ from pdb2reaction.backends.base import BackendError, MLIPCalculator
 from pdb2reaction.core.dft_settings import DFTSettings, PCM_DIELECTRIC, resolve_dft_settings
 
 
+# First stage of --scf-stepwise-grid: XC and VV10 grid level 1 with a loose
+# tolerance (see docs/dft-backend.md).
+SCF_STEPWISE_GRID_LEVEL = 1
+SCF_STEPWISE_CONV_TOL = 1.0e-6
+
+
+def stepwise_grid_density(make_method):
+    """Converge a coarse-grid SCF from the default guess and return its density.
+
+    ``make_method()`` must return a new, fully configured SCF method (solvent and
+    point charges included), so both stages see the same Hamiltonian. Returns
+    ``None`` when the method has no DFT grid or the coarse SCF did not converge;
+    the caller then runs the normal SCF from its own initial guess.
+    """
+    mf = make_method()
+    if not hasattr(mf, "grids"):
+        return None
+    mf.grids.level = SCF_STEPWISE_GRID_LEVEL
+    if hasattr(mf, "nlcgrids"):
+        mf.nlcgrids.level = SCF_STEPWISE_GRID_LEVEL
+    mf.conv_tol = SCF_STEPWISE_CONV_TOL
+    mf.kernel()
+    if not bool(getattr(mf, "converged", False)):
+        return None
+    density = mf.make_rdm1()
+    del mf
+    return density
+
+
 def _to_numpy(value):
     if value is None:
         return None
@@ -206,6 +235,16 @@ class PySCFDFTSession:
         mm_coords_ang: Optional[np.ndarray],
         mm_charges: Optional[np.ndarray],
     ) -> None:
+        mf = self._make_method(mol, mm_coords_ang, mm_charges)
+        self._scanner = mf if self._using_rks_lowmem else mf.as_scanner()
+
+    def _make_method(
+        self,
+        mol,
+        mm_coords_ang: Optional[np.ndarray],
+        mm_charges: Optional[np.ndarray],
+    ):
+        """Return a new, fully configured SCF method for ``mol``."""
         from pyscf import dft, qmmm, scf
 
         unrestricted = int(self.settings.multiplicity) != 1
@@ -288,7 +327,7 @@ class PySCFDFTSession:
                 mf = qmmm.mm_charge(mf, mm_coords_ang, mm_charges, unit="Angstrom")
 
         mf.chkfile = None
-        self._scanner = mf if self._using_rks_lowmem else mf.as_scanner()
+        return mf
 
     def _update_mm_mol(
         self,
@@ -322,6 +361,17 @@ class PySCFDFTSession:
             else "fresh"
         )
         if self._scanner is None:
+            # --scf-stepwise-grid only for an SCF with no earlier density.
+            stepwise_dm = None
+            if (
+                self.settings.scf_stepwise_grid
+                and guess_source == "fresh"
+                and self._last_good is None
+                and not self.settings.is_hf
+            ):
+                stepwise_dm = stepwise_grid_density(
+                    lambda: self._make_method(mol, mm_coords_ang, mm_charges)
+                )
             self._build_method(mol, mm_coords_ang, mm_charges)
             if self._last_good is not None:
                 self._restore_last_good_into_scanner(mol)
@@ -330,9 +380,11 @@ class PySCFDFTSession:
                 dm0 = (
                     self._scanner.make_rdm1()
                     if self._last_good is not None
-                    else None
+                    else stepwise_dm
                 )
                 energy = float(self._scanner.kernel(dm0=dm0))
+            elif stepwise_dm is not None:
+                energy = float(self._scanner(mol, dm0=stepwise_dm))
             else:
                 energy = float(self._scanner(mol))
         elif self._using_rks_lowmem:

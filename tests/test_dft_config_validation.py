@@ -422,6 +422,7 @@ def test_leaf_dft_checkpoint_uses_yaml_effective_output_directory(tmp_path) -> N
         {"lowmem": "false"},
         {"density_fit": "false"},
         {"save_scf_checkpoint": "false"},
+        {"scf_stepwise_grid": "false"},
         {"pyscf": {"density_fit": {"enabled": "false"}}},
     ],
 )
@@ -623,3 +624,64 @@ def test_dmf_solvent_guard_is_backend_capability_aware() -> None:
         _validate_dmf_solvent_compatibility(
             {"backend": "uma", "solvent": "water", "solvent_model": "alpb"}
         )
+
+
+def test_scf_stepwise_grid_is_opt_in_for_both_dft_paths(tmp_path) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    assert resolve_dft_settings({"backend": "dft"}).scf_stepwise_grid is False
+    assert resolve_dft_settings(
+        {"backend": "dft", "dft": {"scf_stepwise_grid": True}}
+    ).scf_stepwise_grid is True
+
+    xyz = tmp_path / "h2o.xyz"
+    xyz.write_text("3\n\nO 0 0 0\nH 0 0.76 0.59\nH 0 -0.76 0.59\n")
+    out_dir = tmp_path / "dft"
+    result = CliRunner().invoke(
+        cli,
+        [
+            "dft", "-i", str(xyz), "-q", "0", "-m", "1",
+            "--func-basis", "lda/sto-3g", "--dft-engine", "cpu",
+            "--scf-stepwise-grid", "true", "--out-json", "-o", str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads((out_dir / "result.json").read_text())
+    assert payload["converged"] is True
+
+
+def test_scf_stepwise_grid_shortens_the_final_scf_of_the_dft_command() -> None:
+    from pyscf import dft, gto
+
+    from pdb2reaction.workflows.dft import _run_scf_kernel
+
+    mol = gto.M(atom="O 0 0 0; H 0 0.76 0.59; H 0 -0.76 0.59", basis="sto-3g", verbose=0)
+
+    def build_mf():
+        mf = dft.RKS(mol)
+        mf.xc = "lda"
+        return mf
+
+    normal, e_normal = _run_scf_kernel(build_mf, False)
+    staged, e_staged = _run_scf_kernel(build_mf, True)
+
+    assert e_staged == pytest.approx(e_normal, abs=1.0e-8)
+    assert staged.cycles < normal.cycles
+
+
+def test_calculator_dft_cli_flags_reach_the_dft_settings(tmp_path) -> None:
+    xyz = Path(__file__).parent / "smoke" / "r.xyz"
+    result = CliRunner().invoke(
+        cli,
+        [
+            "sp", "-i", str(xyz), "-q", "-1", "-m", "1", "-b", "dft",
+            "--dft-engine", "cpu", "--no-dft-low-memory", "--scf-stepwise-grid",
+            "--show-config", "--dry-run", "-o", str(tmp_path / "sp"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "    engine: cpu\n" in result.output
+    assert "    lowmem: false\n" in result.output
+    assert "    scf_stepwise_grid: true\n" in result.output

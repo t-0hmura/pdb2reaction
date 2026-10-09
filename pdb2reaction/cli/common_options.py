@@ -122,6 +122,7 @@ def add_dft_calculator_options(
         func = click.option(
             "--dft-low-memory/--no-dft-low-memory",
             "--lowmem/--no-lowmem",
+            "lowmem",
             default=None,
             show_default="lowmem",
             expose_value=False,
@@ -129,6 +130,18 @@ def add_dft_calculator_options(
             help=(
                 "Use GPU4PySCF rks_lowmem for closed-shell GPU DFT; open-shell "
                 "GPU and CPU use standard direct JK. --no-dft-low-memory enables density fitting."
+            ),
+        )(func)
+        func = click.option(
+            "--scf-stepwise-grid/--no-scf-stepwise-grid",
+            "scf_stepwise_grid",
+            default=None,
+            show_default="disabled",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help=(
+                "Converge the first SCF on a coarse grid, then on the final grid "
+                "(later SCFs reuse the previous density as usual)."
             ),
         )(func)
         func = click.option(
@@ -152,6 +165,7 @@ def add_dft_calculator_options(
             func = click.option(
                 "--dft-engine",
                 "--engine",
+                "engine",
                 type=click.Choice(["gpu", "cpu"], case_sensitive=False),
                 default=None,
                 show_default="gpu",

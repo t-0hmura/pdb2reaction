@@ -98,6 +98,7 @@ result_dft/
 | `--dft-grid-level` | 整数 | `3` | 数値積分グリッドのレベル（PySCF の `grids.level`） |
 | `--dft-engine` | `gpu` / `cpu` | `gpu` | GPU4PySCF か CPU の PySCF |
 | `--dft-low-memory/--no-dft-low-memory` | フラグ | `True` | J と K を直接組み立てる。`--no-dft-low-memory` で密度フィッティングを使用 |
+| `--scf-stepwise-grid/--no-scf-stepwise-grid` | フラグ | `False` | SCF をまず[粗いグリッド](dft-backend.md#使用上の注意点)で収束させ、その密度から最終のグリッドで収束させる |
 | `--solvent` | 文字列 | `none` | PySCF の PCM/SMD に渡す溶媒名（例: `water`）。`none` は気相 |
 | `--solvent-model` | `pcm` / `smd` | `smd` | 陰溶媒モデル |
 | `--dft-nprocs` | 整数 | auto | PySCF の CPU スレッド数（スケジューラとホストから自動検出） |

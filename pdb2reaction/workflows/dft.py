@@ -65,6 +65,7 @@ DFT_KW: Dict[str, Any] = {
     "basis": DFT_DEFAULT_BASIS,# Basis set (can be overridden via YAML)
     # Closed-shell GPU uses rks_lowmem; open-shell GPU and CPU use direct JK.
     "lowmem": True,
+    "scf_stepwise_grid": False,  # coarse-grid first SCF stage (see backends.pyscf_dft)
     "solvent": "none",
     "solvent_model": "smd",
 }
@@ -206,6 +207,22 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_f
             )
 
     return mf
+
+
+def _run_scf_kernel(build_mf, stepwise: bool):
+    """Run one SCF built by ``build_mf()`` and return ``(mf, e_tot)``.
+
+    With ``stepwise`` (--scf-stepwise-grid) a coarse-grid SCF first supplies the
+    initial density; if it does not converge, the SCF starts from the usual guess.
+    """
+    dm0 = None
+    if stepwise:
+        from pdb2reaction.backends.pyscf_dft import stepwise_grid_density
+
+        dm0 = stepwise_grid_density(build_mf)
+    mf = build_mf()
+    e_tot = mf.kernel() if dm0 is None else mf.kernel(dm0=dm0)
+    return mf, e_tot
 
 
 def _apply_implicit_solvent(mf, dft_cfg: Dict[str, Any]):
@@ -592,6 +609,14 @@ def _finalize_dft_result(
          "standard direct-JK RKS/UKS; --no-dft-low-memory enables density fitting.",
 )
 @click.option(
+    "--scf-stepwise-grid/--no-scf-stepwise-grid",
+    "scf_stepwise_grid",
+    default=DFT_KW["scf_stepwise_grid"],
+    show_default=True,
+    help="Converge the SCF on a coarse grid first, then on the final grid "
+         "with the same settings.",
+)
+@click.option(
     "--dft-nprocs",
     "nprocs",
     type=click.IntRange(min=1),
@@ -654,6 +679,7 @@ def cli(
     solvent: Optional[str],
     solvent_model: Optional[str],
     lowmem: bool,
+    scf_stepwise_grid: bool,
     nprocs: Optional[int],
     memory: Optional[str],
     config_yaml: Optional[Path],
@@ -711,6 +737,8 @@ def cli(
                 dft_cfg["out_dir"] = out_dir
             if cli_param_overridden(ctx, "lowmem"):
                 dft_cfg["lowmem"] = bool(lowmem)
+            if cli_param_overridden(ctx, "scf_stepwise_grid"):
+                dft_cfg["scf_stepwise_grid"] = bool(scf_stepwise_grid)
             if cli_param_overridden(ctx, "nprocs") and nprocs is not None:
                 dft_cfg["nprocs"] = int(nprocs)
             if cli_param_overridden(ctx, "memory") and memory is not None:
@@ -808,6 +836,7 @@ def cli(
             dft_cfg["grid_level"] = resolved_settings.grid_level
             dft_cfg["verbose"] = resolved_settings.verbose
             dft_cfg["lowmem"] = resolved_settings.lowmem
+            dft_cfg["scf_stepwise_grid"] = resolved_settings.scf_stepwise_grid
             dft_cfg["density_fit"] = resolved_settings.density_fit
             dft_cfg["auxbasis"] = resolved_settings.auxbasis
             dft_cfg["pyscf"] = resolved_settings.pyscf
@@ -954,6 +983,7 @@ def cli(
             using_lowmem = False
             engine_label = "pyscf(cpu)"
             make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
+            stepwise_requested = bool(dft_cfg["scf_stepwise_grid"]) and not resolved_settings.is_hf
 
 
             # --- Detect Blackwell GPU and emit warning ---
@@ -1003,14 +1033,17 @@ def cli(
                             ) from exc
 
                     if rks_lowmem_mod is not None:
-                        mf = rks_lowmem_mod.RKS(mol, xc=xc)
+                        def build_mf():
+                            mf = rks_lowmem_mod.RKS(mol, xc=xc)
+                            # density_fit is intentionally NotImplemented in rks_lowmem.
+                            mf = _configure_scf_object(mf, dft_cfg, xc, use_density_fit=False)
+                            if solvent_enabled:
+                                mf = _apply_implicit_solvent(mf, dft_cfg)
+                            return mf
+
                         using_gpu = True
                         using_lowmem = True
                         engine_label = "gpu4pyscf(rks_lowmem)"
-                        # density_fit is intentionally NotImplemented in rks_lowmem.
-                        mf = _configure_scf_object(mf, dft_cfg, xc, use_density_fit=False)
-                        if solvent_enabled:
-                            mf = _apply_implicit_solvent(mf, dft_cfg)
                     else:
                         if lowmem_requested and spin2s != 0:
                             click.echo(
@@ -1021,22 +1054,24 @@ def cli(
                         if solvent_enabled:
                             from pyscf import dft as pdft
 
-                            mf = make_ks(pdft)
-                            mf = _configure_scf_object(
-                                mf, dft_cfg, xc,
-                                use_density_fit=resolved_settings.density_fit,
-                            )
-                            mf = _apply_implicit_solvent(mf, dft_cfg)
-                            mf = mf.to_gpu()
+                            def build_mf():
+                                mf = make_ks(pdft)
+                                mf = _configure_scf_object(
+                                    mf, dft_cfg, xc,
+                                    use_density_fit=resolved_settings.density_fit,
+                                )
+                                mf = _apply_implicit_solvent(mf, dft_cfg)
+                                return mf.to_gpu()
                         else:
-                            mf = make_ks(gdf)
-                            mf = _configure_scf_object(
-                                mf, dft_cfg, xc,
-                                use_density_fit=resolved_settings.density_fit,
-                            )
+                            def build_mf():
+                                mf = make_ks(gdf)
+                                return _configure_scf_object(
+                                    mf, dft_cfg, xc,
+                                    use_density_fit=resolved_settings.density_fit,
+                                )
                         using_gpu = True
                         engine_label = "gpu4pyscf"
-                    e_tot = mf.kernel()
+                    mf, e_tot = _run_scf_kernel(build_mf, stepwise_requested)
 
                 except Exception as e:
                     raise click.ClickException(
@@ -1049,13 +1084,16 @@ def cli(
                 click.echo(f"[dft] PySCF is using {_pyscf_lib.num_threads()} threads on CPU.")
 
                 from pyscf import dft as pdft
-                mf = make_ks(pdft)
-                mf = _configure_scf_object(
-                    mf, dft_cfg, xc,
-                    use_density_fit=resolved_settings.density_fit,
-                )
-                mf = _apply_implicit_solvent(mf, dft_cfg)
-                e_tot = mf.kernel()
+
+                def build_mf():
+                    mf = make_ks(pdft)
+                    mf = _configure_scf_object(
+                        mf, dft_cfg, xc,
+                        use_density_fit=resolved_settings.density_fit,
+                    )
+                    return _apply_implicit_solvent(mf, dft_cfg)
+
+                mf, e_tot = _run_scf_kernel(build_mf, stepwise_requested)
 
 
 
