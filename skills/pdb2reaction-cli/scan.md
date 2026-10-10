@@ -83,8 +83,18 @@ followed by `Yes` and the formed and broken bonds, or `No`; the run ends with
 `====== Scan summary ======`. With `--out-json`, `result.json` separates
 `execution_status` (`completed`/`failed`) from `scientific_status`
 (`success`/`partial`/`failed`); `partial` exits with 0 and `failed` with 1.
-Check each `stages[i]["converged"]`, the target, `final_energy_hartree`, and
-the trajectory.
+A point that does not converge does not stop its stage: the next point starts
+from its geometry, and `stages[i]["converged"]` reports only the last point
+(the end optimization when `--endopt/--no-endopt` is on). A stage is usable
+only when every point converged: read `usable` in its `stage_outcomes` entry,
+and `scientific_status`, which is `success` only when every stage is usable. A
+point stopped on an energy plateau (YAML `opt.energy_plateau`) is not
+converged. Then check the target, `final_energy_hartree`, and the trajectory.
+Inside `all`, read
+`_work/scan/result.json`; `all` continues past a `partial` scan whose stages'
+last points converged, printing `[all] WARNING: Scan has incomplete
+intermediate steps; continuing from valid terminal seeds.`, and stops on a
+`failed` one.
 
 ```text
 result_scan/
@@ -120,8 +130,15 @@ means the run finished. `surface.csv` holds the per-point energies and
   mixing the two forms is rejected.
 - Stage k+1 starts from the final geometry of stage k, so a diverged stage
   spoils every later stage.
-- An explicit `--relax-max-cycles` (default 100000) overrides YAML
-  `opt.max_cycles`.
+- An explicit `--relax-max-cycles` (default 100000 per point;
+  `--scan-relax-max-cycles` in `all`) overrides YAML `opt.max_cycles`. Lower
+  it for exploratory scans so that points that do not converge do not use up
+  the walltime.
+- `--max-step-size` (0.20 Å by default) is the largest change of a driven
+  distance per scan point and also bounds every relaxation step at that point:
+  the L-BFGS `max_step` and the RFO trust radius become the smaller of their
+  own value and this size, so a small `--max-step-size` also shortens the
+  relaxation steps.
 - The three commands have no `--show-config`; use `--dry-run` to check the
   spec without optimizing.
 - Grid cost is the product of the axis lengths: a 10 × 10 grid runs 100

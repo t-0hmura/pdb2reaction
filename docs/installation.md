@@ -86,6 +86,8 @@ If you prefer to build the environment piece by piece:
     plotly_get_chrome -y
     ```
 
+    On aarch64, the `warp-lang` 1.18.0 wheel, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0` (`nvalchemi-toolkit-ops` needs 1.13.0 or newer).
+
 6. **Log in to Hugging Face Hub (UMA model)**
 
     ```bash

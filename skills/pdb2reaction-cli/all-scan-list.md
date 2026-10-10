@@ -73,12 +73,12 @@ To choose the coordinates for your own reaction, see
 Read the console, `summary.json`, and the endpoints as in
 [all.md](all.md#judge-success). For the scan itself:
 
-- **Stages**: open `_work/scan/stage_NN/scan_trj.xyz` and check that the coordinates change as intended; `_work/scan/stage_NN/result.*` is the restrained end of each stage. `summary.json["scan"]` holds the scan status and `stages`; the full record is `_work/scan/result.json`.
+- **Stages**: open `_work/scan/stage_NN/scan_trj.xyz` and check that the coordinates change as intended; `_work/scan/stage_NN/result.*` is the restrained end of each stage. `summary.json["scan"]` holds the scan status and `stages`; the full record is `_work/scan/result.json`, read as in [scan.md](scan.md#judge-success).
 - **MEP and R/TS/P**: the MEP of each segment is `_work/path_opt/mep_seg_NN_trj.xyz` (`_work/path_search/` with `--refine-path`). With `--tsopt`, `segments/seg_NN/{reactant,ts,product}.*` are the R/TS/P of each processed segment.
 
 ## Pitfalls and recovery
 
-- **A stage reaches an unexpected geometry.** The restrained optimization relaxed into another basin, or the coordinate under-specifies the mechanism. Inspect the trajectory, revise or add a chemically meaningful coordinate, or split a complex stage; do not assume the side product is valid.
+- **A stage reaches an unexpected geometry.** The restrained optimization relaxed into another basin, or the coordinate under-specifies the mechanism. Inspect the trajectory, revise or add a chemically meaningful coordinate, or split a complex stage; do not assume the side product is valid. To hold a coordinate until its own stage, and to tell a stage end from an intermediate, see [ts-strategy](../pdb2reaction-overview/ts-strategy.md#staged-vs-concerted-scans).
 - **Python literal error.** Wrap each stage in single quotes and use double quotes inside. Prefer space, comma, or slash selectors; a backtick is safe only inside the outer single quotes.
 - **Atom not found or matched twice.** Names must match the input exactly, case included; editing tools sometimes rename atoms (`CB` to `CB1`). If a three-field selector matches more than one atom, add the chain with `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`; do not guess from the first match.
 - **XYZ or GJF input.** Residue selectors and `-c` extraction are unavailable; use atom numbers and give `-q` (or a valid GJF header).

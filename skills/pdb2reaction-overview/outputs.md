@@ -13,7 +13,7 @@ result_all/
 ├─ mep_trj.xyz, mep_trj.pdb    # MEP over all segments (Endpoint and Scan-list modes)
 ├─ energy_diagram_MEP.png, energy_diagram_*_all.png, irc_plot_all.png
 ├─ segments/
-│  └─ seg_NN/                  # one reaction step: seg_01, seg_02, ...
+│  └─ seg_NN/                  # one reaction step
 │     ├─ reactant.*, ts.*, product.*   # structures to report, in the input format (--tsopt)
 │     ├─ energy_diagram_*.png
 │     ├─ ts/                   # TS optimization; vib/imag_*_trj.xyz animates the imaginary modes
@@ -58,7 +58,7 @@ result_all/
 
 `segments[]` holds one MEP-level record per segment:
 
-- `index` (1-based; segment 1 is `segments/seg_01/`) and `tag` (a label whose number can differ from `index`).
+- `index` (1-based) and `tag` (a label whose number can differ from `index`).
 - `kind`: `"seg"` for a reactive segment, `"kink"` for a segment with no covalent bond change, `"bridge"` for a short connecting path (its `tag` ends in `_bridge`), `"tsopt"` in TS-only mode. Reactive segments are those with `kind` `"seg"` or `"tsopt"`.
 - `barrier_kcal` and `delta_kcal`: barrier and reaction energy on the MEP before TS optimization (`null` for a kink); in TS-only mode, TS − R.
 - `bond_changes`: see [Bond changes](#bond-changes).
@@ -70,7 +70,7 @@ result_all/
 - `mep_barrier_kcal`, `mep_delta_kcal`: the MEP values of the same segment.
 - `irc`: per-direction stop diagnostics; there is no IRC pass/fail verdict.
 - `endpoint_assignment`: how the IRC ends were matched to R and P.
-- `endpoint_opt`: `reactant` and `product`, each with `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`.
+- `endpoint_opt`: `reactant` and `product`, each with `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`. In Endpoint and Scan-list modes, `connectivity_validated` (with `connectivity.match_matrix`) tells whether the optimized R and P kept the bond topology of the MEP ends. `scientific_status` `success` does not check this, and `bond_changes` ([R/TS/P paths](#rtsp-paths)) cannot show what the TS connects; treat `false` as a TS that connects other states.
 - `thermo_symmetry`: point group and rotational symmetry per state.
 
 These block names never change with the backend: `mlip`, `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. Energy-diagram filenames use `MLIP` for every backend, while top-level `mlip_backend` / `mlip_model` / `mlip_precision` record the exact provenance.
@@ -78,6 +78,7 @@ These block names never change with the backend: `mlip`, `gibbs_mlip`, `dft`, an
 ## R/TS/P paths
 
 - Report `segments/seg_NN/{reactant,ts,product}.*`: the optimized TS, and the IRC ends after endpoint optimization.
+- `segments/seg_NN/` exists only for reactive segments, and NN is `segments[].index`, so after `--refine-path` the list can start at `seg_02` or skip numbers. List `segments/` or read `post_segments[].index` instead of assuming `seg_01`, take the barrier TS from the segment in `rate_limiting_step.segment` (not `post_segments[0]`), and copy R, TS, and P of one segment together.
 - In Endpoint and Scan-list modes, the IRC ends are matched to the MEP's left and right states by bond pattern, then RMSD.
 - In TS-only mode, the higher-energy IRC end is named the reactant (the left end on an exact tie). This names the direction, not the chemical direction of the reaction; `endpoint_assignment` records `chemical_direction_known: false`. The barrier from P is `barrier_kcal − delta_kcal`.
 - The raw IRC ends before optimization are in `segments/seg_NN/structures/{reactant,product}_irc.*`; use them only to debug a difference between the IRC and the endpoint optimization.
@@ -148,6 +149,8 @@ if rls:
 
 Energies are in kcal/mol relative to R. A PNG is written only when the energies are finite and the export succeeds; `summary.json["energy_diagrams"]` keeps the energies either way, so check `image_written` there before you use a PNG. In TS-only mode the diagrams are in `segments/seg_01/`.
 
+Read a barrier from `barrier_kcal` of its level (`mlip`, `gibbs_mlip`, `dft`, `gibbs_dft_mlip`), which is TS − R, or from the TS-labelled entry of `energy_diagrams`. Do not compute `max(energies) − E(R)`: after thermal or DFT corrections, P or a later state can lie above the TS.
+
 To combine energies from several runs into one diagram, use `energy-diagram` ([utilities.md](../pdb2reaction-cli/utilities.md)):
 
 ```bash
@@ -164,7 +167,9 @@ When `execution_status` is `failed` or `scientific_status` is not `success`:
 
 Partial outputs are kept. `_work/path_opt/seg_NNN_<tag>/` (`_work/path_search/` with `--refine-path`) exists for every segment that finished the MEP. `segments/seg_NN/` is created when post-processing starts, so its presence is not a sign of success; use the statuses in `summary.json`.
 
-A run that fails while the options or inputs are checked can stop before `summary.json` exists; treat a nonzero exit code as a failure and read stderr.
+A barrier or reaction energy of hundreds to thousands of kcal/mol usually means that one endpoint optimization diverged, not a summary bug. Compare the Hartree energy on the second line of `segments/seg_NN/structures/{reactant,product}_irc.xyz` with that of `{reactant,product}.xyz` in the same directory. If the raw IRC end is sensible and the optimized one is not, rerun only that end with `opt` from its `*_irc.xyz` file with the same charge, spin, and frozen atoms; `summary.json["freeze_atoms"]` is 0-based, so add 1 for `--freeze-atoms`.
+
+Read the exit code with the status: 0 is `success` or `partial` (tell them apart by `scientific_status`); 1 is non-convergence, no usable result, a runtime exception, or an output failure; 2 is invalid input, arguments, or configuration (including invalid YAML), so fix the command instead of resubmitting it; 130 is an interrupt. A run that fails while the options or inputs are checked can stop before `summary.json` exists; treat a nonzero exit code as a failure and read stderr.
 
 ## Next step
 

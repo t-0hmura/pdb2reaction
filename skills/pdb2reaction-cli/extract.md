@@ -3,7 +3,8 @@
 ## When to use
 
 Cut an active-site cluster model out of a protein–ligand PDB/mmCIF around the
-substrate and catalytic residues, before running `opt`, `path-opt`,
+substrate, cofactors, and metals (`-c`), with catalytic residues added by
+`--selected-resn` ([Build the cluster](../pdb2reaction-model-setup/SKILL.md#build-the-cluster)), before running `opt`, `path-opt`,
 `path-search`, `scan`, or `tsopt` on the cluster. Cut bonds at CA and CB are
 capped with hydrogens (cap H), and the residue charges are summed (`-l` gives
 the ligand charges). `all` with `-c` runs this step for you.
@@ -59,6 +60,14 @@ print(d["protein_charge"], d["ligand_total_charge"], d["ion_total_charge"])
 `n_atoms_extracted` does not count the cap H. `extract` freezes nothing
 itself; the downstream commands freeze the cap parents (below) and report the
 count as `n_freeze_atoms`.
+
+Exit 0 does not mean that every cut bond is capped. When a covalent bond
+between nonmetal atoms crosses the boundary without a cap H, standalone
+`extract` prints
+`WARNING: [extract] N covalent bond(s) cross the model boundary without a cap
+hydrogen` and writes the model as is (`all -c` stops instead); `result.json`
+does not record these bonds. Check the log for this warning before passing the
+model to another command.
 
 ## Pitfalls and recovery
 

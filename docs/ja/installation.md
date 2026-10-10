@@ -83,6 +83,8 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
     plotly_get_chrome -y
     ```
 
+    aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください（`nvalchemi-toolkit-ops` には 1.13.0 以上が必要です）。
+
 6. **Hugging Face Hub (UMA モデル) にログイン**
 
     ```bash

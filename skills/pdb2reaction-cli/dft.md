@@ -7,7 +7,13 @@ and spin densities) with GPU4PySCF (`--dft-engine gpu`, the default) or PySCF
 (`--dft-engine cpu`), typically on the R, TS, and P from `tsopt` or `irc` to
 get DFT//MLIP energies. `-b dft` is different: it makes DFT the calculator of
 another command (`sp`, `opt`, `tsopt`, `irc`, `freq`, scan and path commands,
-`all`), and those iterative runs reuse the last converged density.
+`all`), and those iterative runs reuse the last converged density. To refine
+an MLIP TS of a model with a frozen boundary, run
+[TS-only mode](all-ts-only.md) with `-b dft` on `segments/seg_NN/ts.pdb`: its
+cap records keep the boundary frozen, so the frequencies and thermochemistry
+stay a PHVA of the movable atoms. If you take the structure to another QM code
+instead, first check that its frequency analysis also leaves out the frozen
+atoms; otherwise its n_imag and Gibbs corrections are not comparable.
 
 ## Minimal run
 

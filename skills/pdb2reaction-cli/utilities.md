@@ -118,7 +118,8 @@ pdb2reaction add-elem-info -i raw.pdb -o cleaned.pdb
 Without `-o`, the output is `<input>_add_elem.pdb`; `--overwrite` without
 `-o` replaces the input, and an `-o` equal to the input also needs
 `--overwrite`. A valid existing symbol (or `EP` for a water virtual site) is
-kept; `--overwrite-elem` infers every field again.
+kept; `--overwrite-elem` infers every field again. Remove virtual sites before
+`extract` ([Common edits](../pdb2reaction-model-setup/formats.md#common-edits)).
 
 The element comes from the atom and residue names:
 

@@ -46,7 +46,10 @@ The `[tsopt]` verdict line tells how the run ended:
 | `[tsopt] Converged; terminal PHVA is unavailable.` | `--skip-final-freq` or a failed final Hessian; the saddle order is unchecked |
 
 A mode counts as imaginary below −5 cm⁻¹, the tsopt cutoff (YAML
-`freq.zero_cutoff_cm`). With `--out-json`, a first-order TS needs all of:
+`freq.zero_cutoff_cm`). The warning `[tsopt] WARNING: the leading imaginary
+mode is … cm^-1, below 50 cm^-1` changes neither the verdict nor n_imag; judge
+such a TS by its mode and IRC ends like any other. With `--out-json`, a
+first-order TS needs all of:
 `optimization_status` is `converged`, `hessian_status` is `completed`,
 `saddle_validation` is `first_order` (`n_imaginary_modes` is 1), and the
 displacement in `vib/imag_*_trj.xyz` follows the reacting atoms.
@@ -59,7 +62,20 @@ print(d["optimization_status"])      # "converged" / "not_converged" / "stalled"
 print(d["saddle_validation"])        # "first_order" / "higher_order" / "no_imaginary" / "unavailable"
 print(d["n_imaginary_modes"], d["imaginary_frequencies_cm"])
 print(d["energy_hartree"], d["files"]["final_geometry_xyz"])
+print(d["reaction_mode_index"], d["reaction_mode_frequency_cm"],
+      d["reaction_mode_source"], d["reaction_mode_overlap"])
 ```
+
+`reaction_mode_index` and `reaction_mode_frequency_cm` name the imaginary mode
+that `all` follows into IRC. With a reference direction (the MEP tangent in
+`all` unless `--no-tsopt-from-mep-tan`, or `--ref-mode`), it is the imaginary
+mode closest to that direction, `reaction_mode_source` is
+`"mep-reference-overlap"`, and `reaction_mode_overlap` gives the overlap.
+Otherwise, or when the final
+Hessian was computed again, it is the lowest imaginary mode and the source is
+`"lowest-imaginary"`, as always for Dimer and for `tsopt` without
+`--ref-mode`. Neither value shows that the mode is the reaction: check the
+`vib/imag_*_trj.xyz` of that frequency as above.
 
 With `higher_order`, `optimization_status` still reports only the optimizer.
 Watch every `vib/imag_*_trj.xyz` and do not accept the structure as a
@@ -84,6 +100,18 @@ itself establish the intended elementary reaction: confirm it with `irc`.
 - **Not converged at `--max-cycles`.** The default of 100000 is a safety
   bound; more cycles rarely help. Inspect the trajectory (`--dump`) and the
   candidate, then switch `--opt-mode` or start from a better candidate.
+- **Stopped by the scheduler.** A run ended by walltime, a node failure, or
+  cancellation is unfinished, not a convergence failure: it prints no
+  `[tsopt]` verdict line and reports no n_imag. Do not count the candidate as
+  one that does not converge or change the method for it; rerun with more
+  walltime, or resume `all` ([all.md](all.md#resume-a-failed-segment)).
+- **RS-P-RFO stops with a `ValueError`.** `RS-P-RFO exhausted its micro
+  cycles outside the trust radius.`, `RS-P-RFO alpha update is not finite and
+  positive.`, and `RS-P-RFO combined step exceeds the trust radius.` are
+  numerical stops of the step solver: the run exits with 1 and a traceback,
+  without a final Hessian or n_imag, and more cycles do not help. They do not
+  show that the candidate is bad. Rerun once; if the stop repeats, switch
+  `--opt-mode` to `rsirfo` or `dimer`, or start from another candidate.
 - **n_imag ≥ 2.** Diagnose constraints, precision, and the character of each
   mode, then re-run with `--flatten` or get a better candidate. See
   [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt).

@@ -45,6 +45,10 @@ Run the stages as separate commands when you want to check each result before sp
 | Thermo | `freq` | Frequencies and QRRHO Gibbs energies (`all --thermo`) |
 | DFT | `dft` | Single points on R, TS, and P, ωB97M-V/def2-SVP by default (`all --dft`) |
 
+**Pre-optimization.** `all`, `path-opt`, and `path-search` optimize each endpoint without restraints before the MEP (`--preopt`, on by default; in Scan-list mode `--scan-preopt` follows it), and this can already move a proton, break a weak bond, or complete part of the reaction. Before reading the MEP, run `bond-summary` between each input and its pre-optimized structure (`_work/scan/preopt/result.*` in Scan-list mode; otherwise `final_geometry.*` in the `*initNN_*_opt/` directories that `path-opt` and `path-search` write, under `_work/path_opt/` in `all`, or `_work/path_search/` with `--refine-path`) and compare the moving H atoms; judge later bond changes against this optimized structure, not the raw MD frame, whose short contacts can count as bonds. A non-reacting bond that breaks points to the model or the backend: enlarge the cluster or change the backend.
+
+If the chemistry you meant to start from changed, hold the bonds to keep with `opt --distance-restraint '[(i, j)]'` (a pair without a target keeps its current distance); start a scan from that result with `all --no-scan-preopt`, and for an MEP endpoint run an unrestrained `opt` from it and check the bonds again before passing it to `all`. If you continue from the changed R instead, treat it as another chemical state: check cuts, caps, and protonation, and do not rank its barriers with candidates that kept the original state.
+
 **MEP.** In `path-opt` `result.json`, `optimization_status` must be `"converged"`; `"completed"` only means the run returned. Look at `final_geometries_trj.xyz`, its energy profile, and `hei.pdb`, check that both ends have the same atoms in the same order, and run `bond-summary` on the end pair. For R → IM → P, run one `path-opt` per neighbouring pair. With `path-search`, read `summary.json`, check each segment's `bond_changes`, and start each TS from that segment's `hei_seg_NN.pdb`.
 
 **TS.** In `tsopt` `result.json`, `optimization_status` is `"converged"`, `hessian_status` is `"completed"`, `saddle_validation` is `"first_order"` (`n_imaginary_modes` = 1), and the imaginary mode moves the reacting atoms; the console prints `[tsopt] Converged (n_imag=1).` A successful TS optimization gives one imaginary mode along the reaction coordinate. A run that stops at max cycles without converging computes no Hessian, so it reports no n_imag. A run stopped on an energy plateau (`--stop-plateau`) always computes the Hessian and reports n_imag. `freq` on the TS is optional (all modes, thermochemistry).
@@ -62,6 +66,7 @@ Pitfalls:
 - In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0, non-convergence, or a failed PHVA stops before IRC, keeps the TS files, and the later segments are not post-processed. A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
 - After a walltime stop, rerun `all` with the same MEP settings and `--resume-segment N` ([all.md](../pdb2reaction-cli/all.md)), or continue with the stage commands. On any status other than `success`, read `summary.log` and then the stage outputs under `segments/seg_NN/` before retrying.
 - A large dense Hessian can exceed GPU memory. Freezing a justified boundary (PHVA) or keeping the default `--hessian-calc-mode FiniteDifference` (not `Analytical`) lowers the peak, but the Hessian of the moving atoms stays dense.
+- `all` reuses the final tsopt Hessian in IRC and in the TS `freq` through an in-process cache, so separate `tsopt` → `irc` → `freq` commands build the same dense Hessian up to three times. Add `--dump-hess ts_hess.npy` to `tsopt` (not with `--skip-final-freq`) and pass `--read-hess ts_hess.npy` to `irc` (which needs `irc.hessian_init: calc`, the default) and to `freq`, both run on the tsopt `final_geometry.*`.
 
 ## What it does
 
@@ -84,7 +89,7 @@ Not for:
 
 - QM methods that PySCF/GPU4PySCF does not provide; use a dedicated QM code (plain DFT runs with `-b dft`).
 - Explicit-solvent QM/MM with a force-field environment; pdb2reaction uses cluster models only.
-- Free-energy simulations such as umbrella sampling or metadynamics.
+- Free-energy simulations such as umbrella sampling or metadynamics. The Gibbs barrier from `--thermo` is the static TS of one cluster structure with QRRHO corrections, not a potential of mean force: keep its method label when you quote it, and for a condensed-phase free-energy barrier, pass the validated R, TS, and P to a free-energy sampling tool.
 
 ## Quick check
 
@@ -118,7 +123,7 @@ Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the i
 
 ## Where to go next
 
-- [ts-strategy.md](ts-strategy.md): studying a mechanism (hypothesis, precision, TS candidates, splitting the reaction, wrong n_imag, a TS that does not come out, comparisons, barriers).
+- [ts-strategy.md](ts-strategy.md): studying a mechanism (hypothesis, precision, TS candidates, splitting the reaction, wrong n_imag, a TS that does not come out, multistep paths, comparisons, barriers).
 - [outputs.md](outputs.md): `summary.json` and the output tree.
 - [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md): running and judging each subcommand.
 - [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): file formats, residue and atom selectors, charge and multiplicity, and building, trimming, and enlarging the cluster.

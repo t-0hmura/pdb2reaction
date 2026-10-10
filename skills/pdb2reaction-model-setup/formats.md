@@ -63,6 +63,13 @@ ion table; adding `MG:2` is accepted without effect, and a different value such
 as `MG:3` is ignored with a warning. The total is the sum over all residues
 kept after extraction.
 
+Amber terminal residue names (`NPRO`, `CGLU`, …, PDB columns 18–21) are read as
+the standard residue, and the terminal charge comes from the atoms present: +1
+only when H1, H2, and H3 remain (two of them for the Pro or Hyp ring N), −1
+only when OXT remains. Check the terminal H atoms and OXT before trusting the
+summed charge, and select such a residue by the name written in the file
+(`-c NPRO`; `-c PRO` does not match it).
+
 ### Cap hydrogens
 
 When `extract` cuts an amino-acid CB–CA, CA–N, or CA–C bond (only CA–C for
@@ -94,6 +101,12 @@ Fill the element column, or keep one altLoc per residue:
 pdb2reaction add-elem-info -i my.pdb -o my_with_elem.pdb
 pdb2reaction fix-altloc -i my.pdb -o my_clean.pdb
 ```
+
+Four-point water models (OPC, TIP4P) carry a massless virtual site on each
+water; `add-elem-info` labels it `EP` and `extract` keeps it, but it has no
+nucleus and does not belong in a cluster model. Delete the virtual sites from
+the full MD structure before `extract`, and keep a map between the new atom
+order and the MD atom order.
 
 Use Biopython for larger edits; it handles altLoc and `ANISOU`:
 

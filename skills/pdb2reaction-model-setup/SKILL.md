@@ -10,7 +10,7 @@ PDB or mmCIF keeps residue names, so `-l 'RES:Q'` derives the charge; XYZ needs 
 All four formats use Å and standard element symbols. Column layouts, cap
 hydrogens, and ligand, ion, and metal tables are in [formats.md](formats.md).
 
-Start from `-c` (substrate and catalytic residues) at the default `-r 2.6`, check the boundary, caps, and charge, then trim (`--exclude-backbone`, `--no-include-h2o`, `-r 0 --selected-resn`) or enlarge (`-r`, `--radius-het2het`, more residues in `-c` or `--selected-resn`), and rerun the key step at another size when the boundary could change the mechanism.
+Start from `-c` (substrate, cofactors, and metals) and `--selected-resn` (catalytic residues) at the default `-r 2.6`, check the boundary, caps, and charge, then trim (`--exclude-backbone`, `--no-include-h2o`, `-r 0 --selected-resn`) or enlarge (`-r`, `--radius-het2het`, more residues in `-c` or `--selected-resn`), and rerun the key step at another size when the boundary could change the mechanism.
 
 ## Which format
 
@@ -131,6 +131,13 @@ radicals, and antiferromagnetically coupled centers.
 These are examples, not a spin-state calculator; the metal table is in
 [formats.md](formats.md#ligand-ion-and-metal-charges).
 
+If a run stops with `Cluster electron count inconsistent`, recount the charge
+before touching `-m`: often one residue charge is off by one, such as a
+[terminus](formats.md#per-residue-charge--l), a cofactor mapping, or a
+metal-bound oxo, hydroxide, or water given the wrong charge. Change `-m` only
+when the mechanism or literature gives that spin state, and do not pass
+`--allow-charge-mult-mismatch` to get past the check.
+
 ## Unknown substrate charge
 
 Look up a ligand's formal charge in the mechanism's primary paper or deposited
@@ -160,18 +167,26 @@ for the system you model.
 pdb2reaction extract -i complex.pdb -c 'A:SAM:321,A:GPP:322,A:MG:323' -l 'SAM:1,GPP:-3' -o model.pdb --out-json
 ```
 
-Give `-c` the substrate, cofactors, metals, and catalytic residues as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole when `-r` is above 0. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Extract R, IM, and P in one run so all models share the same residues and caps. `all` without `-c` uses the input as the cluster.
+Give `-c` the substrate, cofactors, and metals as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole when `-r` is above 0. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Putting the catalytic residues in `-c` is reasonable, but every `-c` residue also seeds the radius, so the model tends to grow; fix the residue choice with `--selected-resn` instead. `--selected-resn` keeps only the side chain unless a peptide neighbor is also in, so also select the neighbor of a residue whose main chain takes part. Extract R, IM, and P in one run ([Same atoms across states and variants](#same-atoms-across-states-and-variants)). `all` without `-c` uses the input as the cluster.
+
+A structure taken from MD carries neutralizing ions such as Na⁺ and Cl⁻. `extract` has no ion filter, so such an ion within the radius joins the model, adds its table charge, and can differ between snapshots. Remove these ions from the full structure before `extract` unless the mechanism needs one, then recheck the charge.
+
+When building models from many MD snapshots, keep the selected residues the same in every snapshot: use `-r 0` with `--selected-resn` so that the models share the same atoms except waters and atoms that cannot be avoided. With the residues and molecules fixed, the total charge is the same in every snapshot; if it is not, look for a counter-ion or a residue that was chosen differently. When the protonation or a bound molecule really differs between snapshots, keep that charge for that snapshot instead of editing residues or H to make the charges match.
 
 ## Check the boundary and the charge
 
-Success: the console prints `[extract] Atoms after truncation: N`, `[extract] Link-H to add: M`, and `Total active site model charge`; the model has N + M atoms (`n_atoms_extracted` + `n_link_hydrogens` in `result.json`). `all --dry-run` prints the same. Confirm in a viewer that hydrogen-bonding, catalytic, metal-coordination, and charge-compensating residues are in. For a boundary set or audited by hand:
+Success: the console prints `[extract] Atoms after truncation: N`, `[extract] Link-H to add: M`, and `Total active site model charge`; the model has N + M atoms (`n_atoms_extracted` + `n_link_hydrogens` in `result.json`). `all --dry-run` prints the same.
+
+The radius is measured only from atoms of the `-c` residues, not from `--selected-resn` residues, so a water or residue that touches a catalytic base but no center atom can stay out. Before a campaign, extract one representative structure and confirm in a viewer or its residue list that hydrogen-bonding, catalytic, metal-coordination, and charge-compensating residues, the proton acceptor, and every bridging water of each hypothesis are in; add a missing one with `--selected-resn` instead of raising `-r` for the whole model, then recheck the charge.
+
+For a boundary set or audited by hand:
 
 - End each main-chain fragment at `CA` on both sides.
 - Cut side chains, ligands, and cofactors at an aliphatic C–C single bond (`CA–CB` or farther out). Do not cut peptide C–N, polar C–N/C–O, aromatic, S–S, or metal-coordination bonds; include the partner or move the boundary.
 - One cap H per cut bond, with the intended valence; cap parents are [frozen by default](../pdb2reaction-cli/extract.md#freeze-atoms-at-the-cluster-boundary).
 - Recount charge and multiplicity; a wrong electron count makes the model invalid.
 
-`extract` caps only CA and CB cuts; another cut bond between nonmetal atoms makes `extract` warn and `all` stop. `--no-freeze-links` is for diagnostics only.
+`extract` caps only CA and CB cuts; another cut bond between nonmetal atoms makes `extract` warn and `all` stop ([Judge success](../pdb2reaction-cli/extract.md#judge-success)). `--no-freeze-links` is for diagnostics only.
 
 Before a long job, use `--dry-run` on a calculation command. It exits before
 the MLIP or DFT stages; `all -c ... --dry-run` runs the extraction in a
@@ -186,13 +201,19 @@ DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chain
 
 Each removal changes the charge. Delete the cap H of removed residues, or the run stops with `isolated LKH/HL`; a model built without `extract` has no cap H, so freeze its boundary with `--freeze-atoms`, and regenerate those indices after re-extraction (`all` with `-c` numbers the original input). If `freq` runs out of CUDA memory, keep the default `--hessian-calc-mode FiniteDifference` or shrink the movable region. DFT cost does not follow atom count; time one structure before a batch.
 
+`--exclude-backbone` also changes which residues join: an amino acid enters only through a side-chain atom within `-r` (or `--radius-het2het`), so a residue that touches a center only through its backbone N–H or C=O, such as an oxyanion hole, is left out. An amino-acid center not peptide-bonded to another center keeps only its side chain, capped at CB (Pro and Hyp keep the ring), and a lone Gly center keeps no atoms (`[extract] Center residue(s) … keep no atoms`). Put such a residue in `-c` with its peptide-bonded neighbor, or drop `--exclude-backbone`.
+
+Build the DFT-sized model with the trims above from the original complex before the MLIP search and run the whole path on it, so the MLIP TS can go straight to `-b dft`. Do not run `extract` again on an already extracted cluster or MLIP TS: `extract` has no handling for existing `LKH`/`HL` caps, so the re-cut model can warn about uncapped boundary bonds and differs in atoms from the MLIP path.
+
 ## Enlarge when the model is too small
 
-Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole when `-r` is above 0) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
+Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole when `-r` is above 0) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. MLIP TS optimization builds a dense Hessian of the movable atoms, so its cost grows quickly with the atom count. Keep the model to about 400–500 atoms when the reaction allows; this finishes fastest even on a large GPU. A large active site may need about 800–1,000 atoms, which works but runs noticeably slower, so plan the walltime for it. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
 
 ## Same atoms across states and variants
 
 Within one R/IM/P reaction path, all structures need the same atom identities and order, cluster boundary, and cap topology. Prefer one multi-input `extract`; mismatched inputs stop with `[multi] Atom count mismatch` or `[multi] Atom order mismatch`. States prepared separately must be harmonized first.
+
+With several inputs and `-c`, extraction keeps every residue within `-r` of the centers in any input (the union), so runs given different input sets (Scan-list mode from R alone, Endpoint mode from R and P, another snapshot) can produce models with different atoms and charge, and their barriers then come from different models. To compare barriers across runs, cut every structure in one `extract` run and give the cut PDBs to `all` without `-c`; then confirm that `charge` in each `summary.json` and the model atom counts (N + M) agree.
 
 WT/mutant or other cross-variant models may differ in atoms. Keep residue positions, boundary policy, protonation, and cap rules the same except for the mutation, record the differences, and compare barriers, not total energies ([ΔΔG‡](../pdb2reaction-overview/ts-strategy.md#controlled-comparisons)). Separate automatic extractions can pick different residues near the cutoff; harmonize the positions. For one chemical composition, use one atom set and order.
 

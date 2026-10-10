@@ -99,8 +99,18 @@ lists each segment in path order:
 - A `tag` ending in `_maxdepth` means splitting stopped at the depth limit or
   after repeated kinks; the segment may hold more than one step. Raise
   `--max-depth` (default 10) or give intermediates.
-- Only `kink` segments, or the warning `HEI is at an endpoint`, mean no bond
-  change or no peak between the ends; check the inputs or add intermediates.
+- Only `kink` segments mean that no bond change was found between the ends;
+  check the inputs or add intermediates.
+- The warning `HEI is at an endpoint` means that in that interval no image lies
+  above the higher end, so, as for `path-opt` above, there is no TS candidate:
+  `path-search` returns the interval as a raw path with no `segments` entry or
+  `hei_seg_NN.xyz`, adds `endpoint_hei` to `scientific_status_reasons`, and
+  `all --refine-path` runs no TS optimization on it. It is not a zero barrier
+  and does not show that no bond changes. Read the energies on the comment
+  lines of that run's `seg_NNN_*/final_geometries_trj.xyz` and its bond changes
+  ([`bond-summary`](utilities.md#bond-summary)); a frame at an interior local
+  maximum can start `tsopt` like an HEI. Other routes:
+  [ts-strategy](../pdb2reaction-overview/ts-strategy.md#when-the-ts-does-not-come-out).
 
 A successful TS optimization gives one imaginary mode along the reaction
 coordinate; confirm each HEI with `tsopt` (n_imag = 1) and IRC before reading
@@ -128,10 +138,22 @@ the two numbers differ. Working-directory names carry the tags `_mep`,
 - Convergence depends on the endpoints. Endpoint pre-optimization is on by
   default; on `not_converged`, inspect its result and the string before
   choosing a separate `opt`, a different endpoint, or other path settings.
+  When it converges but changes the bonding, see
+  [Run stage by stage](../pdb2reaction-overview/SKILL.md#run-stage-by-stage-and-judge-each-stage).
+- With frozen atoms, `path-opt`, `path-search`, and `all` align each input to
+  the previous one and then relax it with L-BFGS (up to 10000 cycles), even
+  when the frozen atoms already coincide and whatever `--preopt/--no-preopt`
+  says. If that relaxation does not converge, the run stops with
+  `Input alignment did not converge for pair(s)`. Only `path-search` can skip
+  the step (`--align/--no-align`); use `--no-align` for endpoints cut together
+  that share identical frozen coordinates.
 - If GSM stalls, DMF (`--mep-mode dmf`) is an alternative. It needs
   `cyipopt` from conda-forge; after a GPU out-of-memory error with the default
-  `--dmf-backend gpu`, retry with `--dmf-backend cpu`. DMF holds frozen atoms
-  with a stiff restraint, so they can move slightly.
+  `--dmf-backend gpu`, retry with `--dmf-backend cpu`. If a DMF run makes
+  almost no progress, set `BLIS_NUM_THREADS=1` in the job script before Python
+  starts: nested BLIS threads in IPOPT can stall it, and a change inside the
+  running process does not reach the solver. DMF holds frozen atoms with a
+  stiff restraint, so they can move slightly.
 - Another engine or a larger `--max-nodes` costs more and does not repair an
   inconsistent endpoint pair or a wrong mechanism.
 - `path-search` can return more segments than inputs minus one by proposing

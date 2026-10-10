@@ -126,7 +126,7 @@ with the default `--dft-engine gpu`, a GPU failure stops the run, so pass
 On aarch64 (`uname -m`), PyTorch publishes CUDA wheels for recent versions, but
 the `gpu4pyscf-cuda13x` wheel is x86_64 only, so the `[dft]` extra gives CPU
 PySCF there ([DFT](#dft-pyscf-gpu4pyscf)). Check each MLIP backend's PyPI page
-for aarch64 wheels.
+for aarch64 wheels. The aarch64 wheel of `warp-lang` 1.18.0, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0` (`nvalchemi-toolkit-ops` needs 1.13.0 or newer).
 
 ## UMA
 
