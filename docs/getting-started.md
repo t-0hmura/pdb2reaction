@@ -125,9 +125,9 @@ pdb2reaction all [OPTIONS]...
 | `-l, --ligand-charge` | `'SAM:1,GPP:-3'` | Formal charge of each ligand, as a mapping (standard residues and ions are counted automatically) |
 | `-q, --charge` | `-2` | Total charge of the whole extracted model (set it to override the automatic value) |
 | `-m, --multiplicity` | `1` | Spin multiplicity (default `1`, a singlet) |
-| `--tsopt` | (flag) | Turns on TS optimization and IRC |
-| `--thermo` | (flag) | Runs vibrational analysis and thermochemical correction with the QRRHO (quasi-rigid-rotor harmonic oscillator) model (with `--tsopt`) |
-| `--dft` | (flag) | Runs DFT single points on the resulting structures (with `--tsopt`) |
+| `--tsopt/--no-tsopt` | (flag) | Turns on TS optimization and IRC |
+| `--thermo/--no-thermo` | (flag) | Runs vibrational analysis and thermochemical correction with the QRRHO (quasi-rigid-rotor harmonic oscillator) model (with `--tsopt`) |
+| `--dft/--no-dft` | (flag) | Runs DFT single points on the resulting structures (with `--tsopt`) |
 | `-b, --backend` | `uma` / `orb` / `mace` | MLIP backend to use (default `uma`) |
 
 `--dft` needs the DFT extra from step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
