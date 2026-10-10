@@ -626,13 +626,13 @@ def test_dmf_solvent_guard_is_backend_capability_aware() -> None:
         )
 
 
-def test_scf_stepwise_grid_is_opt_in_for_both_dft_paths(tmp_path) -> None:
+def test_scf_stepwise_grid_is_on_by_default_for_both_dft_paths(tmp_path) -> None:
     from pdb2reaction.core.dft_settings import resolve_dft_settings
 
-    assert resolve_dft_settings({"backend": "dft"}).scf_stepwise_grid is False
+    assert resolve_dft_settings({"backend": "dft"}).scf_stepwise_grid is True
     assert resolve_dft_settings(
-        {"backend": "dft", "dft": {"scf_stepwise_grid": True}}
-    ).scf_stepwise_grid is True
+        {"backend": "dft", "dft": {"scf_stepwise_grid": False}}
+    ).scf_stepwise_grid is False
 
     xyz = tmp_path / "h2o.xyz"
     xyz.write_text("3\n\nO 0 0 0\nH 0 0.76 0.59\nH 0 -0.76 0.59\n")

@@ -344,7 +344,9 @@ def test_stepwise_grid_applies_only_to_the_first_scf() -> None:
     first = np.array([0.0, 0.0, -0.7, 0.0, 0.0, 0.7])
     second = np.array([0.0, 0.0, -0.72, 0.0, 0.0, 0.72])
     normal = create_calculator(
-        backend="dft", dft_settings=_settings(func_basis="lda/sto-3g"), print_timing=False
+        backend="dft",
+        dft_settings=_settings(func_basis="lda/sto-3g", scf_stepwise_grid=False),
+        print_timing=False,
     )
     staged = create_calculator(
         backend="dft",
@@ -364,7 +366,9 @@ def test_stepwise_grid_applies_only_to_the_first_scf() -> None:
 def test_stepwise_grid_is_skipped_for_hartree_fock() -> None:
     from pdb2reaction.backends import create_calculator
 
-    plain = create_calculator(backend="dft", dft_settings=_settings(), print_timing=False)
+    plain = create_calculator(
+        backend="dft", dft_settings=_settings(scf_stepwise_grid=False), print_timing=False
+    )
     calc = create_calculator(
         backend="dft",
         dft_settings=_settings(scf_stepwise_grid=True),

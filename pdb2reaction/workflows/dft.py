@@ -65,7 +65,7 @@ DFT_KW: Dict[str, Any] = {
     "basis": DFT_DEFAULT_BASIS,# Basis set (can be overridden via YAML)
     # Closed-shell GPU uses rks_lowmem; open-shell GPU and CPU use direct JK.
     "lowmem": True,
-    "scf_stepwise_grid": False,  # coarse-grid first SCF stage (see backends.pyscf_dft)
+    "scf_stepwise_grid": True,  # coarse-grid first SCF stage (see backends.pyscf_dft)
     "solvent": "none",
     "solvent_model": "smd",
 }

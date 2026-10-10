@@ -165,7 +165,7 @@ calc:
   func_basis: wb97m-v/def2-svp
   engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
   lowmem: true             # DF tensorを保持しないdirect JK
-  scf_stepwise_grid: false # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
+  scf_stepwise_grid: true # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
   density_fit: false       # 既定は lowmem の逆
   nprocs: auto             # scheduler/affinityからPySCF thread数を決定
   memory: auto             # host RAM上限（例64GB、GPU VRAMではない）
@@ -595,7 +595,7 @@ dft:
  solvent_model: smd # pcm | smd
  pyscf: {} # PySCF object名attribute転送
  lowmem: true # 低memory direct JK。falseでdensity fitting
- scf_stepwise_grid: false # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
+ scf_stepwise_grid: true # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
  nprocs: auto # scheduler/affinityからPySCF thread数を決定
  memory: auto # host RAM上限（例64GB、GPU VRAMではない）
  verbose: 0 # PySCF verbosity (0-9)。-v 0/1 で効く。既定の -v 2 と -v 3 では 4 以上に上がる

@@ -167,7 +167,7 @@ Options:
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the
                                   previous density as usual).  [default:
-                                  (disabled)]
+                                  (enabled)]
   --dft-low-memory, --lowmem / --no-dft-low-memory, --no-lowmem
                                   Use GPU4PySCF rks_lowmem for closed-shell GPU
                                   DFT; open-shell GPU and CPU use standard

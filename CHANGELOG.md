@@ -15,7 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - Add a stateful PySCF/GPU4PySCF calculator backend to calculator-consuming workflows, with SCF reuse between steps, analytical Hessians, native PCM/SMD, and opt-in checkpoints.
-- Add `--scf-stepwise-grid` to `dft`, `all --dft`, and `-b dft` (off by default): the first SCF converges on a coarse grid and passes its density to the SCF on the requested grid.
+- Add `--scf-stepwise-grid` to `dft`, `all --dft`, and `-b dft` (on by default; `--no-scf-stepwise-grid` turns it off): the first SCF converges on a coarse grid and passes its density to the SCF on the requested grid.
 - Add distance, angle, and dihedral coordinates to `scan`, `scan2d`, `scan3d`, and `all`, and `all --resume-segment N` to restart post-processing from a saved MEP.
 - Add `--read-hess` and `--dump-hess` to pass one plain NumPy `.npy` Hessian between `freq`, `tsopt`, and `irc`.
 - Add `--skip-final-freq` to `tsopt` and `all`, `--hess-device` to `freq` and `irc`, and `--solvent-xtb-cmd`; warn about YAML sections that no command reads.

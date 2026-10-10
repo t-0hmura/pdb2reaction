@@ -136,7 +136,7 @@ def add_dft_calculator_options(
             "--scf-stepwise-grid/--no-scf-stepwise-grid",
             "scf_stepwise_grid",
             default=None,
-            show_default="disabled",
+            show_default="enabled",
             expose_value=False,
             callback=_capture_dft_option,
             help=(
