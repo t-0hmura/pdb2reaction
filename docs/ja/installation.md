@@ -9,7 +9,7 @@
 ### 必須
 
 ```bash
-# 1) conda 環境を作成してアクティブ化
+# 1) Python 3.12 の環境を作成してアクティブ化（例は conda。venv などでもよい）
 # 2) CUDA 対応の PyTorch ビルドをインストール
 # 3) pdb2reaction をインストール
 # 4) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
@@ -19,6 +19,7 @@ conda create -n p2r python=3.12 -y
 conda activate p2r
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # 推奨。cu126 / cu132 なら末尾を置き換え
 pip install pdb2reaction
+
 plotly_get_chrome -y
 ```
 
@@ -156,7 +157,7 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
 
 **GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
 
-**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間前後以上かかり、反応機構解析の全体の時間がきつくなります（経験的な目安）。代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
+**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間前後以上かかり、反応機構解析の全体の時間が長くなります。巨大な系を扱う場合は、代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
 
 ## 次のステップ
 

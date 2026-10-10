@@ -9,7 +9,7 @@
 ### Required
 
 ```bash
-# 1) Create and activate a conda environment
+# 1) Create and activate a Python 3.12 environment (conda here; venv also works)
 # 2) Install a CUDA-enabled PyTorch build
 # 3) Install pdb2reaction
 # 4) Install headless Chrome for Plotly static image export (PNG)
@@ -19,6 +19,7 @@ conda create -n p2r python=3.12 -y
 conda activate p2r
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # recommended; for cu126 / cu132, change the end
 pip install pdb2reaction
+
 plotly_get_chrome -y
 ```
 

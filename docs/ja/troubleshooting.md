@@ -202,9 +202,9 @@ VRAM は原子数だけでは決まらず、MLIP モデル、数値精度、Hess
 3. メモリの大きい GPU に移る。
 4. クラスターモデルを縮小する。必要な残基が残ることと境界の位置を確かめてからにします。
 
-## 不具合報告のときに添えると助かる情報
+## 不具合の報告
 
-実行したとおりのコマンド、`run.log`（`all`・`path-search` では `summary.log` も）、再現する最小の入力、OS・Python・CUDA・PyTorch の版を添えてください。
+問題の報告や機能の要望は [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues) へお寄せください。実行したとおりのコマンド、`run.log`（`all`・`path-search` では `summary.log` も）、再現する最小の入力、OS・Python・CUDA・PyTorch の版を添えていただくと助かります。
 
 ## 関連ドキュメント
 
