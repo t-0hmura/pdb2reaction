@@ -13,6 +13,12 @@ MLIP は、DFT（密度汎関数法）の計算データを学習したニュー
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
+
+小分子の反応にも使えます。`-c` を付けなければ入力の構造をそのまま計算し、全体の電荷は `-q` で指定します（[小分子の反応機構解析](small-molecules.md)）。
+
+```bash
+pdb2reaction -i R.xyz P.xyz -q +1
+```
 :::
 ::::
 
@@ -199,7 +205,13 @@ pdb2reaction all [OPTIONS]...
 
 ## AI エージェント連携（Skills）
 
-`pdb2reaction` には、AI エージェント（Claude Code、Codex、Cursor など）向けの手順書が `skills/` ディレクトリに同梱されています。
+`pdb2reaction` には、AI エージェント（Claude Code、Codex、Cursor など）向けの手順書が `skills/` ディレクトリに同梱されています。導入するときは、AI エージェントに次のように指示してください。
+
+> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install` の手順に従って pdb2reaction をインストールして
+
+GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `skills/` の path を渡しても構いません。導入した後は、たとえば次のように頼めます。
+
+> 〈論文〉を読んで、〈PDB ID〉の構造からモデルを作成し、〈反応段階〉の経路について、pdb2reaction のスキルを用いて反応機構解析を行ってください。
 
 CLI サブコマンドの仕様、PDB/mmCIF/XYZ/GJF の入出力ルール、バックエンドの環境構築手順、HPC 並列化のベストプラクティスが定義されています。`skills/` をエージェントに読み込ませることで、エージェントを通じた自然言語指示による計算実行・解析が可能になります。配置場所とスキルの一覧は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。MCP のクライアントからコマンドをツールとして呼ぶ方法は [MCP サーバー](mcp_server.md) にあります。
 
