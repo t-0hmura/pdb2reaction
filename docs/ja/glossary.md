@@ -17,9 +17,9 @@
 | **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点 |
 | **COS** | Chain-of-States | イメージの鎖をまとめて最適化する経路の手法。GSM、ストリングオプティマイザ（`stopt`）、DMF など |
 | **セグメント** | — | 2 つの隣接する端点を結ぶ MEP 区間（例: R → I1, I1 → I2, …） |
-| **反応セグメント** | Reactive Segment | TS 候補を持つセグメント。ブリッジとキンクを除くすべての MEP のセグメント（ふつうは両端で共有結合が変わる区間）と、[TS-only モード](quickstart-tsopt.md)（1 構造に `all --tsopt` を付けた実行）で入力した TS がこれに当たり、`all` は要求した TS 最適化・IRC・熱化学・DFT をこれにだけ行います |
+| **反応セグメント** | Reactive Segment | TS 候補を持つセグメント。ブリッジと配座変化の区間を除くすべての MEP のセグメント（ふつうは両端で共有結合が変わる区間）と、[TS-only モード](quickstart-tsopt.md)（1 構造に `all --tsopt` を付けた実行）で入力した TS がこれに当たり、`all` は要求した TS 最適化・IRC・熱化学・DFT をこれにだけ行います |
 | **ブリッジセグメント** | Bridge Segment | 隣り合うセグメントの間をつなぐ短い MEP。`path-search` がセグメントを 1 本の経路につなぐとき、前のセグメントの終わりと次のセグメントの始まりが一致せず、その間で結合が変わらなければ、そのすき間をブリッジで埋めます（[path-search の処理の仕組み](path-search.md#処理の仕組みと計算仕様) の 5） |
-| **キンク（kink）** | Kink | 配座だけが変わる経路の区間（セグメント）。`path-search` が HEI の両側で最適化した 2 つの構造（End1 と End2。[path-search の処理の仕組み](path-search.md#処理の仕組みと計算仕様) の 2）の間で、共有結合が変わらない区間を指します。`path-search` は新しい GSM・DMF の経路の代わりに、線形補間のノードを数個（`search.kink_max_nodes`、デフォルト 3）入れて 1 つずつ最適化します |
+| **配座変化の区間（kink）** | Kink | 配座だけが変わる経路の区間（セグメント）。`path-search` が HEI の両側で最適化した 2 つの構造（End1 と End2。[path-search の処理の仕組み](path-search.md#処理の仕組みと計算仕様) の 2）の間で、共有結合が変わらない区間を指します。`path-search` は新しい GSM・DMF の経路の代わりに、線形補間のノードを数個（`search.kink_max_nodes`、デフォルト 3）入れて 1 つずつ最適化します |
 | **PES** | Potential Energy Surface（ポテンシャルエネルギー面） | 原子配置に対するエネルギーの超曲面。MEP は PES 上の最低エネルギー経路 |
 
 ## 最適化アルゴリズム

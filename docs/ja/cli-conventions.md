@@ -214,7 +214,7 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
 | `path-opt`（端点の事前最適化） | L-BFGS | RFO | `grad` |
-| `path-search`（HEI±1 とキンク（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
+| `path-search`（HEI±1 と配座変化の区間（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d`（格子の各点の緩和） | L-BFGS | RFO | `grad` |
 | `all`（前処理の最適化、`--opt-mode`） | L-BFGS | RFO | `grad` |
 | `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess` |
