@@ -55,8 +55,9 @@ Requirements: Linux, Python 3.11 or later (3.12 recommended; ORB requires 3.11 o
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 
-# 2. Install pdb2reaction
+# 2. Install pdb2reaction and headless Chrome (for PNG export of plots)
 pip install pdb2reaction
+plotly_get_chrome -y
 
 # 3. Authenticate Hugging Face once (only required for the default UMA backend)
 #    Accept the FAIR Chemistry License v1 at https://huggingface.co/facebook/UMA, then:
