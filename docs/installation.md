@@ -17,6 +17,7 @@
 
 conda create -n p2r python=3.12 -y
 conda activate p2r
+
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # recommended; for cu126 / cu132, change the end
 pip install pdb2reaction
 

@@ -17,6 +17,7 @@
 
 conda create -n p2r python=3.12 -y
 conda activate p2r
+
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # 推奨。cu126 / cu132 なら末尾を置き換え
 pip install pdb2reaction
 
@@ -154,6 +155,8 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
     ```
 
 ## システム要件
+
+**OS:** Linux、または Windows の WSL。
 
 **GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
 
