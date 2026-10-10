@@ -20,7 +20,7 @@
 `-s` is a Python literal: single quotes outside, double quotes inside. A tuple
 names its atoms by 1-based index (`(1, 5, 1.4)`) or by atom spec. An atom spec
 has residue name, residue number, and atom name in any order, separated by
-spaces, commas, slashes, backticks, or backslashes (`"CS1 SAM 320"`,
+spaces, commas, colons, slashes, backticks, or backslashes (`"CS1 SAM 320"`,
 `"SAM 320 CS1"`). When residue names or numbers repeat, use the positional
 `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`, for example
 `("A:SAM:320:CS1", "B:GPP:321:C7", 1.60)`.
@@ -31,6 +31,9 @@ spaces, commas, slashes, backticks, or backslashes (`"CS1 SAM 320"`,
   range becomes two stages, toward `low` and then toward `high`. `scan2d` takes
   exactly two ranges and `scan3d` exactly three, in one literal or under
   `pairs:` in a YAML/JSON file; each range is one grid axis.
+- `scan` reads a 4-tuple as a distance range; `all -s` reads it as an angle
+  target and takes no ranges. Within one `scan` run, use either targets or
+  ranges.
 
 In `scan`, the tuples of one literal move together as one stage
 (`'[(a, b, 1.6), (c, d, 3.0)]'` drives two bonds at once). Several literals
@@ -113,8 +116,8 @@ means the run finished. `surface.csv` holds the per-point energies and
 
 ## Pitfalls and recovery
 
-- Put all stage literals after one `-s`. Repeating `-s` is rejected
-  (`repeated flags are not accepted`).
+- Put all stage literals after one `-s`, or repeat `-s` once per stage;
+  mixing the two forms is rejected.
 - Stage k+1 starts from the final geometry of stage k, so a diverged stage
   spoils every later stage.
 - An explicit `--relax-max-cycles` (default 100000) overrides YAML

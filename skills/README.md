@@ -5,7 +5,7 @@ how to judge whether a run succeeded, which pitfalls to expect and how to
 recover, and how to read the outputs.
 
 - `pdb2reaction-overview` (start here): what `pdb2reaction` is, picking one of the three
-  `all` modes (endpoint MEP, scan, TS-only), step-by-step runs, a code map,
+  `all` modes (Endpoint mode, Scan-list mode, TS-only mode), step-by-step runs, a code map,
   TS strategy (`ts-strategy.md`), and reading outputs (`outputs.md`).
 - `pdb2reaction-cli`: the 18 subcommands in 14 files (heavy commands one each,
   the rest grouped): when to use each, how to judge success, and pitfalls.
@@ -43,5 +43,7 @@ For example, from the root of this repository:
 mkdir -p ~/.claude/skills
 cp -r skills/pdb2reaction-* skills/colab-local-gpu-runtime ~/.claude/skills/
 ```
+
+Links from the skills to `../../docs/` open only inside a repository checkout; elsewhere, use the docs at <https://t-0hmura.github.io/pdb2reaction/>.
 
 For exact flags and defaults, check the installed CLI (`pdb2reaction <subcommand> --help-advanced`) and the [command reference](../docs/reference/commands/index.md).

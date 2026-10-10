@@ -36,7 +36,7 @@ built-in defaults  <  --config (YAML)  <  CLI flags
 2. **`--config`** — a YAML file that overrides defaults (e.g., `--config my_settings.yaml`).
 3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Options left at their CLI default do not mask YAML values.
 
-For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
+For example, if the YAML sets `calc.charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
 
 This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft`, and `sp`.
 
@@ -98,8 +98,8 @@ A misspelled section name prints `[config] WARNING: YAML section(s) … are not 
 | `scan2d`, `scan3d` | `baker` |
 | `path-opt`, `path-search` (single-structure optimizations) | `gau` |
 | `path-opt`, `path-search` (GSM string: `--thresh-gsm`, `stopt.thresh`) | `gau_loose` |
-| `all` (pre-opt, post-opt min) | `gau` |
-| `all` (post-opt TS stage) | `baker` |
+| `all` (pre-opt and scan relaxations, `--thresh`) | `gau` |
+| `all` (TS and post-IRC endpoint optimizations, `--thresh-post`) | `baker` |
 
 Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`. Override per run with `--thresh <preset>` or under `opt.thresh` in YAML.
 
@@ -591,7 +591,7 @@ The default imaginary-mode criterion is ν < −5.00 cm⁻¹. `freq`, `opt`
 `hessian_dimer.neg_freq_thresh_cm` or `rsirfo.saddle_imaginary_threshold_cm`;
 if two of the three keys are set explicitly to different values, the run stops
 with an error. `n_negative_modes` also counts the negative
-frequencies inside the cutoff. Neither n_imag nor `n_negative_modes` decides
+frequencies between −`zero_cutoff_cm` and 0, which n_imag does not count. Neither n_imag nor `n_negative_modes` decides
 whether an optimization has converged. Whatever the cutoff, the output keeps
 every signed frequency, and thermochemistry uses every positive mode.
 
@@ -701,12 +701,6 @@ stopt:
  max_cycles: 300
  dump: false
 
-lbfgs:
- max_cycles: 100000
-
-rfo:
- max_cycles: 100000
-
 bond:
  bond_factor: 1.2
  delta_fraction: 0.05
@@ -735,7 +729,7 @@ dft:
 - `workers` and `workers_per_node` take effect only with the UMA backend.
 - With `workers > 1`, UMA cannot compute analytical Hessians: an explicit `hessian_calc_mode: Analytical` stops the run with an error. Use `workers: 1` or `FiniteDifference`; see {ref}`Workers and analytical Hessians <workers-analytical-error>`.
 - `freq` and `irc` always use the partial Hessian, whatever `calc.return_partial_hessian` is set to.
-- `all` passes the same file to each stage it runs, and each stage reads the sections listed for that command in the **Used by** column of the Overview table. For example, the TS stage reads the `tsopt` sections, including `opt`, `hessian_dimer`, and `rsirfo`, and the `dft` section takes effect with `all --dft`.
+- `all` passes the same file to each stage it runs, and each stage reads the sections listed for that command in the **Used by** column of the section table at the top of this page. For example, the TS stage reads the `tsopt` sections, including `opt`, `hessian_dimer`, and `rsirfo`, and the `dft` section takes effect with `all --dft`.
 - `opt.lbfgs` and `opt.rfo` are other names for `lbfgs` and `rfo`, and `freq.thermo` is another name for `thermo`. Two different values for the same setting stop the run with an error, for example `lbfgs.max_cycles` and `opt.lbfgs.max_cycles`, or `opt.max_cycles` and `lbfgs.max_cycles` when L-BFGS is the selected optimizer. `-o/--out-dir` overrides the `out_dir` keys, and `all` sets the output directory of each stage itself.
 
 ## See Also

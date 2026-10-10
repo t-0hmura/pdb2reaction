@@ -19,7 +19,7 @@ Open `result_opt/result.json` and read `execution_status` and `scientific_status
 The `summary.json` that `all` and `path-search` write without an
 `--out-json` flag is [a different file with its own structure](#summary-json-path-search-all).
 
-## Common envelope
+## Common fields
 
 Every result file carries the fields below; fields marked optional appear only
 when the command has the corresponding data:
@@ -65,7 +65,7 @@ Every result reports `execution_status` and `scientific_status`; multi-stage and
 | `stage_outcomes` | object[] | One entry per stage with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |
 | `point_outcomes` | object[] | Scan points with `point_id`, `executed`, `converged`, `energy_valid`, `artifact_written`, `seed_eligible`, and `reason`. |
 
-### Error envelope (when `execution_status == "failed"`)
+### Error fields (when `execution_status == "failed"`)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -397,9 +397,9 @@ are listed in [`summary.json` (`path-search` / `all`)](#summary-json-path-search
 | `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | Effective recomputation provenance; all are null in trajectory-comment mode |
 | `energy_provenance` | string[] | Per-frame energy source provenance |
 | `energy_unit` | string | Stored energy unit (`hartree`) |
-| `backend` | string or null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
-| `charge` / `multiplicity` | int or null | Charge and multiplicity used when energies were recomputed, otherwise null |
-| `solvent` / `solvent_model` | string or null | Recomputed-calculator solvent settings, otherwise null |
+| `backend` | string \| null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
+| `charge` / `multiplicity` | int \| null | Charge and multiplicity used when energies were recomputed, otherwise null |
+| `solvent` / `solvent_model` | string \| null | Recomputed-calculator solvent settings, otherwise null |
 | `output_files` | string[] | Canonical ordered paths for every output; preserves files with the same basename in different directories |
 | `files` | object | Basename-to-path map; when two outputs share a basename only one is kept, so prefer `output_files` |
 

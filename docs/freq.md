@@ -101,7 +101,7 @@ result_freq/
 | `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.xyz`, ...) |
 | `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
-| `-l, --ligand-charge` | text | `None` | Per-residue formal charges (e.g. `'SAM:1,GPP:-3'`) |
+| `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `--ref-pdb` | path | `None` | Reference PDB/mmCIF topology for `.xyz` / `.gjf` input; the coordinates still come from `-i` |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
 | `-b, --backend` | text | `uma` | Calculator backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |

@@ -2,7 +2,7 @@
 
 `pdb2reaction` は Linux 環境（ワークステーションや HPC）向けで、本番計算では通常 CUDA 対応 GPU を使用します。ビルド済みの **PyTorch** wheel は CUDA ランタイムを同梱するため、通常は互換性のある NVIDIA ドライバーだけが必要です。
 
-## クイックスタート
+## 最短のインストール
 
 `nvidia-smi` の右上に出る `CUDA Version` は、ドライバーが扱える最も新しい CUDA です。PyTorch の wheel は、これ以下の `cu126`・`cu130`・`cu132` から選びます。以下のコマンドは推奨の `cu130` を使います。
 
@@ -10,8 +10,8 @@
 
 ```bash
 # 1) conda 環境を作成してアクティブ化
-# 2) CUDA 対応の PyTorchビルドをインストール
-# 3) pdb2reactionをインストール
+# 2) CUDA 対応の PyTorch ビルドをインストール
+# 3) pdb2reaction をインストール
 # 4) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
 #    Chromium のバイナリをダウンロード（インターネット接続が必要）
 
@@ -31,7 +31,7 @@ hf auth login
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-これはマシン/環境ごとに 1 回だけ行う必要があります。
+ログインはマシン・環境ごとに 1 回行えば十分です。
 
 `pdb2reaction --version` でバージョンが表示されれば、インストールは成功です。
 
@@ -74,7 +74,7 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     ```
 
-    PyTorch 2.13.0 の公式 wheel には `cu126`、`cu132`、`cpu` もあります。上のクイックスタートにある `nvidia-smi` の見方で wheel を選び、手順 8 で GPU が使えるかを確かめてください。[PyTorch の版の対応表](https://pytorch.org/get-started/previous-versions/) を参照してください。
+    PyTorch 2.13.0 の公式 wheel には `cu126`、`cu132`、`cpu` もあります。上の最短のインストールにある `nvidia-smi` の見方で wheel を選び、手順 8 で GPU が使えるかを確かめてください。[PyTorch の版の対応表](https://pytorch.org/get-started/previous-versions/) を参照してください。
 
 5. **`pdb2reaction` 本体と可視化用 Chrome をインストール**
 
@@ -153,9 +153,9 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
 
 ## システム要件
 
-**GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（クイックスタートを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
+**GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
 
-**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。既定の UMA で Hessian を計算するときの VRAM のおおよその目安は、既定の有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間前後以上かかり、反応機構解析の全体の時間がきつくなります（経験的な目安）。代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
+**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間前後以上かかり、反応機構解析の全体の時間がきつくなります（経験的な目安）。代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
 
 ## 次のステップ
 

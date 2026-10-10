@@ -10,9 +10,9 @@
 
 与える入力でモードが決まります。
 
-* **R と P から経路とエネルギー図を作る**: 反応順に並べた 2 構造以上（反応物、中間体、生成物）を与えると、隣り合う構造の間の MEP を求め、エネルギー図を描きます。
-* **反応物 1 つから経路を作る**: 1 構造と、作る結合・切れる結合を `-s` で与えると、段階的スキャンで中間体を作り、それらを通る MEP を求めます。
-* **TS 候補 1 つを確かめる（TS-only モード）**: 1 構造に `--tsopt` を付け、`-s` を付けずに与えると、TS を最適化し、そこから IRC をたどります。n_imag = 1 で、IRC が狙った R と P に着けば TS と確かめられます。
+* **R と P から経路とエネルギー図を作る**: 反応順に並べた 2 構造以上（反応物、中間体、生成物）を与えると、隣り合う構造の間の MEP を求め、エネルギー図を描く
+* **反応物 1 つから経路を作る**: 1 構造と、作る結合・切れる結合を `-s` で与えると、段階的スキャンで中間体を作り、それらを通る MEP を求める
+* **TS 候補 1 つを確かめる（TS-only モード）**: 1 構造に `--tsopt` を付け、`-s` を付けずに与えると、TS を最適化し、そこから IRC をたどる（n_imag = 1 で、IRC が狙った R と P に着けば TS と確かめられる）
 
 ---
 
@@ -29,11 +29,11 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-端末に各 TS の `[tsopt] Converged (n_imag=1).` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、求めた段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
+端末に各 TS の `[tsopt] Converged (n_imag=1).` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、指定した段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
 
 ### 2. 反応物から段階的スキャンで経路を作る
 
-段 1 で SAM のメチル炭素（CS1）を GPP の C7 に近づけ（1.60 Å）、段 2 で GPP の H11 を Glu186 の OE2 に移します（0.90 Å）。
+ステージ 1 で SAM のメチル炭素（CS1）を GPP の C7 に近づけ（1.60 Å）、ステージ 2 で GPP の H11 を Glu186 の OE2 に移します（0.90 Å）。
 
 ```bash
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -41,7 +41,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --out-dir ./result_scan
 ```
 
-1 つのリテラルの中の目標は、同じ段で一緒に動きます。リテラルを並べると順に別の段として実行し、各段は前の段の終わりの構造から始まります。各段の終わりの構造が MEP 探索の入力になります。`-s` は 1 回だけ書き、その後にすべてのリテラルを並べてください。反応の分け方は {ref}`反応の分け方を決める <ja-mechanism-split>` を参照してください。chain が空の PDB では、原子を残基名・残基番号・原子名の 3 つで順不同に指定します（`"CS1 SAM 320"`）。chain があるときは `A:SAM:320:CS1` と書きます。指定できる形はすべて {ref}`スキャンリスト仕様 <ja-scan-list-spec>` にあります。
+1 つのリテラルの中の目標は、同じステージで一緒に動きます。リテラルを並べると順に別のステージとして実行し、各ステージは前のステージの終わりの構造から始まります。各ステージの終わりの構造が MEP 探索の入力になります。`-s` は 1 回だけ書き、その後にすべてのリテラルを並べてください。反応の分け方は {ref}`反応の分け方を決める <ja-mechanism-split>` を参照してください。chain が空の PDB では、原子を残基名・残基番号・原子名の 3 つで順不同に指定します（`"CS1 SAM 320"`）。chain があるときは `A:SAM:320:CS1` と書きます。指定できる形はすべて {ref}`スキャンリスト仕様 <ja-scan-list-spec>` にあります。
 
 ### 3. TS 候補を確かめる（TS-only モード）
 
@@ -75,7 +75,7 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
   ├─ (-c のとき) 活性部位モデルの抽出: extract
   │   └─ 活性部位モデル
   ├─ (1 構造 + -s のとき) 段階的スキャン: scan
-  │   └─ 各段の終わりの構造 = 中間体
+  │   └─ 各ステージの終わりの構造 = 中間体
   ├─ MEP 探索: path-opt（デフォルト）または path-search（--refine-path）
   │   └─ mep_trj.xyz と energy_diagram_MEP.png
   └─ (--tsopt のとき) TS 最適化と IRC: tsopt → irc
@@ -84,7 +84,7 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
 ```
 
 1. **入力の準備**: altloc（代替配置）を含む PDB では、残基ごとに平均の占有率が最も高いラベルを 1 つ選びます。元素の欄が空の PDB では、元素記号を補います。`-c` を指定すると、指定した残基のまわりの活性部位モデルを切り出し、切った結合をキャップ水素で埋めます。
-2. **経路の作成**: まず入力構造を最適化します（`--preopt`）。`-s` を指定すると、段階的スキャンで中間体を作ります。続いて `path-opt` が、隣り合う構造の間の MEP を GSM（growing string method）か DMF（direct max flux）で求めます。`--refine-path` では、再帰的な `path-search` が経路を詰め、結合が変わる所で段に分けます。各段の HEI がその段の TS 候補です。
+2. **経路の作成**: まず入力構造を最適化します（`--preopt`）。`-s` を指定すると、段階的スキャンで中間体を作ります。続いて `path-opt` が、隣り合う構造の間の MEP を GSM（growing string method）か DMF（direct max flux）で求めます。`--refine-path` では、再帰的な `path-search` が経路を精密化し、結合が変わる所で反応段に分けます。各反応段の HEI がその段の TS 候補です。
 3. **TS の最適化**（`--tsopt`）: 各 HEI をデフォルトでは RS-P-RFO（restricted-step partitioned rational function optimization）で最適化し、最後の Hessian から n_imag を求めます。
 4. **IRC の追跡**: TS から EulerPC（Euler 予測子–修正子法）で IRC を両方向へたどり、両端を極小まで最適化します。これがそのセグメントの R と P になります。
 5. **熱化学と DFT**: `--thermo` では R・TS・P で `freq` を実行してギブズエネルギーを求め、`--dft` では同じ構造で DFT 一点計算を行います。それぞれのエネルギー図も描きます。
@@ -112,10 +112,10 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 
 * **端末**: 各 TS 最適化は、虚振動 1 つで収束すると `[tsopt] Converged (n_imag=1).` で終わります。`====== Pipeline summary ======` の下に `Execution status:` と `Scientific status:` が出ます。結果が `success` でないときは、`RESULT WARNING:` の行に理由が出ます。
 * **`summary.log`**: ヘッダーに `Pipeline mode`（`MEP`、`Scan`、`TS-only`）と 2 つのステータスが出ます。[1] は MEP の概要、[2] は各セグメントの MEP 上の障壁 ΔE‡・反応エネルギー ΔE・結合の変化、[3] は各セグメントの後処理で、`TS imaginary freq:` の下に n_imag が出ます。[4] はエネルギー図の表、[5] は出力のツリーです。
-* **`summary.json`**: `scientific_status` には `success`・`partial`・`failed` のいずれかが、`scientific_status_reasons` にはその[理由](json-output.md#実行と要求段階の完了状況)が入ります。各 TS の n_imag は `post_segments[].tsopt.n_imaginary_modes` です。
+* **`summary.json`**: `scientific_status` には `success`・`partial`・`failed` のいずれかが、`scientific_status_reasons` にはその[理由](json-output.md#実行の完了と指定した段の完了)が入ります。各 TS の n_imag は `post_segments[].tsopt.n_imaginary_modes` です。
   * **`summary.json` の障壁**: `--tsopt` のとき、各セグメントの障壁は `post_segments[].mlip.barrier_kcal` で、最適化した TS と R の MLIP のエネルギー差です。`--thermo` と `--dft` のときは、同じ `barrier_kcal` が `gibbs_mlip`・`dft`・`gibbs_dft_mlip` の下にもあります。`segments[].barrier_kcal` は TS 最適化の前の MEP 上の障壁で、TS-only モードでは TS − R です。
 
-`success` は、求めた段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
+`success` は、指定した段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
 
 ---
 
@@ -142,7 +142,7 @@ result_all/
 │     ├─ energy_diagram_*.png   # この段の R → TS → P の図
 │     ├─ ts/                    # TS 最適化。vib/imag_*_trj.xyz は虚振動のアニメーション
 │     ├─ irc/                   # IRC の軌跡と irc_plot.png
-│     ├─ endpoint_opt/          # 端点の最適化（--dump のとき、または端点が収束しなかったときに残る）
+│     ├─ endpoint_opt/          # 端点の最適化（--dump のとき、または端点が収束しなかったか失敗したときに残る）
 │     ├─ freq/{R,TS,P}/         # 振動数と熱化学（--thermo）
 │     └─ dft/{R,TS,P}/          # DFT 一点計算（--dft）
 └─ _work/                       # 途中のファイル（TS 候補の HEI を含む）
@@ -182,7 +182,7 @@ result_all/
 | `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`） |
 | `-r, --radius` | 浮動小数点数 | `2.6` | 中心原子からの抽出の半径（Å）。`0` では `-c` と `--selected-resn` の残基だけを残す |
 | `--selected-resn` | 文字列 | `""` | 半径による拡張なしで入れる残基（`-c` と同じ形） |
-| `-s, --scan-lists` | 文字列 | `None` | 1 構造の段階的スキャンの目標。1 つのリテラルが 1 段（例: `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`。書き方は {ref}`スキャンリスト仕様 <ja-scan-list-spec>`） |
+| `-s, --scan-lists` | 文字列 | `None` | 1 構造の段階的スキャンの目標。1 つのリテラルが 1 ステージ（例: `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`。書き方は {ref}`スキャンリスト仕様 <ja-scan-list-spec>`） |
 | `--tsopt/--no-tsopt` | フラグ | `False` | 各セグメントの TS を最適化し、IRC を実行 |
 | `--thermo/--no-thermo` | フラグ | `False` | R・TS・P の振動数と熱化学（`--tsopt` が必要） |
 | `--dft/--no-dft` | フラグ | `False` | R・TS・P の DFT 一点計算（`--tsopt` が必要） |
@@ -214,8 +214,8 @@ result_all/
 * **抽出の半径**: `-r 0` では半径による拡張を無効にし、`-c` と `--selected-resn` で選んだ残基からモデルを組みます。構造上の安全策として、ジスルフィド結合の相手や隣の残基の主鎖が加わることはあります。半径 0 は内部で 0.001 Å として扱います。
 * **`-c` を省いたとき**: 抽出を行わず、入力構造の全体を MEP 探索・`tsopt`・`freq`・`dft` に渡します。1 構造のときは、このときも `-s` か `--tsopt` が必要です。
 * **入力の形式**: `-c` を使うときは PDB か mmCIF が必要です。`-c` が無いときは XYZ と GJF も使えます。1 回の実行のすべての構造は、同じ原子を同じ順に持つ必要があります。
-* **電荷と多重度**: `-c` のときの全電荷は抽出したモデルの合計で、アミノ酸・イオン・水は組み込みの値、そのほかの残基は `-l` の値、`-l` に無い残基は 0 として数えます。`-c` が無いときは、入力に `-l` を当てて求めるか、`.gjf` のヘッダーから読みます。多重度は `-m`、無ければ `.gjf` のヘッダー、それも無ければ 1 です。詳しくは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
-* **別々に用意した構造**: 入力構造を別々に用意すると、反応座標の外の構造の違いも障壁に入ります。障壁を読む前に構造を比べてください。
+* **電荷と多重度**: `-c` のときの総電荷は抽出したモデルの合計で、アミノ酸・イオン・水は組み込みの値、そのほかの残基は `-l` の値、`-l` に無い残基は 0 として数えます。`-c` が無いときは、入力に `-l` を当てて求めるか、`.gjf` のヘッダーから読みます。多重度は `-m`、無ければ `.gjf` のヘッダー、それも無ければ 1 です。詳しくは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
+* **別々に用意した構造**: 入力構造を別々に用意すると、反応座標の外の構造の違いも障壁に入ります。障壁を読む前に構造を比べてください。組成が同じ 2 つの機構を比べるときは、両方の経路で共通の原子の集合と順序を使います。
 * **`--write-ref-merge`**: 経路を元の全系の入力に重ねた構造を、確認用に書き出します。`mep_w_ref*` は出力ディレクトリの直下に、`hei_w_ref_seg_NN.pdb` は `_work/path_search/` に入ります。`--refine-path`、`-c`、PDB か mmCIF の入力が必要です。
 * **`--resume-segment`**: `--tsopt`・`--thermo`・`--dft` のどれかが必要で、`--dry-run` とは一緒に使えません。保存した入力と MEP がコマンドと合わないときは、エラーで止まります。
 
@@ -226,10 +226,9 @@ result_all/
 `ΔΔG‡ = (G_TS − G_R)_mutant − (G_TS − G_R)_WT`
 
 * 2 つのモデルで、選ぶ残基の位置と、境界・キャップの決め方をそろえ、狙った変異だけが違うようにします。半径で別々に抽出すると、境界の残基が片方のモデルにだけ入ることがあるので、2 つの選択を比べてください。
-* プロトン化の決め方、電荷の決め方、バックエンドとモデル、精度、拘束、熱化学の条件をそろえます。変異でプロトン化の状態や形式電荷が変わる場合は全電荷も違うので、両方に同じ `-q` を当てはめないでください。
-* 組成が同じ 2 つの機構を比べるときは、両方の経路で共通の原子の集合と順序を使います。
+* プロトン化の決め方、電荷の決め方、バックエンドとモデル、精度、拘束、熱化学の条件をそろえます。変異でプロトン化の状態や形式電荷が変わる場合は総電荷も違うので、両方に同じ `-q` を当てはめないでください。
 
-2 つの実行は、入力と出力先のほかは同じオプションにします。R が化学的な反応物になるよう、それぞれの系の R と P を与えます（MEP のモード）。`G_TS − G_R` は `post_segments[].gibbs_mlip.barrier_kcal` です。
+2 つの実行は、入力と出力先のほかは同じオプションにします。R が化学的な反応物になるよう、それぞれの系の R と P を与えます（Endpoint モード）。`G_TS − G_R` は `post_segments[].gibbs_mlip.barrier_kcal` です。
 
 ```bash
 pdb2reaction all -i wt_R.pdb wt_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt

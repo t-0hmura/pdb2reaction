@@ -65,7 +65,7 @@ print(d["used_gpu"], d["used_lowmem"])  # lowmem is False for open shell, CPU, o
 - `--func-basis` follows PySCF names. Test a basis name directly:
   `python -c "from pyscf import gto; print(len(gto.basis.load('def2-tzvpd', 'C')))"`.
 
-## DFT//MLIP on the TS candidate
+## DFT//MLIP on R, TS, and P
 
 After `all --tsopt`, the structures to feed `dft` are
 `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` (plus `.cif` for mmCIF
@@ -92,10 +92,12 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 PY
 )
 printf -v RLS_DIR 'seg_%02d' "$RLS_SEG"
-TS_FILE="result_mep/segments/${RLS_DIR}/ts.pdb"
-test -f "$TS_FILE"
-pdb2reaction dft -i "$TS_FILE" -l 'SAM:1,GPP:-3' \
-    --func-basis 'wb97m-v/def2-tzvpd' --dft-engine gpu
+for state in reactant ts product; do
+  STATE_FILE="result_mep/segments/${RLS_DIR}/${state}.pdb"
+  test -f "$STATE_FILE"
+  pdb2reaction dft -i "$STATE_FILE" -l 'SAM:1,GPP:-3' \
+      --func-basis 'wb97m-v/def2-tzvpd' --dft-engine gpu -o dft_${state}
+done
 ```
 
 Combine the energies with [`energy-diagram`](utilities.md#energy-diagram).

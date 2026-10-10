@@ -57,7 +57,7 @@ result_ts_only/
         ├── reactant.pdb            # R/TS/P structures (.xyz for XYZ input, .gjf for GJF input)
         ├── ts.pdb
         ├── product.pdb
-        ├── energy_diagram_MLIP.png # R–TS–P energy diagram (energy_diagram_G_MLIP.png with --thermo)
+        ├── energy_diagram_MLIP.png # R–TS–P energy diagram (plus energy_diagram_G_MLIP.png with --thermo)
         ├── ts/
         │   ├── final_geometry.{xyz,pdb}
         │   └── vib/imag_*_trj.xyz  # Animation of each imaginary mode

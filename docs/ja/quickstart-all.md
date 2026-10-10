@@ -23,7 +23,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
-### （オプション）同一実行で後処理まで行う
+### （任意）同一実行で後処理まで行う
 
 `--tsopt` で[反応セグメント](glossary.md)（ここでは `seg_01`）ごとの TS 最適化と IRC を、`--thermo` で振動数と熱化学を、`--dft` で R・TS・P の DFT 一点計算を追加します。`--thermo` と `--dft` には `--tsopt` が必要です。
 
@@ -56,7 +56,7 @@ result_all/
 
 ## 結果の確認
 
-1. **完了状況**: `scientific_status` には、求めた段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行と要求段階の完了状況)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードができる結合と切れる結合を動かすかと、端点が狙った R と P かの 2 つは自分で確かめてください。
+1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
 2. **TS の候補**: 最初のセグメントの HEI `_work/path_opt/hei_seg_01.pdb` を開きます。`--tsopt` のときは、最適化した TS の `segments/seg_01/ts.pdb` も開きます。
 3. **エネルギープロファイル**: `energy_diagram_MEP.png` で、R と P の間にはっきりした障壁があるかを確かめます。
 4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。

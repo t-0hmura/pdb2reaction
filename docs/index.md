@@ -195,7 +195,7 @@ ja/architecture
 | **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
 | **Analyze a small-molecule reaction** | [Small-molecule reactions](small-molecules.md) |
 | **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
-| **Optimize the TS structure with DFT** | [Optimize the TS structure with DFT](dft-backend.md) |
+| **Optimize the TS structure with DFT** | [Refine an MLIP TS with DFT](dft-backend.md) |
 | **A run failed** | [Troubleshooting](troubleshooting.md) |
 
 ## Subcommands
@@ -204,7 +204,7 @@ ja/architecture
 
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | Optional extraction; one of the three [input modes](getting-started.md#choosing-an-input-mode) (multi-structure MEP search, single structure + scan, TS-only mode); optional TS/IRC, thermochemistry, and DFT stages |
+| [`all`](all.md) | Optional extraction; one of the three [input modes](getting-started.md#choosing-an-input-mode) (Endpoint mode, Scan-list mode, TS-only mode); optional TS/IRC, thermochemistry, and DFT stages |
 | [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |

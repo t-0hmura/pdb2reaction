@@ -146,7 +146,7 @@ refinement can split a poor path into extra segments and increase cost.
 
 - The MCP server inherits the calling environment's PATH, conda env, and CUDA setup. Long-running tools (opt / tsopt / irc) launch the `pdb2reaction` CLI in a subprocess — set `timeout_seconds` on each call to bound runaway computations.
 - The 12 stage / scan / pipeline tools take an `out_dir` kwarg and write their output (including `summary.json`) there; left unset, it defaults to a unique `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` so concurrent agent calls don't collide.
-- The 6 structure / I-O helpers (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) take no `out_dir`: each writes to the path given by its required `output_pdb` / `output_png` argument (`detect_bond_changes` writes no file). They return `execution_status: "completed"` and `scientific_status: "success"` with `out_dir: null` and an empty `summary` — read their result from `stdout_tail` and the file they wrote.
+- The 6 structure / I-O helpers (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) take no `out_dir`: each writes to the path given by its required `output_pdb` / `output_png` argument (`detect_bond_changes` writes no file). They return `out_dir: null` and an empty `summary`, with `execution_status` and `scientific_status` derived from the exit code — read their result from `stdout_tail` and the file they wrote.
 - The server leaves `~/.bashrc` / login env untouched and installs no software.
   Normal named parameters write to `out_dir` or the explicit helper output
   path. `extra_args` is an expert escape hatch and can request additional CLI

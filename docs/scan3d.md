@@ -50,15 +50,14 @@ pdb2reaction scan3d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]'
 ```
 
-### 3. L-BFGS, dump, and pre-optimization
+### 3. Pre-optimize and dump
 
-Optimize the input before the scan, relax each point with L-BFGS, keep the inner-loop trajectories, and measure the relative energies from the lowest usable point.
+Optimize the input before the scan and keep the inner-loop trajectories.
 
 ```bash
 pdb2reaction scan3d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]' \
-    --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
-    --preopt --baseline min
+    --dump -o ./result_scan3d/ --preopt
 ```
 
 ### 4. Re-plot an existing surface.csv
@@ -167,7 +166,7 @@ See the [generated CLI reference](reference/commands/scan3d.md) for every option
 * **Reference row**: `i = j = k = -1` and `is_preopt = true` hold the starting structure. The row stays in the table but is never a grid point, a baseline, or a plotted point.
 * **Re-plotting a table (`--csv`)**: the table needs `d1_A`, `d2_A`, `d3_A`, and `energy_hartree` or `energy_kcal`. The reference row and rows with `bias_converged = false` or a non-finite energy are left out.
 * **Too few usable points**: with fewer than four usable points, or with all of them in one plane, only the figure is skipped. The run prints `[plot] NOTE: Volume plot skipped: …` and exits with status 0. With no usable point it prints `[plot] No finite data for plotting.` and exits with status 1.
-* **Running again into the same `--out-dir`**: a run without `--out-json`, a full scan or a `--csv` redraw, removes `result.json` and `summary.json` from `--out-dir`; a run with it overwrites them, and every run replaces `scan3d_density.html`.
+* **Running again into the same `--out-dir`**: whether it is a full scan or a `--csv` redraw, a run without `--out-json` removes `result.json` and `summary.json` from `--out-dir`, and a run with it overwrites them; every run replaces `scan3d_density.html`.
 
 ---
 

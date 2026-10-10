@@ -141,13 +141,6 @@ Record the source and the modeled protonation and oxidation state. If the
 sources do not settle one state, stop and ask the user; never default a metal
 or radical cluster to `-q 0 -m 1` without checking.
 
-Before a long job, use `--dry-run` on a calculation command. It exits before
-the MLIP or DFT stages; `all -c ... --dry-run` runs the extraction in a
-temporary directory to print and check the model's charge and electron parity,
-then removes it. `extract` has no dry run but prints the per-residue charge
-breakdown. `--show-config` prints the configuration and then runs the full job,
-so it is not a preview.
-
 | Group at pH 7 | Typical charge |
 |---|---|
 | Carboxylate, Asp, Glu side chains | −1 each |
@@ -179,6 +172,13 @@ Success: the console prints `[extract] Atoms after truncation: N`, `[extract] Li
 - Recount charge and multiplicity; a wrong electron count makes the model invalid.
 
 `extract` caps only CA and CB cuts; another cut bond between nonmetal atoms makes `extract` warn and `all` stop. `--no-freeze-links` is for diagnostics only.
+
+Before a long job, use `--dry-run` on a calculation command. It exits before
+the MLIP or DFT stages; `all -c ... --dry-run` runs the extraction in a
+temporary directory to print and check the model's charge and electron parity,
+then removes it. `extract` has no dry run but prints the per-residue charge
+breakdown. `--show-config` prints the configuration and then runs the full job,
+so it is not a preview.
 
 ## Trim to lower cost
 

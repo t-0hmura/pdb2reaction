@@ -18,7 +18,7 @@ Success: the console prints `Number of Imaginary Freq = N` with the N you
 expect, and the Gibbs free energy. Without `--out-json` you still get the text
 and trajectory files, but no `result.json`.
 
-Higher temperature for activation enthalpy:
+Another temperature (310.15 K here):
 
 ```bash
 pdb2reaction freq -i ts.pdb -l 'SAM:1' \
@@ -115,10 +115,7 @@ hydrogens written by `extract`. See
   memory. It can be faster or slower than `Analytical` depending on backend,
   model, system, precision, and hardware; both build a dense Hessian of the
   movable atoms.
-- **Analytical Hessian with UMA workers.** UMA, ORB, MACE, and AIMNet2 support
-  analytical Hessians with one calculator. With UMA, `--uma-workers` above 1
-  plus `Analytical` raises `BackendError` instead of changing the method; use
-  `--uma-workers 1` or finite differences.
+- **Analytical Hessian with UMA workers.** See [Cross-cutting pitfalls](SKILL.md#cross-cutting-pitfalls).
 - **Charge and spin.** `-q` / `-m` select the electronic state of the
   Hessian. A wrong state invalidates the frequencies, ZPE, and thermochemistry.
 

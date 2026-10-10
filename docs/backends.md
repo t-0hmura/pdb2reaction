@@ -59,7 +59,7 @@ Which value to choose depends on the purpose:
 
 | Purpose | Recommended | Why |
 | --- | --- | --- |
-| Routine run | Leave unset (`auto`) | Keeps the defaults above: UMA/AIMNet2 fp32, ORB/MACE fp64. |
+| Routine run | Leave unset | Keeps the defaults above: UMA/AIMNet2 fp32, ORB/MACE fp64. |
 | Speed screening | `--precision fp32` only when needed | This lowers ORB/MACE precision (see [Notes](#notes)). |
 | Final TS/Hessian | Leave unset; with UMA, compare `--precision fp64` when n_imag ≥ 2 ([tsopt](tsopt.md#wrong-imaginary-mode-count-after-optimization)) | Whatever the precision, check n_imag from the final Hessian of `tsopt` and confirm with IRC and the endpoint optimizations that the TS connects the intended R and P. |
 

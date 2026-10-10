@@ -15,7 +15,7 @@ MLIP で妥当な経路が見つかったら、その TS をそのまま DFT で
 
 1. **MLIP で探す**：経路を作り、条件を変えて試し、いちばん有望な TS 候補を選びます。
 2. **DFT で詰める**：その TS を入力にして、`-b dft` 付きの TS-only モードを実行します。コマンドは[基本的な実行例](#基本的な実行例)の例 2 にあります。
-3. **確かめる**：MLIP のときと同じく、TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。求めた段がすべて収束すると `====== Pipeline summary ======` の下に `Scientific status: success` と出ます。続けて、モードと IRC の端点を[結果の確認](quickstart-tsopt.md#結果の確認)のとおりに確かめてください。
+3. **確かめる**：MLIP のときと同じく、TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。指定した段がすべて収束すると `====== Pipeline summary ======` の下に `Scientific status: success` と出ます。続けて、モードと IRC の端点を[結果の確認](quickstart-tsopt.md#結果の確認)のとおりに確かめてください。
 
 ## 基本的な実行例
 
@@ -28,7 +28,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -r 0 --selected-resn '44,63,186' --tsopt -o ./result_mlip
 ```
 
-`-r 0` で切り出しの半径を 0 Å にすると、距離で近くの残基を足すのを止め、`-c` と `--selected-resn` の残基からモデルを組みます。[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) の同梱例の 44・63・186 番は、SAM のメチル炭素（CS1）にいちばん近い 3 残基です。同梱の PDB は chain の欄が空です。chain が空の PDB では、残基を名前か番号で指定してください。自分の系では、反応に関わる残基を選んでください。
+`-r 0 --selected-resn` でのモデルの組み方は [モデルを削る](model-setup.md#モデルを削る) にあります。
 
 ### 2. TS を DFT で詰める
 
@@ -67,7 +67,7 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 
 ## 主な CLI オプション
 
-| オプション | 説明 | 既定値 |
+| オプション | 説明 | デフォルト値 |
 |---|---|---|
 | `-b, --backend dft` | DFT を計算に使います（GPU4PySCF。`--dft-engine cpu` で CPU の PySCF）。 | `uma` |
 | `--func-basis TEXT` | 汎関数と基底を `FUNCTIONAL/BASIS` の形で指定します。`-b dft` と `--dft` の両方に効きます。 | `wb97m-v/def2-svp` |
@@ -88,8 +88,8 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 - **図のファイル名とキーの名前**：`-b dft` でも、図のファイル名は `energy_diagram_MLIP.png` と `energy_diagram_G_MLIP.png`（`--thermo` のとき）、`summary.json` のブロックの名前は `mlip` と `gibbs_mlip` のままです。中身は DFT の値で、図の題には DFT と出ます。
 - **メモリとスレッド数**：`-b dft` と `--dft` は、[`pdb2reaction dft`](dft.md#主な-cli-オプション) と同じ低メモリモード・`--dft-nprocs`・`--dft-memory` を使います。GPU のメモリが足りないときはモデルを削り、`--dft` でメモリが足りないときは `--dft` を外して `pdb2reaction dft` を別に実行してください。
 - **SCF が収束しないとき**：初期推測をやり直しても SCF が収束しないときは、`PySCF SCF did not converge with either the reused density or a fresh guess.` で計算が止まります。メモリに余裕があれば `--no-dft-low-memory` の密度フィッティングか、[YAML のレベルシフト](#主な-cli-オプション)で収束しやすくなることがあります。
-- **段階的なグリッド**：`--scf-stepwise-grid`（既定は on）は、各実行の最初の SCF を、グリッドレベル 1・収束閾値 1e-6 でいったん収束させ、その密度から指定のグリッドと閾値で収束させます。2 回目以降の SCF は、これまでどおり前の密度から始めます。効果は系によって変わり、小さい系では少し遅くなることがあります。`--no-scf-stepwise-grid` で切れます。指定のグリッドレベルが 1 以下のときと、`pyscf.grids.atom_grid` でグリッドを直接指定したときは、段階化を行いません。粗い段階が収束しなかったときは、通常の SCF を行います。
-- **SCF のチェックポイント**：ファイルがとても大きくなることがあるので、既定では保存しません。`--save-scf-checkpoint` で保存し、`--scf-checkpoint PATH` で使うファイルを選べます。パスを省くと、`all` 以外のコマンドは `<out-dir>/_work/dft_scf/state.chk` に、`all` は状態ごとに別のファイルに保存します。チェックポイントは、手法・原子の順番・座標が今の構造と一致するときだけ使われます。
+- **段階的なグリッド**：`--scf-stepwise-grid`（デフォルトは on）は、各実行の最初の SCF を、グリッドレベル 1・収束閾値 1e-6 でいったん収束させ、その密度から指定のグリッドと閾値で収束させます。2 回目以降の SCF は、これまでどおり前の密度から始めます。効果は系によって変わり、小さい系では少し遅くなることがあります。`--no-scf-stepwise-grid` で無効にできます。指定のグリッドレベルが 1 以下のときと、`pyscf.grids.atom_grid` でグリッドを直接指定したときは、段階化を行いません。粗い段階が収束しなかったときは、通常の SCF を行います。
+- **SCF のチェックポイント**：ファイルがとても大きくなることがあるので、デフォルトでは保存しません。`--save-scf-checkpoint` で保存し、`--scf-checkpoint PATH` で使うファイルを選べます。パスを省くと、`all` 以外のコマンドは `<out-dir>/_work/dft_scf/state.chk` に、`all` は状態ごとに別のファイルに保存します。チェックポイントは、手法・原子の順番・座標が今の構造と一致するときだけ使われます。
 
 ## 関連ドキュメント
 

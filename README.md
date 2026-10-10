@@ -88,11 +88,11 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). Run the commands below from the repository root (`git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction`); the complete MEP and scan examples are in [`examples/run.sh`](examples/run.sh).
 
 ```bash
-# Multi-structure MEP (R + P → MEP, with TS + thermochemistry)
+# Endpoint mode (R + P → MEP, with TS + thermochemistry)
 pdb2reaction -i examples/1.R.pdb examples/3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --out-dir result_mep
 
-# Scan mode (single structure → staged bond scan → MEP)
+# Scan-list mode (single structure → staged bond scan → MEP)
 pdb2reaction -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' --tsopt --thermo --out-dir result_scan
 

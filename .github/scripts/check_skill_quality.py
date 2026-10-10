@@ -285,7 +285,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     _require(
         scan_page,
         (
-            "Use exactly one `--scan-lists` flag",
+            "Use exactly one `-s` flag",
             "Repeating the flag is rejected",
             "`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`",
         ),
@@ -419,7 +419,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         (
             "top-level `mlip_backend` / `mlip_model`",
             "`mlip_precision`",
-            "`mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers",
+            "These block names never change with the backend: `mlip`, `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`",
             "filenames use `MLIP`",
         ),
         errors,

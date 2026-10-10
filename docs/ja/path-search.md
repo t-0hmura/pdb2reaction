@@ -24,7 +24,7 @@
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 --out-dir ./result_path_search
 ```
 
-実行が終わったら `summary.log` の `[2] Segment-level MEP summary` の節を開くか、`summary.json` を読みます。`scientific_status` には、事前最適化とすべての経路の計算が収束すると `success`、そうでなければ `partial` か `failed` が入ります。`segments` には区間ごとの `index`・`tag`・`kind`・`converged`・`barrier_kcal` が並びます。`kind` は `seg`（反応区間）・`kink`（ねじれ）・`bridge`（短い接続経路）です。
+実行が終わったら `summary.log` の `[2] Segment-level MEP summary` の節を開くか、`summary.json` を読みます。`scientific_status` には、事前最適化とすべての経路の計算が収束すると `success`、そうでなければ `partial` か `failed` が入ります。`segments` には区間ごとの `index`・`tag`・`kind`・`converged`・`barrier_kcal` が並びます。`kind` は `seg`（反応区間）・`kink`（配座だけの変化）・`bridge`（短い接続経路）です。
 
 ### 2. 中間体を入れて多段階の経路を作る
 
@@ -48,14 +48,14 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## 処理の仕組みと計算仕様
 
-探索の前に、各入力を事前最適化し（`--preopt`）、1 つ前の構造に重ね合わせます（`--align`）。凍結原子は少しずつ位置を合わせ、そのあいだ残りの原子を緩和します。
+探索の前に、各入力を事前最適化し（`--preopt`）、1 つ前の構造に重ね合わせます（`--align`）。固定原子を少しずつ前の構造の位置へ動かしながら、残りの原子を緩和します。
 
 1. **隣り合う組ごとの粗い MEP**:
 隣り合う入力の組（A → B）ごとに、GSM または DMF で粗い MEP を作り、その HEI を求めます。
 2. **HEI のまわりの緩和**:
 `--refine-mode peak` では HEI の両隣のイメージ（HEI ± 1）を、`minima` では HEI から外側へたどった両側の最も近い極小を最適化し、近くの 2 つの極小 End1 と End2 を得ます。`--refine-mode` を省くと、GSM では `peak`、DMF では `minima` になります。
-3. **ねじれ（kink）か反応区間か**:
-End1 と End2 の間で共有結合が変わらなければ、その区間は *ねじれ* とみなし、線形補間のノードを数個入れて 1 つずつ最適化します。結合が変われば *反応区間* とみなし、End1 と End2 の間に新しく GSM または DMF の経路を作って障壁をはっきりさせます。
+3. **キンク（kink）か反応区間か**:
+End1 と End2 の間で共有結合が変わらなければ、その区間は *キンク* とみなし、線形補間のノードを数個入れて 1 つずつ最適化します。結合が変われば *反応区間* とみなし、End1 と End2 の間に新しく GSM または DMF の経路を作って障壁をはっきりさせます。
 4. **結合の変化が残る区間だけを再帰**:
 A → End1 と End2 → B の部分で結合の変化を調べ、変化が残る部分だけを、`--max-depth` の階層まで探索し直します。
 5. **区間をつなぐ**:
@@ -65,12 +65,12 @@ A → End1 と End2 → B の部分で結合の変化を調べ、変化が残る
 
 ---
 
-## セグメントの判定
+## 区間（セグメント）の判定
 
 | 見えるもの | 意味 | 次の操作 |
 | --- | --- | --- |
 | 結合が変わる区間と、その `hei_seg_NN.xyz` | その段の TS 候補 | [`tsopt`](tsopt.md) で最適化して虚振動が 1 つかを確かめ、[`irc`](irc.md) を実行する |
-| `tag` が `seg_NNN_maxdepth` の区間 | 階層の上限に達したか、ねじれの区間が続いたため、そこより先は分けていない | 複数の段を含むことがある。上と同じように確かめるか、`--max-depth` を上げるか、中間体を入れる |
+| `tag` が `seg_NNN_maxdepth` の区間 | 階層の上限に達したか、キンクの区間が続いたため、そこより先は分けていない | 複数の段を含むことがある。上と同じように確かめるか、`--max-depth` を上げるか、中間体を入れる |
 | `kink` の区間しかない、または `HEI is at an endpoint` の警告 | 結合の変化が見つからないか、経路の端と端の間に頂点がない | 入力を見直すか、中間体を入れる（例 2） |
 
 TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。各 HEI を `tsopt`（n_imag = 1）と IRC で確かめてから、機構の 1 段として扱ってください。
@@ -99,7 +99,7 @@ result_path_search/
 
 `summary.json` はほかのコマンドの `result.json` とは別の構造です。{ref}`path-search と all の summary.json <ja-summary-json-path-search-all>` を参照してください。`mep_seg_NN_*` と `hei_seg_NN.*` は、結合が変わる区間にだけ書き出します。NN は `summary.json` の区間の `index`（最終経路の順に 01 から）で、`seg_NNN` のタグやディレクトリの NNN は GSM・DMF の実行を 000 から数えた番号なので、両者は一致しません。反応区間の作業ファイルは、`summary.json` のその区間の `tag` を名前にした `<tag>_mep/`（例: `seg_000_refine_mep/`）にあります。
 
-PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイルも書き出します（全経路は `mep.gjf`）。{ref}`mmCIF 入力 <ja-mmcif-input>` と、PDB の列に収まらない大きな PDB 入力では、元の識別子を保った `.cif` も書き出します。
+PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイルも書き出します（全経路は `mep.gjf`）。{ref}`mmCIF 入力 <ja-mmcif-input>` と、PDB の欄に入りきらない大きな PDB 入力では、元の識別子を保った `.cif` も書き出します。
 
 ---
 
@@ -123,12 +123,12 @@ PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイル�
 | `--write-ref-merge/--no-write-ref-merge` | フラグ | `False` | 経路と HEI を全系のテンプレートに置いたファイル（`mep_w_ref*`, `hei_w_ref*`）を書き出す。`--align` と `--ref-full-pdb` が必要 |
 | `--ref-full-pdb` | パス | `None` | `--write-ref-merge` に使う全系の PDB/mmCIF テンプレート。最初の入力に対応するものを使う |
 | `--ref-pdb` | パス | `None` | `.xyz`・`.gjf` 入力のための活性部位モデルの PDB/mmCIF。入力と同じ数・同じ順に並べる。PDB の出力と `--write-ref-merge` に使い、`-l` や `--freeze-links` には使わない |
-| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力のみ） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を固定（PDB/mmCIF 入力のみ） |
 | `--climb/--no-climb` | フラグ | `True` | 反応区間で GSM のクライミングイメージ探索を行う。接続経路では常に行わない |
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/path_search.md) を参照してください。
 
-> **補足:** YAML（`--config`）では、`--max-depth` を指定しないときに `search.max_depth` が階層の上限になり、`search.kink_max_nodes`（デフォルト `3`）がねじれに入れるノードの数を、`bond.bond_factor`（デフォルト `1.20`）が結合の変化の判定に使う共有結合半径の倍率を決めます。
+> **補足:** YAML（`--config`）では、`--max-depth` を指定しないときに `search.max_depth` が階層の上限になり、`search.kink_max_nodes`（デフォルト `3`）がキンクに入れるノードの数を、`bond.bond_factor`（デフォルト `1.20`）が結合の変化の判定に使う共有結合半径の倍率を決めます。
 
 ---
 
@@ -149,8 +149,8 @@ PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイル�
 * [scan](scan.md) — 結合を段階的に動かして経路や TS 候補を作る
 * [tsopt](tsopt.md) — 区間ごとの HEI から TS を最適化
 * [extract](extract.md) — 入力に使う活性部位モデルの PDB を作る
-* [all](all.md) — 一貫実行のワークフロー。`all --refine-path` で MEP の段に `path-search` を使います
+* [all](all.md) — 一気通貫ワークフロー。`all --refine-path` で MEP の段に `path-search` を使います
 * [YAML 設定の一覧](yaml-reference.md) — `search`・`bond`・`gs`・`dmf` の全設定
-* [用語集](glossary.md) — MEP、GSM、DMF、HEI、ねじれなどの用語
+* [用語集](glossary.md) — MEP、GSM、DMF、HEI、キンクなどの用語
 * [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法
 * {ref}`終了コード <ja-exit-codes>` — 終了コードの意味

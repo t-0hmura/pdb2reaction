@@ -35,7 +35,8 @@ inspect the trajectory and endpoints.
 Even if the IRC does not converge, the result is usable when the endpoints,
 optimized with `opt`, reach the intended R and P.
 
-1. Optimize both ends. They are `.xyz` only, so pass the TS PDB with
+1. Optimize both ends. They are `.xyz` only, so pass the TS PDB (for example
+   `result_tsopt/final_geometry.pdb` when tsopt read a PDB) with
    `--ref-pdb` to keep the boundary frozen:
 
    ```bash

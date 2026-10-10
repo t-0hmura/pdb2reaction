@@ -7,7 +7,7 @@
 ## 主な用途
 
 * **R・P・中間体の準備**: 経路探索や振動解析の前に、反応物・生成物・中間体の構造を緩和し、[`freq`](freq.md) で極小点（n_imag = 0）であることを確かめる
-* **距離を保った緩和**: 選んだ原子の組の距離を保ったまま、ほかの自由度を緩和する
+* **距離を拘束した緩和**: 選んだ原子の組を目標の距離へ引き寄せながら、ほかの自由度を緩和する
 * **IRC の端点から R と P へ**: [`irc`](irc.md) の端点を、それぞれがつながる極小点まで最適化する
 
 計算バックエンドにはデフォルトの **UMA**（Meta）のほか、`-b/--backend` で **ORB**、**MACE**、**AIMNet2**、**DFT** も選べます。
@@ -56,10 +56,10 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_opt_h
 
 ## 処理の仕組みと計算仕様
 
-1. **構造の読み込みと境界の凍結**: {ref}`電荷 <ja-charge-specification>`は `-q` または `-l` から決まります。`--freeze-links`（デフォルト有効）では、切り出したクラスターの{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>`の親原子を凍結します。`--freeze-atoms` でほかの原子も凍結できます。
+1. **構造の読み込みと境界の固定**: {ref}`電荷 <ja-charge-specification>`は `-q` または `-l` から決まります。`--freeze-links`（デフォルト有効）では、切り出したクラスターの{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>`の親原子を固定します。`--freeze-atoms` でほかの原子も固定できます。
 2. **最適化法の選択**（`--opt-mode`）: `grad`（別名 `lbfgs`）は勾配だけを使う **L-BFGS** を実行します。`hess`（別名 `rfo`）は **RFO** を実行し、厳密な Hessian から始めて [TS-BFGS](glossary.md#最適化アルゴリズム) 式で更新し、500 サイクルごとに計算し直します。更新式は YAML の `rfo.hessian_update` で変えられます。`tsopt` では同じ指定が{ref}`別の方法を選びます <ja-opt-mode-semantics>`。
 3. **距離拘束の追加**: `--distance-restraint` の `(i, j, target)` のそれぞれが、力の定数 `--restraint-k`（eV·Å⁻²）の調和項を加え、原子 i と j の距離を `target`（Å）へ引き寄せます。`(i, j)` は最初の距離を保ちます。番号は 1 始まりで、`--zero-based` を付けると 0 始まりになります。
-4. **最小化**: 収束条件を満たすか `--max-cycles` に達するまで構造を動かします。デフォルトの `--thresh gau` は、力の最大値が 4.5 × 10⁻⁴、RMS が 3.0 × 10⁻⁴ hartree/bohr 未満、ステップの最大値が 1.8 × 10⁻³、RMS が 1.2 × 10⁻³ bohr 未満を求め、Gaussian の既定と同じ条件です。
+4. **最小化**: 収束条件を満たすか `--max-cycles` に達するまで構造を動かします。デフォルトの `--thresh gau` は、力の最大値 4.5 × 10⁻⁴ 未満、力の RMS 3.0 × 10⁻⁴ hartree/bohr 未満、ステップの最大値 1.8 × 10⁻³ 未満、ステップの RMS 1.2 × 10⁻³ bohr 未満を求めます。Gaussian のデフォルトと同じ条件です。
 5. **虚振動の除去（`--flatten`）**: 最適化の後に Hessian を計算し、すべての虚振動モード（ν < −5.00 cm⁻¹）に沿って構造を 0.10 Å ずらして最適化し直します。虚振動が無くなるか 50 回に達するまで繰り返します。`--flatten` では、各回の後に端末の `[Imaginary modes] n=…` の行に n_imag が出て、最後の回の後にも虚振動が残ると `[flatten] WARNING: Remaining imaginary modes after the flatten loop: N` が出ます。
 
 ---
@@ -120,8 +120,8 @@ result_opt/
 | `--distance-restraint` | 文字列 | `None` | 調和の距離拘束。直接書く（`'[(i,j,target_Å),...]'`）か、同じ項目を `constraints:` に並べた YAML/JSON ファイルで指定。`(i,j)` は最初の距離を保つ。原子は `'SAM,320,CS1'` のような[原子セレクタ](cli-conventions.md#原子セレクタ)でも書ける |
 | `--restraint-k` | 実数 | `300` | 距離拘束の力の定数（eV·Å⁻²） |
 | `--one-based/--zero-based` | フラグ | `--one-based` | `--distance-restraint` の番号を 1 から数えるか 0 から数えるか |
-| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力または `--ref-pdb`） |
-| `--freeze-atoms` | 文字列 | `None` | 凍結する原子（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を固定（PDB/mmCIF 入力または `--ref-pdb`） |
+| `--freeze-atoms` | 文字列 | `None` | 固定する原子（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
 | `--flatten/--no-flatten` | フラグ | `False` | 最適化の後に虚振動を除く |
 | `--reject-uphill/--no-reject-uphill` | フラグ | `False` | `hess` で、エネルギーが 1e-4 hartree を超えて上がる RFO のステップを捨て、信頼半径を縮める |
 | `--stop-plateau/--no-stop-plateau` | フラグ | `False` | エネルギーが変わらなくなったら（直近 50 サイクルの幅が 1e-4 hartree 未満）止め、`stalled` と報告 |
@@ -129,15 +129,15 @@ result_opt/
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/opt.md) を参照してください。
 
-> **補足:** YAML（`--config`）では、`geom.freeze_atoms` で凍結する原子（1 始まり）を足せます。足した原子は `--freeze-links` と `--freeze-atoms` の原子と合わせて凍結されます。キーは YAML 設定の一覧の [`geom`](yaml-reference.md#geom)、[`opt`](yaml-reference.md#opt)、[`lbfgs`](yaml-reference.md#lbfgs)、[`rfo`](yaml-reference.md#rfo) にあります。
+> **補足:** YAML（`--config`）では、`geom.freeze_atoms` で固定する原子（1 始まり）を足せます。足した原子は `--freeze-links` と `--freeze-atoms` の原子と合わせて固定されます。キーは YAML 設定の一覧の [`geom`](yaml-reference.md#geom)、[`opt`](yaml-reference.md#opt)、[`lbfgs`](yaml-reference.md#lbfgs)、[`rfo`](yaml-reference.md#rfo) にあります。
 
 ---
 
 ## 使用上の注意点
 
 * **プラトーでの停止**: `--stop-plateau` は、力のノイズで力の収束条件に届かないときにサイクルを節約できますが、エネルギーが平坦であることは停留点の証拠になりません。実質的な上限は `--max-cycles` です。エネルギーの幅とサイクル数は `--stop-plateau-thresh` と `--stop-plateau-window` で指定できます。
-* **凍結原子があるときの剛体運動**: Cartesian 座標での RFO の曲率の確認と `--flatten` は、剛体運動を [`freq`](freq.md#凍結境界での剛体モード) と同じように扱います。L-BFGS には影響しません。
-* **凍結原子と拘束の全体**: クラスターモデルで凍結する原子や拘束の選び方は、{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
+* **固定原子があるときの剛体運動**: Cartesian 座標での RFO の曲率の確認と `--flatten` は、剛体運動を [`freq`](freq.md#固定境界での剛体モード) と同じように扱います。L-BFGS には影響しません。
+* **固定原子と拘束の全体**: クラスターモデルで固定する原子や拘束の選び方は、{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
 * **オプティマイザの状態の書き出し**: `--dump` を付け、YAML の `opt.dump_restart` に正の整数 N を指定すると、N サイクルごとに `restart_NNN.yaml` を書きます。pdb2reaction はこのファイルを読み戻さないので、止まった計算は final geometry から `opt` をやり直してください。
 * **モデルと精度**: `--backend-model` でバックエンドのモデルを、`--precision` で精度（`fp32`・`fp64`）を選べます。詳しくは自動生成のオプションの一覧（英語のみ）を参照してください。
 

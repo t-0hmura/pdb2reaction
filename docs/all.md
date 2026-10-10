@@ -41,7 +41,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --out-dir ./result_scan
 ```
 
-The targets inside one literal move together in one stage. Literals given in a row run as successive stages, each starting from the end of the one before, and the stage ends become the inputs of the MEP search. Give `-s` once and list every literal after it. To decide how to split a reaction, see {ref}`Decide how to split the reaction <mechanism-split>`. In a PDB with an empty chain field, an atom is its residue name, residue number, and atom name in any order (`"CS1 SAM 320"`); with chains, write `A:SAM:320:CS1`. All accepted forms are in {ref}`Scan-list spec <scan-list-spec>`.
+The targets inside one literal move together in one stage. Literals given in a row run as successive stages, each starting from the end of the one before, and the stage ends become the inputs of the MEP search. Give `-s` once and list every literal after it. To decide how to split a reaction, see {ref}`Decide how to split the reaction <mechanism-split>`. In a PDB with an empty chain field, write an atom as its residue name, residue number, and atom name in any order (`"CS1 SAM 320"`); with chains, write `A:SAM:320:CS1`. All accepted forms are in {ref}`Scan-list spec <scan-list-spec>`.
 
 ### 3. Check a TS candidate (TS-only mode)
 
@@ -142,7 +142,7 @@ result_all/
 │     ├─ energy_diagram_*.png   # R → TS → P diagrams of this step
 │     ├─ ts/                    # TS optimization; vib/imag_*_trj.xyz animates the imaginary modes
 │     ├─ irc/                   # IRC trajectories and irc_plot.png
-│     ├─ endpoint_opt/          # Endpoint optimizations (kept with --dump or when an endpoint did not converge)
+│     ├─ endpoint_opt/          # Endpoint optimizations (kept with --dump, or when an endpoint did not converge or failed)
 │     ├─ freq/{R,TS,P}/         # Frequencies and thermochemistry (--thermo)
 │     └─ dft/{R,TS,P}/          # DFT single points (--dft)
 └─ _work/                       # Intermediate files, including the TS candidates (HEI)
@@ -215,7 +215,7 @@ For every option, run `pdb2reaction all --help-advanced` or see the [generated C
 * **Without `-c`**: extraction is skipped, and the full input structures go to the MEP search, `tsopt`, `freq`, and `dft`. One structure still needs `-s` or `--tsopt`.
 * **Input formats**: with `-c`, the input must be PDB or mmCIF; without `-c`, XYZ and GJF are accepted too. All structures of one run must have the same atoms in the same order.
 * **Charge and multiplicity**: with `-c`, the total charge is the sum over the extracted model: built-in values for amino acids, ions, and water, `-l` for the other residues, and 0 for residues not listed in `-l`. Without `-c`, it comes from `-l` applied to the input, or from the `.gjf` header. The multiplicity is `-m`, otherwise the `.gjf` header, otherwise 1. See {ref}`Charge specification <charge-specification>`.
-* **Separately prepared structures**: when the input structures were prepared independently, their differences outside the reaction coordinate enter the barrier. Compare the structures before reading the barrier.
+* **Separately prepared structures**: when the input structures were prepared independently, their differences outside the reaction coordinate enter the barrier. Compare the structures before reading the barrier. For two mechanisms of the same composition, use one common atom set and atom order for both paths.
 * **`--write-ref-merge`**: writes the path merged back into the original full input, for inspection: `mep_w_ref*` in the output directory and `hei_w_ref_seg_NN.pdb` in `_work/path_search/`. It needs `--refine-path`, `-c`, and PDB or mmCIF input.
 * **`--resume-segment`**: it needs `--tsopt`, `--thermo`, or `--dft`, and cannot be combined with `--dry-run`. The run stops with an error when the saved inputs and MEP do not match the command.
 
@@ -227,9 +227,8 @@ Within one path, every structure has the same atoms in the same order. A mutant 
 
 * Select the same residue positions and the same boundary and cap rules for both models, so that the mutation is the only designed difference. Two independent radius-based extractions can differ, because a boundary residue may enter one model and not the other; compare the two selections.
 * Use the same protonation rules, charge assignment, backend and model, precision, restraints, and thermochemistry settings. If the mutation changes a protonation state or a formal charge, the total charges differ; do not force the same `-q` on both.
-* For two mechanisms of the same composition, use one common atom set and atom order for both paths.
 
-The two runs use the same options except for the input and the output directory. Give R and P of each system (MEP mode), so that R is the chemical reactant; `G_TS − G_R` is `post_segments[].gibbs_mlip.barrier_kcal`:
+The two runs use the same options except for the input and the output directory. Give R and P of each system (Endpoint mode), so that R is the chemical reactant; `G_TS − G_R` is `post_segments[].gibbs_mlip.barrier_kcal`:
 
 ```bash
 pdb2reaction all -i wt_R.pdb wt_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt

@@ -109,7 +109,7 @@ These commands stop after the MEP search and do not create `segments/`. Add `--t
 
 ## Notes
 
-* **Input**: PDB or mmCIF. Give `-c` to cut out a cluster model from the full system; leave it out for a model you already cut out, or for XYZ or GJF input with atom numbers, and the structure is used as is.
+* **Input**: PDB/mmCIF, XYZ, or GJF. `-c` (PDB/mmCIF only) cuts out a cluster model from the full system; without it the structure is used as is.
 * **Defaults of `all` and `scan`**: the two commands share the scan engine, but the option names and the defaults for the optimizations before and after the scan differ:
 
   | Command | Step / restraint | Relaxation limit | Optimization before / after the scan |

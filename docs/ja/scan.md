@@ -72,7 +72,7 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
 [4-tuple](#双方向スキャン4-tuple) を使うと、1 つの距離を入力構造から両方向にスキャンします。
 
 ```bash
-pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[(12, 45, 1.35, 2.50)]'
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60,3.00)]'
 ```
 
 ### 6. 軌跡の保存
@@ -102,8 +102,8 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 
 目標値 `(i, j, target)` の代わりに範囲 `(i, j, low, high)` を指定すると、入力構造から両方向にスキャンします。範囲は 2 つのステージに展開されます。
 
-1. **パス 1**: `i`–`j` の距離を現在の値から `low` に向けて動かす。
-2. **パス 2**: 入力構造に戻し、`i`–`j` の距離を `high` に向けて動かす。
+1. **1 回目**: `i`–`j` の距離を現在の値から `low` に向けて動かす。
+2. **2 回目**: 入力構造に戻し、`i`–`j` の距離を `high` に向けて動かす。
 
 つないだ軌跡は `low → 入力構造 → high` の順になり、出発構造を通る連続した経路になります。角度の範囲 `(i, j, k, low, high)` と二面角の範囲 `(i, j, k, l, low, high)` も同じようにスキャンします。
 
@@ -114,11 +114,8 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 
 ---
 
-(ja-scan-direction-barrier-sign)=
-## スキャン方向とバリアの符号
-
 (ja-scan-checking-result)=
-### 結果の判定
+## 結果の判定
 
 | 確認する場所 | 見るもの |
 | --- | --- |
@@ -129,16 +126,19 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 
 `partial` の終了コードは 0、`failed` は 1 です。収束しなかったステージについては {ref}`max_cycles とプラトー停止 <ja-troubleshooting-max-cycles>` を参照してください。収束して狙った結合変化が起きたスキャンは経路の候補になり、エネルギーが最も高いステップは [`tsopt`](tsopt.md) に渡す TS 候補になります。このステップは `scan_trj.xyz` から {ref}`取り出せます <ja-trajectory-one-frame>`。
 
-### バリアの向き
+---
 
-`scan` はエネルギーを記録しますが、バリアは出力しません。スキャンからバリアを読む場合、順方向のバリアは常に反応物から計算します。
+(ja-scan-direction-barrier-sign)=
+## 障壁の向き
 
-| 実行内容 | 開始構造との差 | 順方向バリア |
+`scan` はエネルギーを記録しますが、障壁は出力しません。スキャンから障壁を読む場合、順方向の障壁は常に反応物から計算します。
+
+| 実行内容 | 開始構造との差 | 順方向障壁 |
 | --- | --- | --- |
 | 反応物から始めたスキャン | `E(TS) − E(reactant)` | 開始構造との差と同じ |
-| 生成物から始めたスキャン | `E(TS) − E(product)`。**逆方向**のバリア | `E(TS) − E(reactant)`。開始構造との差では**ない**。E(reactant) は最適化した反応物のエネルギー（例: [`opt`](opt.md) で最適化した IRC の端点） |
+| 生成物から始めたスキャン | `E(TS) − E(product)`。**逆方向**の障壁 | `E(TS) − E(reactant)`。開始構造との差では**ない**。E(reactant) は最適化した反応物のエネルギー（例: [`opt`](opt.md) で最適化した IRC の端点） |
 
-これを切り替えるオプションはありません。バリアを引用する前に、スキャンがどちらの端点から始まったかを確認してください。結晶構造の生成物複合体から始めた場合は特に注意してください。
+これを切り替えるオプションはありません。障壁を引用する前に、スキャンがどちらの端点から始まったかを確認してください。結晶構造の生成物複合体から始めた場合は特に注意してください。
 
 ---
 
@@ -184,7 +184,7 @@ PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz
 | `--endopt/--no-endopt` | フラグ | `False` | 各ステージの結果を拘束なしで最適化 |
 | `--dump/--no-dump` | フラグ | `False` | 各ステップの最適化の軌跡を出力 |
 | `--opt-mode` | `grad` / `hess` | `grad` | 緩和の方法：L-BFGS / RFO（`tsopt` では同じ語が別の最適化法を指す。{ref}`コマンドごとの --opt-mode <ja-opt-mode-semantics>` を参照） |
-| `--freeze-links/--no-freeze-links` | フラグ | `True` | クラスター境界のキャップ水素の親原子を自動凍結 |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | クラスター境界のキャップ水素の親原子を自動固定 |
 | `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/scan.md) を参照してください。
@@ -210,5 +210,5 @@ PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz
 * [scan2d](scan2d.md) — 2 つの座標のエネルギーマップ
 * [scan3d](scan3d.md) — 3 つの座標のエネルギー格子
 * [path-search](path-search.md) — スキャンの結果からの最小エネルギー経路（MEP）探索
-* [all](all.md) — 1 つの構造と `-s` からのスキャンを含む一貫ワークフロー
+* [all](all.md) — 1 つの構造と `-s` からのスキャンを含む一気通貫ワークフロー
 * [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法

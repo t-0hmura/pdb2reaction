@@ -18,15 +18,15 @@ one ([overview](../pdb2reaction-overview/SKILL.md#run-stage-by-stage-and-judge-e
 
 | Input | Mode (`Pipeline mode` in `summary.log`) | Page |
 |---|---|---|
-| Two or more structures in reaction order | Multi-structure MEP search (`MEP`) | [all-endpoint-mep.md](all-endpoint-mep.md) |
-| One structure with `-s` | Single structure + scan (`Scan`) | [all-scan-list.md](all-scan-list.md) |
+| Two or more structures in reaction order | Endpoint mode (`MEP`) | [all-endpoint-mep.md](all-endpoint-mep.md) |
+| One structure with `-s` | Scan-list mode (`Scan`) | [all-scan-list.md](all-scan-list.md) |
 | One structure with `--tsopt` and no `-s` | TS-only mode (`TS-only`) | [all-ts-only.md](all-ts-only.md) |
 
 One structure without `-s` or `--tsopt` stops with `BadParameter` ("Provide at
 least two structures with -i/--input in reaction order, or use a single
 structure with --scan-lists, or a single structure with --tsopt."). `-s` with
 two or more structures also stops with an error. One structure with both `-s`
-and `--tsopt` runs the scan mode.
+and `--tsopt` runs Scan-list mode.
 
 ## Minimal run
 
@@ -81,7 +81,7 @@ the saved inputs and MEP do not match the command.
 - **A segment directory exists but the stage failed.** `segments/seg_NN/` is created when post-processing starts and can be partial; check `summary.json` and the stage `result.json`, not the directory.
 - **TS stops before IRC.** IRC starts only when the TS optimization converged, its final Hessian was computed, and n_imag ≥ 1. With n_imag ≥ 2, IRC runs with a warning along the mode closest to the MEP direction; it is a diagnostic, not a first-order TS. With n_imag = 0, a cycle limit (no final Hessian, so no n_imag), a plateau stop (`--stop-plateau`; the Hessian still gives n_imag), or a skipped or failed final Hessian, the run stops before IRC, keeps the TS files in `segments/seg_NN/ts/`, and does not post-process later segments. Next: [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt) and [When the TS does not come out](../pdb2reaction-overview/ts-strategy.md#when-the-ts-does-not-come-out).
 - **`--dft` with `-b dft`.** The run stops at startup. Run `pdb2reaction dft` or `pdb2reaction sp -b dft` as a separate job.
-- **UMA with `--uma-workers` above 1 and an explicit `Analytical` Hessian.** This raises `BackendError`; use one worker or `FiniteDifference`.
+- **UMA with `--uma-workers` above 1 and an explicit `Analytical` Hessian.** See [Cross-cutting pitfalls](SKILL.md#cross-cutting-pitfalls).
 - **`_work/`.** It holds intermediate files, including the TS candidates (HEI); keep it while you use them.
 
 ## Outputs

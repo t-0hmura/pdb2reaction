@@ -1,6 +1,6 @@
 # HPC 実行例: PBS + Open MPI + Ray
 
-PBS と Open MPI の上で Ray のクラスタを立て、UMA のワーカーを複数のノードに広げるジョブスクリプトの例です。1 ノードのジョブには、この Ray の設定は要りません。
+PBS と Open MPI の上で Ray のクラスターを立て、UMA のワーカーを複数のノードに広げるジョブスクリプトの例です。1 ノードのジョブには、この Ray の設定は要りません。
 
 ワーカーは次の 2 つで指定します。
 
@@ -206,8 +206,8 @@ pdb2reaction は、最適化の各ステップ、経路の各イメージ、有�
 
 ## 使用上の注意点
 
-* **1 ノードのジョブ**: ジョブスクリプトは `pdb2reaction` のコマンドを実行するだけで、GPU 1 つなら既定の `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。GPU 1 つのジョブの雛形は [`skills/pdb2reaction-hpc`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-hpc/SKILL.md) にあります。
-* **Ray のクラスタが立ち上がらないとき**: `opt` を始める前に終了コード 2 で止まります。
+* **1 ノードのジョブ**: ジョブスクリプトは `pdb2reaction` のコマンドを実行するだけで、GPU 1 つならデフォルトの `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。GPU 1 つのジョブの雛形は [`skills/pdb2reaction-hpc`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-hpc/SKILL.md) にあります。
+* **Ray のクラスターが立ち上がらないとき**: `opt` を始める前に終了コード 2 で止まります。
 * **解析 Hessian はワーカー 1 つで使います**: `--uma-workers` を 2 以上にすると解析 Hessian は使えず、`--hessian-calc-mode Analytical` はエラーで止まります。`--uma-workers 1` にするか、`FiniteDifference` の Hessian を使ってください。
 * **ワーカーを使うのは UMA だけです**: ORB / MACE / AIMNet2 では、1 以外の `workers` / `workers_per_node` は警告を出して無視されます。
 

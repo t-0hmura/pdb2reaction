@@ -71,7 +71,7 @@ itself establish the intended elementary reaction: confirm it with `irc`.
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `hess` / `rsprfo` (default) | RS-P-RFO, full Hessian | Tested default |
+| `hess` / `rsprfo` (default) | RS-P-RFO, full Hessian | Default; start here |
 | `grad` / `dimer` | Hessian-guided Dimer | RS-P-RFO does not converge, or recomputing the full Hessian is too costly on a large cluster. It follows the lowest mode by dimer rotation and refreshes it from an exact Hessian only at intervals |
 | `rsirfo` | RS-I-RFO | Another try on a difficult candidate |
 | `trim` | TRIM | Another try on a difficult candidate |
@@ -110,11 +110,7 @@ itself establish the intended elementary reaction: confirm it with `irc`.
   optimizer mode or YAML, because uphill steps can be part of following a
   saddle mode. `--reject-uphill` belongs to `opt` and to endpoint optimization
   in `all`.
-- **Analytical Hessian with UMA workers.** All four built-in backends implement
-  analytical Hessians. With UMA, `--uma-workers` above 1 plus
-  `--hessian-calc-mode Analytical` raises `BackendError`; it does not fall back.
-  Use `--uma-workers 1` or `FiniteDifference` (the default). Other backends
-  ignore the worker options.
+- **Analytical Hessian with UMA workers.** See [Cross-cutting pitfalls](SKILL.md#cross-cutting-pitfalls).
 
 ## Outputs
 

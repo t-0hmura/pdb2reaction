@@ -112,7 +112,7 @@ PDB from `extract` (`--freeze-links` is on by default):
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
 pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3' -m 1
-pdb2reaction tsopt -i model.pdb -l 'SAM:1,GPP:-3' -m 1 -o result_tsopt
+pdb2reaction tsopt -i ts_model.pdb -l 'SAM:1,GPP:-3' -m 1 -o result_tsopt
 pdb2reaction freq -i result_tsopt/final_geometry.pdb -l 'SAM:1,GPP:-3' -m 1 -o result_freq
 ```
 

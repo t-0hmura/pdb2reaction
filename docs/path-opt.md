@@ -89,7 +89,7 @@ result_path_opt/
 ├─ hei.pdb                    # Same HEI as PDB (PDB/mmCIF input)
 ├─ align_refine/              # Endpoint alignment and relaxation files
 ├─ result.json                # Summary (--out-json)
-└─ summary.json               # Same content as result.json (--out-json)
+└─ summary.json               # Same content as result.json (with --out-json)
 ```
 
 Open `final_geometries_trj.xyz` to watch the path. Pass `hei.pdb` to `tsopt` for PDB/mmCIF input, so that `-l` and `--freeze-links` apply there; with `hei.xyz`, add `--ref-pdb`. For PDB, mmCIF, or `.gjf` input, the outputs are also written in that format under the same name; {ref}`mmCIF input <mmcif-input>`, and PDB input too large for the PDB columns, also get `.cif` files that keep the original identifiers. With DMF, the path is not written as `.gjf`. `--dump` also keeps the optimizer trajectories.

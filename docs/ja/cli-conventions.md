@@ -18,7 +18,7 @@
 よく使うブール値オプション：
 
 - `--tsopt` / `--thermo` / `--dft`：後処理ステージの有効化
-- `--freeze-links`：キャップ水素の親原子を凍結（デフォルトで有効）
+- `--freeze-links`：キャップ水素の親原子を固定（デフォルトで有効）
 - `--dump`：軌跡ファイルの出力
 - `--preopt` / `--endopt`：前処理／後処理の最適化
 - `--climb`：最小エネルギー経路の探索でクライミングイメージを使う
@@ -110,7 +110,7 @@ PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（�
 
 ## 原子セレクタ
 
-原子セレクタは `--scan-lists` と `opt` の `--distance-restraint` で 1 つの原子を指します。`--freeze-atoms` は 1 始まりの原子番号だけを受け付けます（[原子の固定と距離の拘束](model-setup.md#原子の固定と距離の拘束)）。
+原子セレクタは `--scan-lists` と `opt` の `--distance-restraint` で 1 つの原子を指します。`--freeze-atoms` は 1 始まりの原子のインデックスだけを受け付けます（[原子の固定と距離の拘束](model-setup.md#原子の固定と距離の拘束)）。
 
 ```bash
 --scan-lists '[(1, 5, 2.0)]'                                          # 1 始まりの整数インデックス
@@ -123,7 +123,7 @@ PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（�
 (ja-scan-list-spec)=
 ### スキャンリスト仕様
 
-`scan` / `scan2d` / `scan3d` / `all` の `-s/--scan-lists` は 1 個以上のインライン Python リテラルを受け付けます。スタンドアロンの `scan` / `scan2d` / `scan3d` はこれに加えて YAML/JSON スペックファイルパスも受け付けます。複数ステージの実行にはファイルが、短い指定にはインラインリテラルが適しています。
+`scan` と `all` の `-s/--scan-lists` は 1 個以上の、`scan2d` / `scan3d` は 1 個だけのインライン Python リテラルを受け付けます。スタンドアロンの `scan` / `scan2d` / `scan3d` はこれに加えて YAML/JSON スペックファイルパスも受け付けます。複数ステージの実行にはファイルが、短い指定にはインラインリテラルが適しています。
 
 **YAML/JSON スペックファイル**（ルートはマッピング。キーは `scan` では `stages`、`scan2d` / `scan3d` では `pairs`）:
 
@@ -136,7 +136,7 @@ stages:                    # scan 用
 
 ```yaml
 one_based: true
-pairs:                     # scan2d（要素は 2 つちょうど） / scan3d（要素は 3 つちょうど）
+pairs:                     # scan2d（ちょうど 2 要素） / scan3d（ちょうど 3 要素）
   - [1, 5, 1.30, 3.10]
   - [2, 8, 1.20, 3.20]
 ```
@@ -147,8 +147,8 @@ pairs:                     # scan2d（要素は 2 つちょうど） / scan3d（
 
 ```bash
 -s '[(atom1, atom2, target_Å), ...]'             # scan: 3 要素タプル
--s '[(atom1, atom2, low_Å, high_Å), ...]'        # 距離の range
--s '[(atom1, atom2, atom3, low_deg, high_deg)]'  # 角度の range
+-s '[(atom1, atom2, low_Å, high_Å), ...]'        # 距離の範囲
+-s '[(atom1, atom2, atom3, low_deg, high_deg)]'  # 角度の範囲
 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'         # クォートしたセレクタ
 -s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"       # 非推奨: 外側をダブルクォートで囲むと内側のエスケープが必要
 ```
@@ -173,9 +173,9 @@ pairs:                     # scan2d（要素は 2 つちょうど） / scan3d（
 (ja-mmcif-input)=
 ### mmCIF と大きな構造
 
-PDB を受け付ける計算コマンドは、すべて `.cif` と `.mmcif` も受け付けます。2 文字以上の chain ID、4 桁を超える残基番号、5 桁を超える原子番号を持つ構造や、残基が 10,000 以上の構造には mmCIF を使ってください。
+PDB を受け付ける計算コマンドは、すべて `.cif` と `.mmcif` も受け付けます。2 文字以上の chain ID、4 桁を超える残基番号、5 桁を超える原子の通し番号を持つ構造や、残基が 10,000 以上の構造には mmCIF を使ってください。
 
-`pdb2reaction` は最初の座標モデルを読み、altLoc（別位置の配座）は残基ごとに平均占有率の最も高いものを 1 つ残します。計算の間は一時的な chain ID と残基番号を使い、出力の CIF で元の chain ID・残基番号・挿入コードに戻します。残基が 10,000 以上、原子が 99,999 以上、hybrid-36 の番号、桁あふれした数字の欄などの、大きな PDB や標準の欄に収まらない PDB も同じように扱います。
+`pdb2reaction` は最初の座標モデルを読み、altLoc（別位置の配座）は残基ごとに平均占有率の最も高いものを 1 つ残します。計算の間は一時的な chain ID と残基番号を使い、出力の CIF で元の chain ID・残基番号・挿入コードに戻します。大きな PDB や標準の欄に収まらない PDB（残基が 10,000 以上、原子が 99,999 以上、hybrid-36 の番号、桁があふれた欄など）も同じように扱います。
 
 残基と原子のセレクタには、元の chain ID と残基番号を使います。出力の横に書かれる `.cif` については [出力ディレクトリのレイアウト](output-layout.md) を参照してください。
 
@@ -201,7 +201,7 @@ PDB のトポロジーを使って続けるときは、元の PDB を次のコ�
 | `2` | 入力・CLI 引数・設定の指定ミス |
 | `130` | ユーザー中断（SIGINT） |
 
-JSON の有無で終了コードは変わりません。終了コード `0` には `success` と `partial` の両方が入るので、`scientific_status` で見分けます。`all` と `path-search` はこれを `summary.log` に書き、`all` は端末にも `Scientific status:` として出します。ほかのコマンドは `--out-json` を付けたときに `result.json` に記録します（[実行と要求段階の完了状況](json-output.md#実行と要求段階の完了状況)）。`--out-json` を付けないときは、そのコマンドのページにある端末の行で見分けてください（例：`irc` では [IRC の成否の判定](irc.md#irc-の成否の判定)）。
+JSON の有無で終了コードは変わりません。終了コード `0` には `success` と `partial` の両方が入るので、`scientific_status` で見分けます。`all` と `path-search` はこれを `summary.log` に書き、`all` は端末にも `Scientific status:` として出します。ほかのコマンドは `--out-json` を付けたときに `result.json` に記録します（[実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了)）。`--out-json` を付けないときは、そのコマンドのページにある端末の行で見分けてください（例：`irc` では [IRC の成否の判定](irc.md#irc-の成否の判定)）。
 
 (ja-opt-mode-semantics)=
 
@@ -214,17 +214,17 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
 | `path-opt`（端点の事前最適化） | L-BFGS | RFO | `grad` |
-| `path-search`（HEI±1 とねじれ（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
+| `path-search`（HEI±1 とキンク（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d`（格子の各点の緩和） | L-BFGS | RFO | `grad` |
 | `all`（前処理の最適化、`--opt-mode`） | L-BFGS | RFO | `grad` |
 | `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess` |
 | `all`（IRC 後の端点の最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
 
-同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer は Hessian を周期的に計算してダイマーの方向を更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsirfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
+同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer 法は Hessian を周期的に計算して Dimer の向きを更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsirfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
 
 ## CLI ↔ YAML 名称の不一致
 
-一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。主なフラグと YAML キーの対応は {ref}`YAML 設定の一覧の主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
+一部の CLI フラグは YAML のキーと名前が少し違い、`all` から指定するときに別の名前になるものもあります。主なフラグと YAML キーの対応は {ref}`YAML 設定の一覧の主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
 
 (ja-pressure-vs-pressure-atm)=
 - **`--pressure` (CLI) と `pressure_atm` (YAML)** — `freq` のフラグは `--pressure FLOAT`、`all` では `--freq-pressure` です。YAML キーは `thermo.pressure_atm` です。どちらも値は **atm** 単位で、内部で Pa に変換されます。
@@ -261,7 +261,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 * **1 つのリストには 1 種類の残基セレクタだけを使ってください**: 表の形は、残基名だけ（`SAM`）、chain＋残基名（番号の有無を問わない。`A:SAM`・`A:TYR:44`）、番号（chain の有無を問わない。`A:123`・`123`）の 3 種類に分かれ、種類の違う形は 1 つのリストに混ぜられません。`A:TYR:44,A:SAM` は通りますが、`A:SAM,SAM`・`A:44,A:SAM`・`SAM,TYR:44` はエラーで止まります。
 * **chain 欄が空の PDB での原子セレクタ**: `'SER:11:HG'` や `'SER 11 HG'` のように 3 項目で書きます。`_` は空の chain の意味にならないので、`'_:SER:11:HG'` はどの原子にも一致せず、エラーで止まります。
 * **mmCIF と大きな構造の制限**: 扱える残基は 619,938 個までです（計算の間に使う内部の PDB の、1 文字の chain ID 62 種 × 残基番号 9,999）。`fix-altloc` と `add-elem-info` は PDB だけを読みます。mmCIF では、読み込みのときに altLoc を選び、元素記号を `_atom_site.type_symbol` から取ります。この値が無い行があるとエラーで止まります。
-* **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。既定で無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、YAML に書いた `hessian_dimer.flatten_max_iter` の値が使われます。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
+* **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。デフォルトで無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、`tsopt` は YAML に書いた `hessian_dimer.flatten_max_iter` の値を使います（`opt` は `--flatten` のとき最大 50 回）。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
 
 ## 関連ドキュメント
 

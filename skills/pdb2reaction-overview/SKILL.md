@@ -1,19 +1,19 @@
 ---
 name: pdb2reaction-overview
-description: "Orientation, TS strategy, and output reading for pdb2reaction, a PDB-native toolkit for MLIP reaction-path calculations on enzyme active-site clusters. SKILL.md first picks the `all` mode (endpoint MEP, scan, or TS-only) from the available structures, then covers stage-by-stage runs, how to judge each stage, and where the source code lives; ts-strategy.md covers precision, routes to a TS candidate and retries when n_imag is wrong, product-start scans, staged vs concerted scans, and controlled comparisons; outputs.md covers summary.json, R/TS/P paths, bond changes, energy diagrams, and failed runs. TRIGGER on first-touch questions, choosing an all mode or workflow, building or debugging a TS candidate, reading summary.json, extracting barriers or Gibbs energies, or locating code. SKIP for one subcommand (pdb2reaction-cli), structure files, charge, or cluster building (pdb2reaction-model-setup), install or CUDA (pdb2reaction-install), and job scripts (pdb2reaction-hpc)."
+description: "Orientation, TS strategy, and output reading for pdb2reaction, a PDB-native toolkit for MLIP reaction-path calculations on enzyme active-site clusters. SKILL.md first picks the `all` mode (Endpoint, Scan-list, or TS-only mode) from the available structures, then covers stage-by-stage runs, how to judge each stage, and where the source code lives; ts-strategy.md covers precision, routes to a TS candidate and retries when n_imag is wrong, product-start scans, staged vs concerted scans, and controlled comparisons; outputs.md covers summary.json, R/TS/P paths, bond changes, energy diagrams, and failed runs. TRIGGER on first-touch questions, choosing an all mode or workflow, building or debugging a TS candidate, reading summary.json, extracting barriers or Gibbs energies, or locating code. SKIP for one subcommand (pdb2reaction-cli), structure files, charge, or cluster building (pdb2reaction-model-setup), install or CUDA (pdb2reaction-install), and job scripts (pdb2reaction-hpc)."
 ---
 
 # pdb2reaction
 
-`pdb2reaction all` picks its mode from the inputs: two or more structures in reaction order → endpoint MEP (`all-endpoint-mep.md`); one structure with `-s` → scan (`all-scan-list.md`); one TS candidate with `--tsopt` → TS-only (`all-ts-only.md`). Add `-c` to cut the cluster and `--tsopt --thermo` for the TS, IRC, and Gibbs energies; run the stages one by one when you want to judge each result first.
+`pdb2reaction all` picks its mode from the inputs: two or more structures in reaction order → Endpoint mode (`all-endpoint-mep.md`); one structure with `-s` → Scan-list mode (`all-scan-list.md`); one TS candidate with `--tsopt` → TS-only mode (`all-ts-only.md`). Add `-c` to cut the cluster and `--tsopt --thermo` for the TS, IRC, and Gibbs energies; run the stages one by one when you want to judge each result first.
 
 ## Pick an all mode
 
 | You have | Mode | Read |
 |---|---|---|
-| Two or more structures in reaction order (R, any intermediates, P) | Endpoint MEP | [all-endpoint-mep.md](../pdb2reaction-cli/all-endpoint-mep.md) |
-| One structure (R) and the distances to drive | Scan (`-s`) | [all-scan-list.md](../pdb2reaction-cli/all-scan-list.md) |
-| One TS candidate | TS-only (`--tsopt`) | [all-ts-only.md](../pdb2reaction-cli/all-ts-only.md) |
+| Two or more structures in reaction order (R, any intermediates, P) | Endpoint mode | [all-endpoint-mep.md](../pdb2reaction-cli/all-endpoint-mep.md) |
+| One structure (R) and the distances to drive | Scan-list mode (`-s`) | [all-scan-list.md](../pdb2reaction-cli/all-scan-list.md) |
+| One TS candidate | TS-only mode (`--tsopt`) | [all-ts-only.md](../pdb2reaction-cli/all-ts-only.md) |
 
 ```bash
 # R and P (put intermediates between them, in order)
@@ -29,8 +29,8 @@ pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
 - `-c` cuts the active-site cluster around the named residues; without it, the input is used as the cluster. How to choose the residues, radius, and boundary: [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md).
 - `--tsopt` adds TS optimization, IRC, and endpoint optimization; `--thermo` adds frequencies and Gibbs energies for R, TS, and P; `--dft` adds DFT single points on them. `--thermo` and `--dft` need `--tsopt`.
 - Each neighbouring pair of inputs becomes one segment. Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
-- DFT//MLIP: `--dft` (with `--thermo`) evaluates R, TS, and P with DFT on the MLIP geometries; to run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
-- With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs the scan mode. One structure with neither is an error.
+- DFT//MLIP: `--dft` evaluates R, TS, and P with DFT on the MLIP geometries; with `--thermo` it also gives DFT//MLIP Gibbs energies. To run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
+- With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs Scan-list mode. One structure with neither is an error.
 
 ## Run stage by stage and judge each stage
 
@@ -59,9 +59,9 @@ Pitfalls:
 
 - `-l` reads residue names, so it is rejected on bare `.xyz`/`.gjf`. Give a stage a `.pdb` or `.cif` (stages write one when the input had residues), or pass `-q`, or keep `-l` and add `--ref-pdb` with the cluster PDB.
 - Standalone `irc` does not write `reactant.pdb`/`product.pdb`; use `all` for the `segments/seg_NN/` layout and automatic R/P orientation.
-- In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0, non-convergence, or a failed PHVA stops the segment before IRC and keeps the TS files. A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
+- In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0, non-convergence, or a failed PHVA stops before IRC, keeps the TS files, and the later segments are not post-processed. A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
 - After a walltime stop, rerun `all` with the same MEP settings and `--resume-segment N` ([all.md](../pdb2reaction-cli/all.md)), or continue with the stage commands. On any status other than `success`, read `summary.log` and then the stage outputs under `segments/seg_NN/` before retrying.
-- A large dense Hessian can exceed GPU memory. Freezing a justified boundary (PHVA) or `--hessian-calc-mode FiniteDifference` lowers the peak, but the Hessian of the moving atoms stays dense.
+- A large dense Hessian can exceed GPU memory. Freezing a justified boundary (PHVA) or keeping the default `--hessian-calc-mode FiniteDifference` (not `Analytical`) lowers the peak, but the Hessian of the moving atoms stays dense.
 
 ## What it does
 

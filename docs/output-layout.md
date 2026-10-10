@@ -63,7 +63,7 @@ result_all/
    └─ path_opt/                                # MEP search and hei_seg_NN.* (path_search/ with --refine-path)
 ```
 
-TS-only mode gives one TS candidate with `--tsopt` and no `-s/--scan-lists`. It has no MEP stage, so `_work/path_opt/` is absent and the deliverables live under `segments/seg_01/`.
+TS-only mode is a run on one TS candidate with `--tsopt` and no `-s/--scan-lists`. It has no MEP stage, so `_work/path_opt/` is absent and the deliverables live under `segments/seg_01/`.
 
 ## Notes
 

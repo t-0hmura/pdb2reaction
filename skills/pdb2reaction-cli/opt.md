@@ -45,9 +45,9 @@ deliberately tightened variant of the published criterion.
 Convergence gives a stationary point, not necessarily a minimum: run `freq`
 and check n_imag = 0.
 
-Files: `final_geometry.xyz`, plus `.pdb` for PDB/mmCIF input and `.cif` for
-mmCIF or very large PDB input from `--convert-files`, on by default;
-`optimization_trj.xyz` with `--dump`; `result.json` with `--out-json`.
+Files: `final_geometry.xyz`; with `--convert-files` (on by default), also
+`.pdb` for PDB/mmCIF input and `.cif` for mmCIF or very large PDB input.
+`--dump` adds `optimization_trj.xyz`, and `--out-json` adds `result.json`.
 
 ## Choosing --opt-mode
 

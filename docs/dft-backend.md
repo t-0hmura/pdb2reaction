@@ -28,7 +28,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -r 0 --selected-resn '44,63,186' --tsopt -o ./result_mlip
 ```
 
-`-r 0` sets the extraction radius to 0 Å, which stops adding nearby residues by distance; the model is built from the `-c` and `--selected-resn` residues. In the bundled example in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples), residues 44, 63, and 186 are the three closest to SAM's methyl carbon (CS1). The bundled PDB has an empty chain field; for such PDB files, give residues by name or number. For your own system, pick the residues that take part in the reaction.
+[Make the model smaller](model-setup.md#make-the-model-smaller) explains how `-r 0 --selected-resn` builds this model.
 
 ### 2. Refine the TS with DFT
 

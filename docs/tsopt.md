@@ -31,6 +31,8 @@ Give the charge and the spin multiplicity explicitly.
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
 
+The run succeeded when the console prints `[tsopt] Converged (n_imag=1).`
+
 ### 2. Dimer method
 
 Use this when computing the full Hessian again and again is too expensive, or to try a second method on a difficult candidate.
@@ -102,8 +104,8 @@ If n_imag is not 1, or the mode does not move the atoms of the intended reaction
 For example, to retry in fp64 and DLC coordinates with flattening on:
 
 ```bash
-pdb2reaction tsopt -i ts_candidate.pdb -q -1 -m 1 \
-    --precision fp64 --coord-type dlc --flatten -o result_tsopt
+pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
+    --precision fp64 --coord-type dlc --flatten --out-dir ./result_tsopt_retry
 ```
 
 For more ideas, see {ref}`When the TS search fails <ts-search-fails>`; for other failures, see [Troubleshooting](troubleshooting.md).
@@ -159,7 +161,7 @@ result_tsopt/
 | `--precision` | `fp32` / `fp64` | per backend (`uma`: `fp32`; `orb`, `mace`: `fp64`) | Backend precision. `aimnet2` rejects `fp64` (see [MLIP Backends: Precision](backends.md#precision)) |
 | `--coord-type` | `cart` / `redund` / `dlc` / `tric` | `cart` | Optimization coordinates: Cartesian / redundant internal / delocalized internal (DLC) / translation-rotation internal (TRIC) |
 | `--config` | path | `None` | YAML file applied before the command-line options |
-| `--dump` | flag | `False` | Write the optimization trajectory |
+| `--dump/--no-dump` | flag | `False` | Write the optimization trajectory |
 | `--out-json/--no-out-json` | flag | `False` | Write a summary to `result.json` ([JSON Output Reference](json-output.md)) |
 
 For every option, run `pdb2reaction tsopt --help-advanced` or see the [generated CLI reference](reference/commands/tsopt.md).
@@ -190,7 +192,7 @@ One YAML key, `hessian_dimer.flatten_max_iter`, sets the number of flatten round
 ### Other notes
 
 * **Uphill steps are always allowed**: a saddle search has to go uphill along the reaction mode, so `tsopt` keeps `reject_uphill: false` even if YAML sets it. `--reject-uphill/--no-reject-uphill` belongs to `opt` and to the endpoint optimization in `all`.
-* **Barrier from a product-side scan**: if the scan that made this candidate started from the product, read its barrier as described in [`scan` → Scan direction and barrier sign](scan.md#scan-direction-and-barrier-sign).
+* **Barrier from a product-side scan**: if the scan that made this candidate started from the product, read its barrier as described in [`scan` → Barrier sign](scan.md#barrier-sign).
 * **One root**: the optimizer climbs along one root (`0` = lowest eigenvalue). Set it as a one-item list such as `rsirfo.roots: [0]`; Dimer uses `hessian_dimer.root`. `tsopt` has no `--root` flag.
 * **Other RS-P-RFO settings**: `trust_norm: max_atom` limits the displacement of each atom instead of the whole step (Cartesian coordinates only), and `hessian_update: ts_bfgs` selects the TS-BFGS update instead of Bofill. Neither changes the trust radii.
 * **Extra searches are opt-in**: after convergence, `tsopt` does not search further on its own, even when n_imag is not 1. Use `--flatten`, or set `rsirfo.saddle_recovery_max_cycles` above `0` (default `0`) to let RS-P-RFO / RS-I-RFO / TRIM step uphill when the exact Hessian shows no imaginary mode.

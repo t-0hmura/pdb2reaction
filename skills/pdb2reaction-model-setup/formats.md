@@ -70,8 +70,7 @@ proline and hydroxyproline), it adds a hydrogen 1.09 Å from the kept carbon tow
 partner. It does not cap other cuts. Each cap is a `HETATM` with atom name
 `HL`, residue name `LKH`, and chain `L`, and carries no formal charge. Geometry commands freeze the
 carbon parent of each cap by default (`--freeze-links`), finding it again from
-the geometry at run time; the PDB holds no freeze list, and the B-factor of a
-cap (0.00) is not a freeze flag. Frozen-atom control is in
+the geometry at run time; the PDB holds no freeze list. Frozen-atom control is in
 [extract](../pdb2reaction-cli/extract.md#freeze-atoms-at-the-cluster-boundary);
 where to cut is in
 [model-setup](SKILL.md#check-the-boundary-and-the-charge).
@@ -305,9 +304,8 @@ the mechanism.
 | Heme | `HEM` | From the oxidation state, axial ligands, and propionate protonation |
 | Free phosphate | `PO4` | −2 to −3 |
 
-`-l` applies only to residues outside the amino-acid, ion, and water tables, so
-a monatomic ion takes its charge from the `ION` table, and the total that
-`extract` reports already counts it. The values follow the PDB CCD residue
+Monatomic ions follow the rules in
+[Charge and multiplicity](SKILL.md#charge-and-multiplicity). The values follow the PDB CCD residue
 names, so the oxidation state lives in the name:
 
 | Ion | Residue name | Charge |
@@ -318,7 +316,7 @@ names, so the oxidation state lives in the name:
 | Na⁺, K⁺ | `NA`, `K` | +1 |
 | Cl⁻ | `CL` | −1 |
 
-`FE3` is not in the table; dump it with the one-liner in
+`FE3` is not in the table; to check, dump the table with the one-liner in
 [SKILL.md](SKILL.md#charge-and-multiplicity). When the deposited name disagrees
 with the oxidation state the mechanism needs, such as an `FE` that is really
 Fe(II), set the cluster total with `-q`. For `all -c`, also fix the residue name

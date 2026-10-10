@@ -72,7 +72,7 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 \
 A [4-tuple](#bidirectional-scan-4-tuple) scans one distance in both directions from the input geometry.
 
 ```bash
-pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[(12, 45, 1.35, 2.50)]'
+pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60,3.00)]'
 ```
 
 ### 6. Dump trajectories
@@ -109,11 +109,8 @@ Let T be the sum of the covalent radii of two atoms scaled by `bond_factor` (def
 
 ---
 
-(scan-direction-and-barrier-sign)=
-## Scan direction and barrier sign
-
 (scan-checking-result)=
-### Checking the result
+## Reading the result
 
 | Where | What to check |
 | --- | --- |
@@ -124,7 +121,10 @@ Let T be the sum of the covalent radii of two atoms scaled by `bond_factor` (def
 
 A `partial` run exits with 0 and a `failed` run with 1; for stages that did not converge, see {ref}`max_cycles and plateau stops <troubleshooting-max-cycles>`. A converged scan with the intended bond changes gives a candidate path; the highest-energy step is a TS candidate for [`tsopt`](tsopt.md), which you can {ref}`extract <trajectory-one-frame>` from `scan_trj.xyz`.
 
-### Barrier sign
+---
+
+(scan-direction-and-barrier-sign)=
+## Barrier sign
 
 `scan` records energies but does not report a barrier. If you read a barrier off a scan, the forward barrier is always computed from the reactant:
 

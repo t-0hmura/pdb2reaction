@@ -2,9 +2,9 @@
 
 `pdb2reaction` is intended for Linux environments (local workstations or HPC clusters), and production runs normally use a CUDA-capable GPU. Prebuilt **PyTorch** wheels include their CUDA runtime libraries: they need a compatible NVIDIA driver, but not a local CUDA toolkit.
 
-## Quick start
+## Quick install
 
-For PyTorch, `nvidia-smi` shows `CUDA Version` at its top right, the newest CUDA the driver supports. Choose a wheel at or below it (`cu126`, `cu130`, or `cu132`). The commands below use the recommended `cu130`.
+`nvidia-smi` shows `CUDA Version` at its top right: the newest CUDA the driver supports. Choose a PyTorch wheel at or below it (`cu126`, `cu130`, or `cu132`). The commands below use the recommended `cu130`.
 
 ### Required
 
@@ -77,7 +77,7 @@ If you prefer to build the environment piece by piece:
     ```
 
     The official 2.13.0 matrix also provides `cu126`, `cu132`, and `cpu`.
-    Choose the wheel with the `nvidia-smi` rule in the Quick start above, then check GPU access in step 8. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
+    Choose the wheel with the `nvidia-smi` rule in the Quick install above, then check GPU access in step 8. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
@@ -157,7 +157,7 @@ If you prefer to build the environment piece by piece:
 
 ## System requirements
 
-**GPU / CUDA.** An NVIDIA GPU whose driver supports the chosen wheel (see Quick start); newer GPU architectures may need a newer wheel. CPU-only execution works but is usually much slower.
+**GPU / CUDA.** An NVIDIA GPU whose driver supports the chosen wheel (see Quick install); newer GPU architectures may need a newer wheel. CPU-only execution works but is usually much slower.
 
 **VRAM, RAM, and disk.** Memory grows with the model, the atom count, and the Hessian mode, and the disk holds the environment, the model weights, and the trajectories and Hessians. As a rough guide for a Hessian with the default UMA model, the default finite-difference Hessian (`FiniteDifference`) fits about 900 atoms in 8 GB, 2,000 in 16 GB, 3,000 in 24 GB, and 10,000 in 96 GB of VRAM, and an analytical Hessian (`Analytical`) about 200, 400, 600, and 1,500 atoms. Even when the model fits in VRAM, above about 1,000 atoms each Hessian takes an hour or more, and a full mechanism study becomes slow (a rule of thumb). Run one representative calculation on the target node and watch the peak use.
 

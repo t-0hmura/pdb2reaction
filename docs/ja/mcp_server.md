@@ -60,10 +60,10 @@ pip install "pdb2reaction[mcp]"
 
 | MCP ツール | 必須の引数 | CLI サブコマンド | 目的 |
 |---|---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `input_pdb`, `scan_lists` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | 拘束駆動の距離スキャン |
+| `scan_1d` / `scan_2d` / `scan_3d` | `input_pdb`, `scan_lists` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | 拘束をかけた距離・角度・二面角のスキャン |
 | `optimize_path` | `reactant_pdb`, `product_pdb` | `pdb2reaction path-opt` | 2 端点間の MEP 最適化 |
 | `search_paths` | `input_pdb`, `product_pdb` | `pdb2reaction path-search` | 再帰的な反応経路探索 |
-| `run_full_pipeline` | `reactant_pdb` | `pdb2reaction`（`all` サブコマンド） | エンドツーエンド: extract → MEP → TS → IRC → freq → DFT |
+| `run_full_pipeline` | `reactant_pdb` | `pdb2reaction all` | エンドツーエンド: extract → MEP → TS → IRC → freq → DFT |
 | `run_single_point_dft` | `input_pdb` | `pdb2reaction dft` | 一点 DFT のエネルギーと原子電荷（GPU4PySCF または PySCF） |
 
 ### 構造 / I/O ヘルパー
@@ -71,7 +71,7 @@ pip install "pdb2reaction[mcp]"
 | MCP ツール | 必須の引数 | CLI サブコマンド | 目的 |
 |---|---|---|---|
 | `extract_active_site` | `complex_pdb`, `ligand_id`, `radius_angstrom`, `output_pdb` | `pdb2reaction extract` | 活性部位モデル: リガンドの近くの残基を切り出し、キャップ水素を付ける |
-| `add_element_info` | `input_pdb`, `output_pdb` | `pdb2reaction add-elem-info` | PDB の元素列を修復 |
+| `add_element_info` | `input_pdb`, `output_pdb` | `pdb2reaction add-elem-info` | PDB の元素欄を修復 |
 | `fix_altloc` | `input_pdb`, `output_pdb` | `pdb2reaction fix-altloc` | PDB の代替位置（altloc）を解決 |
 | `plot_trajectory` | `input_trj_xyz`, `output_png` | `pdb2reaction trj2fig` | エネルギープロファイル図（デフォルトは PNG。JPEG/SVG/PDF/HTML/CSV も可） |
 | `plot_energy_diagram` | `energies`, `output_png` | `pdb2reaction energy-diagram` | 与えた値からの状態エネルギー図 |
@@ -156,7 +156,7 @@ asyncio.run(main())
 
 ## サンドボックス / 安全性に関する注意
 
-- サーバーは呼び出した側の PATH、conda 環境、CUDA の設定を引き継ぎます。opt・tsopt・irc のように時間のかかる呼び出しには `timeout_seconds` を設定し、止まらない計算を打ち切ってください（既定は時間制限なし）。
+- サーバーは呼び出した側の PATH、conda 環境、CUDA の設定を引き継ぎます。opt・tsopt・irc のように時間のかかる呼び出しには `timeout_seconds` を設定し、止まらない計算を打ち切ってください（デフォルトは時間制限なし）。
 - ステージランナーとスキャン / 経路 / パイプラインのツールの出力は `out_dir` の下に置かれます。指定しないときは呼び出しごとに別の一時ディレクトリ `p2r_mcp_<subcmd>_…` を使うので、同時の呼び出しがぶつかりません。
 - 構造 / I/O ヘルパーは `out_dir` を持たず、指定した出力パスに書きます。`extra_args` で CLI のフラグを追加できますが、型付きの出力パス、`--out-dir`、`--out-json/--no-out-json` は上書きできません。コマンドに渡したパスは、返された `argv` ですべて確かめられます。
 - サーバーは `~/.bashrc` やログイン環境を変えず、ソフトウェアのインストールやモデルの配布元へのログインもしません。MLIP の重みと入力の PDB は、前もってディスクに置いてください。

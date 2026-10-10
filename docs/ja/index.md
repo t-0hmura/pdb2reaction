@@ -18,7 +18,7 @@ orphan: true
 初めての方は [はじめに](getting-started.md) からお読みください。
 
 {.p2r-cta}
-[はじめに](getting-started.md){.p2r-btn .p2r-btn-primary} [インストール](installation.md){.p2r-btn .p2r-btn-install} [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb){.p2r-btn .p2r-btn-colab}
+[はじめに](getting-started.md){.p2r-btn .p2r-btn-primary} [インストール](installation.md){.p2r-btn .p2r-btn-install} [Google Colab で実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb){.p2r-btn .p2r-btn-colab}
 :::
 
 ## クイックスタート
@@ -54,7 +54,7 @@ orphan: true
 | **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
 | **小分子の反応機構を解析する** | [小分子の反応機構解析](small-molecules.md) |
 | **反応機構を調べる・TS が取れない** | [反応機構を調べるコツ](mechanism-tips.md) |
-| **求めた TS 構造を DFT で構造最適化する** | [求めた TS 構造を DFT で構造最適化する](dft-backend.md) |
+| **求めた TS 構造を DFT で構造最適化する** | [MLIP の TS を DFT で確かめる](dft-backend.md) |
 | **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
 
 ## サブコマンド
@@ -63,10 +63,10 @@ orphan: true
 
 | サブコマンド | 説明 |
 |---------|------|
-| [`all`](all.md) | 抽出（任意）と、3 つの[入力モード](getting-started.md#3-反応経路を探す)（複数構造 MEP 探索・単一構造 ＋ スキャン・TS-only モード）のいずれか、任意の TS/IRC・熱化学・DFT を統括 |
+| [`all`](all.md) | 抽出（任意）、3 つの[入力モード](getting-started.md#3-反応経路を探す)（Endpoint モード・Scan-list モード・TS-only モード）のどれか 1 つ、TS/IRC・熱化学・DFT（任意）を 1 回の実行でまとめて行う |
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
-| [`add-elem-info`](add-elem-info.md) | PDB の元素列（77–78）を修復 |
+| [`add-elem-info`](add-elem-info.md) | PDB の元素欄（77–78）を修復 |
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO。任意の `--flatten` で残った虚振動を除く） |
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。任意の `--flatten` で余分な虚振動を除く） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
@@ -167,4 +167,4 @@ pdb2reaction <subcommand> --help
 pdb2reaction <subcommand> --help-advanced
 ```
 
-問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) を参照してください。
+問題の報告や機能の要望は [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues) へお寄せください。

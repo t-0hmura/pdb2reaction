@@ -24,7 +24,7 @@ Compute the energy and charges of a neutral singlet on the GPU.
 pdb2reaction dft -i input.pdb -q 0 -m 1 --out-dir ./result_dft
 ```
 
-The console prints `E_total (Hartree): …` and `E_total (kcal/mol): …`, and `result_dft/result.yaml` has `energy.converged: true`.
+If the console prints `E_total (Hartree): …` and `E_total (kcal/mol): …` and `result_dft/result.yaml` has `energy.converged: true`, the run succeeded.
 
 ### 2. Tighter SCF and a larger basis
 
@@ -74,7 +74,7 @@ result_dft/
 ├─ input_geometry.xyz   # Geometry passed to PySCF
 ├─ result.yaml          # Energy, convergence, engine, per-atom charges and spin densities
 ├─ result.json          # Machine-readable summary (with --out-json)
-└─ summary.json         # Copy of result.json; read result.json (with --out-json)
+└─ summary.json         # Same content as result.json (with --out-json)
 ```
 
 * **`energy`** in `result.yaml`: `hartree`, `kcal_per_mol`, `converged`, `used_gpu`, `used_lowmem`, and `engine`, which is `gpu4pyscf(rks_lowmem)`, `gpu4pyscf`, or `pyscf(cpu)`.

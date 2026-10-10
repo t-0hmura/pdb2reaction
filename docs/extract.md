@@ -113,7 +113,7 @@ With several inputs, each structure selects its residues, and the union of the s
 ├─ model.pdb     # cluster model; cap hydrogens follow a TER record
 ├─ model.cif     # mmCIF input, or PDB input too large for the PDB columns
 ├─ result.json   # with --out-json, next to the first output file
-└─ summary.json  # copy of result.json; read result.json (with --out-json)
+└─ summary.json  # same content as result.json (with --out-json)
 ```
 
 | Inputs | `-o` | Output |
@@ -205,6 +205,7 @@ Residue names treated as amino acids, with their nominal charges. Only these res
 **Other modified:** `CGU` (−2, γ-carboxy-glutamate), `CGA` (−1), `PCA` (0, pyroglutamate), `MSE` (0, selenomethionine), `OMT` (0, methionine sulfone), `HYP` (0, hydroxyproline); also `ASA`, `CIR`, `FOR`, `MVA`, `IIL`, `AIB`, `HTN`, `SAR`, `NMC`, `PFF`, `NFA`, `ALY`, `AZF`, `CNX`, `CYF` (all 0).
 
 **N-terminal variants** (`N` prefix): `NALA` (+1), `NARG` (+2), `NASP` (0), `NGLU` (0), `NLYS` (+2), … plus `ACE` (0), `NTER` (+1, generic).
+
 **C-terminal variants** (`C` prefix): `CALA` (−1), `CARG` (0), `CASP` (−2), `CGLU` (−2), `CLYS` (0), … plus `NHE` (0), `NME` (0), `CTER` (−1, generic).
 
 The `N`- and `C`-prefixed Amber names are read as the standard residue (`NALA` → `ALA`); the terminal charge is counted only while the model keeps the N-terminal H1–H3 (H2 and H3 for proline) or OXT.

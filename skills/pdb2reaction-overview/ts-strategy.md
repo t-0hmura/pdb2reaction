@@ -6,8 +6,7 @@ Read this page when you study a reaction mechanism with pdb2reaction: from a hyp
 
 ## Precision (fp32 or fp64)
 
-- `--precision fp32|fp64` works on every MLIP backend. Left unset, each backend keeps its default: `uma` fp32, `orb` fp64, `mace` fp64, `aimnet2` fp32.
-- AIMNet2 accepts fp32 only.
+- `--precision fp32|fp64` is accepted by UMA, ORB, and MACE; AIMNet2 accepts fp32 only. Left unset, each backend keeps its default: `uma` fp32, `orb` fp64, `mace` fp64, `aimnet2` fp32.
 - For UMA, fp64 can change TS optimization and Hessian behaviour, and its speed cost depends on the hardware and model; compare both settings on your system before production.
 - Precision is not proof of a saddle; check n_imag and the IRC endpoints with either setting.
 - `--deterministic` requests run-to-run repeatability on the same software and hardware; it does not increase
@@ -16,7 +15,7 @@ Read this page when you study a reaction mechanism with pdb2reaction: from a hyp
 
 ## Two routes to a TS candidate
 
-- **MEP between R and P** (endpoint MEP mode, or `path-opt`/`path-search`): use it when you have both ends. The highest-energy image (HEI) is the TS candidate; `path-search` splits a multi-step path where bonds change and writes `hei_seg_NN.*` per segment.
+- **MEP between R and P** (Endpoint mode, or `path-opt`/`path-search`): use it when you have both ends. The highest-energy image (HEI) is the TS candidate; `path-search` splits a multi-step path where bonds change and writes `hei_seg_NN.*` per segment.
 - **Restrained scan from R** (`all -s`, or `scan`): use it when you have only R, or want to drive a chosen distance. Each stage holds the listed distances with a harmonic restraint (k = 300 by default) and optimizes everything else, so scan frames are biased structures, not stationary points. In `scan`, `--preopt` optimizes the start structure without restraints and `--endopt` the end of each stage; both are off by default.
 - `opt` does not scan, but it can hold distances with `--distance-restraint` and `--restraint-k`.
 - Send either candidate to `tsopt` → `irc`. The final partial Hessian vibrational analysis (PHVA) of `tsopt` counts n_imag; add `freq` for all modes or thermochemistry.

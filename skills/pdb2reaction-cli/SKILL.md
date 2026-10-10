@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-cli
-description: "Task-level guide to the 18 pdb2reaction subcommands: which command to run, a minimal working invocation, how to judge success, common pitfalls and recovery, and what to run next. SKILL.md is a one-line input-to-output cheatsheet with shared conventions (charge, spin, backend, output, dry run); all.md and its three mode pages, extract.md (with frozen atoms), opt.md, path.md (path-opt and path-search), scan.md (scan, scan2d, scan3d), tsopt.md, irc.md, freq.md, dft.md, and utilities.md (sp, fix-altloc, add-elem-info, bond-summary, trj2fig, energy-diagram) hold the details. Full flag lists come from --help-advanced and the generated CLI reference. TRIGGER on a question about a specific subcommand, a shell invocation, or a run that failed. SKIP for install, HPC, output-schema, or structure-format questions, and for choosing what goes into the cluster (pdb2reaction-model-setup)."
+description: "Task-level guide to the 18 pdb2reaction subcommands: which command to run, a minimal working invocation, how to judge success, common pitfalls and recovery, and what to run next. SKILL.md is a one-line input-to-output cheatsheet with shared conventions (charge, spin, backend, output, dry run); all.md and its three mode pages, extract.md (with frozen atoms), opt.md, path.md (path-opt and path-search), scan.md (scan, scan2d, scan3d), tsopt.md, irc.md, freq.md, dft.md, and utilities.md (sp, fix-altloc, add-elem-info, bond-summary, trj2fig, energy-diagram) hold the details. Full flag lists come from --help-advanced and the generated CLI reference. TRIGGER on a question about a specific subcommand, a shell invocation, or a run that failed. SKIP for install (pdb2reaction-install), HPC (pdb2reaction-hpc), reading `all`'s summary.json (pdb2reaction-overview), and structure-format or cluster questions (pdb2reaction-model-setup)."
 ---
 
 # pdb2reaction CLI
@@ -13,7 +13,7 @@ values with the verified charge (or `-l 'RES:Q,...'` for PDB/mmCIF) and set
 
 | sub | role | minimal command | primary output | page |
 |---|---|---|---|---|
-| `all` | Extraction, MEP or staged scan, then TS/IRC, freq, DFT as requested | `pdb2reaction all -i 1.R.pdb 3.P.pdb -q 0 -m 1 --tsopt --thermo -o out` | `out/summary.json`, `out/segments/seg_NN/{reactant,ts,product}.*` | [all.md](all.md), [endpoint MEP](all-endpoint-mep.md), [scan](all-scan-list.md), [TS-only](all-ts-only.md) |
+| `all` | Extraction, MEP or staged scan, then TS/IRC, freq, DFT as requested | `pdb2reaction all -i 1.R.pdb 3.P.pdb -q 0 -m 1 --tsopt --thermo -o out` | `out/summary.json`, `out/segments/seg_NN/{reactant,ts,product}.*` | [all.md](all.md), [Endpoint mode](all-endpoint-mep.md), [Scan-list mode](all-scan-list.md), [TS-only mode](all-ts-only.md) |
 | `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is a file path, not a directory) | [extract.md](extract.md) |
 | `path-opt` | Single-pass MEP between two structures | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz`, `out/hei.xyz` | [path.md](path.md) |
 | `path-search` | Recursive MEP split at bond changes | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/mep_trj.xyz`, `out/hei_seg_NN.xyz`, `out/summary.json` | [path.md](path.md) |
@@ -22,9 +22,9 @@ values with the verified charge (or `-l 'RES:Q,...'` for PDB/mmCIF) and set
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` | [irc.md](irc.md) |
 | `freq` | Hessian and QRRHO thermochemistry | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`; `thermoanalysis.yaml` with `--dump` | [freq.md](freq.md) |
 | `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb -q 0 -m 1 --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` | [dft.md](dft.md) |
-| `scan` | Staged scan under restraints | `pdb2reaction scan -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, `stage_NN/result.xyz` | [scan.md](scan.md) |
-| `scan2d` | 2D distance grid | `pdb2reaction scan2d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv`, `out/scan2d_map.png` | [scan.md](scan.md) |
-| `scan3d` | 3D distance grid | `pdb2reaction scan3d -i 1.R.pdb -q 0 -m 1 -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv`, `out/scan3d_density.html` | [scan.md](scan.md) |
+| `scan` | Staged scan under restraints | `pdb2reaction scan -i 1.R.pdb -q 0 -m 1 -s '[("CS1 SAM 320","C7 GPP 321",1.60)]' -o out` | `out/scan_trj.xyz`, `stage_NN/result.xyz` | [scan.md](scan.md) |
+| `scan2d` | 2D distance grid | `pdb2reaction scan2d -i 1.R.pdb -q 0 -m 1 -s '[("CS1 SAM 320","C7 GPP 321",1.60,3.10), ("H11 GPP 321","OE2 GLU 186",0.90,2.40)]' -o out` | `out/surface.csv`, `out/scan2d_map.png` | [scan.md](scan.md) |
+| `scan3d` | 3D distance grid | `pdb2reaction scan3d -i 1.R.pdb -q 0 -m 1 -s '[("CS1 SAM 320","C7 GPP 321",1.50,3.00), ("H11 GPP 321","OE2 GLU 186",0.90,2.50), ("SD SAM 320","CS1 SAM 320",1.80,3.00)]' -o out` | `out/surface.csv`, `out/scan3d_density.html` | [scan.md](scan.md) |
 | `sp` | Single-point energy and forces | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | energy on stdout, `out/forces.npy`; `hessian.npy` with `--hess` | [utilities.md](utilities.md) |
 | `trj2fig` | Energy profile from an XYZ trajectory | `pdb2reaction trj2fig -i trj.xyz` | `energy.png` | [utilities.md](utilities.md) |
 | `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7]" --label-x "['R','TS','P']"` | `energy_diagram.png` | [utilities.md](utilities.md) |

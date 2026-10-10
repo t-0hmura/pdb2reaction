@@ -1,4 +1,4 @@
-# `pdb2reaction all`: Multi-structure MEP search
+# `pdb2reaction all`: Endpoint mode
 
 Give two or more structures in reaction order; `all` finds the MEP between each
 neighbouring pair and, with `--tsopt`, optimizes each TS candidate and runs

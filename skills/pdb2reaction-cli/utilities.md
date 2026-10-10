@@ -51,9 +51,8 @@ without `--hess`); `sp` writes no `summary.log`.
 - Compare Hessians only at the same geometry, atom order, frozen set, backend
   model, precision, charge, and multiplicity.
 - AIMNet2 rejects fp64 instead of changing the precision silently.
-- With UMA, `--uma-workers` above 1 cannot give an Analytical Hessian and
-  raises `BackendError`; use one worker or FiniteDifference. Without `--hess`
-  this does not apply.
+- Without `--hess`, the [UMA-worker limit on Analytical Hessians](SKILL.md#cross-cutting-pitfalls)
+  does not apply.
 - `--show-config` prints the settings and continues; use `--dry-run` to check
   without computing.
 
@@ -170,7 +169,7 @@ Text output on stdout, one block per pair:
 
 ```text
 ============================================================
-  1.R.pdb  →  2.P.pdb
+  1.R.pdb  →  3.P.pdb
 ============================================================
 Bond formed (2):
   - C320-C321 : 3.170 Å --> 1.680 Å
@@ -187,7 +186,7 @@ With `--json`, stdout holds one JSON object instead, and no file is written:
   "execution_status": "completed",
   "scientific_status": "success",
   "comparisons": [
-    {"structure_a": "1.R.pdb", "structure_b": "2.P.pdb",
+    {"structure_a": "1.R.pdb", "structure_b": "3.P.pdb",
      "bonds_formed": 2, "bonds_broken": 2}
   ]
 }

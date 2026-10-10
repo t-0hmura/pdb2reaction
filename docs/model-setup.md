@@ -12,6 +12,7 @@
 | A residue of the reaction is missing, or only a fragment of it is in | Raise `-r`, or add the residue to `-c` | [Make the model larger](#make-the-model-larger) |
 | Use a model you built yourself | Omit `-c`, and freeze the boundary atoms with `--freeze-atoms` | [Use a model you built yourself](#use-a-model-you-built-yourself) |
 | Decide or check the boundary by hand | Follow the checklist | [Building or auditing a cluster model manually](#building-or-auditing-a-cluster-model-manually) |
+| Follow a reaction path on the whole enzyme | `path-opt` or `path-search` (up to the MEP) | [Compute the whole enzyme without extraction](#compute-the-whole-enzyme-without-extraction) |
 | Freeze atoms or restrain a distance | `--freeze-links` (on by default), `--freeze-atoms`, `--distance-restraint` | [Freeze atoms and restrain distances](#freeze-atoms-and-restrain-distances) |
 
 ## Build the default model
@@ -41,7 +42,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --dry-run
 
 With `-c`, `--dry-run` extracts the model in a temporary directory and checks the charge and whether the electron count is even or odd; it runs no calculation and writes no output. Read these lines on the console:
 
-- **Atom count**: `Atoms after truncation: N` counts the atoms before the cap hydrogens. Add the number of cap hydrogens from `[extract] Link-H to add: M` (one input) or `[extract:multi] link-H targets common across models: M` (several inputs). For `1.R.pdb` alone, N + M = 608 + 24 = 632.
+- **Atom count**: `Atoms after truncation: N` (one input) or `[extract:multi] Atoms after truncation (model k): N` (several inputs) counts the atoms before the cap hydrogens. Add the number of cap hydrogens from `[extract] Link-H to add: M` (one input) or `[extract:multi] link-H targets common across models: M` (several inputs). For `1.R.pdb` with `3.P.pdb` above, N + M = 669.
 - **Charge**: `Total active site model charge`. With `--dry-run`, `[all] --dry-run extract: model total_charge = …` also appears.
 - **Warnings**: `extract` warns when a bond is cut where no cap hydrogen goes (`all` stops instead), and when a residue looks like an amino acid but has an {ref}`unknown name <extract-modified-residue>`. Look at the boundary, the caps, and the charge.
 

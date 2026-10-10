@@ -50,15 +50,14 @@ pdb2reaction scan3d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]'
 ```
 
-### 3. L-BFGS・軌跡の保存・事前最適化
+### 3. 事前最適化・軌跡の保存
 
-スキャンの前に入力構造を最適化し、各点を L-BFGS で緩和して、内側ループの軌跡を保存し、相対エネルギーを使える点の最小値から測ります。
+スキャンの前に入力構造を最適化し、内側ループの軌跡を保存します。
 
 ```bash
 pdb2reaction scan3d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]' \
-    --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
-    --preopt --baseline min
+    --dump -o ./result_scan3d/ --preopt
 ```
 
 ### 4. 既存の surface.csv からの描き直し
@@ -178,5 +177,5 @@ result_scan3d/
 * [opt](opt.md) — スキャンの前後の単一構造の最適化
 * [tsopt](tsopt.md) — 鞍点に近い構造からの TS 最適化
 * [path-search](path-search.md) — 格子から取った構造を通る MEP 探索
-* [all](all.md) — 一貫ワークフロー
+* [all](all.md) — 一気通貫ワークフロー
 * [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法

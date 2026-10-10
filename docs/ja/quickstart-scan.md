@@ -38,7 +38,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 SAM の CS1（原子 4360）と GPP の C7（原子 4419）の距離を 1.60 Å まで動かします。C7 は IUPAC 番号では C6 です。原子は番号でも名前でも指定でき、次の 2 つは同じスキャンです。
 
 ```bash
-# 原子の番号（既定は 1 始まり）
+# 原子の番号（デフォルトは 1 始まり）
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[(4360, 4419, 1.60)]' -o ./result_scan
 
@@ -101,7 +101,7 @@ result_scan/
 
 ## 結果の確認
 
-1. **完了状況**: `scientific_status` には、求めた段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行と要求段階の完了状況)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードができる結合と切れる結合を動かすかと、端点が狙った R と P かの 2 つは自分で確かめてください。
+1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
 2. **スキャン**: `_work/scan/stage_01/scan_trj.xyz` をビューアで開き、距離が狙いどおりに変わるかを確かめます。各段の終わりに端末に `[stage 1] Covalent-bond changes (start vs final): Yes` か `No` が出て、`_work/scan/result.json` の `stages[].bond_changes` に記録されます。
 3. **MEP**: `mep_trj.pdb` と、最高エネルギーのイメージ（HEI、TS の候補）`_work/path_opt/hei_seg_01.pdb` を開き、`energy_diagram_MEP.png` にはっきりした障壁があるかを確かめます。
 4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
@@ -109,8 +109,8 @@ result_scan/
 
 ## 使用上の注意点
 
-* **入力**: PDB か mmCIF です。全系からクラスターモデルを切り出すときは `-c` を付けます。切り出し済みのモデルや、原子を番号で指定する XYZ・GJF の入力では `-c` を省き、構造をそのまま使います。
-* **`all` と `scan` の既定値**: 2 つのコマンドはスキャンの処理を共有しますが、オプションの名前と、スキャンの前後の最適化の既定値が違います。
+* **入力**: PDB/mmCIF・XYZ・GJF です。`-c`（PDB/mmCIF のみ）で全系からクラスターモデルを切り出します。`-c` を付けないと、構造をそのまま使います。
+* **`all` と `scan` のデフォルト値**: 2 つのコマンドはスキャンの処理を共有しますが、オプションの名前と、スキャンの前後の最適化のデフォルト値が違います。
 
   | コマンド | 刻み幅 / 拘束 | 緩和の上限 | スキャンの前 / 後の最適化 |
   | --- | --- | --- | --- |

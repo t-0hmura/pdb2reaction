@@ -8,7 +8,7 @@
 
 * **最適化の前の確認**: 電荷と多重度が受け付けられ、バックエンドが有限のエネルギーと力を返すかを確かめる
 * **バックエンドの比較**: 同じ構造を、[MLIP](backends.md)（機械学習原子間ポテンシャル）の UMA・ORB・MACE・AIMNet2 か、DFT（`-b dft`）で評価する
-* **参照値の作成**: 力と Hessian を `.npy` ファイルとして、エネルギーを端末か `result.json` から得て、自分の解析に使う
+* **参照値の作成**: 力と Hessian を `.npy` ファイルで、エネルギーを端末か `result.json` で受け取り、自分の解析に使う
 
 ---
 
@@ -37,7 +37,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ## 処理の仕組みと計算仕様
 
 1. **構造の読み込み**:
-PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCIF 入力）、YAML の `calc.charge`、`.gjf` のヘッダーのいずれかから決まります。`--freeze-atoms` で指定した原子は凍結します。
+PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCIF 入力）、YAML の `calc.charge`、`.gjf` のヘッダーのいずれかから決まります。`--freeze-atoms` で指定した原子は固定します。
 2. **エネルギーと力**:
 入力の構造でバックエンドを 1 回呼び、エネルギーと力の最大成分を端末に表示して、力を `forces.npy` に保存します。
 3. **Hessian（`--hess` 指定時）**:
@@ -52,9 +52,9 @@ PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCI
 | ファイル | 内容 | 書き出す条件 |
 | --- | --- | --- |
 | `forces.npy` | 力の `(N, 3)` 配列（Hartree/bohr） | 常に |
-| `hessian.npy` | 質量重み付けなしの Cartesian Hessian（Hartree/bohr²）。`(3N, 3N)`、凍結原子があるときは動ける M 原子（入力の順）の `(3M, 3M)` | `--hess` 指定時 |
+| `hessian.npy` | 質量重み付けなしの Cartesian Hessian（Hartree/bohr²）。`(3N, 3N)`、固定原子があるときは動ける M 原子（入力の順）の `(3M, 3M)` | `--hess` 指定時 |
 | `result.json` | エネルギー（`energy_au`）、バックエンド、モデル、電荷、多重度、原子数、`.npy` ファイルのパス、経過時間 | `--out-json` 指定時 |
-| `summary.json` | `result.json` の写し。`result.json` を読む | `--out-json` 指定時 |
+| `summary.json` | `result.json` と同じ内容 | `--out-json` 指定時 |
 
 ---
 
@@ -69,21 +69,21 @@ PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCI
 | `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`）。`-b dft` の設定は [MLIP の TS を DFT で確かめる](dft-backend.md) を参照 |
 | `--hess/--no-hess` | フラグ | `False` | Hessian も計算して `hessian.npy` に書き出す |
 | `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | Hessian の計算法（有限差分 / 解析的）。`--hess` と併用 |
-| `--freeze-atoms` | 文字列 | `None` | 凍結する原子インデックス（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
+| `--freeze-atoms` | 文字列 | `None` | 固定する原子インデックス（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
 | `-o, --out-dir` | パス | `./result_sp/` | 出力先ディレクトリ |
 | `--out-json/--no-out-json` | フラグ | `False` | `result.json` と `summary.json` を出力 |
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/sp.md) を参照してください。
 
-> **補足:** YAML（`--config`）では、`calc` でバックエンドを設定し、`geom.freeze_atoms`（1 始まり）で `--freeze-atoms` に凍結原子を追加できます。
+> **補足:** YAML（`--config`）では、`calc` でバックエンドを設定し、`geom.freeze_atoms`（1 始まり）で `--freeze-atoms` に固定原子を追加できます。
 
 ---
 
 ## 使用上の注意点
 
 * **エネルギーがおかしいとき**: {ref}`電荷と多重度 <ja-charge-spin-problems>`を見直してください。
-* **凍結原子**に働く力は 0 になります。
-* **キャップ水素**: `sp` は `extract` が付けたキャップ水素の親原子を自動では凍結しません。固定したい場合は `--freeze-atoms` に指定してください。
+* **固定原子**に働く力は 0 になります。
+* **キャップ水素**: `sp` は `extract` が付けたキャップ水素の親原子を自動では固定しません。固定したい場合は `--freeze-atoms` に指定してください。
 * **原子電荷**: `sp -b dft` が出すのは DFT のエネルギーと力だけです。Mulliken・meta-Löwdin・IAO の電荷が必要なときは [`dft`](dft.md) を使ってください。
 * **失敗したとき**: 1 行の `Error: …` か、トレースバック付きの `Unhandled error during single-point calculation:` が出て、0 以外の終了コードで終わります。[エラー処理](json-output.md#エラー処理)を参照してください。
 * **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。

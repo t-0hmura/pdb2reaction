@@ -22,7 +22,7 @@ Evaluate a neutral singlet with the default backend (UMA).
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --out-json
 ```
 
-The console prints `[sp] energy = … a.u.  |force|_max = … a.u./bohr`, and `result_sp/` has `forces.npy` and `result.json` with `energy_au`.
+The run succeeded when the console prints `[sp] energy = … a.u.  |force|_max = … a.u./bohr` and `result_sp/` has `forces.npy` and `result.json` with `energy_au`.
 
 ### 2. Add the full Hessian
 
@@ -54,7 +54,7 @@ The backend is called once at the input geometry. `sp` prints the energy and the
 | `forces.npy` | Forces as an `(N, 3)` array in Hartree/bohr | Always |
 | `hessian.npy` | Cartesian Hessian without mass weighting (Hartree/bohr²): `(3N, 3N)`, or `(3M, 3M)` for the M moving atoms in input order when atoms are frozen | With `--hess` |
 | `result.json` | Energy (`energy_au`), backend, model, charge, multiplicity, atom count, paths to the `.npy` files, elapsed time | With `--out-json` |
-| `summary.json` | Copy of `result.json`; read `result.json` | With `--out-json` |
+| `summary.json` | Same content as `result.json` | With `--out-json` |
 
 ---
 

@@ -4,10 +4,10 @@
 
 ## First example
 
-[`examples/aromatic_claisen/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples/aromatic_claisen) holds the reactant and product of an aromatic Claisen rearrangement (allyl phenyl ether → 6-allylcyclohexa-2,4-dien-1-one).
+[`examples/aromatic_claisen/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples/aromatic_claisen) holds the reactant and product of an aromatic Claisen rearrangement (allyl phenyl ether → 6-allylcyclohexa-2,4-dien-1-one); run the command below in `examples/`.
 
 ```bash
-pdb2reaction all -i examples/aromatic_claisen/reactant.xyz examples/aromatic_claisen/product.xyz -q 0 --tsopt --thermo
+pdb2reaction all -i aromatic_claisen/reactant.xyz aromatic_claisen/product.xyz -q 0 --tsopt --thermo
 ```
 
 The run searches the minimum energy path (MEP) and continues to transition-state (TS) optimization, the intrinsic reaction coordinate (IRC), and vibrational analysis with thermochemistry. `Scientific status: success` under `====== Pipeline summary ======` near the end of the terminal output means success; `scientific_status` in `summary.json` has the same value.

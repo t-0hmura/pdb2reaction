@@ -21,11 +21,11 @@ Find your symptom in the quick table, then read the fix in the section it points
 | `all` ends with a `Scientific status:` other than `success` and prints `RESULT WARNING:` lines | Each line names the segment and the stage that failed (TS optimization, MEP, IRC, or endpoint optimization); find that stage in the rows below. `summary.json` lists the same reasons in `scientific_status_reasons` (for example `all:segment_1:tsopt:ts_optimization_not_converged`) | [JSON Output](json-output.md#execution-and-requested-stage-completion) |
 | UMA raises `BackendError` for `--uma-workers` above 1 with `--hessian-calc-mode Analytical` | Use `--uma-workers 1` for an analytical Hessian, or select `FiniteDifference` | {ref}`Performance <troubleshooting-performance>`, {ref}`Workers and analytical Hessians <workers-analytical-error>` |
 | CUDA out of memory (`torch.cuda.OutOfMemoryError`) | Keep the default `FiniteDifference` Hessian, lower `--max-nodes` or use a smaller MLIP model (`--backend-model`), or move to a larger GPU; re-extract with a smaller `--radius` only as the last step | {ref}`GPU memory <troubleshooting-gpu-memory>` |
-| TS optimization converged, but n_imag is not 1 | n_imag ≥ 2 (`TS imaginary-mode validation found n_imag=…`): add `--flatten` (`tsopt`, `opt`, and `all`). n_imag = 0 (`[tsopt] No imaginary mode detected.`): start from another candidate, or use `--refine-path` in `all` | {ref}`TS optimization <troubleshooting-ts>`, {ref}`When the TS search fails <ts-search-fails>` |
+| TS optimization converged, but n_imag is not 1 | n_imag ≥ 2 (`TS imaginary-mode validation found n_imag=…`): add `--flatten` (`tsopt` and `all`). n_imag = 0 (`[tsopt] No imaginary mode detected.`): start from another candidate, or use `--refine-path` in `all` | {ref}`TS optimization <troubleshooting-ts>`, {ref}`When the TS search fails <ts-search-fails>` |
 | TS optimization does not converge (`TS optimization did not converge`) | Check the TS candidate first, then switch the optimizer (`tsopt --opt-mode` / `all --opt-mode-post`), then reduce the step size or trust radius in YAML | {ref}`TS optimization <troubleshooting-ts>`, {ref}`When the TS search fails <ts-search-fails>` |
 | IRC does not terminate | Standalone `irc`: reduce `--step-size`, raise `--max-cycles`. In `all`: `--irc-step-size` / `--irc-max-cycles`. Check the endpoints first | {ref}`IRC <troubleshooting-irc>` |
 | Opt / TS optimization stops as `stalled` after an energy plateau (`TS optimization status is stalled`) | Treat it as not converged; inspect the final geometry and the force / step criteria, then retry with another threshold or optimizer setting | {ref}`max_cycles and plateau stops <troubleshooting-max-cycles>` |
-| Minimum energy path (MEP) search (GSM / DMF) fails (`MEP optimization did not converge`) | Raise `--max-nodes` above the default 20, keep `--preopt` (on by default in `all`, `path-search`, and `path-opt`; off in `scan`, `scan2d`, and `scan3d`), try the other `--mep-mode` | {ref}`MEP search <troubleshooting-mep>` |
+| Minimum energy path (MEP) search (GSM / DMF) fails (`MEP optimization did not converge`) | Raise `--max-nodes` above the default 20, keep `--preopt` (on by default in `all`, `path-search`, and `path-opt`), try the other `--mep-mode` | {ref}`MEP search <troubleshooting-mep>` |
 | `freq` stops with an error | Leave at least one atom movable | {ref}`freq errors <troubleshooting-freq>` |
 | DFT SCF does not converge | Try `--no-dft-low-memory` (density fitting) or a level shift in YAML: `mf: {level_shift: 0.2}` under `dft.pyscf` (`dft` and `--dft`) or `calc.dft.pyscf` (`-b dft`) | [dft notes](dft.md#notes), [DFT backend notes](dft-backend.md#notes) |
 | DFT runs out of GPU memory | Use a smaller basis, trim the model, or move to a larger GPU; if `--dft` runs out, run `pdb2reaction dft` separately | [DFT backend notes](dft-backend.md#notes) |
@@ -210,7 +210,7 @@ VRAM depends on the MLIP model, precision, Hessian mode, and frozen atoms, not o
 
 ## How to report an issue
 
-Include the exact command, `summary.log` (or console output), the smallest reproducing inputs, and your env (OS / Python / CUDA / PyTorch).
+Include the exact command, `run.log` (and `summary.log` for `all` / `path-search`), the smallest reproducing inputs, and your env (OS / Python / CUDA / PyTorch).
 
 ## See also
 

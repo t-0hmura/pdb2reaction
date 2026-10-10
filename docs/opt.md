@@ -7,7 +7,7 @@
 ## What it is for
 
 * **Preparing R, P, and intermediates**: relax the reactant, product, and intermediate structures before a path search or a frequency calculation, and confirm each minimum (n_imag = 0) with [`freq`](freq.md).
-* **Relaxing with fixed distances**: keep chosen atom pairs at a set distance while everything else relaxes.
+* **Relaxing with distance restraints**: pull chosen atom pairs toward a target distance while everything else relaxes.
 * **Turning IRC endpoints into R and P**: optimize the endpoints of an [`irc`](irc.md) run to the minima they lead to.
 
 The default backend is **UMA** (Meta); `-b/--backend` also selects **ORB**, **MACE**, **AIMNet2**, or **DFT**.

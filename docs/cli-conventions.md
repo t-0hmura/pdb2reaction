@@ -125,7 +125,7 @@ A three-field selector gives the residue name, residue number, and atom name in 
 
 ### Scan-list spec
 
-On `scan`, `scan2d`, `scan3d`, and `all`, `--scan-lists/-s` accepts one or more inline Python literals. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
+On `scan` and `all`, `--scan-lists/-s` accepts one or more inline Python literals; `scan2d` and `scan3d` accept exactly one. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
 
 **YAML / JSON spec file** (root = mapping; key is `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
 
@@ -264,7 +264,7 @@ built-in defaults  <  --config (YAML)  <  CLI options
 * **Use one kind of residue selector per list.** The forms in the table fall into three kinds: names only (`SAM`), chain + name with or without a number (`A:SAM`, `A:TYR:44`), and numbers with or without a chain (`A:123`, `123`). Kinds cannot be mixed in one list: `A:TYR:44,A:SAM` works, while `A:SAM,SAM`, `A:44,A:SAM`, and `SAM,TYR:44` stop with an error.
 * **Atom selectors on PDB files with an empty chain column** take three fields, such as `'SER:11:HG'` or `'SER 11 HG'`. `_` does not stand for an empty chain, so `'_:SER:11:HG'` matches no atom and stops with an error.
 * **mmCIF and large structures**: up to 619,938 residues can be handled (62 one-character chain IDs × 9,999 residue numbers in the internal PDB used during the calculation). `fix-altloc` and `add-elem-info` read PDB only. For mmCIF, the altLoc is chosen and element symbols are taken from `_atom_site.type_symbol` when the file is read. A row without it stops with an error.
-* **`--flatten` and YAML**: `--flatten` (`opt`, `tsopt`, and `all`; off by default) displaces the structure along extra imaginary modes and optimizes again. When neither `--flatten` nor `--no-flatten` is given, a `hessian_dimer.flatten_max_iter` value set in YAML is kept; `--no-flatten` forces 0 (see {ref}`When --flatten is on <flatten-precedence-caveat>`).
+* **`--flatten` and YAML**: `--flatten` (`opt`, `tsopt`, and `all`; off by default) displaces the structure along extra imaginary modes and optimizes again. When neither `--flatten` nor `--no-flatten` is given, `tsopt` keeps a `hessian_dimer.flatten_max_iter` value set in YAML, and `opt` always uses up to 50 rounds with `--flatten`; `--no-flatten` forces 0 (see {ref}`When --flatten is on <flatten-precedence-caveat>`).
 
 ## See Also
 

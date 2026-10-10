@@ -158,7 +158,7 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 | 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py) (skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 recipes (add a subcommand, an MLIP backend, an output format, a workflow stage, a test) + the "do not touch" hidden constraints |
 
-After step 5 you can read any other file by following the file index in §4. The package is **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
+After step 5, the file index in §4 lists the main files. The package is **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
 
 ---
 

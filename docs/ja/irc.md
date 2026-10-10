@@ -63,8 +63,8 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
 
 ## 処理の仕組みと計算仕様
 
-1. **出発の方向**: TS で Hessian を計算するか `--read-hess` のファイルから読み、剛体運動を [`freq`](freq.md#凍結境界での剛体モード) と同じように除いてから、`--root` 番目の固有ベクトル（`0` が最小の固有値）を反応モードとします。そのモードが虚振動でなければ、エラーで止まります。
-2. **EulerPC による積分**: 各分岐（順方向、次に逆方向）は TS から始まります。各ステップでは、質量加重の最急降下方向に沿って Euler 予測子で進みます。予測子の勾配は、Bofill 式で更新する現在の Hessian を使った 2 次の Taylor 展開で見積もります。続いて、DWI（距離加重補間）面の上で修正 Bulirsch–Stoer 修正子をかけます。分岐は、TS の近くを出た後に RMS 勾配が 1 × 10⁻³ hartree/bohr を下回ったとき、エネルギーが上がったとき、1 ステップのエネルギー変化が 1 × 10⁻⁶ hartree 以下になったとき、または `--max-cycles` に達したときに止まります。
+1. **出発の方向**: TS で Hessian を計算するか `--read-hess` のファイルから読み、剛体運動を [`freq`](freq.md#固定境界での剛体モード) と同じように除いてから、`--root` 番目の固有ベクトル（`0` が最小の固有値）を反応モードとします。そのモードが虚振動でなければ、エラーで止まります。
+2. **EulerPC による積分**: 各分岐（順方向、次に逆方向）は TS から始まります。各ステップでは、質量加重の最急降下方向に沿って Euler 予測子で進みます。予測子の勾配は、Bofill 式で更新する現在の Hessian を使った 2 次の Taylor 展開で見積もります。続いて、DWI（距離加重補間）面の上で、改良型の Bulirsch–Stoer 法による修正子をかけます。分岐は、TS の近くを出た後に RMS 勾配が 1 × 10⁻³ hartree/bohr を下回ったとき、エネルギーが上がったとき、1 ステップのエネルギー変化が 1 × 10⁻⁶ hartree 以下になったとき、または `--max-cycles` に達したときに止まります。
 3. **経路の書き出し**: 各分岐、TS を通る経路全体、その経路の両端の構造を書き出します。PDB/mmCIF の入力では、軌跡を PDB にも変換します。
 
 ---
@@ -131,7 +131,7 @@ result_irc/
 | `--root` | 整数 | `0` | 反応モードとする Hessian の固有ベクトル。固有値の昇順に 0 から数える |
 | `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | 最初の Hessian の計算方法 |
 | `--read-hess` | パス | `None` | Hessian を計算せず、`.npy` ファイル（`freq` や `tsopt --dump-hess` で書いたものなど）から読んで始める |
-| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力または `--ref-pdb`） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を固定（PDB/mmCIF 入力または `--ref-pdb`） |
 | `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 | `-o, --out-dir` | パス | `./result_irc/` | 出力先ディレクトリ |
 
@@ -144,19 +144,19 @@ result_irc/
 ## 使用上の注意点
 
 * **すぐ止まる分岐**: 分岐が 3 フレーム以下で終わると、端末に `[irc] IRC stopped after only a few frames in …` の警告が出ます。ステップが大きすぎると EulerPC が不安定になることがあるので、先に例 4 を試してください。
-* **`--never-stop` はデフォルト無効**: 数値的な失敗や外部からの中断では止まります。軌跡を確かめて端点を最適化し、先の経路が役に立つときだけ `--max-cycles` を増やしてください。
+* **`--never-stop` でも止まる場合**: `--never-stop` を付けても、数値的な失敗や外部からの中断では止まります。軌跡を確かめて端点を最適化し、その先の経路が役に立つときだけ `--max-cycles` を増やしてください。
 * **`--root` は 0 から数える**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出るので、n_imag = 1 の TS では `--root 0`（ただ 1 つの負の固有値）のままにしてください。`1`、`2` などは、反応モードより固有値の小さい（より負の）疑似モードがあると分かっているときだけ使います。
-* **常にこの値になる設定**: YAML の `geom.coord_type` と `calc.return_partial_hessian` にかかわらず、`irc` は Cartesian 座標と、動ける原子だけの Hessian を使います。
+* **変えられない設定**: YAML の `geom.coord_type` と `calc.return_partial_hessian` にかかわらず、`irc` は Cartesian 座標と、動ける原子だけの Hessian を使います。
 * **`--read-hess` のファイル**: [`freq`](freq.md) と同じ `.npy` ファイルです。`irc.hessian_init: calc`（デフォルト）が必要です。ファイルを使ったときは、`result.json` の `rigid_projection.hessian_source` が `"file"` になります。
 * **解析 Hessian と `--uma-workers`**: UMA では、`--hessian-calc-mode Analytical` は 1 より大きい `--uma-workers` と併用できず、エラーで止まります。解析 Hessian には `--uma-workers 1` を使ってください。速度とメモリ量はバックエンド・モデル・系の大きさによって変わるので、先に対象の系で試してください。
-* **端点の最適化**: `finished_first.xyz` と `finished_last.xyz` は `.xyz` だけで書かれるので、TS の PDB を `--ref-pdb` で渡し、キャップ水素の親原子を{ref}`凍結 <ja-freeze-atoms-and-restraints>`したまま最適化してください。
+* **端点の最適化**: `finished_first.xyz` と `finished_last.xyz` は `.xyz` だけで書かれるので、TS の PDB を `--ref-pdb` で渡し、キャップ水素の親原子を{ref}`固定 <ja-freeze-atoms-and-restraints>`したまま最適化してください。
 
   ```bash
   pdb2reaction opt -i result_irc/finished_first.xyz --ref-pdb ts.pdb -q 0 -m 1 --out-dir ./result_opt_first
   pdb2reaction opt -i result_irc/finished_last.xyz --ref-pdb ts.pdb -q 0 -m 1 --out-dir ./result_opt_last
   ```
 
-* **凍結原子**: `--freeze-links` に加えて、`--freeze-atoms`（1 始まり）でほかの原子も凍結できます。除いた剛体運動と最初の Hessian は、`result.json` の `rigid_projection` に記録されます。
+* **固定原子**: `--freeze-links` に加えて、`--freeze-atoms`（1 始まり）でほかの原子も固定できます。除いた剛体運動と最初の Hessian は、`result.json` の `rigid_projection` に記録されます。
 * **大きな系**: `--hess-device cpu` を付けると、最初の Hessian と IRC の Hessian の演算を CPU で行い、GPU のメモリに収めます。
 * **分岐は少なくとも 1 つ**: `--no-forward` と `--no-backward` を両方付けると、エラーで止まります。
 

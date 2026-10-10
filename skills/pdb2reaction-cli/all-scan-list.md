@@ -1,6 +1,6 @@
-# `pdb2reaction all`: Single structure + scan
+# `pdb2reaction all`: Scan-list mode
 
-Give one reactant and the coordinates to drive with `-s`; `all` runs the scan
+Give one reactant and the coordinates to drive with `-s` (`--scan-lists`); `all` runs the scan
 stages in order, searches the MEP through the stage ends, and, with `--tsopt`,
 optimizes each TS candidate and runs IRC. It succeeded when the console prints
 `Scientific status: success` under the last `====== Pipeline summary ======`
@@ -20,18 +20,18 @@ intermediates it finds.
 ```bash
 pdb2reaction all -i 1.R.pdb \
     -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --scan-lists \
+    -s \
         '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
         '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
     --tsopt --thermo \
     -o result_scan
 ```
 
-Use exactly one `--scan-lists` flag. Each space-separated literal following
+Use exactly one `-s` flag. Each space-separated literal following
 that flag is one stage. Stages run in order; the final geometry of stage k is
 the input geometry of stage k+1.
 
-## Writing --scan-lists
+## Writing -s
 
 Each literal is a list of target tuples: distance `(i, j, target_Å)`, angle
 `(i, j, k, target_deg)`, or dihedral `(i, j, k, l, target_deg)`.
@@ -54,15 +54,15 @@ empty chain.
 
 Several tuples in one literal move together. If you want them done
 sequentially, split them into separate literal values after the same
-`--scan-lists` occurrence. Repeating the flag is rejected.
+`-s` occurrence. Repeating the flag is rejected.
 
 ```bash
 # One stage, two bonds driven together (concerted SN2):
---scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60),("CS1 SAM 320","SD SAM 320",3.0)]'
+-s '[("CS1 SAM 320","C7 GPP 321",1.60),("CS1 SAM 320","SD SAM 320",3.0)]'
 
 # Two stages, one bond each (stepwise mechanism):
---scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
-             '[("H11 GPP 321","OE2 GLU 186",0.90)]'
+-s '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
+   '[("H11 GPP 321","OE2 GLU 186",0.90)]'
 ```
 
 To choose the coordinates for your own reaction, see

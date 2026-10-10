@@ -6,7 +6,7 @@
 
 ## 主な用途
 
-* **R と P からの MEP の初案**: 2 つの端点構造から、再帰的な精密化なしで経路とエネルギープロファイルを得る
+* **R と P からの最初の MEP**: 2 つの端点構造から、再帰的な精密化なしで経路とエネルギープロファイルを得る
 * **`tsopt` に渡す TS 候補**: `hei.pdb`（または `hei.xyz`）を [`tsopt`](tsopt.md) の初期構造にする
 * **GSM と DMF の比較**: 同じ 2 構造を `--mep-mode gsm` と `--mep-mode dmf` で計算し、経路を見比べる
 
@@ -24,7 +24,7 @@
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 --out-json --out-dir ./result_path_opt
 ```
 
-端末に `[write] Wrote '…/hei.xyz'.` の行が出れば、TS 候補が書き出されています。`--out-json` で書き出した `result.json` の `scientific_status` には、求めた段（端点の事前最適化と MEP）がすべて収束すると `success`、そうでなければ `partial` か `failed` が入ります。`barrier_kcal` は最初のイメージを基準にした HEI のエネルギー、`hei_index` は経路上の HEI の位置です。
+端末に `[write] Wrote '…/hei.xyz'.` の行が出れば、TS 候補が書き出されています。`--out-json` で書き出した `result.json` の `scientific_status` には、指定した段（端点の事前最適化と MEP）がすべて収束すると `success`、そうでなければ `partial` か `failed` が入ります。`barrier_kcal` は最初のイメージを基準にした HEI のエネルギー、`hei_index` は経路上の HEI の位置です。
 
 ### 2. 端点の事前最適化の上限を変える
 
@@ -44,9 +44,9 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
   --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
-### 4. 短時間の確認（キャップ親原子を凍結し、クライミングなし）
+### 4. 短時間の確認（キャップ親原子を固定し、クライミングなし）
 
-クライミングイメージ探索を省いて、経路の形をすばやく確かめます。キャップ水素の親原子は凍結したままです。
+クライミングイメージ探索を省いて、経路の形をすばやく確かめます。キャップ水素の親原子は固定したままです。
 
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
@@ -58,7 +58,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ## 処理の仕組みと計算仕様
 
 1. **端点の準備**:
-各端点を、デフォルトでは L-BFGS で事前最適化します（`--opt-mode`）。続いて生成物を凍結原子で反応物に剛体で重ね合わせ、凍結原子を少しずつ反応物側の位置へ動かしながら残りの原子を緩和します。{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>` の親原子は `--freeze-links`（デフォルト）で凍結します。
+各端点を、デフォルトでは L-BFGS で事前最適化します（`--opt-mode`）。続いて生成物を固定原子で反応物に剛体で重ね合わせ、固定原子を少しずつ反応物側の位置へ動かしながら残りの原子を緩和します。{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>` の親原子は `--freeze-links`（デフォルト）で固定します。
 2. **経路の成長と精密化**:
 GSM は 2 つの端点の間に `--max-nodes` 個の可動なイメージのストリングを成長させ、`--thresh-gsm` まで最適化します。`--climb`（デフォルト有効）では、続くクライミングイメージ探索で最も高いイメージを鞍点へ押し上げます。DMF は補間で作った経路を IPOPT（内点法の最適化ソルバー）で `--dmf-tol` まで最適化します。
 3. **HEI の書き出し**:
@@ -89,10 +89,10 @@ result_path_opt/
 ├─ hei.pdb                    # 同じ HEI の PDB（PDB・mmCIF 入力のとき）
 ├─ align_refine/              # 端点の重ね合わせと緩和のファイル
 ├─ result.json                # 結果の要約（--out-json）
-└─ summary.json               # result.json と同じ内容（--out-json）
+└─ summary.json               # result.json と同じ内容（--out-json 指定時）
 ```
 
-経路は `final_geometries_trj.xyz` を開いて確かめてください。PDB・mmCIF 入力では `tsopt` に `hei.pdb` を渡すと、`tsopt` でも `-l` と `--freeze-links` が使えます。`hei.xyz` を渡すときは `--ref-pdb` を付けてください。PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイルも書き出します。{ref}`mmCIF 入力 <ja-mmcif-input>` と、PDB の列に収まらない大きな PDB 入力では、元の識別子を保った `.cif` も書き出します。DMF では経路の `.gjf` は書き出しません。`--dump` を付けると、オプティマイザの軌跡も残します。
+経路は `final_geometries_trj.xyz` を開いて確かめてください。PDB・mmCIF 入力では `tsopt` に `hei.pdb` を渡すと、`tsopt` でも `-l` と `--freeze-links` が使えます。`hei.xyz` を渡すときは `--ref-pdb` を付けてください。PDB・mmCIF・`.gjf` 入力では、同じ名前でその形式のファイルも書き出します。{ref}`mmCIF 入力 <ja-mmcif-input>` と、PDB の欄に入りきらない大きな PDB 入力では、元の識別子を保った `.cif` も書き出します。DMF では経路の `.gjf` は書き出しません。`--dump` を付けると、オプティマイザの軌跡も残します。
 
 端末には MEP の進行状況がサイクルごとに、所要時間とともに出ます。
 
@@ -119,7 +119,7 @@ result_path_opt/
 | `--dmf-tol` | 文字列 | `tight` | DMF の経路の IPOPT の許容値: `tight`（0.04）、`middle`（0.10）、`loose`（0.20）、または正の数。別名 `--thresh-dmf` |
 | `--fix-ends/--no-fix-ends` | フラグ | `True` | GSM のストリングの最適化の間、端点を固定する（DMF では使わない） |
 | `--climb/--no-climb` | フラグ | `True` | 経路の成長後に GSM のクライミングイメージ探索を行う（DMF では使わない） |
-| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を凍結（PDB/mmCIF 入力か `--ref-pdb` のとき） |
+| `--freeze-links/--no-freeze-links` | フラグ | `True` | キャップ水素の親原子を固定（PDB/mmCIF 入力か `--ref-pdb` のとき） |
 | `--out-json/--no-out-json` | フラグ | `False` | 結果の要約を `result.json` に出力（[JSON 出力の一覧](json-output.md)） |
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/path_opt.md) を参照してください。
@@ -130,7 +130,7 @@ result_path_opt/
 
 ## 使用上の注意点
 
-* **DMF では凍結原子が少し動く**: DMF は凍結原子を固定せず、YAML の `dmf.k_fix`（300 eV/Å²）の調和拘束で保持するので、参照位置からわずかにずれることがあります。GSM では固定されたままです。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
+* **DMF では固定原子が少し動く**: DMF は固定原子をその場に止めず、YAML の `dmf.k_fix`（300 eV/Å²）の調和拘束で保持するので、参照位置からわずかにずれることがあります。GSM では固定されたままです。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
 * **DMF には `cyipopt` が必要**: `--mep-mode dmf` を使う前に conda-forge からインストールしてください。`pydmf` は `pdb2reaction` に同梱されています。デフォルトの `--dmf-backend gpu` は CUDA が使えないとエラーで停止します。その場合と GPU のメモリ不足のときは `--dmf-backend cpu` を指定してください。
 * **DMF と陰溶媒は併用できない**: MLIP バックエンドで `--mep-mode dmf` と `--solvent` を同時に指定すると、エラーで停止します。溶媒を入れた経路には GSM を使ってください。
 * **DMF で使われないオプション**: `--climb`・`--dump`・`--fix-ends` は、指定しても DMF では使われません。
@@ -143,7 +143,7 @@ result_path_opt/
 * [path-search](path-search.md) — 2 つ以上の構造を通り、結合が変わる区間を精密化する MEP 探索
 * [tsopt](tsopt.md) — HEI から TS を最適化
 * [irc](irc.md) — TS が狙った R と P につながるかを確認
-* [all](all.md) — 一貫実行のワークフロー。MEP の段は `path-opt` を使い、`--refine-path` で `path-search` に切り替えられます
+* [all](all.md) — 一気通貫ワークフロー。MEP の段は `path-opt` を使い、`--refine-path` で `path-search` に切り替えられます
 * [YAML 設定の一覧](yaml-reference.md) — `gs`・`dmf`・`stopt` の全設定
 * [用語集](glossary.md) — MEP、GSM、DMF、HEI などの用語
 * [トラブルシューティング](troubleshooting.md) — 異常終了時の原因切り分けと対処法

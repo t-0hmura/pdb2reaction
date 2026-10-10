@@ -80,7 +80,7 @@ Even if the IRC does not converge, the result is usable when the endpoints, opti
 | Bonds that change along the path | `bond_changes` in `result.json` (`formed` and `broken`, from `finished_first` to `finished_last`) |
 | Which end is R and which is P | Optimize `finished_first.xyz` and `finished_last.xyz` with [`opt`](opt.md) and compare them with the intended R and P. The order first / last does not decide it |
 
-`result.json` records the outcome as `scientific_status`: `success` (exit code 0) means that the integration ran without an error, however each branch stopped. `irc` does not judge the endpoints; whether they are the intended R and P is for you to check.
+`result.json` records the outcome as `scientific_status`: `success` (exit code 0) means that the integration ran without an error, regardless of how each branch stopped. `irc` does not judge the endpoints; whether they are the intended R and P is for you to check.
 
 If the endpoints are not the intended R and P, see {ref}`When the TS search fails <ts-search-fails>`.
 
@@ -144,7 +144,7 @@ See the [generated CLI reference](reference/commands/irc.md) for every option.
 ## Notes
 
 * **A branch that stops at once**: when a branch ends after three frames or fewer, the console warns `[irc] IRC stopped after only a few frames in …`. Try example 4 first; a large step can make EulerPC unstable.
-* **`--never-stop` is off by default**: numerical failures and interruptions still stop the run. Inspect the trajectory and optimize the endpoints, and raise `--max-cycles` only when the extra path is useful.
+* **`--never-stop` still stops on failures**: even with `--never-stop`, numerical failures and interruptions stop the run. Inspect the trajectory and optimize the endpoints, and raise `--max-cycles` only when the extra path is useful.
 * **`--root` counts from 0**: a successful TS optimization gives one imaginary mode along the reaction coordinate, so for a TS with n_imag = 1 keep `--root 0` (the only negative eigenvalue). Use `1`, `2`, … only when you know that spurious modes with lower (more negative) eigenvalues come before the reaction mode.
 * **Fixed settings**: `irc` always uses Cartesian coordinates (`geom.coord_type: cart`) and the Hessian of the movable atoms only (`calc.return_partial_hessian: true`), whatever the YAML says.
 * **The `--read-hess` file** is the same `.npy` file as in [`freq`](freq.md). It needs `irc.hessian_init: calc` (the default); when the file is used, `rigid_projection.hessian_source` in `result.json` is `"file"`.

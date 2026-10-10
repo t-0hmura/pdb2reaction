@@ -21,7 +21,7 @@ pdb2reaction all -i result_all/_work/path_opt/hei_seg_01.pdb -l 'SAM:1,GPP:-3' \
 
 端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
-他のプログラムで得た候補などの XYZ では、モデルの全電荷を `-q` で明示します。`all` のクイックスタートのモデルは 0 です。
+他のプログラムで得た候補などの XYZ では、モデルの総電荷を `-q` で明示します。`all` のクイックスタートのモデルは 0 です。
 
 ```bash
 pdb2reaction all -i ts_candidate.xyz -q 0 \
@@ -30,7 +30,7 @@ pdb2reaction all -i ts_candidate.xyz -q 0 \
 
 ### （任意）DFT 一点計算を追加
 
-`--dft` で R・TS・P の DFT 一点計算を追加し、`--func-basis` で汎関数と基底を指定します。既定は `wb97m-v/def2-svp` です。
+`--dft` で R・TS・P の DFT 一点計算を追加し、`--func-basis` で汎関数と基底を指定します。デフォルトは `wb97m-v/def2-svp` です。
 
 ```bash
 pdb2reaction all -i result_all/_work/path_opt/hei_seg_01.pdb -l 'SAM:1,GPP:-3' \
@@ -72,7 +72,7 @@ result_ts_only/
 
 ## 結果の確認
 
-1. **完了状況**: `scientific_status` には、求めた段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行と要求段階の完了状況)は `scientific_status_reasons` に出ます。虚振動のモードができる結合と切れる結合を動かすかと、端点が狙った R と P かの 2 つは自分で確かめてください。
+1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
 2. **TS のモード**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[0].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
 3. **端点**: `segments/seg_01/irc/finished_irc_trj.xyz` と R/TS/P の構造 `reactant.pdb`・`ts.pdb`・`product.pdb` を開き、`segments[0].bond_changes` を読みます。端点は狙った R と P のはずです。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 4. **端点の振動数**: `--thermo` のとき、`segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` に符号つきの全振動数が出ます。R と P には −5.00 cm⁻¹ より小さい値（虚振動）が無いはずです。
@@ -80,16 +80,16 @@ result_ts_only/
 | 結果 | 次に試すこと |
 |---|---|
 | n_imag = 0 | MEP の HEI やスキャンの最高点など、よりよい候補から始めます。TS-only モードには手がかりにする経路がありません。 |
-| n_imag ≥ 2 | 各虚振動のモードを見ます。`--flatten` を付けて最適化し直すか、`all --thresh-post gau_tight`（既定の [`baker`](tsopt.md#処理の仕組みと計算仕様) より厳しい）または `tsopt --thresh gau_tight` で収束を厳しくします。 |
+| n_imag ≥ 2 | 各虚振動のモードを見ます。`--flatten` を付けて最適化し直すか、`all --thresh-post gau_tight`（デフォルトの [`baker`](tsopt.md#処理の仕組みと計算仕様) より厳しい）または `tsopt --thresh gau_tight` で収束を厳しくします。 |
 | `bond_changes` が空、または端点が狙いと違う | TS のモードと IRC を確認します。経路が別の極小点どうしを結んでいる可能性があります。 |
-| R や P に虚振動が残る | 端点の構造とモードを確認します。`--thresh-post gau_tight` で端点の最適化を厳しくするか、`--irc-max-cycles`（既定 125）で IRC を延ばします。 |
+| R や P に虚振動が残る | 端点の構造とモードを確認します。`--thresh-post gau_tight` で端点の最適化を厳しくするか、`--irc-max-cycles`（デフォルト 125）で IRC を延ばします。 |
 
 それでも TS が取れないときは、{ref}`TS を確かめる <ja-mechanism-check-ts>` と {ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
 
 ## 使用上の注意点
 
 * **XYZ・GJF のキャップ水素**: 同じ原子の PDB を `--ref-pdb` で渡したときだけ、キャップ水素の親原子が固定されます。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
-* **Hessian の計算法**: 既定の `--hessian-calc-mode FiniteDifference` のまま使ってください。`--hessian-calc-mode Analytical` は、使うバックエンド・モデルと対象の系で速度・メモリ・結果を確かめてから指定します。
+* **Hessian の計算法**: デフォルトの `--hessian-calc-mode FiniteDifference` のまま使ってください。`--hessian-calc-mode Analytical` は、使うバックエンド・モデルと対象の系で速度・メモリ・結果を確かめてから指定します。
 * **エネルギー**: `post_segments[0].mlip.barrier_kcal` が ΔE‡（TS − R）、`.delta_kcal` が ΔE（P − R）で、単位は kcal/mol です。どちらも最適化した TS と端点から求めます。MEP が無いので、`segments[0].barrier_kcal` と `.delta_kcal` にも同じ値が入ります。`--thermo` のときは `post_segments[0].gibbs_mlip.barrier_kcal` と `.delta_kcal` が ΔG‡ と ΔG、`--dft` のときは `post_segments[0].dft.barrier_kcal` と `.delta_kcal` が DFT の値です。
 * **R と P の名付け**: MEP が無いと反応の向きが分からないため、TS-only モードはエネルギーが高いほうの IRC 端点を R、低いほうを P と呼び、この決まりを `summary.json` の `endpoint_assignment` に記録します。この名前は化学的な反応の向きではありません。P からの障壁は `barrier_kcal − delta_kcal` です。
 * **R・P の虚振動**: R や P に虚振動が残っても熱化学は計算され、そのモードは ZPE と G から除かれます。極小点として扱う前にモードを確認してください。

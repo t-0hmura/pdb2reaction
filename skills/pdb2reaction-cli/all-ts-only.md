@@ -13,8 +13,8 @@ Use it when you already have a TS candidate (from another QM code, an earlier
 run such as `result_all/_work/path_opt/hei_seg_01.pdb`, or a manual guess) and
 want only the validation stages, without an MEP search.
 
-Without a TS candidate, use the [Multi-structure MEP search](all-endpoint-mep.md)
-or [Single structure + scan](all-scan-list.md) mode, or `path-search`
+Without a TS candidate, use [Endpoint mode](all-endpoint-mep.md)
+or [Scan-list mode](all-scan-list.md), or `path-search`
 ([path.md](path.md)). A candidate of unknown connectivity can also be tested
 with standalone `tsopt`, `freq`, and `irc`; inspect both IRC ends. If verified
 R and P exist and the seed proves wrong, build an MEP between them.
@@ -41,17 +41,13 @@ Add `--dft` (and `--func-basis 'wb97m-v/def2-tzvpd'`) for DFT single points on
 R, TS, and P. A PDB/mmCIF candidate is cut into a cluster only when `-c` is
 given; otherwise it is used as is.
 
-## How the mode is chosen
-
-`all` runs TS-only mode for exactly one `-i` input with `--tsopt` and no
-`-s`; `summary.log` shows `Pipeline mode` as `TS-only`. One input without
-`-s` or `--tsopt` stops with `BadParameter`. One input with both `-s` and
-`--tsopt` runs the scan mode instead.
+Mode rules: [all.md](all.md#pick-the-mode).
 
 ## Judge success
 
 - **TS**: a successful TS optimization gives one imaginary mode along the reaction coordinate. `post_segments[0].tsopt.n_imaginary_modes` should be 1 and `.imaginary_frequencies_cm` gives its wavenumber; play `segments/seg_01/ts/vib/imag_*_trj.xyz` to see that the mode moves the bonds that form or break. If the TS optimization stops unconverged, the run stops before IRC and keeps the TS files in `segments/seg_01/ts/`; n_imag is computed after a `--stop-plateau` stop but not at the cycle limit.
 - **Status**: `scientific_status` is `success` only when every requested stage converged and n_imag = 1; otherwise read `scientific_status_reasons`.
+- **Mode**: `summary.log` shows `Pipeline mode` as `TS-only`.
 - **Endpoints**: open `segments/seg_01/irc/finished_irc_trj.xyz` and `segments/seg_01/reactant.*` and `product.*`, and read `segments[0].bond_changes`. Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
 - **R and P names**: with no MEP, the higher-energy IRC end is named the reactant (on an exact tie, the left end). The names and the barrier follow this energy order, not a known chemical direction; `post_segments[0].endpoint_assignment` records the rule with `chemical_direction_known: false`. The barrier from P is `barrier_kcal − delta_kcal`. Compare both ends with the intended states before reporting a forward barrier.
 - **Energies**: `post_segments[0].mlip.barrier_kcal` and `.delta_kcal` (same values in `segments[0]`); `gibbs_mlip` (`--thermo`) and `dft` (`--dft`) carry the same keys.
@@ -81,9 +77,11 @@ For finer control:
 
 ```bash
 TOTAL_CHARGE=-1  # replace with the verified cluster charge
-pdb2reaction tsopt -i ts.xyz -q "$TOTAL_CHARGE" -m 1 -o result_tsopt -b uma
-pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_irc -b uma
-pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_freq -b uma
+pdb2reaction tsopt -i ts.xyz -q "$TOTAL_CHARGE" -m 1 -o result_tsopt -b uma --out-json
+pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_irc -b uma --out-json
+pdb2reaction opt   -i result_irc/finished_first.xyz -q "$TOTAL_CHARGE" -m 1 -o result_opt_first -b uma --out-json
+pdb2reaction opt   -i result_irc/finished_last.xyz -q "$TOTAL_CHARGE" -m 1 -o result_opt_last -b uma --out-json
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_freq -b uma --out-json
 ```
 
 ## Outputs

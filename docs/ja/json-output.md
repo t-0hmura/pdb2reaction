@@ -13,7 +13,7 @@ cat result_opt/result.json | python -m json.tool
 
 `result_opt/result.json` を開き、まず `execution_status` と `scientific_status` を読みます。`opt`、`tsopt`、`path-opt` は `optimization_status` も記録します。`all` と `path-search` が `--out-json` を付けなくても書き出す `summary.json` は、これとは[構造が違う別のファイル](#ja-summary-json-path-search-all)です。
 
-## 共通エンベロープ
+## 共通の欄
 
 どの結果ファイルにも下の欄があります。「任意」と書いた欄は、そのコマンドが対応するデータを持つときだけ出ます。
 
@@ -45,20 +45,20 @@ cat result_opt/result.json | python -m json.tool
 | `n_cpus` | int | `<int>` |
 | `ram_gb` | float | `<ram in GB>` |
 
-### 実行と要求段階の完了状況
+### 実行の完了と指定した段の完了
 
 すべての結果に `execution_status` と `scientific_status` を出します。複数段階の計算と scan は、各段の結果も下の欄に残します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `execution_status` | string | `completed` または `failed`。`all` では、IRC の後の端点の最適化が収束しなくても `completed` のままで、エラーで止まると `failed` になります。 |
-| `scientific_status` | string | 要求したすべての段階が収束すれば `success`、そうでなければ `partial` か `failed`。`all` では、n_imag ≥ 2 の TS は `partial` になり、n_imag = 0 の TS では IRC の前で止まるので、`success` なら n_imag = 1 です。単体の `tsopt` は n_imag を見ないので、`n_imaginary_modes` を読んでください。 |
+| `scientific_status` | string | 指定したすべての段階が収束すれば `success`、そうでなければ `partial` か `failed`。`all` では、n_imag ≥ 2 の TS は `partial` になり、n_imag = 0 の TS では IRC の前で止まるので、`success` なら n_imag = 1 です。単体の `tsopt` は n_imag を見ないので、`n_imaginary_modes` を読んでください。 |
 | `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。 |
 | `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
 | `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別の結果。 |
 | `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan の点ごとの結果。 |
 
-### エラーエンベロープ（`execution_status == "failed"` のとき）
+### エラー時の欄（`execution_status == "failed"` のとき）
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
@@ -66,7 +66,7 @@ cat result_opt/result.json | python -m json.tool
 | `error_type` | string | 例外クラス名 |
 | `error_class_chain` | list[string] | 例外のクラスとそのすべての親クラスの名前。エージェントはテキストを解析せずに階層を照合できます |
 | `error_module` | string | 例外クラスが定義されたモジュール |
-| `error_label` | string | 高レベルの CLI ステージラベル |
+| `error_label` | string | CLI の段の名前 |
 
 ## エラー処理
 
@@ -91,7 +91,7 @@ cat result_opt/result.json | python -m json.tool
 | `energy_au` | float | 一点エネルギー (Hartree) |
 | `forces_path` | string | `forces.npy` のパス |
 | `hessian_path` | string \| null | `hessian.npy` のパス。`--hess` 無指定時は null |
-| `elapsed` | string | 人間可読の経過時間 |
+| `elapsed` | string | 読みやすい形の経過時間 |
 
 ### `opt`
 
@@ -105,9 +105,9 @@ cat result_opt/result.json | python -m json.tool
 | `backend` | string | calculator のバックエンド（`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, `"dft"`、または `--calc-file` 時の `"custom"`）。`dft` では `model` が `FUNCTIONAL/BASIS` で、エンジンは別の欄に記録し、MLIP の精度は null です |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
-| `model` | string | MLIPモデル名。`dft`では`FUNCTIONAL/BASIS` |
+| `model` | string | MLIP モデル名。`dft` では `FUNCTIONAL/BASIS` |
 | `n_atoms` | int | 原子数 |
-| `n_freeze_atoms` | int | 凍結原子数 |
+| `n_freeze_atoms` | int | 固定原子数 |
 | `solvent` | string | 陰溶媒または `"none"` |
 | `thresh` | string | 収束閾値プリセット名 |
 | `max_cycles` | int | 最大サイクル数 |
@@ -133,14 +133,14 @@ cat result_opt/result.json | python -m json.tool
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `n_negative_modes` | int\|null | 大きさを問わない負の振動数の数（閾値以内も含む）。`n_imaginary_modes` と並べて見る診断用の値で、PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
-| `frequency_zero_cutoff_cm` | float | 閾値（cm⁻¹、既定 `5.0`）。既定では ν < −5.00 cm⁻¹ だけを虚振動として数えます |
+| `frequency_zero_cutoff_cm` | float | 閾値（cm⁻¹、デフォルト `5.0`）。デフォルトでは ν < −5.00 cm⁻¹ だけを虚振動として数えます |
 | `imaginary_mode_criterion` | string | 数え方の規則の名前。値は `"frequency_cutoff_cm"` |
-| `imaginary_frequency_threshold_cm` | float | 符号を負にした同じ閾値（既定 `-5.0`） |
-| `opt_mode` | string | `"rsprfo"`（既定） / `"rsirfo"` / `"trim"` / `"dimer"` |
+| `imaginary_frequency_threshold_cm` | float | 符号を負にした同じ閾値（デフォルト `-5.0`） |
+| `opt_mode` | string | `"rsprfo"`（デフォルト） / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `opt_mode_requested` | string | CLI で要求したプリセット（`grad` / `hess` / 明示したアルゴリズム） |
 | `optimizer` | string | 実際に使用したオプティマイザのアルゴリズム |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した、経路から求めた反応モードのファイル（上級者向け）。通常は `all` が生成して内部指定します |
-| `safeguards` | object | 厳密な鞍点の確認、最終目的モードのインデックス/重なり、停止理由、および明示的に有効化した場合のモード消失/回復の診断。これらの回復経路はデフォルト無効 |
+| `safeguards` | object | 厳密な鞍点の確認、最後に追ったモードの番号と重なり、止まった理由と、指定したときだけ働くモードの消失・回復の処理の記録。これらの回復の処理はデフォルトでは無効 |
 | `rigid_projection` | object | 剛体モードと厳密な Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ TS の欄を持ちますが、サイクルごとの力/ステップの詳細と `safeguards` はありません。
@@ -160,7 +160,7 @@ cat result_opt/result.json | python -m json.tool
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
 | `n_atoms` | int | 原子数 |
-| `n_freeze_atoms` | int | 凍結原子数 |
+| `n_freeze_atoms` | int | 固定原子数 |
 | `solvent` | string | 陰溶媒または `"none"` |
 | `temperature_K` | float | 温度 (K) |
 | `pressure_atm` | float | 圧力 (atm) |
@@ -204,9 +204,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `energy_last_hartree` | float | `finished_last` のエネルギー |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
 | `forward_requested` / `backward_requested` | bool | 各方向を要求したか |
-| `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停留判定が発火して停止したか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。`*_downhill_departure_valid` と合わせて見ると、その分岐が TS からエネルギーの下がる向きに離れ、かつこの判定を満たしたかを確かめられる |
+| `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停止条件を満たして止まったか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。`*_downhill_departure_valid` と合わせて見ると、その分岐が TS からエネルギーの下がる向きに離れ、かつこの判定を満たしたかを確かめられる |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS からエネルギーの下がる向きに離れたことを確認できたか |
-| `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | 数値伝播が失敗した場合だけ非空になる理由 |
+| `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | 数値の積分が失敗したときだけ入る理由 |
 | `forward_energy_increased` | bool \| null | 前方の最終ステップで `irc.energy_increase_thresh`（デフォルト `0` Hartree、上昇はすべて対象）を超えてエネルギーが上昇したか |
 | `backward_energy_increased` | bool \| null | 後方の最終ステップで `irc.energy_increase_thresh`（デフォルト `0` Hartree、上昇はすべて対象）を超えてエネルギーが上昇したか |
 | `backend` | string | MLIP バックエンド |
@@ -215,9 +215,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `model` | string | MLIP モデル名 |
 | `never_stop` | bool | 端点での物理的な停止を迂回するモード（指定したときだけ有効）を使ったか |
 | `never_stop_energy_bypasses` | int | エネルギーの上昇、または 1 ステップのエネルギー変化量による停止を、実際に迂回した回数 |
-| `n_freeze_atoms` | int | 凍結原子数 |
+| `n_freeze_atoms` | int | 固定原子数 |
 | `solvent` | string | 陰溶媒または `"none"` |
-| `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き1始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
+| `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き 1 始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
 | `bond_changes_direction` | string | `bond_changes` がある場合は `"finished_first_to_finished_last"` |
 | `step_length` | float | IRC ステップ長 (Bohr) |
 | `max_cycles` | int | 最大 IRC ステップ数 |
@@ -233,9 +233,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `scan_optimizer` | string | 実効のオプティマイザの種類（`lbfgs` / `rfo`） |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
-| `backend` | string | MLIPバックエンド |
-| `model` | string | MLIPモデル名 |
-| `solvent` | string | 陰溶媒または`"none"` |
+| `backend` | string | MLIP バックエンド |
+| `model` | string | MLIP モデル名 |
+| `solvent` | string | 陰溶媒または `"none"` |
 | `preopt` | bool | 事前最適化を実行したか |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å) |
 | `n_stages` | int | スキャンステージ数 |
@@ -246,10 +246,10 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `index` | int | 1-based ステージインデックス |
+| `index` | int | 1 始まりのステージインデックス |
 | `n_steps` | int | ステップ数 |
-| `converged` | bool | 拘束最適化の収束? |
-| `pairs_1based` | list | 原子ペア (1-based) |
+| `converged` | bool | 拘束最適化が収束したか |
+| `pairs_1based` | list | 原子ペア (1 始まり) |
 | `initial_distances_angstrom` | list | 初期距離 |
 | `target_distances_angstrom` | list | 目標距離 |
 | `final_energy_hartree` | float | 最終エネルギー |
@@ -262,9 +262,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 |-----------|------|------|
 | `charge` | int \| null | 系の電荷。描画だけの `scan3d --csv` では null |
 | `spin` | int \| null | スピン多重度。描画だけの `scan3d --csv` では null |
-| `backend` | string \| null | MLIPバックエンド。描画だけの `scan3d --csv` では null |
-| `model` | string \| null | MLIPモデル名。描画だけの `scan3d --csv` では null |
-| `solvent` | string \| null | 陰溶媒または`"none"`。読み込んだエネルギーには calculator の記録が無いため、描画だけの `scan3d --csv` では null |
+| `backend` | string \| null | MLIP バックエンド。描画だけの `scan3d --csv` では null |
+| `model` | string \| null | MLIP モデル名。描画だけの `scan3d --csv` では null |
+| `solvent` | string \| null | 陰溶媒または `"none"`。読み込んだエネルギーには calculator の記録が無いため、描画だけの `scan3d --csv` では null |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
 | `n_grid_points` | int | `is_preopt=true` を除くグリッド行数 |
 | `execution_status` | string | 実行レベルの完了状態 |
@@ -275,7 +275,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `current_output_paths` | string[] | 今回の実行が書いた CSV/HTML/PNG と格子点の構造。前の実行で残ったファイルは入りません |
 | `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`)。`scan3d` で `--csv` 再プロット時は省略 |
-| `min_energy_hartree` | float | 表面最小エネルギー |
+| `min_energy_hartree` | float | エネルギー曲面上の最小エネルギー |
 | `files` | object | CSV + プロットファイル |
 
 試行した点と使える点の数の欄は、新しく scan したときに出力します。描画だけの `scan3d --csv` は試行数を出力せず、入力 CSV の記録が不完全なら使える点の数も省略する場合があります。
@@ -313,7 +313,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `converged` | bool | SCF 収束? |
+| `converged` | bool | SCF が収束したか |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `n_atoms` | int | 原子数 |
@@ -326,11 +326,11 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `xc_functional` | string | 汎関数 |
 | `basis_set` | string | 基底関数 |
 | `engine` | string | 実効エンジンラベル (`"gpu4pyscf(rks_lowmem)"` / `"gpu4pyscf"` / `"pyscf(cpu)"`) |
-| `used_gpu` | bool | GPU 使用? |
+| `used_gpu` | bool | GPU を使ったか |
 | `used_lowmem` | bool | GPU4PySCF の低メモリのソルバーを実際に使ったか（開殻、CPU、`--no-dft-low-memory` では False） |
 | `lowmem_requested` | bool | 低メモリモードを要求したか |
 | `dft_settings` / `dft_resources` | object | 正規化した計算の設定と、実際に使ったホストの計算資源 |
-| `effective_ecp` | string/object \| null | PySCFへ渡した実効ECP |
+| `effective_ecp` | string/object \| null | PySCF へ渡した実効 ECP |
 | `solvent` / `solvent_model` | string | 実効の組み込み陰溶媒の設定 |
 | `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
@@ -351,7 +351,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数。モデルの原子数は `n_atoms_extracted` + `n_link_hydrogens` です |
 | `exclude_backbone` | bool | 主鎖を除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
-| `ligand_charge_input` | string または null | ユーザーが指定した `--ligand-charge` の対応表。省略時は null |
+| `ligand_charge_input` | string \| null | ユーザーが指定した `--ligand-charge` の対応表。省略時は null |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
 | `input_files` | string[] | 入力 PDB / mmCIF パス |
@@ -368,9 +368,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | 再計算の設定。軌跡コメントを読む場合はすべて null |
 | `energy_provenance` | string[] | フレームごとのエネルギーの出どころ |
 | `energy_unit` | string | 保存したエネルギーの単位（`hartree`） |
-| `backend` | string または null | フレームを再計算した場合のみ MLIP のバックエンド。軌跡コメントのエネルギーを読む場合は null |
-| `charge` / `multiplicity` | int または null | エネルギーを再計算したときの電荷と多重度。それ以外は null |
-| `solvent` / `solvent_model` | string または null | 再計算 calculator の溶媒設定。それ以外は null |
+| `backend` | string \| null | フレームを再計算した場合のみ MLIP のバックエンド。軌跡コメントのエネルギーを読む場合は null |
+| `charge` / `multiplicity` | int \| null | エネルギーを再計算したときの電荷と多重度。それ以外は null |
+| `solvent` / `solvent_model` | string \| null | 再計算 calculator の溶媒設定。それ以外は null |
 | `output_files` | string[] | すべての出力パスを順序どおりに保持する正規フィールド。別ディレクトリに同名ファイルがあっても保持される |
 | `files` | object | ベース名からパスへの対応表。同じベース名の出力が 2 つあると一方だけが残るため、`output_files` を使ってください |
 
@@ -399,17 +399,17 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `treatment` | string | 固定の剛体モード処理: `"constrained"` |
 | `algorithm` | string | 射影の方法の名前 |
 | `effective_rank` | int | 動ける原子の Hessian から除いた剛体方向の数 |
-| `full_rigid_rank` | int | 凍結原子を考える前の、系全体の剛体運動のランク |
-| `frozen_constraint_rank` | int | 凍結原子を動かさない条件で除かれたランク |
+| `full_rigid_rank` | int | 固定原子を考える前の、系全体の剛体運動のランク |
+| `frozen_constraint_rank` | int | 固定原子を動かさない条件で除かれたランク |
 | `svd_rtol` | float | ランクの判定に用いる相対 SVD 許容値 |
-| `active_atom_count` / `frozen_atom_count` | int | 動ける原子と凍結原子の数 |
-| `active_atoms` / `frozen_atoms` | int[] | 動ける原子と凍結原子の 0 始まりのインデックス |
+| `active_atom_count` / `frozen_atom_count` | int | 動ける原子と固定原子の数 |
+| `active_atoms` / `frozen_atoms` | int[] | 動ける原子と固定原子の 0 始まりのインデックス |
 | `hessian_space` | string | 入力 Hessian 空間: `"full"` / `"active"` |
 | `hessian_source` / `source` | string | Hessian の出どころ。`freq`/`irc` は `hessian_source` で、`"file"`（`--read-hess`）、`"cache"`（同じ実行の前の段）、`"fresh"`（新規計算）のいずれか。`opt`/`tsopt` は `source` を使用 |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | 入力 Hessian の形状。`freq`/`irc` は `hessian_shape`、`opt`/`tsopt` は `raw_hessian_shape` を使用 |
-| `near_zero_mode_count` / `near_zero_frequencies_cm` | int / float[] | ±`frequency_zero_cutoff_cm`（既定 5.00 cm⁻¹）以内のモードの数と値。これらのモードは全振動数の一覧にも入ります |
+| `near_zero_mode_count` / `near_zero_frequencies_cm` | int / float[] | ±`frequency_zero_cutoff_cm`（デフォルト 5.00 cm⁻¹）以内のモードの数と値。これらのモードは全振動数の一覧にも入ります |
 
-`constrained` は、凍結原子を動かさない系全体の剛体運動だけを除きます。詳しくは [freq](freq.md#凍結境界での剛体モード) を参照してください。
+`constrained` は、固定原子を動かさない系全体の剛体運動だけを除きます。詳しくは [freq](freq.md#固定境界での剛体モード) を参照してください。
 
 (ja-summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
@@ -418,17 +418,17 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `execution_status` / `scientific_status` | string / string | 実行の完了度と、要求した数値最適化・計算段階の完了度。 |
+| `execution_status` / `scientific_status` | string / string | 実行が完了したかと、指定した計算の段がすべて完了したか。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
-| `pipeline_stop` | object \| 不在 | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
+| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
-| `scan` | object \| 不在 | scanを初期経路に使う`all`の、前段scanの状態・各段階の結果・診断。 |
+| `scan` | object \| なし | scanを初期経路に使う`all`の、前段scanの状態・各段階の結果・診断。 |
 | `n_segments` | int | セグメント数 |
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
 | `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` にも記録 |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` では `preopt_converged` が `scientific_status` の判定に入ります。`--tsopt` で、すべての反応セグメントの TS と両端点の最適化が収束すると、判定から外れます |
-| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[ねじれ](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（ねじれでは `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。 |
+| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[キンク（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（キンクでは `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
@@ -453,7 +453,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | `energy_valid`：最終の TS のエネルギーが有限の値。`structure_valid`：最終の TS の構造ファイルがあり、座標が有限の値 |
 | `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS 最適化で実行したサイクル数と設定上限。通常の非収束時にも記録します。 |
 | `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `optimization_status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC がどう止まったかと結合変化が合うかは `scientific_status` に入りません。最適化した端点が狙った R と P かは自分で確かめてください。 |
-| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称の出どころ。有効な対称数の出どころを持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な出どころが無い場合だけフィールド全体を省略する。 |
+| `post_segments[].thermo_symmetry` | object | freq が R・TS・P ごとに報告した点群と回転対称数とその出どころ。有効な対称数の出どころを持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な出どころが無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 

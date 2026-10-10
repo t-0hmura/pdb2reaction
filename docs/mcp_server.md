@@ -69,10 +69,10 @@ When a stage runner or a scan / path / pipeline tool fails, its `summary` carrie
 
 | MCP tool | Required arguments | CLI subcmd | Purpose |
 |---|---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `input_pdb`, `scan_lists` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | Restraint-driven distance scans |
+| `scan_1d` / `scan_2d` / `scan_3d` | `input_pdb`, `scan_lists` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | Restraint-driven scans of distances, angles, or dihedrals |
 | `optimize_path` | `reactant_pdb`, `product_pdb` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `input_pdb`, `product_pdb` | `pdb2reaction path-search` | Recursive reaction-pathway search |
-| `run_full_pipeline` | `reactant_pdb` | `pdb2reaction` (the `all` subcmd) | End-to-end: extract → MEP → TS → IRC → freq → DFT |
+| `run_full_pipeline` | `reactant_pdb` | `pdb2reaction all` | End-to-end: extract → MEP → TS → IRC → freq → DFT |
 | `run_single_point_dft` | `input_pdb` | `pdb2reaction dft` | Single-point DFT energy and atomic charges (GPU4PySCF or PySCF) |
 
 ### Structure / I/O helpers

@@ -108,8 +108,8 @@ pdb2reaction all [OPTIONS]...
 
 | Mode | Input | What happens |
 | --- | --- | --- |
-| **Multi-structure MEP search** | Two or more PDBs (`-i R.pdb P.pdb`) | Extracts cluster models from the structures (with `-c`) and searches the MEP |
-| **Single structure + scan** | One PDB + `--scan-lists` (`-s`) | Changes the chosen bond distances step by step to build the pathway |
+| **Endpoint mode** | Two or more PDBs (`-i R.pdb P.pdb`) | Extracts cluster models from the structures (with `-c`) and searches the MEP |
+| **Scan-list mode** | One PDB + `--scan-lists` (`-s`) | Changes the chosen bond distances step by step to build the pathway |
 | **TS-only mode** | One PDB + `--tsopt` | Skips the MEP search and goes straight to optimizing the TS candidate and running IRC |
 
 > **Note:** a single structure without `--scan-lists/-s` or `--tsopt` stops with an error.
@@ -171,7 +171,7 @@ When the run finishes, the output directory (`-o`, default `./result_all/`) cont
 | `mep_trj.pdb` / `mep_trj.cif` | Animated trajectory of the minimum energy path (MEP) |
 | `segments/seg_NN/` | Detailed results for each reaction segment (optimized R/TS/P structures, IRC trajectories, and more; with `--tsopt`) |
 
-At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. Check yourself that the imaginary mode moves the intended bonds and that the IRC endpoints are the intended R and P (`segments[].bond_changes`); each quickstart lists the files to open.
+At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. Check yourself that the imaginary mode moves the intended bonds (open the mode file that each quickstart lists) and that the IRC endpoints are the intended R and P (`segments[].bond_changes`).
 
 ---
 

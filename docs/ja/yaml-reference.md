@@ -1,6 +1,6 @@
 # YAML 設定の一覧
 
-YAML 設定ファイル（`--config`）に書けるキーと既定値を、セクションごとに引くページです。セクションの一覧、優先順位、CLI フラグと YAML キーの対応も最初にまとめています。
+YAML 設定ファイル（`--config`）に書けるキーとデフォルト値を、セクションごとに引くページです。セクションの一覧、優先順位、CLI フラグと YAML キーの対応も最初にまとめています。
 
 | セクション | 説明 | 使用されるコマンド |
 |---------|-------------|---------|
@@ -21,7 +21,7 @@ YAML 設定ファイル（`--config`）に書けるキーと既定値を、セ�
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
 | [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS 最適化 | tsopt |
-| `sp` | 一点計算の設定（`hess`（既定 `false`）・`hessian_calc_mode`。`--hess`・`--hessian-calc-mode` と同じ）。[sp](sp.md) を参照 | sp |
+| `sp` | 一点計算の設定（`hess`（デフォルト `false`）・`hessian_calc_mode`。`--hess`・`--hessian-calc-mode` と同じ）。[sp](sp.md) を参照 | sp |
 
 (ja-yaml-configuration-precedence)=
 ## 設定の優先順位
@@ -36,7 +36,7 @@ YAML 設定ファイル（`--config`）に書けるキーと既定値を、セ�
 2. **`--config`** — デフォルトを上書きする YAML ファイル（例: `--config my_settings.yaml`）。
 3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。CLI デフォルトのままのオプションは YAML の値を上書きしません。
 
-例: YAML で `charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
+例: YAML で `calc.charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft`, `sp` に共通です。
 
@@ -84,7 +84,7 @@ max_cycles: 100000
 | `--dft-engine` | `engine` | `dft` |
 
 ```{note}
-**名前不一致 — `--pressure` vs `pressure_atm`.** どちらも atm で、内部で Pa に変換されます。単位を名前に含むのは YAML キーだけです。
+**名前の違い：`--pressure` と `pressure_atm`。** どちらも atm で、内部で Pa に変換されます。単位を名前に含むのは YAML キーだけです。
 ```
 
 ### サブコマンド別の `--thresh` デフォルト
@@ -98,15 +98,15 @@ max_cycles: 100000
 | `scan2d`, `scan3d` | `baker` |
 | `path-opt`、`path-search`（単一構造の最適化） | `gau` |
 | `path-opt`、`path-search`（GSM のストリング: `--thresh-gsm`、`stopt.thresh`） | `gau_loose` |
-| `all`（事前最適化、後処理の極小化） | `gau` |
-| `all`（後処理の TS の段） | `baker` |
+| `all`（事前最適化とスキャンの緩和、`--thresh`） | `gau` |
+| `all`（TS と IRC 後の端点の最適化、`--thresh-post`） | `baker` |
 
 受け付ける値: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`。実行ごとに `--thresh <preset>` または YAML の `opt.thresh` で上書きできます。
 
 ```{note}
 **`--thresh` を持たないサブコマンド。** `irc`、`freq`、`dft` には `--thresh` が**ありません**:
 
-- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセット群は適用されません。
+- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます。IRC は極小化ではなく予測子–修正子法で経路を積分するので、最適化用のプリセットは使いません。
 - `freq` — 最適化ステップが無いため `--thresh` は存在しません。数値精度は `--hessian-calc-mode` と MLIP 自体の精度で決まります。
 - `dft` — SCF 収束は `dft.conv_tol` と `dft.max_cycle` で制御されます。`gau`/`baker` プリセットファミリは使用しません。
 ```
@@ -120,12 +120,12 @@ max_cycles: 100000
 ```yaml
 geom:
  coord_type: cart # "cart"（デカルト座標）、"redund"（冗長内部座標）、"dlc"（非局在化内部座標）、"tric"（並進・回転を含む内部座標）。opt・tsopt・scan・scan2d・scan3d は 4 つとも、all・path-opt・path-search は cart と dlc のみ
- freeze_atoms: [] # 1 始まりの凍結原子番号。--freeze-links が有効なとき（PDB/mmCIF 入力、または --ref-pdb つきの XYZ/GJF）、自動検出した cap 水素の親原子の番号を合わせる
+ freeze_atoms: [] # 1 始まりの固定原子のインデックス。--freeze-links が有効なとき（PDB/mmCIF 入力、または --ref-pdb つきの XYZ/GJF）、自動検出した cap 水素の親原子の番号を合わせる
 ```
 
 **注記:**
-- 凍結原子の力はゼロ化されます。デフォルトの `return_partial_hessian: true` では、動かせる原子の部分の Hessian だけを返します。false にすると、凍結原子の行・列をゼロにした全体の行列を返します。
-- デカルト座標の PHVA（部分 Hessian 振動解析）では、凍結原子を動かさない全系の剛体運動だけを除きます。詳細は [freq](freq.md#凍結境界での剛体モード) を参照してください。
+- 固定原子の力はゼロ化されます。デフォルトの `return_partial_hessian: true` では、動かせる原子の部分の Hessian だけを返します。false にすると、固定原子の行・列をゼロにした全体の行列を返します。
+- デカルト座標の PHVA（部分 Hessian 振動解析）では、固定原子を動かさない全系の剛体運動だけを除きます。詳細は [freq](freq.md#固定境界での剛体モード) を参照してください。
 - `irc` では、YAML や CLI の指定によらず `geom.coord_type` は `cart` です。
 
 ---
@@ -138,7 +138,7 @@ geom:
 calc:
  backend: uma           # uma, orb, mace, aimnet2, dft, auto
  precision: auto # auto (uma/aimnet2 fp32、orb/mace fp64) | fp32 | fp64; aimnet2 は auto/fp32 のみ受理し fp64 を拒否
- charge: 0 # 全電荷。ここに書いたときだけ使う（組み込みの既定値は無い）。-q と -l が優先
+ charge: 0 # 全電荷。ここに書いたときだけ使う（組み込みのデフォルト値は無い）。-q と -l が優先
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # UMA: uma-s-1p2 | uma-m-1p1。model を書かずに backend を orb / mace / aimnet2 にすると orb_v3_conservative_omol / MACE-OMOL-0 / aimnet2
  task_name: omol # Task tag recorded in UMA batches
@@ -164,15 +164,15 @@ calc:
  dft:
   func_basis: wb97m-v/def2-svp
   engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
-  lowmem: true             # DF tensorを保持しないdirect JK
+  lowmem: true             # DF テンソルを持たない direct JK
   scf_stepwise_grid: true # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
-  density_fit: false       # 既定は lowmem の逆
-  nprocs: auto             # scheduler/affinityからPySCF thread数を決定
-  memory: auto             # host RAM上限（例64GB、GPU VRAMではない）
+  density_fit: false       # デフォルトは lowmem の逆
+  nprocs: auto             # scheduler と affinity から PySCF のスレッド数を決める
+  memory: auto             # ホストの RAM の上限（例：64GB。GPU の VRAM ではない）
   solvent: none
   solvent_model: smd      # pcm | smd
   save_scf_checkpoint: false
-  checkpoint_path: null   # 有効時の既定（all 以外のコマンド）: <out-dir>/_work/dft_scf/state.chk
+  checkpoint_path: null   # 有効時のデフォルト（all 以外のコマンド）: <out-dir>/_work/dft_scf/state.chk
   pyscf:
    mol: {}
    mf: {}
@@ -245,9 +245,9 @@ lbfgs:
  double_damp: true # Double damping safeguard
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
- reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
+ reject_uphill: false # 許容値を超えるエネルギーの上昇を拒否する（指定したときだけ有効）
  uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
- rejection_step_floor: 1.0e-07 # retry stepの下限
+ rejection_step_floor: 1.0e-07 # やり直すときのステップの下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
 ```
 
@@ -267,7 +267,7 @@ rfo:
  max_energy_incr: null # Allowed energy increase per step
  reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
  uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
- rejection_trust_floor: 1.0e-07 # retry trust radiusの下限
+ rejection_trust_floor: 1.0e-07 # やり直すときの trust radius の下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
  hessian_update: ts_bfgs # Hessian update scheme: ts_bfgs, bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.
@@ -356,7 +356,7 @@ dmf:
  k_fix: 300.0 # Harmonic constant for restraints (dmf 直下、dmf_options 配下ではない)
 ```
 
-`dmf.tol` は DMF ソルブが最後に適用する許容値なので、同じファイル内の `ipopt_options.dual_inf_tol` より優先されます。生の IPOPT オプションを固定したい場合は `dmf.tol` を書かず `ipopt_options.dual_inf_tol` のみを指定してください。`gau_tight` などの Gaussian プリセットはここでは拒否され、`--thresh` / `--thresh-gsm` の担当です。
+`dmf.tol` は DMF ソルブが最後に適用する許容値なので、同じファイル内の `ipopt_options.dual_inf_tol` より優先されます。生の IPOPT オプションを固定したい場合は `dmf.tol` を書かず `ipopt_options.dual_inf_tol` のみを指定してください。`gau_tight` などの Gaussian プリセットはここでは受け付けません。これらは `--thresh` / `--thresh-gsm` で指定します。
 
 ---
 
@@ -521,8 +521,8 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
- energy_increase_thresh: 0.0   # 通常modeでは1 stepでもenergyが上昇すれば停止
- dump_every: null # デフォルト無効。正の間隔では座標・energy・gradientのみをcheckpoint保存（Hessianなし）
+ energy_increase_thresh: 0.0   # 通常は 1 ステップでもエネルギーが上がれば停止
+ dump_every: null # デフォルトで無効。正の間隔では座標・エネルギー・勾配だけを checkpoint に保存する（Hessian は含まない）
  dump_fn: irc_data.h5 # dump_every指定時のcheckpointファイル名
  displ: energy # Displacement construction method
  displ_energy: 0.001 # Energy-based displacement scaling
@@ -553,13 +553,13 @@ irc:
 freq:
  zero_cutoff_cm: 5.0 # ν < -zero_cutoff_cm を虚振動として数える
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
- n_frames: 20 # モードtrajectoryのフレーム数
+ n_frames: 20 # モードの軌跡のフレーム数
  max_write: 10 # Maximum number of modes to write
  sort: value # Sort order: "value" or "abs"
  out_dir: ./result_freq/ # Output directory
 ```
 
-虚振動の既定の分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は cutoff の内側の負の振動数も数えます。n_imag と `n_negative_modes` のどちらも、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
+虚振動のデフォルトの分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は、n_imag が数えない、0 と −`zero_cutoff_cm` の間の負の振動数も数えます。n_imag と `n_negative_modes` のどちらも、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
 
 ---
 
@@ -591,14 +591,14 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
- solvent: none # PySCF native solvent名
+ solvent: none # PySCF の組み込みの溶媒名
  solvent_model: smd # pcm | smd
- pyscf: {} # PySCF object名attribute転送
- lowmem: true # 低memory direct JK。falseでdensity fitting
+ pyscf: {} # PySCF のオブジェクト名ごとに属性を渡す
+ lowmem: true # 低メモリの direct JK。false で密度フィッティング
  scf_stepwise_grid: true # 最初のSCFを粗いグリッドから（--scf-stepwise-grid）
  nprocs: auto # scheduler/affinityからPySCF thread数を決定
  memory: auto # host RAM上限（例64GB、GPU VRAMではない）
- verbose: 0 # PySCF verbosity (0-9)。-v 0/1 で効く。既定の -v 2 と -v 3 では 4 以上に上がる
+ verbose: 0 # PySCF verbosity (0-9)。-v 0/1 で効く。デフォルトの -v 2 と -v 3 では 4 以上に上がる
  out_dir: ./result_dft/ # Output directory root
 ```
 
@@ -623,7 +623,7 @@ bias:
 | `bias.k` | `scan`, `scan2d`, `scan3d` | `--restraint-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` で `--mep-mode dmf` を使用する場合 | —（YAML 専用） |
 
-`opt` も `--distance-restraint` の組に同じ既定値の `--restraint-k` を使いますが、CLI フラグからだけ読み、`bias:` セクションは読みません。
+`opt` も `--distance-restraint` の組に同じデフォルト値の `--restraint-k` を使いますが、CLI フラグからだけ読み、`bias:` セクションは読みません。
 
 調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルト値はほぼ剛体的に固定する値です。
 
@@ -666,12 +666,6 @@ stopt:
  max_cycles: 300
  dump: false
 
-lbfgs:
- max_cycles: 100000
-
-rfo:
- max_cycles: 100000
-
 bond:
  bond_factor: 1.2
  delta_fraction: 0.05
@@ -700,7 +694,7 @@ dft:
 - `workers` と `workers_per_node` は UMA バックエンドでだけ効きます。
 - `workers > 1` の UMA は解析 Hessian を計算できず、`hessian_calc_mode: Analytical` を明示するとエラーで止まります。`workers: 1` にするか `FiniteDifference` を使ってください。詳細は {ref}`workers と解析 Hessian <ja-workers-analytical-error>` を参照してください。
 - `freq` と `irc` は、`calc.return_partial_hessian` の指定によらず部分 Hessian を使います。
-- `all` は実行する各段に同じファイルを渡し、各段は概要の表の「使用されるコマンド」の列でそのコマンドが挙がっているセクションを読みます。例えば TS の段は `opt`・`hessian_dimer`・`rsirfo` を含む `tsopt` のセクションを読み、`dft` セクションは `all --dft` のときに効きます。
+- `all` は実行する各段に同じファイルを渡し、各段はページ冒頭のセクションの表の「使用されるコマンド」の列でそのコマンドが挙がっているセクションを読みます。例えば TS の段は `opt`・`hessian_dimer`・`rsirfo` を含む `tsopt` のセクションを読み、`dft` セクションは `all --dft` のときに効きます。
 - `opt.lbfgs` / `opt.rfo` は `lbfgs` / `rfo`、`freq.thermo` は `thermo` の別の書き方です。同じ設定に 2 か所で異なる値を書くとエラーで止まります。例えば `lbfgs.max_cycles` と `opt.lbfgs.max_cycles`、また L-BFGS を選んでいるときの `opt.max_cycles` と `lbfgs.max_cycles` です。`-o/--out-dir` は `out_dir` キーより優先し、`all` は各段の出力先を自分で決めます。
 
 ## 関連ドキュメント

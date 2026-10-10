@@ -10,7 +10,7 @@ Standalone commands write a smaller `result.json` (with `--out-json`); its keys 
 result_all/
 ├─ summary.log                 # text summary; sections [1]–[5]
 ├─ summary.json                # machine-readable results (below)
-├─ mep_trj.xyz, mep_trj.pdb    # MEP over all segments (endpoint MEP and scan modes)
+├─ mep_trj.xyz, mep_trj.pdb    # MEP over all segments (Endpoint and Scan-list modes)
 ├─ energy_diagram_MEP.png, energy_diagram_*_all.png, irc_plot_all.png
 ├─ segments/
 │  └─ seg_NN/                  # one reaction step: seg_01, seg_02, ...
@@ -50,7 +50,7 @@ result_all/
 | `key_output_files`, `current_output_paths` | Index of the files of this run; stale files in a reused directory are excluded |
 | `config`, `environment`, `command`, `pdb2reaction_version` | Effective settings, hardware, the command line, and the version |
 
-- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`, and n_imag = 0 stops that segment before IRC. How the IRC stopped does not enter the status.
+- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`; n_imag = 0 stops that segment before IRC, and the later segments are not post-processed. How the IRC stopped does not enter the status.
 - The `references` set also appears at the end of `summary.log` and of the final console output, immediately before elapsed time.
 - `rate_limiting_step.barrier_kcal` uses the highest method available for every reactive segment: `DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`. Always report it with its `method`. It is the highest local barrier, not a kinetic rate-limiting-step assignment, and it is absent when no segment is reactive.
 
@@ -73,15 +73,15 @@ result_all/
 - `endpoint_opt`: `reactant` and `product`, each with `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`.
 - `thermo_symmetry`: point group and rotational symmetry per state.
 
-`mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers. Energy-diagram filenames use `MLIP` for every backend, while top-level `mlip_backend` / `mlip_model` / `mlip_precision` record the exact provenance.
+These block names never change with the backend: `mlip`, `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. Energy-diagram filenames use `MLIP` for every backend, while top-level `mlip_backend` / `mlip_model` / `mlip_precision` record the exact provenance.
 
 ## R/TS/P paths
 
 - Report `segments/seg_NN/{reactant,ts,product}.*`: the optimized TS, and the IRC ends after endpoint optimization.
-- In endpoint MEP and scan modes, the IRC ends are matched to the MEP's left and right states by bond pattern, then RMSD.
+- In Endpoint and Scan-list modes, the IRC ends are matched to the MEP's left and right states by bond pattern, then RMSD.
 - In TS-only mode, the higher-energy IRC end is named the reactant (the left end on an exact tie). This names the direction, not the chemical direction of the reaction; `endpoint_assignment` records `chemical_direction_known: false`. The barrier from P is `barrier_kcal − delta_kcal`.
 - The raw IRC ends before optimization are in `segments/seg_NN/structures/{reactant,product}_irc.*`; use them only to debug a difference between the IRC and the endpoint optimization.
-- `bond_changes` comes from the MEP ends in endpoint MEP and scan modes, and from the optimized R and P in TS-only mode.
+- `bond_changes` comes from the MEP ends in Endpoint and Scan-list modes, and from the optimized R and P in TS-only mode.
 
 ## Reading summary.json with Python
 
@@ -139,7 +139,7 @@ if rls:
 
 | File | Written with |
 |---|---|
-| `energy_diagram_MEP.png` (top) | Endpoint MEP and scan modes |
+| `energy_diagram_MEP.png` (top) | Endpoint and Scan-list modes |
 | `seg_NN/energy_diagram_MLIP.png` | `--tsopt` |
 | `seg_NN/energy_diagram_G_MLIP.png` | `--thermo` |
 | `seg_NN/energy_diagram_DFT.png` | `--dft` |

@@ -51,15 +51,14 @@ pdb2reaction scan2d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]'
 ```
 
-### 3. Pre-optimize, dump, and set the baseline
+### 3. Pre-optimize and dump
 
-Optimize the input before the scan, keep the inner-loop trajectories, and measure the relative energies from the lowest usable point.
+Optimize the input before the scan and keep the inner-loop trajectories.
 
 ```bash
 pdb2reaction scan2d -i input.pdb -l 'SAM:1,GPP:-3' \
     -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]' \
-    --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
-    --preopt --baseline min
+    --dump -o ./result_scan2d/ --preopt
 ```
 
 ---

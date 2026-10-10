@@ -74,7 +74,7 @@ result_dft/
 ├─ input_geometry.xyz   # PySCF に渡した構造
 ├─ result.yaml          # エネルギー、収束、エンジン、原子ごとの電荷とスピン密度
 ├─ result.json          # 機械可読な要約（--out-json 指定時）
-└─ summary.json         # result.json の写し。result.json を読む（--out-json 指定時）
+└─ summary.json         # result.json と同じ内容（--out-json 指定時）
 ```
 
 * **`energy`**（`result.yaml`）: `hartree`・`kcal_per_mol`・`converged`・`used_gpu`・`used_lowmem`・`engine`。`engine` は `gpu4pyscf(rks_lowmem)`・`gpu4pyscf`・`pyscf(cpu)` のいずれかです。
@@ -111,7 +111,6 @@ result_dft/
 
 ---
 
-(ja-notes)=
 ## 使用上の注意点
 
 * **基底のコスト**: `def2-tzvpd` は `def2-svp` よりはるかに重い計算です。原子数や GPU メモリの決まった上限は無く、コストは基底関数の数・元素・汎関数・グリッド・GPU で決まります。まず代表構造を 1 つ計算し、メモリの最大使用量を確かめてください。足りないときは、基底を小さくするか、メモリの大きい GPU を使ってください。

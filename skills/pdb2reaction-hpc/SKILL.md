@@ -176,7 +176,7 @@ for this check. Never cancel by a guessed ID or broad name match.
 - Run one real job of the batch first and read its log; submit the rest only after it passes.
 - Check the resolved settings without computing: `pdb2reaction <command> ... --show-config --dry-run` prints the configuration (backend, DFT engine, charge) and exits.
 - Before `qsub` / `sbatch`, check that no job with the same name is queued; afterwards, confirm that exactly one was created.
-- Judge success from what the job wrote, not from the job leaving the queue. Write the exit code to a file from the job script (`trap 'echo "rc=$?" > "$PBS_O_WORKDIR/$PBS_JOBID.exit"' EXIT`) and set no second EXIT trap after it. A walltime kill skips the trap, so with no exit file, read the scheduler history (`qstat -x -f <jobid>` on PBSPro, `sacct -j <jobid>` on SLURM).
+- Judge success from what the job wrote, not from the job leaving the queue. Write the exit code to a file from the job script (`trap 'echo "rc=$?" > "$PBS_O_WORKDIR/$PBS_JOBID.exit"' EXIT`; on SLURM, `$SLURM_SUBMIT_DIR/$SLURM_JOB_ID.exit`) and set no second EXIT trap after it. A walltime kill skips the trap, so with no exit file, read the scheduler history (`qstat -x -f <jobid>` on PBSPro, `sacct -j <jobid>` on SLURM).
 - Keep heavy I/O and per-job environments on node-local scratch (`$TMPDIR`, or `/var/tmp/$PBS_JOBID`). Stop when the job ID is empty, and remove only that job's directory at the end.
 - Throttle large copies to a shared file system (`rsync --bwlimit=...`); many concurrent writes can fail with I/O errors on some NFS servers.
 
@@ -222,7 +222,7 @@ use the flock + pbsdsh pattern documented in `dynamic-dispatch.md`. One
 qsub grabs N nodes, each node runs a worker that pulls tasks from a
 shared list with file-lock-protected counter increment.
 
-## Multi-node MLIP inference (`workers > 1`, UMA only)
+## UMA predictor workers
 
 Most subcommands that touch geometry expose `--uma-workers` and
 `--uma-workers-per-node`, which spin up a Ray cluster of UMA predictor
@@ -233,7 +233,7 @@ workers. **Two important caveats:**
 2. With UMA, `workers > 1` plus an explicit
    `hessian_calc_mode=Analytical` request raises `BackendError` before the requested method can be changed; use
    `FiniteDifference` (the default) or drop to `workers = 1`.
-   See `docs/backends.md` `(workers-analytical-error)=`.
+   See the [Notes in MLIP Backends](../../docs/backends.md#notes).
 
 The full PBS + OpenMPI + Ray bootstrap is in
 `docs/hpc-example.md`; the schematic in this skill is single-node only.
