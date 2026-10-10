@@ -9,7 +9,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/pdb2reaction.svg)](https://pypi.org/project/pdb2reaction/) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
-[日本語ドキュメント](docs/ja/index.md)
+[Documentation](https://t-0hmura.github.io/pdb2reaction/) | [日本語ドキュメント](https://t-0hmura.github.io/pdb2reaction/ja/)
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
