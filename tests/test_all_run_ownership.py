@@ -41,7 +41,7 @@ def _seed_process_state(monkeypatch):
 
 
 @pytest.mark.parametrize("failure", [None, RuntimeError("boom"), SystemExit(130)])
-@pytest.mark.parametrize("prior_run_id", [None, "prior-mcp-run"])
+@pytest.mark.parametrize("prior_run_id", [None, "prior-run"])
 def test_all_restores_exact_process_state_and_prepared_resources(
     tmp_path: Path, monkeypatch, failure, prior_run_id,
 ) -> None:

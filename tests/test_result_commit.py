@@ -11,7 +11,6 @@ import pytest
 from pdb2reaction.core import result_commit
 from pdb2reaction.core.result_commit import ResultCommitError, RUN_ID_ENV
 from pdb2reaction.core.utils import write_result_json
-from pdb2reaction.mcp._runner import _read_current_summary
 
 
 def _seed_pair(directory: Path, run_id: str = "old") -> tuple[bytes, bytes]:
@@ -137,7 +136,7 @@ def test_mirror_replace_failure_preserves_old_pair(
     _assert_no_staged_siblings(tmp_path)
 
 
-def test_primary_replace_failure_leaves_valid_pair_but_runner_rejects_mismatch(
+def test_primary_replace_failure_leaves_valid_pair(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     old_result, _old_summary = _seed_pair(tmp_path)
@@ -156,11 +155,6 @@ def test_primary_replace_failure_leaves_valid_pair_but_runner_rejects_mismatch(
     assert (tmp_path / "result.json").read_bytes() == old_result
     assert json.loads((tmp_path / "result.json").read_text())["run_id"] == "old"
     assert json.loads((tmp_path / "summary.json").read_text())["run_id"] == "current"
-    status, payload, _hint = _read_current_summary(
-        tmp_path / "summary.json", run_id="current", expected_primary=True
-    )
-    assert status == "summary_run_mismatch"
-    assert payload == {}
     _assert_no_staged_siblings(tmp_path)
 
 
@@ -231,45 +225,3 @@ def test_primary_is_published_last_even_if_listed_as_a_mirror(
     )
 
     assert published == [mirror, primary]
-
-
-def test_current_aggregate_ignores_unrelated_stale_result_json(tmp_path: Path) -> None:
-    (tmp_path / "summary.json").write_text(
-        json.dumps({"run_id": "current", "status": "success"}),
-        encoding="utf-8",
-    )
-    (tmp_path / "result.json").write_text(
-        json.dumps({"run_id": "old", "status": "success"}),
-        encoding="utf-8",
-    )
-
-    status, payload, _hint = _read_current_summary(
-        tmp_path / "summary.json",
-        run_id="current",
-        expected_primary=False,
-    )
-
-    assert status == "ok"
-    assert payload["run_id"] == "current"
-
-
-def test_leaf_pair_with_same_run_id_but_different_content_is_rejected(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "summary.json").write_text(
-        json.dumps({"run_id": "current", "value": "summary"}),
-        encoding="utf-8",
-    )
-    (tmp_path / "result.json").write_text(
-        json.dumps({"run_id": "current", "value": "result"}),
-        encoding="utf-8",
-    )
-
-    status, payload, _hint = _read_current_summary(
-        tmp_path / "summary.json",
-        run_id="current",
-        expected_primary=True,
-    )
-
-    assert status == "summary_run_mismatch"
-    assert payload == {}

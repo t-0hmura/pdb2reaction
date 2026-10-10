@@ -213,7 +213,7 @@ GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `
 
 > 〈論文〉を読んで、〈PDB ID〉の構造からモデルを作成し、〈反応段階〉の経路について、pdb2reaction のスキルを用いて反応機構解析を行ってください。
 
-CLI サブコマンドの仕様、PDB/mmCIF/XYZ/GJF の入出力ルール、バックエンドの環境構築手順、HPC 並列化のベストプラクティスが定義されています。`skills/` をエージェントに読み込ませることで、エージェントを通じた自然言語指示による計算実行・解析が可能になります。配置場所とスキルの一覧は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。MCP のクライアントからコマンドをツールとして呼ぶ方法は [MCP サーバー](mcp_server.md) にあります。
+CLI サブコマンドの仕様、PDB/mmCIF/XYZ/GJF の入出力ルール、バックエンドの環境構築手順、HPC 並列化のベストプラクティスが定義されています。`skills/` をエージェントに読み込ませることで、エージェントを通じた自然言語指示による計算実行・解析が可能になります。配置場所とスキルの一覧は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。
 
 ---
 

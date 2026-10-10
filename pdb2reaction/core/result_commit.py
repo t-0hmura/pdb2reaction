@@ -34,7 +34,7 @@ class ResultCommitError(OSError):
 
 
 class RunIdentityError(ValueError):
-    """Raised when a payload conflicts with the active MCP run identity."""
+    """Raised when a payload conflicts with the active run identity."""
 
 
 def apply_current_run_id(

@@ -82,7 +82,7 @@ def _write_error_json_with_chain(exc, klass, label):
 
     Returns a dict containing the legacy keys (``status`` / ``error`` /
     ``error_type``) plus ``error_class_chain`` / ``error_module`` /
-    ``error_label`` so MCP clients can pattern-match the class hierarchy.
+    ``error_label`` so clients can pattern-match the class hierarchy.
     """
     return {
         "status": "error",
@@ -103,7 +103,7 @@ def _write_error_json(
     """Write result.json + summary.json with a structured error envelope.
 
     Adds ``error_class_chain`` / ``error_module`` / ``error_label`` so
-    MCP clients can pattern-match the class hierarchy without parsing
+    clients can pattern-match the class hierarchy without parsing
     text. Legacy ``status`` / ``error`` / ``error_type`` keys are
     preserved for backward compatibility.
     """

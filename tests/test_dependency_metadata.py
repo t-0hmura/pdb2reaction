@@ -23,7 +23,6 @@ def test_runtime_dependency_floors_match_consumed_apis() -> None:
     assert "pydmf>=1.2" in dependencies
     assert "plotly>=6.1.1" in dependencies
     assert extras["aimnet"] == ["aimnet>=0.2.0"]
-    assert extras["mcp"] == ["mcp[cli]>=1.29,<2"]
 
 
 @pytest.mark.parametrize("python_version", ["3.11", "3.12", "3.13"])

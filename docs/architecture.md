@@ -18,8 +18,6 @@ single-point stage.
 
 ## 2. Layered structure (6 core layers)
 
-> The optional MCP server in `pdb2reaction/mcp/` (`server.py`, `_tools.py`, `_runner.py`) sits outside the six core layers; see [mcp_server.md](mcp_server.md).
-
 ### 2.1 Layer table
 
 The six layers are L1–L5, with L4 split into L4a and L4b.

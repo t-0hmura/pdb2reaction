@@ -70,17 +70,6 @@ def test_no_deps_ci_jobs_install_the_current_fairchem_torch_minor() -> None:
         assert install in text, name
 
 
-def test_mcp_environment_override_sample_is_posix_only() -> None:
-    sample = json.loads(
-        (REPO_ROOT / "examples" / "mcp_client_config.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    assert sample["_comment"].startswith("POSIX sample")
-    assert "%APPDATA%" not in sample["_comment"]
-    assert "/bin:" in sample["mcpServers"]["pdb2reaction"]["env"]["PATH"]
-
-
 def test_public_single_model_examples_have_balanced_terminators() -> None:
     for filename in ("1.R.pdb", "2.IM.pdb"):
         lines = (REPO_ROOT / "examples" / filename).read_text(

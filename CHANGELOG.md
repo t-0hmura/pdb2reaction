@@ -8,7 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Breaking changes
 
-- Result JSON keeps `execution_status` and `scientific_status` and drops the generic `status` and duplicate reason fields (JSON schema 4.0, MCP schema 2.0); exit codes are 0 for success or a usable partial result, 1 for failure, 2 for invalid input, and 130 for interruption.
+- The MCP server (`pdb2reaction-mcp` / `p2r-mcp`) and the `[mcp]` extra are removed; AI agents run the CLI directly with the bundled skills.
+- Result JSON keeps `execution_status` and `scientific_status` and drops the generic `status` and duplicate reason fields (JSON schema 4.0); exit codes are 0 for success or a usable partial result, 1 for failure, 2 for invalid input, and 130 for interruption.
 - `add-elem-info` and the `all` preflight keep element columns that already hold a valid symbol; `--overwrite-elem` re-infers every column.
 - `--print-parsed` is removed from `scan`, `scan2d`, and `scan3d` (use `--dry-run`), `freq --coord-type` is removed, and YAML `rsirfo.root` and DFT solvent models other than lowercase `pcm`/`smd` are errors.
 

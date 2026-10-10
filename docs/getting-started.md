@@ -179,7 +179,7 @@ At the end of the terminal output, the `Scientific status:` line under `====== P
 
 `pdb2reaction` ships instructions for AI agents (Claude Code, Codex, Cursor, and others) in the `skills/` directory.
 
-They define the CLI subcommands, the input/output rules for PDB/mmCIF/XYZ/GJF, backend installation steps, and best practices for HPC parallel runs. Load `skills/` into an agent, and it can run and analyze calculations from plain-language instructions. For where to place the files and the full list of skills, see [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md). To call the commands as tools from an MCP client, see [MCP server](mcp_server.md).
+They define the CLI subcommands, the input/output rules for PDB/mmCIF/XYZ/GJF, backend installation steps, and best practices for HPC parallel runs. Load `skills/` into an agent, and it can run and analyze calculations from plain-language instructions. For where to place the files and the full list of skills, see [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md).
 
 ---
 

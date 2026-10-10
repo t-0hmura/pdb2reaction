@@ -85,7 +85,6 @@ json-output
 output-layout
 backends
 hpc-example
-mcp_server
 glossary
 architecture
 ```
@@ -157,7 +156,6 @@ ja/json-output
 ja/output-layout
 ja/backends
 ja/hpc-example
-ja/mcp_server
 ja/glossary
 ja/architecture
 ```
@@ -236,7 +234,7 @@ ja/architecture
 | **Files each command writes** | [Output Directory Layout](output-layout.md) |
 | **Keys of `result.json` and `summary.json`** | [JSON Output Reference](json-output.md) |
 | **Running on several GPU nodes (PBS + Ray)** | [HPC example](hpc-example.md) |
-| **Calling pdb2reaction from an AI agent (MCP)** | [MCP server](mcp_server.md) |
+| **Using pdb2reaction from an AI agent** | [Agent skills](#agent-skills) |
 | **Code structure (for developers)** | [Architecture](architecture.md) |
 | **Terminology** | [Glossary](glossary.md) |
 

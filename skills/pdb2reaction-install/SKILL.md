@@ -49,7 +49,6 @@ pip install 'pdb2reaction[orb,aimnet,dft]'   # optional extras
 | `[aimnet]` | `aimnet>=0.2.0` | `-b aimnet2` |
 | `[dft]` | PySCF, CUDA 13 GPU4PySCF and CuPy on Linux x86_64 | `-b dft`, `--dft`, `pdb2reaction dft` with a `cu130` or `cu132` wheel |
 | `[dft-cuda12]` | PySCF, CUDA 12 GPU4PySCF and CuPy | Same, with a `cu126` wheel |
-| `[mcp]` | `mcp[cli]` | Running the MCP server |
 | `[ci]`, `[dev]`, `[docs]` | test, pytest, and Sphinx dependencies | Contributing and building docs |
 
 There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need

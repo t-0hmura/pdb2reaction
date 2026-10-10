@@ -10,10 +10,6 @@ recover, and how to read the outputs.
 - `pdb2reaction-cli`: the 18 subcommands in 14 files (heavy commands one each,
   the rest grouped): when to use each, how to judge success, and pitfalls.
   Exact flags are left to `--help-advanced` and the command reference.
-- `pdb2reaction-mcp`: how to drive `pdb2reaction` from any MCP client
-  (Claude Desktop / Claude Code / Cursor / custom SDK) via the bundled
-  `pdb2reaction-mcp` server; lists the 18 MCP tools and the result shape
-  shared by every tool.
 - `pdb2reaction-model-setup`: PDB / mmCIF / XYZ / GJF formats, the charge /
   multiplicity decision, and building the cluster model: which residues
   `extract` keeps, cutting and capping the boundary, trimming or enlarging it,

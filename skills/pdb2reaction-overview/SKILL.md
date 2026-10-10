@@ -116,7 +116,6 @@ Find the installed package with `python -c "import pdb2reaction, os; print(os.pa
 - `pdb2reaction/backends/`: calculator adapters for UMA, ORB, MACE, AIMNet2, and PySCF DFT.
 - `pdb2reaction/io/`: summary writer, energy diagrams, trajectory plots, charge, Hessian cache, altloc fix.
 - `pdb2reaction/core/`: `defaults.py` (most calculation defaults; some stay in the command modules, so check live `--help`) and shared utilities.
-- `pdb2reaction/mcp/`: MCP server.
 - `pysisyphus/` (optimizers, TS search, IRC) and `thermoanalysis/` (thermochemistry): bundled forks, installed as separate top-level packages. A numerical change there needs a regression test and the matching benchmark.
 
 Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the import-graph check keeps `core` and `domain` from importing `workflows`. More: [docs/architecture.md](../../docs/architecture.md), [CONTRIBUTING.md](../../CONTRIBUTING.md), [check_engineering_markers.py](../../.github/scripts/check_engineering_markers.py), [check_import_graph.py](../../.github/scripts/check_import_graph.py).
@@ -129,5 +128,4 @@ Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the i
 - [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): file formats, residue and atom selectors, charge and multiplicity, and building, trimming, and enlarging the cluster.
 - [pdb2reaction-install](../pdb2reaction-install/SKILL.md): the package, backends, CUDA, and checking the environment.
 - [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): job scripts.
-- [pdb2reaction-mcp](../pdb2reaction-mcp/SKILL.md): MCP tools.
 - [colab-local-gpu-runtime](../colab-local-gpu-runtime/SKILL.md): a Colab local runtime.

@@ -125,9 +125,6 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-autobuild>=2024.0",
 ]
-mcp = [
-    "mcp[cli]>=1.29,<2",
-]
 
 [project.urls]
 Homepage = "https://github.com/t-0hmura/pdb2reaction"
@@ -138,8 +135,6 @@ Documentation = "https://t-0hmura.github.io/pdb2reaction/"
 [project.scripts]
 pdb2reaction = "pdb2reaction.cli:cli"
 p2r = "pdb2reaction.cli:cli"
-pdb2reaction-mcp = "pdb2reaction.mcp.server:serve"
-p2r-mcp = "pdb2reaction.mcp.server:serve"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

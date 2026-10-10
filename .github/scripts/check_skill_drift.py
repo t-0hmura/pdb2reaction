@@ -59,16 +59,12 @@ RENAMED_STRINGS: list[tuple[str, str, str]] = [
      "skill referenced a log file that is not produced"),
 ]
 
-from pdb2reaction.mcp._runner import MCP_SUMMARY_STATUS_VALUES
-
 STATUS_VALUES = {
     "execution_status": set(RESULT_JSON_EXECUTION_STATUS_VALUES),
     "scientific_status": set(RESULT_JSON_SCIENTIFIC_STATUS_VALUES),
     "optimization_status": {"converged", "not_converged", "stalled", "unknown", "completed", "error"},
-    "summary_status": set(MCP_SUMMARY_STATUS_VALUES),
     "status": set(),
 }
-MCP_SKILL_DIRS = {"pdb2reaction-mcp"}
 
 # Match a backtick-quoted flag in prose (`--foo`) — the typical
 # "documented CLI option" callout in skill markdown tables. Bash
@@ -76,7 +72,7 @@ MCP_SKILL_DIRS = {"pdb2reaction-mcp"}
 # .github/scripts/check_skill_commands.py; this script targets prose where
 # bare ``--xxx`` could be a non-pdb2reaction system tool.
 FLAG_TOKEN_RE = re.compile(r"`(--[a-z][a-z0-9-]*)`")
-STATUS_RE = re.compile(r'"(status|execution_status|scientific_status|optimization_status|summary_status)"\s*:\s*"([a-zA-Z_]+)"')
+STATUS_RE = re.compile(r'"(status|execution_status|scientific_status|optimization_status)"\s*:\s*"([a-zA-Z_]+)"')
 
 # Skill subdirs that document the pdb2reaction CLI (not external tools
 # like pip / conda / nvidia-smi / sbatch). Unknown-flag check is
@@ -121,7 +117,6 @@ def _scan_file(path: Path, flag_union: set[str]) -> list[str]:
     in_pdb2reaction_cli_dir = (
         len(rel.parts) >= 2 and rel.parts[1] in PDB2REACTION_CLI_DIRS
     )
-    in_mcp_dir = len(rel.parts) >= 2 and rel.parts[1] in MCP_SKILL_DIRS
 
     for lineno, line in enumerate(text.splitlines(), start=1):
         # 1. Unknown flag tokens (only in pdb2reaction-cli skill dirs)
@@ -143,7 +138,7 @@ def _scan_file(path: Path, flag_union: set[str]) -> list[str]:
         # Result fields have independent value sets.
         for m in STATUS_RE.finditer(line):
             name, value = m.groups()
-            allowed = STATUS_VALUES[name] if name != "summary_status" or in_mcp_dir else set()
+            allowed = STATUS_VALUES[name]
             if value not in allowed:
                 warnings.append(f"{rel}:{lineno}: {name} {value!r} is not a public result value")
 

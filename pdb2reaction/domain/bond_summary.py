@@ -161,8 +161,8 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
             force=True,
         )
 
-    # Surface dropped comparisons via a non-zero exit code so callers (shell /
-    # MCP) cannot mistake a partial/failed run for success.
+    # Surface dropped comparisons via a non-zero exit code so callers cannot
+    # mistake a partial/failed run for success.
     if n_failed > 0:
         raise SystemExit(1)
     if not out_json:

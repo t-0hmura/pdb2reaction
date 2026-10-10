@@ -31,7 +31,7 @@ when the command has the corresponding data:
 | `pdb2reaction_version` | string | Package version |
 | `execution_status` | string | Execution completion: `completed` / `failed`. |
 | `scientific_status` | string | Result usability: `success` / `partial` / `failed`. |
-| `run_id` | string | Optional UUID of the current invocation; written when the MCP server starts the command and in every `all` run, including its stages. |
+| `run_id` | string | Optional UUID of the current invocation; written in every `all` run, including its stages. |
 | `elapsed_seconds` | float | Optional wall-clock time; omitted by commands that do not record timing |
 | `environment` | object | Hardware info (see below) |
 | `mlip_backend` | string \| null | Optional backend identifier; null when a plot-only command did not evaluate a calculator |
