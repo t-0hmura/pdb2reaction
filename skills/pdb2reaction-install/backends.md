@@ -16,7 +16,7 @@ Install from source for development:
 ```bash
 git clone https://github.com/t-0hmura/pdb2reaction.git pdb2reaction
 cd pdb2reaction
-pip install --only-binary=dm-tree -e '.[orb,aimnet,dft]'
+pip install -e '.[orb,aimnet,dft]'
 ```
 
 Upgrade with `pip install --upgrade pdb2reaction` and confirm with
@@ -193,7 +193,7 @@ Use Python 3.12 (orb-models 0.7 or newer) or 3.11 (orb-models 0.5.x). Weights
 download on first use, with no login.
 
 ```bash
-pip install --only-binary=dm-tree 'pdb2reaction[orb]'   # or: pip install --only-binary=dm-tree orb-models
+pip install 'pdb2reaction[orb]'   # or: pip install orb-models
 python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
