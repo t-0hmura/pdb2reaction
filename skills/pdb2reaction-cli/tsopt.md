@@ -134,6 +134,6 @@ itself establish the intended elementary reaction: confirm it with `irc`.
 - [irc.md](irc.md): confirm that the TS connects the intended R and P.
 - [freq.md](freq.md): thermochemistry or more mode analysis.
 - [path.md](path.md): make TS candidates.
-- Backend notes: [UMA](../pdb2reaction-install-backends/backends.md#uma),
-  [MACE](../pdb2reaction-install-backends/backends.md#mace-separate-environment).
+- Backend notes: [UMA](../pdb2reaction-install/backends.md#uma),
+  [MACE](../pdb2reaction-install/backends.md#mace-separate-environment).
 - Defaults: `import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW, d.DIMER_KW, d.HESSIAN_DIMER_KW)`

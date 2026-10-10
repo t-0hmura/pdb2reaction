@@ -50,7 +50,7 @@ print(d["used_gpu"], d["used_lowmem"])  # lowmem is False for open shell, CPU, o
   tolerance.`, writes `converged: false`, and exits with 1.
 - `OSError: libcusolver.so.11 not found`: capture `pip check` and compare with
   the clean-environment library-loading test in
-  [backends.md](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch);
+  [backends.md](../pdb2reaction-install/backends.md#cuda-and-pytorch);
   do not guess a library path.
 - `cupy ... invalid device ordinal`: keep the scheduler's
   `CUDA_VISIBLE_DEVICES` and select a valid local ordinal (usually device 0 in
@@ -103,7 +103,7 @@ Combine the energies with [`energy-diagram`](utilities.md#energy-diagram).
 ## Next step
 
 - Install, and aarch64 handling:
-  [backends.md](../pdb2reaction-install-backends/backends.md#dft-pyscf-gpu4pyscf).
+  [backends.md](../pdb2reaction-install/backends.md#dft-pyscf-gpu4pyscf).
 - `-b dft`, `all --dft`, and GPU memory: [docs](../../docs/dft-backend.md).
 - Geometries for the single points: [tsopt.md](tsopt.md), [irc.md](irc.md).
 - Flags and defaults: `--help-advanced` and [SKILL.md](SKILL.md#where-flags-and-defaults-live).

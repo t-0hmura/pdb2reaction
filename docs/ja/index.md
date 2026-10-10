@@ -116,7 +116,7 @@ orphan: true
 
 `pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向けの手順書を `skills/` に同梱しています。導入するときは、AI エージェントに次のように指示してください。
 
-> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install-backends` の手順に従って pdb2reaction をインストールして
+> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install` の手順に従って pdb2reaction をインストールして
 
 GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `skills/` の path を渡しても構いません。導入した後は、たとえば次のように頼めます。
 

@@ -75,7 +75,7 @@ count as `n_freeze_atoms`.
   standard and recognized modified amino acids and ions, not cofactors in
   general. A mapping name that matches no unknown selected residue gives a
   warning and is ignored. Ligand and ion details:
-  [formats.md](../pdb2reaction-structure-io/formats.md#ligand-ion-and-metal-charges).
+  [formats.md](../pdb2reaction-model-setup/formats.md#ligand-ion-and-metal-charges).
 - A residue with non-standard amino-acid names (for example from MCPB.py) is
   neither cut nor capped, and a WARNING says that backbone truncation was not
   applied; register it with `--modified-residue 'HD1,HE1'` (a bare name counts
@@ -93,7 +93,7 @@ optimizer pulls the dangling fragment into an unphysical geometry. `extract`
 places each cap H 1.09 Å from the cut carbon along the old bond and writes it
 as `HETATM` residue `LKH`, atom `HL`. The carbon that carries the cap (its
 parent) is the atom to freeze. Other cut bonds get no cap. The record format
-is in [formats.md](../pdb2reaction-structure-io/formats.md#cap-hydrogens).
+is in [formats.md](../pdb2reaction-model-setup/formats.md#cap-hydrogens).
 
 ### Three sources of frozen atoms
 
@@ -179,7 +179,7 @@ only writes the cap records.
 - Build, trim, or enlarge the model, and check its boundary and charge:
   [model-setup](../pdb2reaction-model-setup/SKILL.md).
 - Residue selectors and PDB columns:
-  [structure-io](../pdb2reaction-structure-io/SKILL.md#selecting-residues-and-atoms).
+  [model-setup](../pdb2reaction-model-setup/SKILL.md#selecting-residues-and-atoms).
 - Pre-clean a raw PDB: [`add-elem-info`](utilities.md#add-elem-info),
   [`fix-altloc`](utilities.md#fix-altloc).
 - Full guide to freezing: [docs](../../docs/model-setup.md#freeze-atoms-and-restrain-distances).

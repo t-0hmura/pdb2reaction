@@ -8,7 +8,7 @@ description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — pre
 ## Purpose
 
 Submit `pdb2reaction` as a PBS / SLURM job with 1 node / 1 GPU.
-Placeholders filled from [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment).
+Placeholders filled from [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#probe-the-compute-environment).
 
 ## PBS preamble templates
 
@@ -37,7 +37,7 @@ cd "${PBS_O_WORKDIR}"
 # Replace every placeholder used by the selected runtime.
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 
-# Conda env (<YOUR_ENV> from the environment probe in install-backends)
+# Conda env (<YOUR_ENV> from the environment probe in pdb2reaction-install)
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
 
@@ -120,6 +120,15 @@ dominate. Use the stages below to construct a measured budget:
 | `dft` (GPU) | Run one representative single point | Basis, functional, grid, elements, and VRAM dominate |
 | `dft` (CPU) | Benchmark one representative structure | Cost depends on basis, functional, grid, elements, and CPU/GPU hardware |
 
+GPU DFT single points grow steeply with size: for `wb97m-v/def2-svp` on a
+16 GB consumer GPU, a 63-atom cluster took about 8 min and an 87-atom cluster
+about 18 min, roughly the 2.4–2.6 power of the atom count. Clusters of several
+hundred atoms need a GPU with strong FP64 throughput and 24 GB or more; time
+one structure on the production GPU and extrapolate before a batch. The first
+SCF of each run converges on a coarse grid first (`--scf-stepwise-grid`, on by
+default), which shortened it 1.4–1.9 times from about 60 atoms up; small
+systems can be slightly slower, so `--no-scf-stepwise-grid` turns it off.
+
 Sum the measured stage costs for the expected number of segments, then add
 recovery/retry headroom. Do not assume UMA walltime falls inversely with
 `workers`: geometry optimization has sequential work and worker overhead.
@@ -134,7 +143,7 @@ For many segments, fan out independent work (parallel `seg_NN/` jobs or the
 | `pdb2reaction dft` | Supported with `--dft-engine cpu`; pilot actual method/system | GPU recommended when the GPU4PySCF stack supports the requested calculation |
 | Analytical Hessian (supported built-in backend) | Can avoid GPU memory pressure but may be impractical | Autograd can use the accelerator, but speed and peak memory are backend/model/system dependent; pilot it |
 
-Check [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#dft-pyscf-gpu4pyscf) for `--dft-engine gpu` / `cpu`
+Check [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#dft-pyscf-gpu4pyscf) for `--dft-engine gpu` / `cpu`
 specifics. On aarch64 the packaged extra provides CPU PySCF; only a separately
 source-built and locally validated GPU4PySCF environment can enable GPU DFT.
 
@@ -161,6 +170,15 @@ cluster/server, and submitted command or working directory in `qstat -f` /
 `scontrol show job`. Scheduler authorization differs by site and administrator
 accounts may be able to cancel other users' jobs; ownership is not a substitute
 for this check. Never cancel by a guessed ID or broad name match.
+
+## Before and after submitting
+
+- Run one real job of the batch first and read its log; submit the rest only after it passes.
+- Check the resolved settings without computing: `pdb2reaction <command> ... --show-config --dry-run` prints the configuration (backend, DFT engine, charge) and exits.
+- Before `qsub` / `sbatch`, check that no job with the same name is queued; afterwards, confirm that exactly one was created.
+- Judge success from what the job wrote, not from the job leaving the queue. Write the exit code to a file from the job script (`trap 'echo "rc=$?" > "$PBS_O_WORKDIR/$PBS_JOBID.exit"' EXIT`) and set no second EXIT trap after it. A walltime kill skips the trap, so with no exit file, read the scheduler history (`qstat -x -f <jobid>` on PBSPro, `sacct -j <jobid>` on SLURM).
+- Keep heavy I/O and per-job environments on node-local scratch (`$TMPDIR`, or `/var/tmp/$PBS_JOBID`). Stop when the job ID is empty, and remove only that job's directory at the end.
+- Throttle large copies to a shared file system (`rsync --bwlimit=...`); many concurrent writes can fail with I/O errors on some NFS servers.
 
 ## Failed jobs / restart
 
@@ -227,8 +245,9 @@ The full PBS + OpenMPI + Ray bootstrap is in
 | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` | Reduce torch memory fragmentation |
 | `CUDA_VISIBLE_DEVICES` | Normally leave the scheduler-provided mapping unchanged. Set it manually only outside scheduler isolation or as part of a tested worker-launch scheme; device indices inside a job are local to that mapping. |
 | `OMP_NUM_THREADS=<NCPU>` | Limit OpenMP threads (avoid oversubscription) |
+| `CUPY_CACHE_DIR`, `CUDA_CACHE_PATH` | Put the CuPy and CUDA kernel caches in a work directory when the home directory has a file-count quota |
 | `MKL_NUM_THREADS=<NCPU>` | Intel MKL thread cap |
-| `LD_LIBRARY_PATH` | Leave unchanged for prebuilt wheels unless a diagnosed site-specific module/build requires it; see [`backends.md`](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch) |
+| `LD_LIBRARY_PATH` | Leave unchanged for prebuilt wheels unless a diagnosed site-specific module/build requires it; see [`backends.md`](../pdb2reaction-install/backends.md#cuda-and-pytorch) |
 
 ## ssh-based remote submission
 
@@ -239,8 +258,8 @@ embed it inside the skill template.
 ## See also
 
 - `dynamic-dispatch.md` — flock + pbsdsh template for many short tasks.
-- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment) — discover queue / module / env
+- [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#probe-the-compute-environment) — discover queue / module / env
   values for the placeholders above.
-- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#cuda-and-pytorch) — driver / torch CUDA
+- [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#cuda-and-pytorch) — driver / torch CUDA
   pairing.
 - [`pdb2reaction-cli/all.md`](../pdb2reaction-cli/all.md) — the typical workload submitted to HPC.

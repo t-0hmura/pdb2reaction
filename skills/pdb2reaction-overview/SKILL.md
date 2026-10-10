@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-overview
-description: "Orientation, TS strategy, and output reading for pdb2reaction, a PDB-native toolkit for MLIP reaction-path calculations on enzyme active-site clusters. SKILL.md first picks the `all` mode (endpoint MEP, scan, or TS-only) from the available structures, then covers stage-by-stage runs, how to judge each stage, and where the source code lives; ts-strategy.md covers precision, routes to a TS candidate and retries when n_imag is wrong, product-start scans, staged vs concerted scans, and controlled comparisons; outputs.md covers summary.json, R/TS/P paths, bond changes, energy diagrams, and failed runs. TRIGGER on first-touch questions, choosing an all mode or workflow, building or debugging a TS candidate, reading summary.json, extracting barriers or Gibbs energies, or locating code. SKIP for one subcommand (pdb2reaction-cli), cluster building (pdb2reaction-model-setup), install or CUDA (pdb2reaction-install-backends), structure files or charge (pdb2reaction-structure-io), and job scripts (pdb2reaction-hpc)."
+description: "Orientation, TS strategy, and output reading for pdb2reaction, a PDB-native toolkit for MLIP reaction-path calculations on enzyme active-site clusters. SKILL.md first picks the `all` mode (endpoint MEP, scan, or TS-only) from the available structures, then covers stage-by-stage runs, how to judge each stage, and where the source code lives; ts-strategy.md covers precision, routes to a TS candidate and retries when n_imag is wrong, product-start scans, staged vs concerted scans, and controlled comparisons; outputs.md covers summary.json, R/TS/P paths, bond changes, energy diagrams, and failed runs. TRIGGER on first-touch questions, choosing an all mode or workflow, building or debugging a TS candidate, reading summary.json, extracting barriers or Gibbs energies, or locating code. SKIP for one subcommand (pdb2reaction-cli), structure files, charge, or cluster building (pdb2reaction-model-setup), install or CUDA (pdb2reaction-install), and job scripts (pdb2reaction-hpc)."
 ---
 
 # pdb2reaction
@@ -95,11 +95,11 @@ pdb2reaction all --help           # main flags
 pdb2reaction all --help-advanced  # every flag
 ```
 
-If `pdb2reaction` is not on PATH, start with [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md).
+If `pdb2reaction` is not on PATH, start with [pdb2reaction-install](../pdb2reaction-install/SKILL.md).
 
 ## Backend choice
 
-The default is `-b uma`; `orb`, `mace`, `aimnet2`, and `dft` (PySCF/GPU4PySCF) are the alternatives, and [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md) covers installing and choosing them.
+The default is `-b uma`; `orb`, `mace`, `aimnet2`, and `dft` (PySCF/GPU4PySCF) are the alternatives, and [pdb2reaction-install](../pdb2reaction-install/SKILL.md) covers installing and choosing them.
 
 ## Where the code lives
 
@@ -121,9 +121,8 @@ Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the i
 - [ts-strategy.md](ts-strategy.md): studying a mechanism (hypothesis, precision, TS candidates, splitting the reaction, wrong n_imag, a TS that does not come out, comparisons, barriers).
 - [outputs.md](outputs.md): `summary.json` and the output tree.
 - [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md): running and judging each subcommand.
-- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): building, trimming, and enlarging the cluster.
-- [pdb2reaction-structure-io](../pdb2reaction-structure-io/SKILL.md): file formats, residue and atom selectors, charge and multiplicity.
-- [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md): the package, backends, CUDA, and checking the environment.
+- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): file formats, residue and atom selectors, charge and multiplicity, and building, trimming, and enlarging the cluster.
+- [pdb2reaction-install](../pdb2reaction-install/SKILL.md): the package, backends, CUDA, and checking the environment.
 - [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): job scripts.
 - [pdb2reaction-mcp](../pdb2reaction-mcp/SKILL.md): MCP tools.
 - [colab-local-gpu-runtime](../colab-local-gpu-runtime/SKILL.md): a Colab local runtime.

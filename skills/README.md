@@ -14,13 +14,12 @@ recover, and how to read the outputs.
   (Claude Desktop / Claude Code / Cursor / custom SDK) via the bundled
   `pdb2reaction-mcp` server; lists the 18 MCP tools and the result shape
   shared by every tool.
-- `pdb2reaction-structure-io`: PDB / mmCIF / XYZ / GJF formats and the
-  charge / multiplicity decision workflow.
-- `pdb2reaction-model-setup`: building the cluster model: which residues
+- `pdb2reaction-model-setup`: PDB / mmCIF / XYZ / GJF formats, the charge /
+  multiplicity decision, and building the cluster model: which residues
   `extract` keeps, cutting and capping the boundary, trimming or enlarging it,
   and keeping the same atoms across states and variants
   ([full guide](../docs/model-setup.md)).
-- `pdb2reaction-install-backends`: install `pdb2reaction` itself, MLIP
+- `pdb2reaction-install`: install `pdb2reaction` itself, MLIP
   backends (UMA / ORB / MACE / AIMNet2), DFT (PySCF / GPU4PySCF), and xtb
   (ALPB implicit-solvent correction, not an MLIP backend); CUDA + PyTorch
   pairing; probing the scheduler, GPU, CUDA, and conda env when the

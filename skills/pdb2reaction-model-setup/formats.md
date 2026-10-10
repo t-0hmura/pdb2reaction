@@ -74,7 +74,7 @@ the geometry at run time; the PDB holds no freeze list, and the B-factor of a
 cap (0.00) is not a freeze flag. Frozen-atom control is in
 [extract](../pdb2reaction-cli/extract.md#freeze-atoms-at-the-cluster-boundary);
 where to cut is in
-[model-setup](../pdb2reaction-model-setup/SKILL.md#check-the-boundary-and-the-charge).
+[model-setup](SKILL.md#check-the-boundary-and-the-charge).
 
 ### Common edits
 

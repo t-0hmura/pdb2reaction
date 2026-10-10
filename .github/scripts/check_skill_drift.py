@@ -81,11 +81,10 @@ STATUS_RE = re.compile(r'"(status|execution_status|scientific_status|optimizatio
 # Skill subdirs that document the pdb2reaction CLI (not external tools
 # like pip / conda / nvidia-smi / sbatch). Unknown-flag check is
 # restricted to these so legitimate ``--cpus-per-task`` etc. references
-# in HPC / env-detect / install-backends docs are not flagged.
+# in HPC / env-detect / install docs are not flagged.
 PDB2REACTION_CLI_DIRS = {
     "pdb2reaction-cli",
     "pdb2reaction-overview",
-    "pdb2reaction-structure-io",
     "pdb2reaction-model-setup",
 }
 

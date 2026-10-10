@@ -303,9 +303,9 @@ the labels.
 - Frequencies and thermochemistry from a Hessian: [freq.md](freq.md);
   saddle-point checks: [tsopt.md](tsopt.md).
 - Backend installation and precision:
-  [install-backends](../pdb2reaction-install-backends/SKILL.md).
+  [pdb2reaction-install](../pdb2reaction-install/SKILL.md).
 - PDB columns and other cleanup:
-  [formats.md](../pdb2reaction-structure-io/formats.md#pdb); cutting the
+  [formats.md](../pdb2reaction-model-setup/formats.md#pdb); cutting the
   cluster: [extract.md](extract.md).
 - Trajectories to plot come from [irc.md](irc.md), [path.md](path.md), and
   [scan.md](scan.md).

@@ -65,7 +65,7 @@ Read the console, `summary.json`, and the endpoints as in
 - **More reactive segments than input pairs** (`--refine-path` only). This is a candidate decomposition, not proof that the hidden intermediates are real; validate each IM and its TS/IRC.
 - **n_imag ≥ 2.** A higher-order saddle or a numerical or seed problem, not a validated TS. Inspect the modes, improve the MEP seed, or try `--flatten`; use Dimer (`--opt-mode-post grad`) or a second backend as a cross-check rather than calling it a first-order saddle. See [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt).
 - **Different atoms or order across inputs.** Re-extract with one controlled selection and compare the ordered (element, chain, residue, atom name) lists; equal PDB line counts are not enough.
-- **GSM or DMF.** The better choice depends on the system and environment. GSM is the default; `--mep-mode dmf` needs cyipopt ([Core package](../pdb2reaction-install-backends/backends.md#core-package)). Inspect and validate either MEP.
+- **GSM or DMF.** The better choice depends on the system and environment. GSM is the default; `--mep-mode dmf` needs cyipopt ([Core package](../pdb2reaction-install/backends.md#core-package)). Inspect and validate either MEP.
 - **`-s` with several inputs.** It stops with an error; `-s` takes exactly one structure ([all-scan-list.md](all-scan-list.md)).
 
 ## Next step

@@ -11,7 +11,7 @@ publish outputs atomically: recovery is deliberately at-least-once, so a task
 terminated after publishing output but before its completion marker may run again.
 
 Fill `<N_NODES>`, `<NCPU>`, `<NGPU>`, `<MEM>`, `<HH:MM:SS>`, and
-`<YOUR_QUEUE>` as in [the environment probe](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment). Set the shell defaults
+`<YOUR_QUEUE>` as in [the environment probe](../pdb2reaction-install/backends.md#probe-the-compute-environment). Set the shell defaults
 `TASK_LIST_FILE`, `CONDA_SH`, and `P2R_CONDA_ENV` below to the verified local
 values. Leave `CUDA_MODULE` empty for prebuilt wheels; set it only when a
 locally built extension requires the site's toolkit module.
@@ -261,4 +261,4 @@ engine rather than this counter pattern.
 ## Cross-references
 
 - `SKILL.md` — single-job PBS / SLURM templates and cancellation safety.
-- [`pdb2reaction-install-backends/backends.md`](../pdb2reaction-install-backends/backends.md#probe-the-compute-environment) — how to fill site-specific placeholders.
+- [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#probe-the-compute-environment) — how to fill site-specific placeholders.

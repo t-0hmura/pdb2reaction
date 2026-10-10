@@ -1,5 +1,5 @@
 ---
-name: pdb2reaction-install-backends
+name: pdb2reaction-install
 description: "Install and environment setup for pdb2reaction: the core package, MLIP backends (UMA, ORB, MACE, AIMNet2), the optional DFT calculator (PySCF, GPU4PySCF), the xTB implicit-solvent correction, CUDA and PyTorch pairing, aarch64 limits, and probing an unknown compute environment (scheduler, GPU, CUDA, conda, modules). SKILL.md gives the install order, backend choice, verification commands, a custom ASE calculator via --calc-file, and a failure-to-fix table; backends.md holds the per-backend steps and the environment probes. TRIGGER on pip or conda install, ImportError, CUDA or driver mismatch, GPU not detected, Hugging Face authentication, MACE dependency conflicts, or when the compute environment is unknown. SKIP when pdb2reaction already imports cleanly and the question is about running subcommands (pdb2reaction-cli) or writing job scripts (pdb2reaction-hpc)."
 ---
 

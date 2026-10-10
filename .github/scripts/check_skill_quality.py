@@ -262,8 +262,8 @@ def _require(path: Path, fragments: tuple[str, ...], errors: list[str]) -> None:
 
 def _validate_high_risk_semantics(errors: list[str]) -> None:
     cli = SKILLS_DIR / "pdb2reaction-cli"
-    install = SKILLS_DIR / "pdb2reaction-install-backends"
-    structure = SKILLS_DIR / "pdb2reaction-structure-io"
+    install = SKILLS_DIR / "pdb2reaction-install"
+    structure = SKILLS_DIR / "pdb2reaction-model-setup"
     overview = SKILLS_DIR / "pdb2reaction-overview"
     all_page = cli / "all.md"
     scan_page = cli / "all-scan-list.md"
@@ -367,7 +367,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         errors,
     )
     _require(
-        SKILLS_DIR / "pdb2reaction-install-backends" / "SKILL.md",
+        SKILLS_DIR / "pdb2reaction-install" / "SKILL.md",
         ("torch==2.13.0",),
         errors,
     )

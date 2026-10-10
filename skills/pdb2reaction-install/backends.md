@@ -277,7 +277,7 @@ Pitfalls:
   backend whose element list includes the whole cluster.
 - Give the total cluster charge `-q` and multiplicity `-m`; they are model
   inputs, not per-atom charges
-  ([charge and multiplicity](../pdb2reaction-structure-io/SKILL.md#charge-and-multiplicity)).
+  ([charge and multiplicity](../pdb2reaction-model-setup/SKILL.md#charge-and-multiplicity)).
 - Radicals: select `aimnet2-nse`, pass the real multiplicity, and validate
   independently.
 - Do not use `aimnet2-rxn` outside closed-shell, net-neutral H/C/N/O systems.
@@ -302,6 +302,24 @@ only. `cutensor-cu13` is a separate optional install; add it only when the
 GPU4PySCF path in use requires it. On aarch64 the install succeeds without
 GPU4PySCF, leaving CPU PySCF; build GPU4PySCF from source
 (<https://github.com/pyscf/gpu4pyscf>) to use `--dft-engine gpu` there.
+
+A source build that works with Python 3.12 and a CUDA 12 toolkit module:
+
+```bash
+pip install 'pyscf>=2.13.0' pyscf-dispersion cupy-cuda12x
+git clone --depth 1 --branch v1.8.1 https://github.com/pyscf/gpu4pyscf.git
+cd gpu4pyscf
+cmake -S gpu4pyscf/lib -B build/temp.gpu4pyscf -DCUDA_ARCHITECTURES=90-real -DBUILD_LIBXC=ON
+cmake --build build/temp.gpu4pyscf -j "$(nproc)"
+export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+```
+
+Set `CUDA_ARCHITECTURES` to the GPU's compute capability (`90-real` for
+Hopper). Build in place and use `PYTHONPATH`: the package's `setup.py`
+expects the separate libxc wheel, which has no aarch64 build. The libxc step
+downloads its sources, so the build node needs network access. Before
+production, run one small GPU SCF in the same environment, for example water
+with `wb97m-v/def2-svp`.
 
 `--dft-engine gpu` is the default. When the GPU path fails it stops with
 `Use --dft-engine cpu to explicitly run on CPU.` and does not fall back. Use

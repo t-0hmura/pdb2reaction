@@ -260,7 +260,7 @@ See [Installation](installation.md) for setup.
 `skills/` contains guides for CLI commands, structure I/O, backends, workflows, output analysis, and HPC use.
 To install them, tell your AI agent:
 
-> Import `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` as skills, and install pdb2reaction by following `pdb2reaction-install-backends`.
+> Import `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` as skills, and install pdb2reaction by following `pdb2reaction-install`.
 
 If you cloned the GitHub repository, you can give the local `skills/` path instead. Then you can ask, for example:
 

@@ -47,7 +47,7 @@ keeps the original chain IDs and residue numbers.
 - `--show-config`: prints the configuration and **continues** with the run. `all`, `path-search`, and `sp` print the settings after merging defaults, YAML, and CLI; the other commands that accept it print the loaded YAML and its top-level keys.
 - `--dry-run`: checks options and inputs, then exits before any MLIP or DFT stage. `all -c/--center --dry-run` also runs extraction to check the derived charge and electron parity.
 - `--ref-pdb FILE`: a PDB/mmCIF that gives residue names and topology to XYZ/GJF inputs while their coordinates are kept.
-- `--solvent NAME`: for MLIP backends, an expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, meant mainly for small molecules in solution; with `-b dft` and the `dft` command, PySCF PCM/SMD (`--solvent-model`). `none` turns it off. Install notes: [xTB solvent correction](../pdb2reaction-install-backends/backends.md#xtb-solvent-correction).
+- `--solvent NAME`: for MLIP backends, an expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, meant mainly for small molecules in solution; with `-b dft` and the `dft` command, PySCF PCM/SMD (`--solvent-model`). `none` turns it off. Install notes: [xTB solvent correction](../pdb2reaction-install/backends.md#xtb-solvent-correction).
 
 ## Frozen atoms
 
@@ -78,7 +78,6 @@ python -c "import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW)"   # or LB
 - [pdb2reaction-overview](../pdb2reaction-overview/SKILL.md): which `all` mode to use, and how to run and judge the stages one by one.
 - [Reading outputs](../pdb2reaction-overview/outputs.md): `summary.json` keys, R/TS/P paths, bond changes, energy diagrams.
 - [TS strategy](../pdb2reaction-overview/ts-strategy.md): wrong n_imag, or no TS.
-- [pdb2reaction-structure-io](../pdb2reaction-structure-io/SKILL.md): input formats, charge and multiplicity.
-- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): what goes into the cluster.
-- [pdb2reaction-install-backends](../pdb2reaction-install-backends/SKILL.md): install and backends.
+- [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md): input formats, charge and multiplicity, and what goes into the cluster.
+- [pdb2reaction-install](../pdb2reaction-install/SKILL.md): install and backends.
 - [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): running on PBS or SLURM.

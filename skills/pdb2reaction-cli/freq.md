@@ -125,5 +125,5 @@ hydrogens written by `extract`. See
 ## Next step
 
 - [tsopt.md](tsopt.md), [irc.md](irc.md): the usual stages before and after.
-- [UMA notes](../pdb2reaction-install-backends/backends.md#uma): `--hessian-calc-mode`.
+- [UMA notes](../pdb2reaction-install/backends.md#uma): `--hessian-calc-mode`.
 - Defaults: `import pdb2reaction.core.defaults as d; print(d.FREQ_KW, d.THERMO_KW, d.FREQ_CALC_KW)`
