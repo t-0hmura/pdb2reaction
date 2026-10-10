@@ -1,6 +1,6 @@
 # Tips for studying reaction mechanisms
 
-The TS and the path that pdb2reaction finds are candidates for the mechanism you propose. This page takes you from a hypothesis to a calculation, a checked TS, a comparison of candidate mechanisms, and a barrier, with the next moves to try when the TS search fails.
+The TS and the path that pdb2reaction finds are candidates for the mechanism you propose. This page takes you from a hypothesis to a calculation, a checked TS, a comparison of candidate mechanisms, and a barrier.
 
 ## Quick guide
 
@@ -21,7 +21,7 @@ The TS and the path that pdb2reaction finds are candidates for the mechanism you
 
 Before you run anything, write down what the proposed mechanism does: the bonds that form, the bonds that break, and every H atom that moves, including each H relayed by a water or a base. This list becomes the `-s` coordinates and the points you check at the IRC endpoints.
 
-Pick the [input mode](getting-started.md#choosing-an-input-mode) from the structures you have:
+Pick the [input mode](getting-started.md#3-find-the-reaction-pathway) from the structures you have:
 
 - **R and P (and any intermediates)**: list them in [`all`](quickstart-all.md).
 - **R only**: build the path from R with a [scan](quickstart-scan.md).
@@ -71,9 +71,12 @@ A successful TS optimization gives one imaginary mode along the reaction coordin
 (ts-search-fails)=
 ## When the TS search fails
 
+When `all` runs into a problem, do not rerun the whole workflow; retry each segment that had the problem on its own. Each move below can start from that segment's structures with `tsopt` or TS-only mode.
+
 ### Extra imaginary modes
 
 - **Extra modes outside the reacting site** (such as a rotating side chain or water): rerun with `--flatten` (`tsopt`, `opt`, `all`). When n_imag ≥ 2 after the optimization, it displaces the structure along the extra modes and optimizes again, for up to {ref}`50 rounds <flatten-precedence-caveat>` by default. The closing line of `tsopt` suggests this move too.
+- **Stuck at a higher-order saddle** (converged with n_imag ≥ 2): another option is to start `tsopt` with `--flatten` from the final structure of that TS optimization (`final_geometry.*` from `tsopt`; inside `segments/seg_NN/ts/` in `all`).
 - **After `--flatten`**: check both IRC ends again. n_imag can reach 1 on a TS candidate of a different reaction.
 - **Without `--flatten`**: the mode file of an extra mode, `vib/imag_*_trj.xyz` (also `vib/imag_*.pdb` for PDB input), holds 20 frames, and frames 6 and 16 are the largest displacements in the two directions. Save each of the two as its own file in a viewer and start TS-only mode (`all -i <frame>.pdb -l ... --tsopt`) or `tsopt` from each, with the same charge and spin.
 - **Extra modes that also move the reacting bonds**: two stages may overlap in one candidate. Run them as {ref}`separate stages <mechanism-split>`.

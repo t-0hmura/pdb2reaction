@@ -27,7 +27,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | backend | install | model identifier | `--precision` | analytical Hessian | multiple workers |
 |---------|---------|------------------|------------------|--------------------|------------------|
 | `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2` (default) / `uma-m-1p1` | `fp32` / `fp64` | yes (autograd) | yes |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` (conservative models only) | `fp32` / `fp64` | yes (autograd) | no |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `fp32` / `fp64` | yes (autograd) | no |
 | `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (UMA does not run in this env) | `MACE-OMOL-0` | `fp32` / `fp64` | yes | no |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` only | yes | no |
 
@@ -185,7 +185,7 @@ pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
 pdb2reaction all    -i R.pdb P.pdb -c 'A:LIG' --calc-file my_calc.py -q 0 -m 1
 ```
 
-- The factory receives `charge`, `spin` (also as `mult` / `multiplicity`),
+- The factory receives `charge`, `spin` (the multiplicity, also passed as `mult` / `multiplicity`),
   and `device` when its signature accepts them, or
   unconditionally if it declares `**kwargs`, so engines that need the total
   charge (e.g. xTB) can be configured. Use a different factory name with

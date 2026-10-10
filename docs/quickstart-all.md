@@ -34,7 +34,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ## Before you run
 
-The structures need every hydrogen atom, and R and P must list the same atoms in the same order; see [Before you run: the input structures](getting-started.md#before-you-run-the-input-structures).
+The structures need every hydrogen atom, and R and P must list the same atoms in the same order; see [Prepare the complex structure](getting-started.md#1-prepare-the-complex-structure).
 
 ## Output files
 
@@ -77,6 +77,6 @@ For how `all` judges each stage, see [Reading the run status](all.md#reading-the
 - [Building the cluster model](model-setup.md): trim the model, or extend it when residues are missing
 - [Tips for studying reaction mechanisms](mechanism-tips.md): plan the calculations, and what to try when the TS search fails
 - [Refine an MLIP TS with DFT](dft-backend.md): refine and check the TS with DFT
-- [`all`](all.md): full option reference (also `pdb2reaction all --help-advanced`)
+- [`all`](all.md): option descriptions (also `pdb2reaction all --help-advanced`)
 - [JSON Output Reference](json-output.md): the fields of `summary.json`
 - [Troubleshooting](troubleshooting.md): find an error message or symptom and its fix

@@ -20,7 +20,7 @@ Each abbreviation, method name, and unit used in the docs is defined here in one
 | **Reactive segment** | — | A segment that holds a TS candidate: every MEP segment except bridges and kinks (normally one whose ends differ by a covalent bond change), or the input TS in [TS-only mode](quickstart-tsopt.md) (one structure with `all --tsopt`); `all` runs the requested TS optimization, IRC, thermochemistry, and DFT only on these. |
 | **Bridge segment** | — | A short connecting MEP between two neighbouring segments: when `path-search` joins the segments into one path and the end of one does not coincide with the start of the next, with no bond change between them, it fills the gap with a bridge ([path-search → How it works](path-search.md#how-it-works), step 5). |
 | **Kink** | — | A segment where only the conformation changes: the two structures that `path-search` optimizes on either side of the HEI (End1 and End2; [path-search → How it works](path-search.md#how-it-works), step 2) differ by no covalent bond change. `path-search` fills it with a few linearly interpolated nodes (`search.kink_max_nodes`, default 3) and optimizes each one instead of running a new GSM or DMF path. |
-| **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. |
+| **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. The MEP is the lowest-energy pathway on the PES. |
 
 ## Optimization Algorithms
 

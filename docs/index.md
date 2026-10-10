@@ -202,7 +202,7 @@ ja/architecture
 
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | Optional extraction; one of the three [input modes](getting-started.md#choosing-an-input-mode) (Endpoint mode, Scan-list mode, TS-only mode); optional TS/IRC, thermochemistry, and DFT stages |
+| [`all`](all.md) | Optional extraction; one of the three [input modes](getting-started.md#3-find-the-reaction-pathway) (Endpoint mode, Scan-list mode, TS-only mode); optional TS/IRC, thermochemistry, and DFT stages |
 | [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
@@ -265,6 +265,8 @@ If you cloned the GitHub repository, you can give the local `skills/` path inste
 > Read *the paper*, build a model from the PDB structure *PDB ID*, and study the mechanism of *the reaction step* with the pdb2reaction skills.
 
 ## Citation
+
+If you use pdb2reaction in your research, cite the ACS Omega paper:
 
 ```bibtex
 @article{ohmura2026pdb2reaction,

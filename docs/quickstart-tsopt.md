@@ -104,5 +104,5 @@ If the TS is still not found, see {ref}`Check the TS <mechanism-check-ts>` and {
 - [`tsopt`](tsopt.md), [`irc`](irc.md), [`freq`](freq.md): run each stage on its own
 - [Quickstart: `pdb2reaction all`](quickstart-all.md): build an MEP from R and P
 - [Quickstart: scan](quickstart-scan.md): build a path from one structure
-- [`all`](all.md), [`dft`](dft.md): full option references
+- [`all`](all.md), [`dft`](dft.md): option descriptions
 - [Troubleshooting](troubleshooting.md): find an error message or symptom and its fix

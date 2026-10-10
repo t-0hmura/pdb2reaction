@@ -16,7 +16,7 @@ To choose how large the model should be, see [Building the cluster model](model-
 
 ## Examples
 
-The input needs [every hydrogen](getting-started.md#before-you-run-the-input-structures) and the element symbols in columns 77–78.
+The input needs [every hydrogen](getting-started.md#1-prepare-the-complex-structure) and the element symbols in columns 77–78.
 
 ### 1. Select by residue ID with a total ligand charge
 

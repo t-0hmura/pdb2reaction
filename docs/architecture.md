@@ -29,7 +29,7 @@ The six layers are L1–L5, with L4 split into L4a and L4b.
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utilities, logging, output, and result publication | (none, by design intent) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utilities (structure / coordinate / plot helpers), logging, output, and result publication | (none, by design intent) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
 **Dependency direction (design goal)**: `L1 → L2 → {L3, L4} → L5`, as in the last column of the table. Some imports break it today: `workflows/* → cli`; `cli/common_options.py → backends`; `core/utils.py → domain, io, backends, cli` and `core/defaults.py → backends`; `domain/add_elem_info.py`, `domain/bond_summary.py`, and several `io/` modules → `cli`; `io/charge.py` and `io/structure_formats.py → domain`; `io/trj2fig.py → backends`. Bundled forks sit outside the layer graph and may be imported from any layer (`from pysisyphus.X import Y`).

@@ -22,7 +22,7 @@ Clean one file and write `1abc_clean.pdb`.
 pdb2reaction fix-altloc -i 1abc.pdb
 ```
 
-The console prints `[fix-altloc] Fixed altLoc → 1abc_clean.pdb`.
+The run succeeded when the console prints `[fix-altloc] Fixed altLoc → 1abc_clean.pdb`.
 
 ### 2. Choose the output file
 
@@ -124,6 +124,6 @@ See the [generated CLI reference](reference/commands/fix_altloc.md) for every op
 
 * [extract](extract.md) — active-site model extraction, which applies the same altLoc rule when it reads a PDB
 * [add-elem-info](add-elem-info.md) — repair the element columns of a PDB
-* [Before you run: the input structures](getting-started.md#before-you-run-the-input-structures) — add hydrogens before a calculation
+* [Prepare the complex structure](getting-started.md#1-prepare-the-complex-structure) — add hydrogens before a calculation
 * [all](all.md) — the full workflow
 * [Troubleshooting](troubleshooting.md) — what to do when a run fails

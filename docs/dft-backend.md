@@ -32,7 +32,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ### 2. Refine the TS with DFT
 
-Pass the TS from example 1 as the only input, which selects TS-only mode; this needs the DFT extra.
+Pass the TS from example 1 as the only input, which selects TS-only mode; this needs the [DFT extra](#notes).
 
 ```bash
 pdb2reaction all -i result_mlip/segments/seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
