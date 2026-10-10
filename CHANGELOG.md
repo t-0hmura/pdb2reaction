@@ -30,6 +30,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Read an `-s` stage literal longer than the operating-system path limit as a literal instead of stopping with `File name too long`.
 - Cut amino-acid centers in `extract` at the model boundary like other residues and read Amber terminal names such as `NPRO` as the standard residue (an N-terminal proline counts +1); `all` stops when a cut has no cap hydrogen.
 - Infer PDB elements correctly for LEaP chlorine and bromine names (` CL1`), four-character ligand hydrogens (`HG11`), blank element columns, and dummy-atom names (` X1 `).
 - Apply the nested YAML sections `opt.lbfgs`, `opt.rfo`, `stopt.lbfgs`, `stopt.rfo`, and `freq.thermo`, which were ignored or made the run fail.

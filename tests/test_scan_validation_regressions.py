@@ -8,6 +8,7 @@ import pytest
 
 from pdb2reaction.core.utils import (
     claim_unique_scan_stem,
+    is_scan_spec_file,
     parse_scan_list_quads,
     parse_scan_list_triples,
     parse_scan_spec_stages,
@@ -306,3 +307,12 @@ def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
     payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
     assert "scan2d_map_png" not in payload["files"]
     assert "scan2d_map.png" not in payload["current_output_paths"]
+
+
+def test_long_stage_literal_is_not_treated_as_a_spec_path(tmp_path) -> None:
+    literal = "[" + ",".join(f"({i},{i + 1},1.50)" for i in range(1, 40)) + "]"
+    assert len(literal) > 255
+    assert not is_scan_spec_file(literal)
+    spec = tmp_path / "stages.yaml"
+    spec.write_text("stages: []\n", encoding="utf-8")
+    assert is_scan_spec_file(str(spec))
