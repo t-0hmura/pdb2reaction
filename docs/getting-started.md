@@ -1,7 +1,7 @@
 # Getting Started
 
 ::::{container} p2r-intro
-<img src="./overview.png" alt="pdb2reaction workflow overview" class="p2r-intro-figure">
+<img src="./overview.jpg" alt="pdb2reaction workflow overview" class="p2r-intro-figure">
 
 :::{container} p2r-intro-text
 `pdb2reaction` is a Python command-line toolkit that uses machine-learning interatomic potentials (MLIPs) to **search automatically for candidate enzyme reaction pathways, starting from PDB / mmCIF structures**.

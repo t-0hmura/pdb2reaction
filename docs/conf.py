@@ -81,7 +81,7 @@ templates_path = ['_templates']
 
 html_theme = 'furo'
 
-# Brand palette taken from overview.png: arrow navy #2E5B96, arrow light end
+# Brand palette taken from overview.jpg: arrow navy #2E5B96, arrow light end
 # #7BA3D7, stage colours (MEP #70AD47, TS #4747C1, IRC #2E9691, thermo #EC7C30),
 # plus a rose for the DFT stage, which the figure does not have.
 # In the light theme green/teal/orange are darkened so text in them reaches 4.5:1.

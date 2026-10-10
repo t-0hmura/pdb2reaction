@@ -5,7 +5,7 @@
 :::
 
 :::{container} p2r-hero
-<img src="./overview.png" alt="pdb2reaction workflow overview" class="p2r-hero-figure">
+<img src="./overview.jpg" alt="pdb2reaction workflow overview" class="p2r-hero-figure">
 
 {.p2r-tagline}
 **pdb2reaction** is a Python CLI toolkit for reaction-mechanism analysis from structures such as PDB files of enzyme complexes and XYZ files of small molecules, using machine-learning interatomic potentials (MLIPs).

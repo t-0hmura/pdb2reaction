@@ -11,7 +11,7 @@
 
 [Documentation](https://t-0hmura.github.io/pdb2reaction/) | [日本語ドキュメント](https://t-0hmura.github.io/pdb2reaction/ja/)
 
-<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
+<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.jpg" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` is a Python CLI for elucidating **reaction pathways**, especially for enzymes, from **PDB/mmCIF/XYZ/GJF** structures using machine-learning interatomic potentials (MLIPs).
 
