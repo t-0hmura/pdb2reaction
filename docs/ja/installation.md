@@ -17,8 +17,7 @@
 
 conda create -n p2r python=3.12 -y
 conda activate p2r
-TORCH_INDEX=cu130  # 推奨。cu126 / cu132 も選べる
-pip install 'torch==2.13.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
+pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # 推奨。cu126 / cu132 なら末尾を置き換え
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
