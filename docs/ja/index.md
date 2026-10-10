@@ -63,7 +63,7 @@ orphan: true
 
 | サブコマンド | 説明 |
 |---------|------|
-| [`all`](all.md) | 抽出（任意）と、3 つの[入力モード](getting-started.md#入力モードの選び方)（複数構造 MEP 探索・単一構造 ＋ スキャン・TS-only モード）のいずれか、任意の TS/IRC・熱化学・DFT を統括 |
+| [`all`](all.md) | 抽出（任意）と、3 つの[入力モード](getting-started.md#3-反応経路を探す)（複数構造 MEP 探索・単一構造 ＋ スキャン・TS-only モード）のいずれか、任意の TS/IRC・熱化学・DFT を統括 |
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素列（77–78）を修復 |

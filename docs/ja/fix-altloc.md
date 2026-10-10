@@ -124,6 +124,6 @@ altLoc の状態ごとに原子が違う場合も、選んだラベルの原子�
 
 * [extract](extract.md) — PDB の読み込み時に同じ altLoc の規則を適用する活性部位モデルの抽出
 * [add-elem-info](add-elem-info.md) — PDB の元素列の修復
-* [入力構造に関する重要事項](getting-started.md#入力構造に関する重要事項) — 計算の前の水素原子の付加
+* [複合体の構造を用意する](getting-started.md#1-複合体の構造を用意する) — 計算の前の水素原子の付加
 * [all](all.md) — 全工程のワークフロー
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処
