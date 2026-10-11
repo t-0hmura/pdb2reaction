@@ -39,6 +39,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Keep the atom order of PDB inputs without alternate locations when a residue's atoms are not contiguous; writing the output PDB failed.
 - Keep RS-P-RFO TS optimizations going when a second negative mode couples only weakly to the gradient; the restricted-step update of alpha could turn negative or stall and stop the run.
 - Extract from every input in `all --dry-run`, so the checked model is the union model of the real run; it used the first input only.
+- Reset the Colab Mol* view when a structure with another atom count is loaded, so an example loaded after another no longer shows an empty viewer; switching between Reactant and Product keeps the view.
 
 ## [0.4.16] — 2026-09-19
 
