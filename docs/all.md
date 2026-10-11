@@ -177,7 +177,7 @@ Energies in the diagrams are in kcal/mol relative to the first state (the reacta
 | `-i, --input` | path(s) | (required) | Two or more structures in reaction order, or one structure with `-s` or `--tsopt` (`.pdb`, `.cif`, `.xyz`, `.gjf`). Give several files after one `-i`, or repeat `-i` |
 | `-c, --center` | text | `None` | Extraction centers, normally the substrate and catalytic residues: residue names (`'SAM,GPP'`), residue IDs (`'A:123,B:456'`), or chain-qualified names (`'A:SAM'`, `'A:SAM:123'`). Omit to use the full input |
 | `-l, --ligand-charge` | text | `None` | Charges of non-standard residues (e.g. `'SAM:1,GPP:-3'`), or their total charge as one number (total ligand charge). PDB/mmCIF input only |
-| `-q, --charge` | integer | `None` | Total charge. With `-c`, it comes from the extracted model; without `-c`, required unless `-l` is given or the input is `.gjf`. An explicit value overrides the derived one with a warning |
+| `-q, --charge` | integer | `None` | Total charge. With `-c`, it comes from the extracted model; without `-c`, required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it. An explicit value overrides the derived one with a warning |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-b, --backend` | text | `uma` | Calculator backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |
 | `-r, --radius` | float | `2.6` | Extraction cutoff (Å) around the center atoms. `0` keeps only the `-c` and `--selected-resn` residues |

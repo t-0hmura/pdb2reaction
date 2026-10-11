@@ -80,7 +80,7 @@ Read the console, `summary.json`, and the endpoints as in
 
 - **A stage reaches an unexpected geometry.** The restrained optimization relaxed into another basin, or the coordinate under-specifies the mechanism. Inspect the trajectory, revise or add a chemically meaningful coordinate, or split a complex stage; do not assume the side product is valid. To hold a coordinate until its own stage, and to tell a stage end from an intermediate, see [ts-strategy](../pdb2reaction-overview/ts-strategy.md#staged-vs-concerted-scans).
 - **Python literal error.** Wrap each stage in single quotes and use double quotes inside. Prefer space, comma, or slash selectors; a backtick is safe only inside the outer single quotes.
-- **Atom not found or matched twice.** Names must match the input exactly, case included; editing tools sometimes rename atoms (`CB` to `CB1`). If a three-field selector matches more than one atom, add the chain with `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`; do not guess from the first match.
+- **Atom not found or matched twice.** Atom names must match those in the input (case is ignored); editing tools sometimes rename atoms (`CB` to `CB1`). If a three-field selector matches more than one atom, add the chain with `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`; do not guess from the first match.
 - **XYZ or GJF input.** Residue selectors and `-c` extraction are unavailable; use atom numbers and give `-q` (or a valid GJF header).
 - **Several `-i` inputs.** `-s` takes exactly one structure; with two or more, the run stops with an error.
 - **More segments than expected** (`--refine-path` only). Bond-change splitting proposed another candidate intermediate; validate it and the neighbouring TS/IRC. The default `path-opt` adds no segments.

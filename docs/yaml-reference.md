@@ -310,7 +310,7 @@ gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
  max_nodes: 20 # Maximum string nodes (internal images); for GSM the total path has +2 endpoints
- perp_thresh: 0.005 # Perpendicular displacement threshold
+ perp_thresh: 0.005 # Perpendicular force threshold for adding new string nodes
  reparam_check: rms # Reparameterization check metric
  reparam_every: 1 # Reparameterization stride
  reparam_every_full: 1 # Full reparameterization stride
@@ -326,7 +326,7 @@ gs:
 ```
 
 ```{note}
-`gs.max_nodes` / `--max-nodes` is the number of movable internal images for both **GSM** and **DMF**. Both engines retain two endpoints, so the complete path contains `max_nodes + 2` images. See [`path-opt`](path-opt.md).
+`gs.max_nodes` (`search.max_nodes_segment` in `path-search`) / `--max-nodes` is the number of movable internal images for both **GSM** and **DMF**. Both engines retain two endpoints, so the complete path contains `max_nodes + 2` images. See [`path-opt`](path-opt.md).
 
 `gs.param` accepts `equi` or `energy`. Energy weighting is applied only after the GSM string is fully grown and shifts node density toward high-energy regions.
 ```
@@ -648,10 +648,10 @@ Harmonic bias settings for `scan`, `scan2d`, and `scan3d`.
 
 ```yaml
 bias:
- k: 300 # Harmonic bias strength (eV·Å⁻²)
+ k: 300 # Harmonic bias strength (eV·Å⁻² for distances, eV·rad⁻² for angles)
 ```
 
-**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`, in eV·Å⁻²) appears in the following places with the same default of `300`:
+**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`) appears in the following places with the same default of `300`:
 
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|

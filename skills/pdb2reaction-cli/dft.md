@@ -74,8 +74,9 @@ print(d["used_gpu"], d["used_lowmem"])  # lowmem is False for open shell, CPU, o
 ## DFT//MLIP on R, TS, and P
 
 After `all --tsopt`, the structures to feed `dft` are
-`<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` (plus `.cif` for mmCIF
-input). With `result_mep` as the output directory of `all`:
+`<out_dir>/segments/seg_NN/{reactant,ts,product}.*`, in the input format
+(`.pdb` for PDB and mmCIF input, plus `.cif` for mmCIF input). With
+`result_mep` as the output directory of `all`:
 
 ```bash
 LIGAND_CHARGE='SAM:1,GPP:-3'

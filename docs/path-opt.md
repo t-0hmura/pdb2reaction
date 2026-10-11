@@ -103,7 +103,7 @@ The console prints the MEP progress cycle by cycle, with timings.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | 2 paths | (required) | Reactant and product, in that order, after one `-i` (`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `--ref-pdb` | path | `None` | PDB/mmCIF topology for `.xyz` / `.gjf` inputs, used for both endpoints; the coordinates come from `-i` |

@@ -77,7 +77,7 @@ How the run ended decides what you get:
 | --- | --- | --- | --- | --- |
 | Converged | `[tsopt] Converged (n_imag=1).`; with n_imag ≥ 2, `[tsopt] WARNING: Higher-order stationary point (n_imag=N, …)`; with n_imag = 0, `[tsopt] No imaginary mode detected. …` | 0 | Final geometry, n_imag, and the imaginary modes | Continues to IRC if n_imag ≥ 1; stops before IRC if n_imag = 0 |
 | Stopped on an energy plateau | `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | 1 | Final geometry and n_imag | Stops before IRC |
-| Reached `--max-cycles` without converging | `[tsopt] ERROR: Not converged.` | 1 | Final geometry; no Hessian | Stops before IRC |
+| Stopped without converging, usually at `--max-cycles` | `[tsopt] ERROR: Not converged.` | 1 | Final geometry; no Hessian | Stops before IRC |
 | Converged with `--skip-final-freq` | `[tsopt] Converged; terminal PHVA is unavailable.` | 0 | Final geometry; no Hessian | Stops before IRC, because the reaction mode is unchecked |
 | The final Hessian failed | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | Final geometry, with `hessian_status: failed` and the reason | Stops before IRC |
 
@@ -140,7 +140,7 @@ result_tsopt/
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | path | (required) | One structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`). For a trajectory, extract one frame to `.xyz` first (see {ref}`Extract one frame from a trajectory <trajectory-one-frame>`) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `--ref-pdb` | path | `None` | Reference PDB/mmCIF topology for `.xyz` / `.gjf` input; the coordinates still come from `-i` |

@@ -34,7 +34,7 @@ pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
 
 ## Run stage by stage and judge each stage
 
-Run the stages as separate commands when you want to check each result before spending GPU time on the next. Pass the same `-l` to `extract`, the same `-q`/`-l`/`-m` to every later stage, and the same `-b` to every later stage except `dft`. Add `--out-json` so each stage writes the `result.json` read below (standalone commands default to `--no-out-json`). Commands are on the pages under [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md).
+Run the stages as separate commands when you want to check each result before spending GPU time on the next. Pass the same `-l` to `extract`, the same `-q`/`-l`/`-m` to every later stage, and the same `-b` to every later stage except `dft`. Add `--out-json` so each stage writes the `result.json` read below (standalone commands default to `--no-out-json`; `path-search` has no such option and writes `summary.json`). Commands are on the pages under [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md).
 
 | Stage | Command | Role |
 |---|---|---|

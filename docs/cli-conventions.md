@@ -76,7 +76,7 @@ pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb      # ch
 
 ## Charge specification
 
-For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
+For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
 
 ```bash
 -l 'SAM:1,GPP:-3'        # per-residue mapping (recommended)

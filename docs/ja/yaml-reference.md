@@ -296,7 +296,7 @@ gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
  max_nodes: 20 # Maximum string nodes (internal images); GSM では端点 2 つを加えた数が全イメージ数
- perp_thresh: 0.005 # Perpendicular displacement threshold
+ perp_thresh: 0.005 # Perpendicular force threshold for adding new string nodes
  reparam_check: rms # Reparameterization check metric
  reparam_every: 1 # Reparameterization stride
  reparam_every_full: 1 # Full reparameterization stride
@@ -312,7 +312,7 @@ gs:
 ```
 
 ```{note}
-`gs.max_nodes` / `--max-nodes` は **GSM** と **DMF** のどちらでも、端点の間で動かすイメージの数です。両エンジンとも端点 2 つを加えるため、イメージは全部で `max_nodes + 2` 個です。詳細は [`path-opt`](path-opt.md) を参照してください。
+`gs.max_nodes`（`path-search` では `search.max_nodes_segment`）/ `--max-nodes` は **GSM** と **DMF** のどちらでも、端点の間で動かすイメージの数です。両エンジンとも端点 2 つを加えるため、イメージは全部で `max_nodes + 2` 個です。詳細は [`path-opt`](path-opt.md) を参照してください。
 
 `gs.param` は `equi` または `energy` を受け付けます。energy weighting はGSMストリングの完全成長後にのみ適用され、高エネルギー領域へノード密度を寄せます。
 ```
@@ -613,10 +613,10 @@ dft:
 
 ```yaml
 bias:
- k: 300 # Harmonic bias strength (eV·Å⁻²)
+ k: 300 # Harmonic bias strength (eV·Å⁻² for distances, eV·rad⁻² for angles)
 ```
 
-**サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`、単位 eV·Å⁻²）が以下の箇所にデフォルト値 `300.0` で現れます:
+**サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`）が以下の箇所にデフォルト値 `300.0` で現れます:
 
 | YAML キー | 使用元 | CLI フラグ |
 |----------|-------|-----------|

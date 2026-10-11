@@ -160,7 +160,7 @@ the two numbers differ. Working-directory names carry the tags `_mep`,
   intermediates you did not give; validate each one. A segment is not
   guaranteed to be one elementary step or to contain exactly one TS.
 - `path-search` writes no optimized TS; `all --tsopt` writes it as
-  `segments/seg_NN/ts.pdb`.
+  `segments/seg_NN/ts.*` (in the input format).
 
 ## Next step
 

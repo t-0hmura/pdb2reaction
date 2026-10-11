@@ -99,7 +99,7 @@ result_freq/
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.xyz`, ...) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `--ref-pdb` | path | `None` | Reference PDB/mmCIF topology for `.xyz` / `.gjf` input; the coordinates still come from `-i` |

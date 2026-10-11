@@ -78,7 +78,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ └── uma.py / orb.py / mace.py / aimnet2.py MLIP adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
-│ │ ├── summary.py summary.json / summary.log writer
+│ │ ├── summary.py summary.log writer
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / JPEG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
@@ -209,7 +209,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 | 関心事 | ファイル |
 |---|---|
-| `summary.json` / `summary.log` ライタ | `pdb2reaction/io/summary.py` |
+| `summary.log` ライタ | `pdb2reaction/io/summary.py` |
 | Plotly エネルギーダイアグラム | `pdb2reaction/io/energy_diagram.py` |
 | 軌跡 → PNG / JPEG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
 | PDB altloc 解決 | `pdb2reaction/io/pdb_fix.py` |

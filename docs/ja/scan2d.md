@@ -125,7 +125,7 @@ result_scan2d/
 | オプション | 引数の型 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.mmcif`, `.xyz` 等） |
-| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
 | `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
 | `-s, --scan-lists` | 文字列 | （必須） | YAML/JSON スペックファイルまたは 1 つのインラインリテラルで 2 つの範囲を指定。距離 `(i,j,low,high)`、角度 `(i,j,k,low,high)`、二面角 `(i,j,k,l,low,high)` |

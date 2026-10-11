@@ -52,7 +52,7 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `execution_status` | string | `completed` または `failed`。`all` では、IRC の後の端点の最適化が収束しなくても `completed` のままで、エラーで止まると `failed` になります。 |
-| `scientific_status` | string | 指定したすべての段階が収束すれば `success`、そうでなければ `partial` か `failed`。`all` では、n_imag ≥ 2 の TS は `partial` になり、n_imag = 0 の TS では IRC の前で止まるので、`success` なら n_imag = 1 です。単体の `tsopt` は n_imag を見ないので、`n_imaginary_modes` を読んでください。 |
+| `scientific_status` | string | 指定したすべての段階が収束すれば `success`、そうでなければ `partial` か `failed`。`--tsopt` を指定した `all` では、n_imag ≥ 2 の TS は `partial` になり、n_imag = 0 の TS では IRC の前で止まるので、`success` なら n_imag = 1 です。単体の `tsopt` は n_imag を見ないので、`n_imaginary_modes` を読んでください。 |
 | `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。 |
 | `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
 | `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別の結果。 |

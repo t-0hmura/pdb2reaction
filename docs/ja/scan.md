@@ -90,7 +90,7 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 1. **構造の読み込み**:
 {ref}`電荷 <ja-charge-specification>` は `-q` または `-l` から決まります。`--preopt` を付けると、まず拘束なしで構造を最適化します。収束しなかった場合は入力構造を使います。
 2. **ステージのステップ分割**:
-座標ごとに変化量 Δ = 目標値 − 現在値 を求め、ステージを N = ceil(max(|Δ| / h)) ステップに分けます。h は距離では `--max-step-size`（Å）、角度では `--max-angle-step-size`、二面角では `--max-dihedral-step-size`（度）です。各座標は 1 ステップに Δ / N ずつ動くので、ステージ内のすべての座標が同時に目標値に着きます。
+座標ごとに変化量 Δ = 目標値 − 現在値（二面角では −180°〜180° に折り返した最短の変化量）を求め、ステージを N = ceil(max(|Δ| / h)) ステップに分けます。h は距離では `--max-step-size`（Å）、角度では `--max-angle-step-size`、二面角では `--max-dihedral-step-size`（度）です。各座標は 1 ステップに Δ / N ずつ動くので、ステージ内のすべての座標が同時に目標値に着きます。
 3. **拘束付きの緩和**:
 各ステップで、調和拘束 E = ½ k (q − q_target)² がスキャンする座標 q をそのステップの目標値に保ち（k は `--restraint-k`）、残りの構造を `--opt-mode grad`（デフォルト）では L-BFGS、`hess` では RFO で緩和します。各ステップのエネルギーは、拘束を外して計算した値を記録します。
 4. **ステージの終わり**:
@@ -170,7 +170,7 @@ PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz
 | オプション | 引数の型 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.mmcif`, `.xyz` 等） |
-| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
 | `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
 | `-s, --scan-lists` | 文字列 | （必須） | YAML/JSON スペックファイル、または 1 つ以上のインラインリテラル（1 つが 1 ステージ）。距離の目標値 `(i,j,target)`、または距離 `(i,j,low,high)`・角度 `(i,j,k,low,high)`・二面角 `(i,j,k,l,low,high)` の範囲 |

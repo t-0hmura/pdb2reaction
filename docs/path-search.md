@@ -108,7 +108,7 @@ For PDB, mmCIF, or `.gjf` input, the outputs are also written in that format und
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | paths | (required) | Two or more structures in reaction order, after one `-i` (`-i` may also be repeated for each file) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1); a `.gjf` input supplies its own |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input only) |
 | `-b, --backend` | text | `uma` | Backend (`uma`, `orb`, `mace`, `aimnet2`, `dft`) |

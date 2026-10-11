@@ -148,7 +148,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 
 - 原子のインデックスは 1 始まりで、`--zero-based` を付けると 0 始まりになります。`--restraint-k` は力の定数です（デフォルト 300 eV/Å²）。
 - `scan`・`scan2d`・`scan3d` では、`--restraint-k` が各段のばねの強さです（距離は eV/Å²、角度は eV/rad²）。YAML の `bias.k` より CLI の値が優先されます。各段はその段の組だけを拘束します。`all` では `--scan-restraint-k` で同じ値を渡します。スキャンリストの書き方は {ref}`スキャンリスト仕様 <ja-scan-list-spec>` にあります。
-- 出力のエネルギーは、拘束のエネルギーを除いた値です。
+- `opt` の `result.json`（`--out-json`）とスキャンの結果のエネルギーは、拘束のエネルギーを除いた値です。
 
 ## 使用上の注意点
 

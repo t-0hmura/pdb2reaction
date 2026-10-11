@@ -88,7 +88,7 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 ## How it works
 
 1. **Reading the structure**: the {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--preopt`, the structure is first optimized without restraints; if that does not converge, the input geometry is used.
-2. **Splitting each stage into steps**: for every coordinate, `scan` takes the change Δ = target − current and divides the stage into N = ceil(max(|Δ| / h)) steps, where h is `--max-step-size` (Å) for distances, `--max-angle-step-size` for angles, and `--max-dihedral-step-size` for dihedrals (degrees). Each coordinate moves by Δ / N per step, so all coordinates of a stage arrive together.
+2. **Splitting each stage into steps**: for every coordinate, `scan` takes the change Δ = target − current (for a dihedral, the shortest signed change, between −180° and 180°) and divides the stage into N = ceil(max(|Δ| / h)) steps, where h is `--max-step-size` (Å) for distances, `--max-angle-step-size` for angles, and `--max-dihedral-step-size` for dihedrals (degrees). Each coordinate moves by Δ / N per step, so all coordinates of a stage arrive together.
 3. **Restrained relaxation**: at each step, a harmonic restraint E = ½ k (q − q_target)² holds every scanned coordinate q at its step target (k from `--restraint-k`), and the rest of the structure is relaxed with L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). The energy written for each step is computed with the restraints removed.
 4. **End of the stage**: with `--endopt`, the last structure of the stage is optimized once more without restraints. `scan` then compares the first and last structures of the stage for covalent-bond changes and writes the stage result.
 5. **Next stage**: the next stage starts from this result. After the last stage, the trajectories of all stages are joined into one file.
@@ -165,7 +165,7 @@ For PDB/mmCIF input, each `result.xyz` is also written as `result.pdb` and each 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, ...) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `-s, --scan-lists` | text | (required) | A YAML/JSON spec file, or one or more inline literals (one per stage): distance targets `(i,j,target)`, or ranges for a distance `(i,j,low,high)`, an angle `(i,j,k,low,high)`, or a dihedral `(i,j,k,l,low,high)` |

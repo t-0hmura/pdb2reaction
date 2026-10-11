@@ -125,7 +125,7 @@ Start with `surface.csv` and the two plots; the structure of each point is under
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | path | (required) | Input structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, ...) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (e.g. `-1`) or per-residue charges (e.g. `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `-s, --scan-lists` | text | (required) | Two ranges as a YAML/JSON spec file or one inline literal: distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, or dihedral `(i,j,k,l,low,high)` |

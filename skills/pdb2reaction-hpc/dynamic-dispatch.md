@@ -236,8 +236,10 @@ cat "${STATE_DIR}/retry_tasks.txt"
 ```
 
 Verify the exact job ID before selecting a state directory. Resubmit the retry
-file as a new task list. Keep the old directory as a run record; a new PBS
-job receives a different run directory.
+file as a new task list from the same directory, with the relative `STATE_DIR`
+above: `qsub -v TASK_LIST_FILE="${STATE_DIR}/retry_tasks.txt" dispatcher.sh`.
+Keep the old directory as a run record; a new PBS job receives a different run
+directory.
 
 ## SLURM analog
 

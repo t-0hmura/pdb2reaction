@@ -86,7 +86,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ └── uma.py / orb.py / mace.py / aimnet2.py MLIP adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
-│ │ ├── summary.py summary.json / summary.log writer
+│ │ ├── summary.py summary.log writer
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / JPEG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
@@ -217,7 +217,7 @@ To add a backend, follow recipe 3.2 "Add an MLIP backend" in `CONTRIBUTING.md`.
 
 | concern | file |
 |---|---|
-| `summary.json` / `summary.log` writer | `pdb2reaction/io/summary.py` |
+| `summary.log` writer | `pdb2reaction/io/summary.py` |
 | Plotly energy diagram | `pdb2reaction/io/energy_diagram.py` |
 | Trajectory → PNG / JPEG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
 | PDB altloc resolution | `pdb2reaction/io/pdb_fix.py` |

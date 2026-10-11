@@ -149,7 +149,7 @@ if rls:
 
 Energies are in kcal/mol relative to R. A PNG is written only when the energies are finite and the export succeeds; `summary.json["energy_diagrams"]` keeps the energies either way, so check `image_written` there before you use a PNG. In TS-only mode the diagrams are in `segments/seg_01/`.
 
-Read a barrier from `barrier_kcal` of its level (`mlip`, `gibbs_mlip`, `dft`, `gibbs_dft_mlip`), which is TS − R, or from the TS-labelled entry of `energy_diagrams`. Do not compute `max(energies) − E(R)`: after thermal or DFT corrections, P or a later state can lie above the TS.
+Read a barrier from `barrier_kcal` of its level (`mlip`, `gibbs_mlip`, `dft`, `gibbs_dft_mlip`), which is TS − R. Do not compute `max(energies) − E(R)`: after thermal or DFT corrections, P or a later state can lie above the TS.
 
 To combine energies from several runs into one diagram, use `energy-diagram` ([utilities.md](../pdb2reaction-cli/utilities.md)):
 
@@ -169,7 +169,7 @@ Partial outputs are kept. `_work/path_opt/seg_NNN_<tag>/` (`_work/path_search/` 
 
 A barrier or reaction energy of hundreds to thousands of kcal/mol usually means that one endpoint optimization diverged, not a summary bug. Compare the Hartree energy on the second line of `segments/seg_NN/structures/{reactant,product}_irc.xyz` with that of `{reactant,product}.xyz` in the same directory. If the raw IRC end is sensible and the optimized one is not, rerun only that end with `opt` from its `*_irc.xyz` file with the same charge, spin, and frozen atoms; `summary.json["freeze_atoms"]` is 0-based, so add 1 for `--freeze-atoms`.
 
-Read the exit code with the status: 0 is `success` or `partial` (tell them apart by `scientific_status`); 1 is non-convergence, no usable result, a runtime exception, or an output failure; 2 is invalid input, arguments, or configuration (including invalid YAML), so fix the command instead of resubmitting it; 130 is an interrupt. A run that fails while the options or inputs are checked can stop before `summary.json` exists; treat a nonzero exit code as a failure and read stderr.
+Read the exit code with the status: 0 is `success` or `partial` (tell them apart by `scientific_status`); 1 is non-convergence, no usable result, a runtime exception, or an output failure; 2 is a CLI argument that the command rejects or a malformed configuration YAML, so fix the command instead of resubmitting it; 130 is an interrupt. A run that fails while the options or inputs are checked can stop before `summary.json` exists; treat a nonzero exit code as a failure and read stderr.
 
 ## Next step
 

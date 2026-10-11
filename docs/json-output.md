@@ -59,7 +59,7 @@ Every result reports `execution_status` and `scientific_status`; multi-stage and
 | Field | Type | Description |
 |-------|------|-------------|
 | `execution_status` | string | `completed` or `failed`. In `all`, an endpoint optimization after IRC that does not converge leaves it `completed`; one that stops on an error makes it `failed`. |
-| `scientific_status` | string | `success` when every requested stage converged; otherwise `partial` or `failed`. In `all`, a TS with n_imag ≥ 2 gives `partial`, and a TS with n_imag = 0 stops the run before IRC, so `success` means n_imag = 1. Standalone `tsopt` does not look at n_imag; read `n_imaginary_modes`. |
+| `scientific_status` | string | `success` when every requested stage converged; otherwise `partial` or `failed`. In `all --tsopt`, a TS with n_imag ≥ 2 gives `partial`, and a TS with n_imag = 0 stops the run before IRC, so `success` means n_imag = 1. Standalone `tsopt` does not look at n_imag; read `n_imaginary_modes`. |
 | `scientific_status_reasons` | string[] | Reasons for unusable or missing stages; omitted on clean success. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed stage identifiers, used to detect missing work. |
 | `stage_outcomes` | object[] | One entry per stage with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |

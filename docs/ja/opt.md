@@ -107,7 +107,7 @@ result_opt/
 | オプション | 引数の型 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`）。軌跡は 1 フレームを `.xyz` に切り出してから指定（{ref}`軌跡から 1 フレームを取り出す <ja-trajectory-one-frame>` を参照） |
-| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
 | `--ref-pdb` | パス | `None` | `.xyz` / `.gjf` 入力に使う PDB/mmCIF のトポロジー。座標は `-i` から取る（例: IRC の端点。[irc](irc.md) を参照） |
@@ -136,7 +136,7 @@ result_opt/
 ## 使用上の注意点
 
 * **プラトーでの停止**: `--stop-plateau` は、力のノイズで力の収束条件に届かないときにサイクルを節約できますが、エネルギーが平坦であることは停留点の証拠になりません。実質的な上限は `--max-cycles` です。エネルギーの幅とサイクル数は `--stop-plateau-thresh` と `--stop-plateau-window` で指定できます。
-* **固定原子があるときの剛体運動**: Cartesian 座標での RFO の曲率の確認と `--flatten` は、剛体運動を [`freq`](freq.md#固定境界での剛体モード) と同じように扱います。L-BFGS には影響しません。
+* **固定原子があるときの剛体運動**: `--flatten` は、剛体運動を [`freq`](freq.md#固定境界での剛体モード) と同じように扱います。
 * **固定原子と拘束の全体**: クラスターモデルで固定する原子や拘束の選び方は、{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
 * **オプティマイザの状態の書き出し**: `--dump` を付け、YAML の `opt.dump_restart` に正の整数 N を指定すると、N サイクルごとに `restart_NNN.yaml` を書きます。pdb2reaction はこのファイルを読み戻さないので、止まった計算は final geometry から `opt` をやり直してください。
 * **モデルと精度**: `--backend-model` でバックエンドのモデルを、`--precision` で精度（`fp32`・`fp64`）を選べます。詳しくは自動生成のオプションの一覧（英語のみ）を参照してください。

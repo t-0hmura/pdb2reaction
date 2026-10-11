@@ -75,7 +75,7 @@ pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb      # ch
 (ja-charge-specification)=
 ## 電荷の指定
 
-PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。
+PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子など）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。
 
 ```bash
 -l 'SAM:1,GPP:-3'        # 残基ごとの指定（推奨）

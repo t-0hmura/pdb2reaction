@@ -119,7 +119,7 @@ result_irc/
 | オプション | 引数の型 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | TS の構造（`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`）。軌跡は 1 フレームを `.xyz` に切り出してから指定（{ref}`軌跡から 1 フレームを取り出す <ja-trajectory-one-frame>` を参照） |
-| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
 | `-b, --backend` | 文字列 | `uma` | バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`） |
@@ -157,7 +157,7 @@ result_irc/
   ```
 
 * **固定原子**: `--freeze-links` に加えて、`--freeze-atoms`（1 始まり）でほかの原子も固定できます。除いた剛体運動と最初の Hessian は、`result.json` の `rigid_projection` に記録されます。
-* **大きな系**: `--hess-device cpu` を付けると、最初の Hessian と IRC の Hessian の演算を CPU で行い、GPU のメモリに収めます。
+* **大きな系**: `--hess-device cpu` を付けると、最初の Hessian を CPU に置き、IRC の Hessian の演算も CPU で行って、GPU のメモリに収めます。
 * **分岐は少なくとも 1 つ**: `--no-forward` と `--no-backward` を両方付けると、エラーで止まります。
 
 ---

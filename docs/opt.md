@@ -107,7 +107,7 @@ result_opt/
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `-i, --input` | path | (required) | One structure (`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`). For a trajectory, extract one frame to `.xyz` first (see {ref}`Extract one frame from a trajectory <trajectory-one-frame>`) |
-| `-q, --charge` | integer | `None` | Total charge. Required unless `-l` is given or the input is `.gjf` |
+| `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-l, --ligand-charge` | text | `None` | Total ligand charge (for example `-1`) or a charge per residue name (for example `'GPP:-3,SAM:1'`), used when `-q` is omitted (PDB/mmCIF input or `--ref-pdb`) |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1) |
 | `--ref-pdb` | path | `None` | PDB/mmCIF topology for an `.xyz` / `.gjf` input; the coordinates come from `-i` (for example IRC endpoints, see [irc](irc.md)) |
@@ -136,7 +136,7 @@ See the [generated CLI reference](reference/commands/opt.md) for every option.
 ## Notes
 
 * **Plateau stop**: `--stop-plateau` saves cycles when force noise keeps the force criteria out of reach, but a flat energy is no evidence of a stationary point. `--max-cycles` remains the real limit. `--stop-plateau-thresh` and `--stop-plateau-window` set the energy range and the number of cycles.
-* **Rigid motions with frozen atoms**: the RFO curvature checks in Cartesian coordinates and `--flatten` treat rigid motions as [`freq`](freq.md#rigid-modes-with-frozen-boundaries) does. L-BFGS is not affected.
+* **Rigid motions with frozen atoms**: `--flatten` treats rigid motions as [`freq`](freq.md#rigid-modes-with-frozen-boundaries) does.
 * **Frozen atoms and restraints in general**: how to choose frozen atoms and restraints for a cluster model is described in {ref}`Frozen atoms and distance restraints <freeze-atoms-and-restraints>`.
 * **Optimizer state dumps**: with `--dump`, set YAML `opt.dump_restart` to a positive integer N to write `restart_NNN.yaml` every N cycles. pdb2reaction does not read this file back, so rerun `opt` from the final geometry to continue a stopped calculation.
 * **Model and precision**: `--backend-model` selects the model of the backend and `--precision` (`fp32` / `fp64`) its precision; see the generated reference.

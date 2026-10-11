@@ -146,7 +146,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 
 - Atom numbers are 1-based; `--zero-based` counts from 0. `--restraint-k` sets the force constant (default 300 eV/Å²).
 - In `scan`, `scan2d`, and `scan3d`, `--restraint-k` is the spring of each step (eV/Å² for distances, eV/rad² for angles) and takes priority over YAML `bias.k`. Each stage restrains only its own pairs. In `all`, pass the same value with `--scan-restraint-k`. For the format of the scan lists, see {ref}`Scan-list spec <scan-list-spec>`.
-- Reported energies leave out the energy of the restraint.
+- The energies in `result.json` (`opt --out-json`) and in the scan results leave out the energy of the restraint.
 
 ## Notes
 

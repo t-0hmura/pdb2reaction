@@ -77,7 +77,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --read-hess ts_cand_hess.npy --out-d
 | --- | --- | --- | --- | --- |
 | 収束 | `[tsopt] Converged (n_imag=1).`。n_imag ≥ 2 では `[tsopt] WARNING: Higher-order stationary point (n_imag=N, …)`、n_imag = 0 では `[tsopt] No imaginary mode detected. …` | 0 | final geometry、n_imag、虚振動モード | n_imag ≥ 1 なら IRC へ進み、n_imag = 0 なら IRC の前で止まる |
 | エネルギーが変わらなくなって停止 | `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | 1 | final geometry と n_imag | IRC の前で止まる |
-| `--max-cycles` に達して未収束 | `[tsopt] ERROR: Not converged.` | 1 | final geometry（Hessian なし） | IRC の前で止まる |
+| 未収束で停止（多くは `--max-cycles` に達したとき） | `[tsopt] ERROR: Not converged.` | 1 | final geometry（Hessian なし） | IRC の前で止まる |
 | `--skip-final-freq` を付けて収束 | `[tsopt] Converged; terminal PHVA is unavailable.` | 0 | final geometry（Hessian なし） | 反応モードを確かめられないため、IRC の前で止まる |
 | 最後の Hessian の計算に失敗 | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | final geometry と、`hessian_status: failed` とその理由 | IRC の前で止まる |
 
@@ -141,7 +141,7 @@ result_tsopt/
 | オプション | 引数の型 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | 入力構造ファイル（`.pdb`, `.cif`, `.mmcif`, `.xyz`, `.gjf`）。軌跡は 1 フレームを `.xyz` に切り出してから指定（{ref}`軌跡から 1 フレームを取り出す <ja-trajectory-one-frame>` を参照） |
-| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l` を使う場合と `.gjf` 入力のほかは必須 |
+| `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1） |
 | `-l, --ligand-charge` | 文字列 | `None` | リガンドの総電荷（例: `-1`）または残基名ごとの電荷（例: `'GPP:-3,SAM:1'`）。`-q` を省いたときに使用（PDB/mmCIF 入力または `--ref-pdb`） |
 | `--ref-pdb` | パス | `None` | `.xyz`・`.gjf` 入力に対応づける PDB/mmCIF のトポロジー（座標は `-i` のものを使用） |
