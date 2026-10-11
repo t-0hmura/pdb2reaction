@@ -1440,3 +1440,25 @@ def test_blank_element_columns_follow_fixed_column_atom_names(tmp_path: Path) ->
     assert [record.element for record in records] == ["N", "N", "O", "H"]
     assert [atom["element"] for atom in load_pdb_atom_metadata(source)] == ["N", "N", "O", "H"]
     assert [_pdb_record_element(line) for line in lines] == ["n", "n", "o", "h"]
+
+
+def test_charge_check_reads_blank_pdb_elements_without_ase(tmp_path: Path) -> None:
+    import click
+
+    from pdb2reaction.core.utils import validate_charge_spin_at_path
+    from pdb2reaction.io.structure_formats import read_structure_atoms
+
+    rows = [(" CA ", "GLY"), (" HG ", "CYS")]
+    lines = [
+        f"ATOM  {i:>5} {name} {res} A{i:>4}    {float(i):8.3f}{0.0:8.3f}{0.0:8.3f}"
+        f"{1.0:6.2f}{0.0:6.2f}{'':14}\n"
+        for i, (name, res) in enumerate(rows, 1)
+    ]
+    source = tmp_path / "blank_elements.pdb"
+    source.write_text("".join(lines) + "END\n", encoding="utf-8")
+
+    # ASE's reader would give Ca and Hg, an even electron count.
+    assert read_structure_atoms(source).get_chemical_symbols() == ["C", "H"]
+    with pytest.raises(click.UsageError):
+        validate_charge_spin_at_path(source, 0, 1)
+    validate_charge_spin_at_path(source, 0, 2)

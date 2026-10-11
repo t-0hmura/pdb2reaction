@@ -33,7 +33,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 - Read an `-s` stage literal longer than the operating-system path limit as a literal instead of stopping with `File name too long`.
 - Cut amino-acid centers in `extract` at the model boundary like other residues and read Amber terminal names such as `NPRO` as the standard residue (an N-terminal proline counts +1); `all` stops when a cut has no cap hydrogen.
-- Infer PDB elements correctly for LEaP chlorine and bromine names (` CL1`), four-character ligand hydrogens (`HG11`), blank element columns, and dummy-atom names (` X1 `).
+- Infer PDB elements correctly for LEaP chlorine and bromine names (` CL1`), four-character ligand hydrogens (`HG11`), blank element columns, and dummy-atom names (` X1 `), and stop reading PDB files with ASE, which made a blank-column `CA` calcium in the charge and multiplicity check.
 - Apply the nested YAML sections `opt.lbfgs`, `opt.rfo`, `stopt.lbfgs`, `stopt.rfo`, and `freq.thermo`, which were ignored or made the run fail.
 - Finalize `all` summaries after a non-converged TS optimization and stop before IRC, and pass the Hessian of the kept `tsopt --flatten` result to `--dump-hess` and IRC.
 - Keep the atom order of PDB inputs without alternate locations when a residue's atoms are not contiguous; writing the output PDB failed.

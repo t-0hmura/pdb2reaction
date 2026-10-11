@@ -2190,8 +2190,10 @@ def prepare_input_structure(path: Path) -> PreparedInputStructure:
 
 
 def _read_atom_count(path: Path) -> int:
+    from pdb2reaction.io.structure_formats import read_structure_atoms
+
     try:
-        atoms = read(path, index=0)
+        atoms = read_structure_atoms(path)
     except Exception as e:
         raise click.ClickException(f"Failed to read '{path}' for --ref-pdb validation: {e}")
     return len(atoms)
@@ -3905,15 +3907,15 @@ def validate_charge_spin_at_path(path, charge, multiplicity):
     """Read elements at the given geometry path and run validate_charge_spin.
 
     This wrapper is the canonical CLI entry point — bare ValueError from
-    the underlying parity check (or from ase.io.read on a malformed
+    the underlying parity check (or from reading a malformed
     geometry) is re-raised as click.UsageError so the standard CLI
     exception handler (cli_utils.run_cli) renders a single-line error
     instead of a full Python traceback.
     """
-    from ase.io import read as _ase_read
+    from pdb2reaction.io.structure_formats import read_structure_atoms
 
     try:
-        atoms = _ase_read(path)
+        atoms = read_structure_atoms(path)
     except FileNotFoundError as e:
         raise click.UsageError(f"Geometry file not found: {path} ({e})")
     except Exception as e:
