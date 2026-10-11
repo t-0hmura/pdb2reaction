@@ -64,8 +64,8 @@ Options:
                                   nominal charge for this extraction; bare NAME
                                   defaults to 0. Examples: 'HD1,HD2,HD3' or
                                   'HD1:0,SEP:-2'.
-  -l, --ligand-charge TEXT        Total charge number or per-resname mapping
-                                  like 'GPP:-3,SAM:1'.
+  -l, --ligand-charge TEXT        Total ligand charge (number) or per-resname
+                                  mapping like 'GPP:-3,SAM:1'.
   --out-json / --no-out-json      Write machine-readable result.json next to the
                                   output PDB.  [default: no-out-json]
   -h, --help                      Show this message and exit.

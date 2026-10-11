@@ -14,7 +14,7 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, _trj.xyz, ...).  [required]
+                                  .xyz, ...).  [required]
   -s, --scan-lists TEXT           Required. Distance targets (i,j,target), or
                                   scan ranges: distance (i,j,low,high), angle
                                   (i,j,k,low,high), or dihedral

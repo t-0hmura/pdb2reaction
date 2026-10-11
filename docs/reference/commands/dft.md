@@ -14,7 +14,7 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, .gjf, _trj.xyz, etc.).  [required]
+                                  .xyz, .gjf, etc.).  [required]
   -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
                                   YAML calc.charge, or a .gjf input gives it.
   -l, --ligand-charge TEXT        Total ligand charge or per-resname mapping

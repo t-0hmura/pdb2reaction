@@ -253,7 +253,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, _trj.xyz, ...).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, ...).",
 )
 @click.option(
     "-s", "--scan-lists",

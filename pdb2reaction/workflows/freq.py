@@ -449,7 +449,7 @@ def _prepare_frequency_output_paths(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, ...).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, ...).",
 )
 @click.option(
     "--uma-workers",

@@ -15,7 +15,7 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, .gjf, _trj.xyz, ...).  [required]
+                                  .xyz, .gjf, ...).  [required]
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an

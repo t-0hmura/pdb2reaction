@@ -192,7 +192,7 @@ def _result_calculator_fields(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=False,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, _trj.xyz, ...). Required unless --csv is provided.",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, ...). Required unless --csv is provided.",
 )
 @click.option(
     "-s", "--scan-lists",

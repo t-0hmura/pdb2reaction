@@ -533,7 +533,7 @@ def _finalize_dft_result(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, etc.).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, etc.).",
 )
 @click.option(
     "-q",

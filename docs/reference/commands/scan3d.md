@@ -14,8 +14,7 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, _trj.xyz, ...). Required unless --csv is
-                                  provided.
+                                  .xyz, ...). Required unless --csv is provided.
   -s, --scan-lists TEXT           Three scan ranges as an inline literal or
                                   YAML/JSON file: distance (i,j,low,high), angle
                                   (i,j,k,low,high), or dihedral

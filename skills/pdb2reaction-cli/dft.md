@@ -94,7 +94,10 @@ SUMMARY=result_mep/summary.json
 RLS_SEG=$(python - "$SUMMARY" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as handle:
-    print(int(json.load(handle)["rate_limiting_step"]["segment"]))
+    rls = json.load(handle).get("rate_limiting_step")
+if rls is None:
+    sys.exit("summary.json has no rate_limiting_step: no reactive segment has a barrier")
+print(int(rls["segment"]))
 PY
 )
 printf -v RLS_DIR 'seg_%02d' "$RLS_SEG"
