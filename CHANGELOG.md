@@ -38,6 +38,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Finalize `all` summaries after a non-converged TS optimization and stop before IRC, and pass the Hessian of the kept `tsopt --flatten` result to `--dump-hess` and IRC.
 - Keep the atom order of PDB inputs without alternate locations when a residue's atoms are not contiguous; writing the output PDB failed.
 - Keep RS-P-RFO TS optimizations going when a second negative mode couples only weakly to the gradient; the restricted-step update of alpha could turn negative or stall and stop the run.
+- Extract from every input in `all --dry-run`, so the checked model is the union model of the real run; it used the first input only.
 
 ## [0.4.16] — 2026-09-19
 

@@ -4273,11 +4273,12 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=str,
     default=None,
     help=(
-        "Total charge (number) or per-resname mapping like 'GPP:-3,SAM:1'. "
+        "Total ligand charge (number) or per-resname mapping like 'GPP:-3,SAM:1'. "
         "The per-resname mapping is applied whether or not extraction runs: with "
         "-c/--center it feeds the extractor charge summary; with -c omitted "
         "(extraction skipped) the same mapping is applied to the full input PDB/mmCIF to "
-        "derive the total system charge. A bare number sets the total directly. "
+        "derive the total system charge. A bare number specifies the total ligand charge; "
+        "use -q/--charge to set the total system charge. "
         "PDB/mmCIF inputs only. An explicit -q/--charge has highest priority "
         "over either derived value and emits a warning."
     ),
@@ -4717,7 +4718,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--freq-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
-    show_default="<tsopt dir>/freq",
+    show_default="<segment dir>/freq",
     help=(
         "Override freq output base directory (relative paths resolved against the default)."
     ),
@@ -4762,7 +4763,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--dft-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
-    show_default="<tsopt dir>/dft",
+    show_default="<segment dir>/dft",
     help=(
         "Override dft output base directory (relative paths resolved against the default)."
     ),
@@ -5749,15 +5750,22 @@ def cli(
         else:
             _dry_tmp = Path(tempfile.mkdtemp(prefix="pdb2reaction_dry_extract_"))
             session.resources.own_path(_dry_tmp)
-            _first_in = input_paths[0].resolve() if input_paths else None
-            if _first_in is None:
+            # Extract from every input, as the real run does, so the checked
+            # model is the same union model (one model per input).
+            _dry_ins = [p.resolve() for p in input_paths]
+            if not _dry_ins:
                 raise click.BadParameter("[all] --dry-run requires at least one -i input.")
-            _dry_out = (_dry_tmp / f"model_{_first_in.stem}.pdb").resolve()
+            _dry_outs = [
+                (_dry_tmp / f"model_{i:02d}_{p.stem}.pdb").resolve()
+                for i, p in enumerate(_dry_ins, start=1)
+            ]
+            _first_in = _dry_ins[0]
+            _dry_out = _dry_outs[0]
             try:
                 _ex = extract_api(
-                    complex_pdb=[str(_first_in)],
+                    complex_pdb=[str(p) for p in _dry_ins],
                     center=str(center_spec),
-                    output=[str(_dry_out)],
+                    output=[str(p) for p in _dry_outs],
                     radius=float(radius),
                     radius_het2het=float(radius_het2het),
                     include_h2o=bool(include_h2o),

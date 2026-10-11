@@ -416,3 +416,35 @@ def test_all_dry_run_validates_original_freeze_indices_after_extraction(
 
     assert scan_result.exit_code == 0, scan_result.output
     assert "--dry-run completed. Input command is valid." in scan_result.output
+
+
+def test_all_dry_run_extracts_the_union_of_every_input(tmp_path, monkeypatch):
+    all_workflow = importlib.import_module("pdb2reaction.workflows.all")
+
+    def write(path, x):
+        path.write_text(
+            "HETATM    1  C1  SAM A   1       0.000   0.000   0.000  1.00  0.00           C  \n"
+            f"HETATM    2  C1  TWO A   2    {x:8.3f}   0.000   0.000  1.00  0.00           C  \n"
+            "END\n",
+            encoding="utf-8",
+        )
+
+    reactant, product = tmp_path / "R.pdb", tmp_path / "P.pdb"
+    write(reactant, 10.0)
+    write(product, 2.0)
+    seen = []
+    real_extract = all_workflow.extract_api
+
+    def record(**kwargs):
+        seen.append(list(kwargs["complex_pdb"]))
+        return real_extract(**kwargs)
+
+    monkeypatch.setattr(all_workflow, "extract_api", record)
+    result = CliRunner().invoke(
+        root_cli,
+        ["all", "-i", str(reactant), str(product), "-c", "SAM", "-l", "SAM:0,TWO:0", "--dry-run"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert seen == [[str(reactant.resolve()), str(product.resolve())]]
+    assert "[extract:multi]" in result.output
