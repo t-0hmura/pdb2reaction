@@ -107,13 +107,12 @@ Options:
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).  [default: (cart)]
-  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge is provided (.gjf
-                                  templates inherit the charge automatically).
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB/mmCIF input or --ref-
-                                  pdb).
+  -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
+                                  YAML calc.charge, or a .gjf input gives it.
+  -l, --ligand-charge TEXT        Total ligand charge or per-resname mapping
+                                  (e.g., GPP:-3,SAM:1) used to derive charge
+                                  when -q is omitted (requires PDB/mmCIF input
+                                  or --ref-pdb).
   -m, --multiplicity INTEGER RANGE
                                   Spin multiplicity (2S+1).  [default: (1);
                                   x>=1]

@@ -2095,8 +2095,8 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default=False,
     help=(
-        "Total charge. Required for non-.gjf inputs unless --ligand-charge derives it "
-        "from PDB/mmCIF inputs."
+        "Total charge. Required unless --ligand-charge, YAML calc.charge, or a .gjf "
+        "input gives it."
     ),
 )
 @click.option(
@@ -2124,7 +2124,7 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default=False,
     help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "Total ligand charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
         "when -q is omitted (PDB/mmCIF inputs only)."
     ),
 )
@@ -2318,7 +2318,8 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
-    help=("Pocket reference PDB/mmCIF files used only for the final full-system merge. "
+    help=("Pocket reference PDB/mmCIF files used to write the PDB outputs for XYZ/GJF inputs "
+          "and for the full-system merge. "
           "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
           "Must match the number and order of --input.")
 )

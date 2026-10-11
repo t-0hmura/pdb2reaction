@@ -221,7 +221,7 @@ symbols = ["C", "O"]
 # NOTE: These methods return dicts; extract values with the appropriate key
 energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (hartree)
 forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (hartree/bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (hartree/bohr²)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # torch.Tensor (hartree/bohr²)
 ```
 
 - Coordinates are supplied in **bohr**; the wrapper converts to Angstrom for UMA

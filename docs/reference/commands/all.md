@@ -70,17 +70,19 @@ Options:
                                   nominal charge for this extraction; bare NAME
                                   defaults to 0. Examples: 'HD1,HD2,HD3' or
                                   'HD1:0,SEP:-2'.  [default: ""]
-  -l, --ligand-charge TEXT        Total charge (number) or per-resname mapping
-                                  like 'GPP:-3,SAM:1'. The per-resname mapping
-                                  is applied whether or not extraction runs:
-                                  with -c/--center it feeds the extractor charge
-                                  summary; with -c omitted (extraction skipped)
-                                  the same mapping is applied to the full input
-                                  PDB/mmCIF to derive the total system charge. A
-                                  bare number sets the total directly. PDB/mmCIF
-                                  inputs only. An explicit -q/--charge has
-                                  highest priority over either derived value and
-                                  emits a warning.
+  -l, --ligand-charge TEXT        Total ligand charge (number) or per-resname
+                                  mapping like 'GPP:-3,SAM:1'. The per-resname
+                                  mapping is applied whether or not extraction
+                                  runs: with -c/--center it feeds the extractor
+                                  charge summary; with -c omitted (extraction
+                                  skipped) the same mapping is applied to the
+                                  full input PDB/mmCIF to derive the total
+                                  system charge. A bare number specifies the
+                                  total ligand charge; use -q/--charge to set
+                                  the total system charge. PDB/mmCIF inputs
+                                  only. An explicit -q/--charge has highest
+                                  priority over either derived value and emits a
+                                  warning.
   -q, --charge INTEGER            Total system charge. This explicit value has
                                   highest priority over extractor/workflow-
                                   derived charge; a mismatch emits a warning.
@@ -296,7 +298,7 @@ Options:
                                   (no-irc-never-stop)]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
-                                  [default: (<tsopt dir>/freq)]
+                                  [default: (<segment dir>/freq)]
   --freq-max-write INTEGER        Override freq --max-write value.  [default:
                                   (10)]
   --freq-amplitude-ang FLOAT      Override freq --amplitude-ang (Å).  [default:
@@ -311,7 +313,7 @@ Options:
                                   [default: (1.0)]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
-                                  [default: (<tsopt dir>/dft)]
+                                  [default: (<segment dir>/dft)]
   --func-basis, --dft-func-basis TEXT
                                   Override dft --func-basis value.  [default:
                                   (wb97m-v/def2-svp)]

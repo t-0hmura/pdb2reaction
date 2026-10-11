@@ -75,7 +75,7 @@ When `all` runs into a problem, do not rerun the whole workflow; retry each segm
 
 ### Extra imaginary modes
 
-- **Extra modes outside the reacting site** (such as a rotating side chain or water): rerun with `--flatten` (`tsopt`, `opt`, `all`). When n_imag ≥ 2 after the optimization, it displaces the structure along the extra modes and optimizes again, for up to {ref}`50 rounds <flatten-precedence-caveat>` by default. The closing line of `tsopt` suggests this move too.
+- **Extra modes outside the reacting site** (such as a rotating side chain or water): rerun with `--flatten` (`tsopt`, `all`). When n_imag ≥ 2 after the optimization, it displaces the structure along the extra modes and optimizes again, for up to {ref}`50 rounds <flatten-precedence-caveat>` by default. The closing line of `tsopt` suggests this move too.
 - **Stuck at a higher-order saddle** (converged with n_imag ≥ 2): another option is to start `tsopt` with `--flatten` from the final structure of that TS optimization (`final_geometry.*` from `tsopt`; inside `segments/seg_NN/ts/` in `all`).
 - **After `--flatten`**: check both IRC ends again. n_imag can reach 1 on a TS candidate of a different reaction.
 - **Without `--flatten`**: the mode file of an extra mode, `vib/imag_*_trj.xyz` (also `vib/imag_*.pdb` for PDB input), holds 20 frames, and frames 6 and 16 are the largest displacements in the two directions. Save each of the two as its own file in a viewer and start TS-only mode (`all -i <frame>.pdb -l ... --tsopt`) or `tsopt` from each, with the same charge and spin.

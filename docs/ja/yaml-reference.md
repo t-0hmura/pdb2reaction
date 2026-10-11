@@ -81,7 +81,7 @@ max_cycles: 100000
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
-| `--dft-engine` | `engine` | `dft` |
+| `--dft-engine` | `engine` | コマンド別: `dft` は `dft`、`-b dft` は `calc.dft` |
 
 ```{note}
 **名前の違い：`--pressure` と `pressure_atm`。** どちらも atm で、内部で Pa に変換されます。単位を名前に含むのは YAML キーだけです。
@@ -386,7 +386,7 @@ chain-of-states 経路最適化の StringOptimizer 設定。`stopt.lbfgs` / `sto
 stopt:
  type: string # Optimizer type label
  thresh: gau_loose # StringOptimizer convergence preset
- stop_in_when_full: 300 # ストリングが伸びきった後に許すサイクル数。使い切ると未収束で止まる
+ stop_in_when_full: 300 # path-opt/path-search では常に max_cycles と同じ値になる
  align: false # path-opt/path-search では常に false。イメージの重ね合わせは別に Kabsch 法で行う
  scale_step: global # Step scaling mode
  max_cycles: 300 # Maximum StringOptimizer iterations
@@ -559,7 +559,7 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-虚振動のデフォルトの分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は、n_imag が数えない、0 と −`zero_cutoff_cm` の間の負の振動数も数えます。n_imag と `n_negative_modes` のどちらも、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
+虚振動のデフォルトの分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は、n_imag が数えない、0 と −`zero_cutoff_cm` の間の負の振動数も数えます。この値は、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
 
 ---
 

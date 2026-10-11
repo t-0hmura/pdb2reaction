@@ -81,7 +81,7 @@ A misspelled section name prints `[config] WARNING: YAML section(s) … are not 
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
-| `--dft-engine` | `engine` | `dft` |
+| `--dft-engine` | `engine` | Command-specific: `dft` for `dft` and `calc.dft` for `-b dft` |
 
 ```{note}
 **Name mismatch — `--pressure` vs `pressure_atm`.** Both take atm (converted to Pa internally); only the YAML key names the unit.
@@ -400,7 +400,7 @@ StringOptimizer settings for chain-of-states path optimization. `stopt.lbfgs` an
 stopt:
  type: string # Optimizer type label
  thresh: gau_loose # StringOptimizer convergence preset
- stop_in_when_full: 300 # Cycles allowed after the string is fully grown; then the run stops unconverged
+ stop_in_when_full: 300 # Always set to max_cycles in path-opt/path-search
  align: false # Always false in path-opt/path-search; the images are superposed separately by a Kabsch fit
  scale_step: global # Step scaling mode
  max_cycles: 300 # Maximum StringOptimizer iterations
@@ -591,7 +591,7 @@ The default imaginary-mode criterion is ν < −5.00 cm⁻¹. `freq`, `opt`
 `hessian_dimer.neg_freq_thresh_cm` or `rsirfo.saddle_imaginary_threshold_cm`;
 if two of the three keys are set explicitly to different values, the run stops
 with an error. `n_negative_modes` also counts the negative
-frequencies between −`zero_cutoff_cm` and 0, which n_imag does not count. Neither n_imag nor `n_negative_modes` decides
+frequencies between −`zero_cutoff_cm` and 0, which n_imag does not count. It does not decide
 whether an optimization has converged. Whatever the cutoff, the output keeps
 every signed frequency, and thermochemistry uses every positive mode.
 

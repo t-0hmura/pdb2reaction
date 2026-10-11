@@ -11,7 +11,7 @@ which calls `irc` and optimizes the ends for you.
 ## Minimal run
 
 ```bash
-pdb2reaction irc -i result_tsopt/final_geometry.xyz -q 0 -m 1 -b uma --out-json -o result_irc
+pdb2reaction irc -i result_tsopt/final_geometry.pdb -q 0 -m 1 -b uma --out-json -o result_irc
 ```
 
 Success: `finished_irc_trj.xyz` shows the reaction, and the optimized ends are

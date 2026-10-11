@@ -138,7 +138,7 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 | `mep_trj.pdb` / `mep_trj.cif` | 最小エネルギー経路（MEP）のアニメーション軌跡ファイル |
 | `segments/seg_NN/` | 反応セグメントごとの詳細結果（最適化された R/TS/P 構造、IRC 軌跡など。`--tsopt` のとき） |
 
-端末の出力の最後のほうにある `====== Pipeline summary ======` の下の `Scientific status:` の行は、`summary.json` の `scientific_status` と同じ値です。指定した段がすべて収束すると `success` になり、`--tsopt` のときは TS の n_imag が 1 であることも条件です。そうでなければ `partial` か `failed` になり、理由は `scientific_status_reasons` に出ます。虚振動のモードが狙った結合を動かしているかは各クイックスタートにあるモードのファイルで、IRC の両端が狙った R と P かは `segments[].bond_changes` で、自分で確かめてください。
+端末の出力の最後のほうにある `====== Pipeline summary ======` の下の `Scientific status:` の行は、`summary.json` の `scientific_status` と同じ値です。指定した段がすべて収束すると `success` になり、`--tsopt` のときは TS の n_imag が 1 であることも条件です。そうでなければ `partial` か `failed` になり、理由は `scientific_status_reasons` に出ます。虚振動のモードが狙った結合を動かしているかは各クイックスタートにあるモードのファイルで、IRC の両端が狙った R と P かは各クイックスタートにある端点の構造ファイルで、自分で確かめてください。
 
 ---
 

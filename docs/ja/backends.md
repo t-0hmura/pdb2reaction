@@ -160,7 +160,7 @@ symbols = ["C", "O"]
 # 注: これらのメソッドは dict を返すため、適切なキーで値を取り出します
 energy_h = calc.get_energy(symbols, coords_bohr)["energy"] # float (Hartree)
 forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (Hartree/Bohr)
-hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (Hartree/Bohr²)
+hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # torch.Tensor (Hartree/Bohr²)
 ```
 
 - 座標は **Bohr** で与えます。内部で Å に変換して UMA で計算し、エネルギーと微分を Hartree、Hartree/Bohr、Hartree/Bohr² に戻します。

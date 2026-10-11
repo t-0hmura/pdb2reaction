@@ -22,9 +22,8 @@ Options:
                                   (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
                                   GPU out-of-memory error, retry with cpu.
                                   [default: gpu]
-  -q, --charge INTEGER            Total charge. Required unless a .gjf template
-                                  provides charge metadata or --ligand-charge is
-                                  supplied for PDB/mmCIF inputs.
+  -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
+                                  YAML calc.charge, or a .gjf input gives it.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
@@ -34,10 +33,10 @@ Options:
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB/mmCIF input or --ref-
-                                  pdb).
+  -l, --ligand-charge TEXT        Total ligand charge or per-resname mapping
+                                  (e.g., GPP:-3,SAM:1) used to derive charge
+                                  when -q is omitted (requires PDB/mmCIF input
+                                  or --ref-pdb).
   -m, --multiplicity INTEGER RANGE
                                   Spin multiplicity (2S+1).  [default: (1);
                                   x>=1]

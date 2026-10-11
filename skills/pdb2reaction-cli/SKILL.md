@@ -51,7 +51,7 @@ keeps the original chain IDs and residue numbers.
 
 ## Frozen atoms
 
-Cap hydrogens, `--freeze-links`, `--freeze-atoms`, and YAML `geom.freeze_atoms` are combined into one frozen set; choose a chemically justified boundary and inspect it rather than reusing one freeze set for every cluster. See [extract.md](extract.md#freeze-atoms-at-the-cluster-boundary).
+The frozen set combines the cap parents found by `--freeze-links`, the atoms given with `--freeze-atoms`, and YAML `geom.freeze_atoms`; choose a chemically justified boundary and inspect it rather than reusing one freeze set for every cluster. See [extract.md](extract.md#freeze-atoms-at-the-cluster-boundary).
 
 ## Cross-cutting pitfalls
 

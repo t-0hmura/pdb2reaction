@@ -58,8 +58,8 @@ d = json.load(open("result_ts_only/summary.json"))
 seg, post = d["segments"][0], d["post_segments"][0]
 print(d["scientific_status"], d.get("scientific_status_reasons"))
 print(post["tsopt"]["n_imaginary_modes"], post["tsopt"]["imaginary_frequencies_cm"])
-print(seg["barrier_kcal"], seg["delta_kcal"], seg["bond_changes"])
-print(post["endpoint_assignment"], post["mlip"]["energies_au"])
+print(seg.get("barrier_kcal"), seg.get("delta_kcal"), seg.get("bond_changes"))
+print(post.get("endpoint_assignment"), (post.get("mlip") or {}).get("energies_au"))
 ```
 
 ## Pitfalls and recovery

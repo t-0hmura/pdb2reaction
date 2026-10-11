@@ -110,7 +110,7 @@ for ps in d.get("post_segments", []):
 
 # MEP barrier before TS optimization: keep the "MEP" label when you print it
 for seg in d["segments"]:
-    if seg.get("kind") in ("seg", "tsopt") and seg.get("barrier_kcal") is not None:
+    if seg.get("kind") == "seg" and seg.get("barrier_kcal") is not None:
         print(f"seg_{seg['index']:02d}: MEP barrier = {seg['barrier_kcal']:.1f} kcal/mol")
 
 # Highest local barrier, labelled by its method

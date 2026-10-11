@@ -132,7 +132,7 @@ cat result_opt/result.json | python -m json.tool
 | `reaction_mode_index` | int\|null | `all` が IRC でたどる虚振動の、PHVA の振動数の一覧での 0 始まりの番号。オプティマイザが追ったモードが虚振動ならそのモード、そうでなければ最も低い虚振動です。どちらかは `reaction_mode_source`（`"mep-reference-overlap"` / `"lowest-imaginary"`）に入ります。虚振動が無ければ `null` |
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `n_negative_modes` | int\|null | 大きさを問わない負の振動数の数（閾値以内も含む）。`n_imaginary_modes` と並べて見る診断用の値で、PHVA を実行しなかった場合は `null` |
-| `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
+| `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` または `[]` |
 | `frequency_zero_cutoff_cm` | float | 閾値（cm⁻¹、デフォルト `5.0`）。デフォルトでは ν < −5.00 cm⁻¹ だけを虚振動として数えます |
 | `imaginary_mode_criterion` | string | 数え方の規則の名前。値は `"frequency_cutoff_cm"` |
 | `imaginary_frequency_threshold_cm` | float | 符号を負にした同じ閾値（デフォルト `-5.0`） |
@@ -274,7 +274,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `grid_points` | object[] | 各格子点のインデックス、距離、エネルギー、収束、`geometry_file` の対応 |
 | `current_output_paths` | string[] | 今回の実行が書いた CSV/HTML/PNG と格子点の構造。前の実行で残ったファイルは入りません |
 | `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
-| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`)。`scan3d` で `--csv` 再プロット時は省略 |
+| `pair1`, `pair2` (,`pair3`) | object | `{kind, atoms_1based, unit, low, high}`（距離の軸では `i`, `j` も含む）と、任意の `atom_labels`。`scan3d` で `--csv` 再プロット時は省略 |
 | `min_energy_hartree` | float | エネルギー曲面上の最小エネルギー |
 | `files` | object | CSV + プロットファイル |
 
@@ -422,7 +422,6 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
 | `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
-| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
 | `scan` | object \| なし | scanを初期経路に使う`all`の、前段scanの状態・各段階の結果・診断。 |
 | `n_segments` | int | セグメント数 |
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
@@ -444,6 +443,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
 | `rate_limiting_step` | object | 反応のあるすべてのセグメントで使える最上位の手法（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で求めた局所障壁の最大値。使った手法 `method` と、MEP から求めた障壁 `mep_barrier_kcal` も含みます。微視的速度論による律速段階の判定ではありません。 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応エネルギーを求めた手法（`MEP`、`MLIP`、`MLIP_Gibbs`、`DFT`、`DFT//MLIP_Gibbs`） |

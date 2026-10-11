@@ -71,8 +71,8 @@ model to another command.
 
 ## Pitfalls and recovery
 
-- When `-c` is a structure file, its atom names must match the complex exactly
-  (case-sensitive).
+- When `-c` is a structure file, its atom names (case-sensitive) and
+  coordinates (within 0.001 Å) must match the complex.
 - A blank element column stops the run with `Element symbols are missing in
   '…'`; run [`add-elem-info`](utilities.md#add-elem-info) first.
 - `extract` keeps one coherent altLoc per residue on its own; run

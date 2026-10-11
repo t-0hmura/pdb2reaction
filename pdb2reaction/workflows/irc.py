@@ -308,7 +308,7 @@ def _echo_convert_trj_if_exists(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, etc.).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, etc.).",
 )
 @click.option(
     "--uma-workers",

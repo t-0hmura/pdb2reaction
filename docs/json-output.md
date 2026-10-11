@@ -146,7 +146,7 @@ All fields from `opt`, plus:
 | `reaction_mode_index` | int\|null | 0-based index, in the PHVA frequency list, of the imaginary mode that `all` follows in IRC: the mode tracked by the optimizer when it is imaginary, otherwise the lowest imaginary mode. `reaction_mode_source` records which (`"mep-reference-overlap"` or `"lowest-imaginary"`); `null` when there is no imaginary mode |
 | `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` if PHVA was not run |
 | `n_negative_modes` | int\|null | Number of negative frequencies of any size, including those within the cutoff; a diagnostic next to `n_imaginary_modes`, `null` if PHVA was not run |
-| `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` when PHVA was not run |
+| `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` or `[]` when PHVA was not run |
 | `frequency_zero_cutoff_cm` | float | Cutoff in cm⁻¹ (default `5.0`); with the default, only ν < −5.00 cm⁻¹ counts as imaginary |
 | `imaginary_mode_criterion` | string | Name of the counting rule; the value is `"frequency_cutoff_cm"` |
 | `imaginary_frequency_threshold_cm` | float | The same cutoff with a negative sign (default `-5.0`) |
@@ -297,7 +297,7 @@ IRC reports `execution_status` and `scientific_status` and keeps the stop reason
 | `grid_points` | object[] | Explicit grid-index, distances, energy, convergence, and `geometry_file` mapping |
 | `current_output_paths` | string[] | CSV/HTML/PNG files and grid geometries written by this run; files left from an earlier run are not listed |
 | `grid_shape` | int[] | Grid dimensions (only when running fresh; absent under `scan3d --csv`) |
-| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j`. `scan3d`: present only when running fresh; absent under `--csv` re-plot |
+| `pair1`, `pair2` (,`pair3`) | object | `{kind, atoms_1based, unit, low, high}` (distance axes also carry `i`, `j`) with optional `atom_labels`. `scan3d`: present only when running fresh; absent under `--csv` re-plot |
 | `min_energy_hartree` | float | Surface minimum energy |
 | `files` | object | CSV + plot files |
 
@@ -451,7 +451,6 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
 | `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed stage identifiers. |
-| `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys record the effective CLI values. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `scan` | object \| absent | Preliminary scan status, stage outcomes and diagnostics in scan-seeded `all` runs. |
 | `n_segments` | int | Segment count |
 | `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
@@ -473,6 +472,7 @@ The `all` command additionally includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys record the effective CLI values. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `rate_limiting_step` | object | Highest local barrier among the reactive segments, taken at the highest-level method available for every segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal`. It is not a microkinetic rate-limiting-step assignment. |
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |

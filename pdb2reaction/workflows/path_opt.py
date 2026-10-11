@@ -677,7 +677,7 @@ def _optimize_single(
     "--charge",
     type=int,
     required=False,
-    help="Total charge. Required unless a .gjf template provides charge metadata or --ligand-charge is supplied for PDB/mmCIF inputs.",
+    help="Total charge. Required unless --ligand-charge, YAML calc.charge, or a .gjf input gives it.",
 )
 @click.option(
     "--uma-workers",
@@ -704,7 +704,7 @@ def _optimize_single(
     default=None,
     show_default=False,
     help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "Total ligand charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )

@@ -41,7 +41,8 @@ dependencies:
       - pdb2reaction[orb,aimnet,dft]
 ```
 
-`<cu_index>` is one of `cu126`, `cu130`, `cu132`, and `cpu`. For MACE, use the
+`<cu_index>` is one of `cu126`, `cu130`, `cu132`, and `cpu`; with `cu126`,
+write `pdb2reaction[orb,aimnet,dft-cuda12]`. For MACE, use the
 same template with `python=3.11` and plain `pdb2reaction`, then do the swap in
 [MACE](#mace-separate-environment) inside the new env.
 
@@ -457,9 +458,9 @@ squeue -u "$USER"                 # SLURM: your jobs
 
 Reading the report:
 
-- aarch64: the GPU4PySCF wheel is missing, so DFT uses CPU PySCF unless a
-  source-built GPU4PySCF passes an import and a representative SCF. The MLIP
-  backends work where compatible wheels exist.
+- aarch64: the GPU4PySCF wheel is missing, so run DFT with `--dft-engine cpu`
+  unless a source-built GPU4PySCF passes an import and a representative SCF.
+  The MLIP backends work where compatible wheels exist.
 - No GPU: run DFT with `--dft-engine cpu`; MLIP backends run on CPU. Drop the
   GPU request from the job preamble.
 - With a GPU, note the driver version and VRAM; they bound the wheel and the

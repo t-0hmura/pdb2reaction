@@ -28,9 +28,8 @@ Options:
                                   Defaults to peak for gsm and minima for dmf
                                   when omitted.  [default: (peak for gsm, minima
                                   for dmf)]
-  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge derives it from
-                                  PDB/mmCIF inputs.
+  -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
+                                  YAML calc.charge, or a .gjf input gives it.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
@@ -40,9 +39,9 @@ Options:
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (PDB/mmCIF inputs only).
+  -l, --ligand-charge TEXT        Total ligand charge or per-resname mapping
+                                  (e.g., GPP:-3,SAM:1) used to derive charge
+                                  when -q is omitted (PDB/mmCIF inputs only).
   -m, --multiplicity INTEGER RANGE
                                   Spin multiplicity (2S+1; inherits from a .gjf
                                   template when available).  [default: (1 (or
@@ -124,11 +123,12 @@ Options:
                                   composites for inspection. Requires --align
                                   and --ref-full-pdb.  [default: no-write-ref-
                                   merge]
-  --ref-pdb FILE                  Pocket reference PDB/mmCIF files used only for
-                                  the final full-system merge. Useful when
-                                  --input uses XYZ/GJF intermediates but PDB
-                                  snapshots exist for merging. Must match the
-                                  number and order of --input.
+  --ref-pdb FILE                  Pocket reference PDB/mmCIF files used to write
+                                  the PDB outputs for XYZ/GJF inputs and for the
+                                  full-system merge. Useful when --input uses
+                                  XYZ/GJF intermediates but PDB snapshots exist
+                                  for merging. Must match the number and order
+                                  of --input.
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]

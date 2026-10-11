@@ -541,8 +541,8 @@ def _finalize_dft_result(
     type=int,
     required=False,
     help=(
-        "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-        "(PDB/mmCIF inputs or XYZ/GJF with --ref-pdb)."
+        "Total charge. Required unless --ligand-charge, YAML calc.charge, or a .gjf "
+        "input gives it."
     ),
 )
 @click.option(
@@ -552,7 +552,7 @@ def _finalize_dft_result(
     default=None,
     show_default=False,
     help=(
-        "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
+        "Total ligand charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
