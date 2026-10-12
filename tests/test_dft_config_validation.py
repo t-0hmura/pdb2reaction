@@ -76,9 +76,13 @@ def test_standalone_dft_accepts_pyscf_object_defaults_without_false_conflict(
     assert "memory_mb: 4096" in result.output
 
 
-def test_dft_resources_are_provenance_but_not_checkpoint_identity() -> None:
+def test_dft_resources_are_provenance_but_not_checkpoint_identity(monkeypatch) -> None:
+    from pdb2reaction.core import dft_settings
     from pdb2reaction.core.dft_settings import resolve_dft_settings
     from pdb2reaction.core.utils import calculator_provenance
+
+    # Explicit nprocs is capped at the CPU affinity; keep the check independent of the host.
+    monkeypatch.setattr(dft_settings, "_affinity_count", lambda: None)
 
     small = resolve_dft_settings({
         "backend": "dft", "dft": {"nprocs": 2, "memory": "4GB"}
