@@ -634,6 +634,7 @@ def test_scf_stepwise_grid_is_on_by_default_for_both_dft_paths(tmp_path) -> None
         {"backend": "dft", "dft": {"scf_stepwise_grid": False}}
     ).scf_stepwise_grid is False
 
+    pytest.importorskip("pyscf")
     xyz = tmp_path / "h2o.xyz"
     xyz.write_text("3\n\nO 0 0 0\nH 0 0.76 0.59\nH 0 -0.76 0.59\n")
     out_dir = tmp_path / "dft"
@@ -652,6 +653,7 @@ def test_scf_stepwise_grid_is_on_by_default_for_both_dft_paths(tmp_path) -> None
 
 
 def test_scf_stepwise_grid_shortens_the_final_scf_of_the_dft_command() -> None:
+    pytest.importorskip("pyscf")
     from pyscf import dft, gto
 
     from pdb2reaction.workflows.dft import _run_scf_kernel
