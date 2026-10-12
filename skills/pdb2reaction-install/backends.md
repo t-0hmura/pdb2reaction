@@ -9,7 +9,8 @@ The install order, verification, and the failure table are in
 - Python 3.11 or newer; 3.12 is recommended. ORB needs 3.11 or 3.12.
 - PyPI install: [Install order](SKILL.md#install-order). PyTorch must be
   installed first ([CUDA and PyTorch](#cuda-and-pytorch)).
-- DMF: `conda install -c conda-forge cyipopt -y`; `pydmf` is a core dependency.
+- DMF: create the env with `cyipopt` and PyTorch from conda-forge
+  ([Install order](SKILL.md#install-order)); `pydmf` is a core dependency.
 
 Install from source for development:
 
@@ -30,7 +31,7 @@ A combined env for UMA, ORB, AIMNet2, DFT, and xTB:
 
 ```yaml
 name: <YOUR_ENV>
-channels: [conda-forge, nvidia]
+channels: [conda-forge, nodefaults]
 dependencies:
   - python=3.12
   - xtb                                # only for the xTB solvent correction

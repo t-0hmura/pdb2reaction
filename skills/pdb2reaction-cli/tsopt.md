@@ -42,7 +42,7 @@ The `[tsopt]` verdict line tells how the run ended:
 | `[tsopt] WARNING: Higher-order stationary point (n_imag=N, …)` | Converged with extra imaginary modes; not yet a TS |
 | `[tsopt] No imaginary mode detected. …` | Converged toward a minimum |
 | `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | Stopped on an energy plateau (`--stop-plateau`). Not converged, but the Hessian is always computed and n_imag reported |
-| `[tsopt] ERROR: Not converged.` | Stopped without converging, usually at `--max-cycles`; any other stop writes its cause to `stop_reason` in `result.json` (under `safeguards` except with Dimer). No Hessian is computed, so n_imag is not reported |
+| `[tsopt] ERROR: Not converged.` | Stopped without converging, usually at `--max-cycles`. No Hessian is computed, so n_imag is not reported |
 | `[tsopt] Converged; terminal PHVA is unavailable.` | `--skip-final-freq` or a failed final Hessian; the saddle order is unchecked |
 
 A mode counts as imaginary below −5 cm⁻¹, the tsopt cutoff (YAML
@@ -53,7 +53,9 @@ first-order TS needs all of:
 `optimization_status` is `converged`, `hessian_status` is `completed`,
 `saddle_validation` is `first_order` (`n_imaginary_modes` is 1), and the
 displacement in `vib/imag_*_trj.xyz` follows the reacting atoms.
-`scientific_status` does not look at n_imag.
+`scientific_status` does not look at n_imag. A run that stops without converging
+for another reason than `--max-cycles` writes the cause to `stop_reason` in
+`result.json` (under `safeguards` except with Dimer).
 
 ```python
 import json

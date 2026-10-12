@@ -559,7 +559,7 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-虚振動のデフォルトの分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は、n_imag が数えない、0 と −`zero_cutoff_cm` の間の負の振動数も数えます。この値は、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
+虚振動のデフォルトの分類基準は ν < −5.00 cm⁻¹ です。`freq`、`opt`（flatten）、`tsopt` はこの `freq.zero_cutoff_cm` で n_imag を数え、`irc` はこの値を読みません。`tsopt` では `hessian_dimer.neg_freq_thresh_cm` か `rsirfo.saddle_imaginary_threshold_cm` でもこの閾値を設定でき、3 つのうち 2 つを異なる値で明示するとエラーで止まります。`n_negative_modes` は、n_imag が数えない、0 と −`zero_cutoff_cm` の間の負の振動数も数えます。`n_negative_modes` は、最適化の収束の判定には使いません。cutoff の値によらず、出力は符号付きの全振動数を残し、熱化学は正のモードをすべて使います。
 
 ---
 

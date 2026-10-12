@@ -148,8 +148,10 @@ the two numbers differ. Working-directory names carry the tags `_mep`,
   the step (`--align/--no-align`); use `--no-align` for endpoints cut together
   that share identical frozen coordinates.
 - If GSM stalls, DMF (`--mep-mode dmf`) is an alternative. It needs
-  `cyipopt` from conda-forge; after a GPU out-of-memory error with the default
-  `--dmf-backend gpu`, retry with `--dmf-backend cpu`. If a DMF run makes
+  `cyipopt`, installed with PyTorch from conda-forge
+  ([Install order](../pdb2reaction-install/SKILL.md#install-order)); after a
+  GPU out-of-memory error with the default `--dmf-backend gpu`, retry with
+  `--dmf-backend cpu`. If a DMF run makes
   almost no progress, set `BLIS_NUM_THREADS=1` in the job script before Python
   starts: nested BLIS threads in IPOPT can stall it, and a change inside the
   running process does not reach the solver. DMF holds frozen atoms with a

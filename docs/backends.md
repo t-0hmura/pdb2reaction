@@ -134,6 +134,7 @@ calculations. `--solvent-model` selects `alpb` (default) or `cpcmx` for MLIP
 backends, and `--solvent-xtb-cmd` passes the
 xTB command with extra arguments, for example `'xtb --etemp 1000'` when the xTB
 self-consistent charge (SCC) iterations do not converge.
+xTB is not installed with `pdb2reaction`; install it with `conda install -c conda-forge xtb`.
 
 Each correction runs xTB twice (in solvent and in vacuum), so about 200–300
 atoms is a practical upper size rather than a hard limit; benchmark the actual

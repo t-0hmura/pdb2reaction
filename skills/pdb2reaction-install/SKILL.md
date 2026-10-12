@@ -16,9 +16,11 @@ when `pdb2reaction --version` prints the version and the smoke check in
 
 1. On a new or unknown host, run the probes in
    [backends.md](backends.md#probe-the-compute-environment) first.
-2. Create a conda env with Python 3.12; pdb2reaction needs 3.11 or newer, and
-   ORB needs 3.11 or 3.12. If you will use DMF (`--mep-mode dmf`), install
-   `cyipopt` now; `pydmf` comes with pdb2reaction.
+2. Create a conda env with Python 3.12 from conda-forge; pdb2reaction needs
+   3.11 or newer, and ORB needs 3.11 or 3.12. If you will use DMF
+   (`--mep-mode dmf`) or `--solvent`, create it with `cyipopt`, `xtb`, and
+   PyTorch from conda-forge instead (below) and skip step 3; `pydmf` comes with
+   pdb2reaction.
 3. Install PyTorch. `nvidia-smi` shows `CUDA Version` at its top right, the
    newest CUDA the driver supports; choose a wheel at or below it (`cu126`,
    `cu130`, or `cu132`). `cu130` is the recommended choice. Details are in
@@ -32,9 +34,8 @@ when `pdb2reaction --version` prints the version and the smoke check in
    ([xTB](backends.md#xtb-solvent-correction)).
 
 ```bash
-conda create -n <YOUR_ENV> python=3.12 -y
+conda create -n <YOUR_ENV> -c conda-forge --override-channels python=3.12 -y
 conda activate <YOUR_ENV>
-conda install -c conda-forge cyipopt -y            # only for --mep-mode dmf
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 pip install pdb2reaction                           # UMA via fairchem-core
 plotly_get_chrome -y                               # headless Chrome; needs network
@@ -42,13 +43,21 @@ hf auth login                                      # Read token; once per machin
 pip install 'pdb2reaction[orb,aimnet,dft]'   # optional extras
 ```
 
+For DMF or `--solvent`, replace the first three lines with the following
+(`cuda129` instead of `cuda130` when the driver is below CUDA 13.0):
+
+```bash
+conda create -n <YOUR_ENV> -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda activate <YOUR_ENV>
+```
+
 | Extra | Pulls in | When you need it |
 |---|---|---|
 | (none) | UMA via `fairchem-core`, base deps | Default; `-b uma` works |
 | `[orb]` | `orb-models` | `-b orb` |
 | `[aimnet]` | `aimnet>=0.2.0` | `-b aimnet2` |
-| `[dft]` | PySCF, CUDA 13 GPU4PySCF and CuPy on Linux x86_64 | `-b dft`, `--dft`, `pdb2reaction dft` with a `cu130` or `cu132` wheel |
-| `[dft-cuda12]` | PySCF, CUDA 12 GPU4PySCF and CuPy | Same, with a `cu126` wheel |
+| `[dft]` | PySCF, CUDA 13 GPU4PySCF and CuPy on Linux x86_64 | `-b dft`, `--dft`, `pdb2reaction dft` with a `cu130` or `cu132` wheel or the conda-forge `cuda130` build |
+| `[dft-cuda12]` | PySCF, CUDA 12 GPU4PySCF and CuPy | Same, with a `cu126` wheel or the `cuda129` build |
 | `[ci]`, `[dev]`, `[docs]` | test, pytest, and Sphinx dependencies | Contributing and building docs |
 
 There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need
@@ -121,7 +130,7 @@ installed. An `ImportError` points to that backend's section in
 | `e3nn` conflict on `pip install` | UMA and MACE in one env | Separate env for MACE |
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the Hugging Face cache |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
-| `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | `conda install -c conda-forge cyipopt`; if the import still fails, `pip install 'pydmf[torch]'` |
+| `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
 | Plot export fails, or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly | `plotly_get_chrome -y` |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 

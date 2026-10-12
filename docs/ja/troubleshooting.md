@@ -30,7 +30,7 @@
 | DFT の SCF が収束しない | `--no-dft-low-memory`（密度フィッティング）か、YAML のレベルシフト（`mf: {level_shift: 0.2}`）を試してください。書く場所は、`dft` と `--dft` では `dft.pyscf`、`-b dft` では `calc.dft.pyscf` です | [dft の使用上の注意点](dft.md#使用上の注意点)、[DFT バックエンドの使用上の注意点](dft-backend.md#使用上の注意点) |
 | DFT で GPU メモリが足りない | 小さい基底関数を使う、モデルを削る、メモリの大きい GPU に移る。`--dft` で足りないときは、`pdb2reaction dft` を別に実行してください | [DFT バックエンドの使用上の注意点](dft-backend.md#使用上の注意点) |
 | **インストール / 環境** | | |
-| DMF モードのインポートエラー（`cyipopt`）、または `No module named 'dmf'` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` と一緒に入ります）。デフォルトの GPU 版でそれでもインポートに失敗するときは、`pip install 'pydmf[torch]'` | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
+| DMF モードのインポートエラー（`cyipopt`）、または `No module named 'dmf'` | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください（`pydmf` は `pdb2reaction` と一緒に入ります）。デフォルトの GPU 版でそれでもインポートに失敗するときは、`pip install 'pydmf[torch]'` | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | UMA モデルで 401 / 403 / アクセス制限付きリポジトリのエラー（`huggingface_hub.errors.GatedRepoError`） | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | `e3nn` / `fairchem-core` のインポートの競合（UMA の環境に MACE を入れた） | MACE 専用の環境を使ってください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | `ORB backend requires orb-models and torch`（AIMNet2 / MACE も同様） | バックエンドの追加パッケージを入れてください：`pip install "pdb2reaction[orb]"`。MACE は別の環境に入れます | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
@@ -120,7 +120,7 @@
 | `e3nn` / `fairchem-core` のインポートの競合 | UMA の環境に MACE を入れた。`mace-torch` は `e3nn==0.4.4` に固定し、`fairchem-core` は `e3nn>=0.5` を必要とする | MACE 専用の conda 環境を使ってください：`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` |
 | 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | `python -m pip check` を実行してください。PyG / `torch_scatter` は、エラーがそれを名指ししたときだけ入れます。今の `orb-models` はこれを必要としません |
 | `torch.cuda.is_available()` が `False`、またはインポート時に CUDA の実行時エラー | PyTorch のビルドが計算ノードの GPU・ドライバに合っていない | `nvidia-smi`、`python -m torch.utils.collect_env`、`python -m pip check` で、割り当てられた GPU、入っている wheel、ドライバを確かめてください。真偽値だけでは原因は分かりません。`nvidia-smi` が示す `CUDA Version` はドライバが扱える最も新しい CUDA です。それ以下の CUDA の wheel（`cu126`、`cu130`、`cu132`）を入れてください。ローカルの CUDA toolkit は要りません |
-| `--mep-mode dmf` が `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` で止まる、または `No module named 'dmf'` | `cyipopt` が無い、または `pydmf` の GPU 用の部分が無い | `conda install -c conda-forge cyipopt` を、できれば `pdb2reaction` を入れる前に実行してください。`pydmf` は `pdb2reaction` と一緒に入ります。デフォルトの GPU 版 DMF でそれでもインポートに失敗するときは、エラーの文が勧めるとおり `pip install 'pydmf[torch]'` を実行してください |
+| `--mep-mode dmf` が `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` で止まる、または `No module named 'dmf'` | `cyipopt` が無い、または `pydmf` の GPU 用の部分が無い | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください。`pydmf` は `pdb2reaction` と一緒に入ります。デフォルトの GPU 版 DMF でそれでもインポートに失敗するときは、エラーの文が勧めるとおり `pip install 'pydmf[torch]'` を実行してください |
 | 図の出力に失敗する（Plotly / Chrome） | ヘッドレス Chrome が無い | `plotly_get_chrome -y` を一度実行してください |
 
 ### DMF が IPOPT 内で極端に遅い

@@ -591,7 +591,7 @@ The default imaginary-mode criterion is ν < −5.00 cm⁻¹. `freq`, `opt`
 `hessian_dimer.neg_freq_thresh_cm` or `rsirfo.saddle_imaginary_threshold_cm`;
 if two of the three keys are set explicitly to different values, the run stops
 with an error. `n_negative_modes` also counts the negative
-frequencies between −`zero_cutoff_cm` and 0, which n_imag does not count. It does not decide
+frequencies between −`zero_cutoff_cm` and 0, which n_imag does not count. `n_negative_modes` does not decide
 whether an optimization has converged. Whatever the cutoff, the output keeps
 every signed frequency, and thermochemistry uses every positive mode.
 

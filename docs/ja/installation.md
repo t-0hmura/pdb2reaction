@@ -15,7 +15,7 @@
 # 4) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
 #    Chromium のバイナリをダウンロード（インターネット接続が必要）
 
-conda create -n p2r python=3.12 -y
+conda create -n p2r -c conda-forge --override-channels python=3.12 -y
 conda activate p2r
 
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # 推奨。cu126 / cu132 なら末尾を置き換え
@@ -38,7 +38,16 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ### 任意
 
-DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 3 で cyipopt も導入してください。ORB・AIMNet2・MACE・DFT の導入は同じ節の手順 7 を参照してください。
+DMF（`--mep-mode dmf`）か `--solvent`（xTB）を使う場合は、代わりに cyipopt・xTB・PyTorch を conda-forge から入れて環境を作り、pdb2reaction を導入します:
+
+```bash
+conda create -n p2r -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda activate p2r
+pip install pdb2reaction
+plotly_get_chrome -y
+```
+
+`nvidia-smi` の `CUDA Version` が 13.0 より小さいときは、`cuda130` を `cuda129` に置き換えてください。ORB・AIMNet2・MACE・DFT の導入は {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 を参照してください。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -56,20 +65,20 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
 2. **conda 環境を作成してアクティブ化**
 
     ```bash
-    conda create -n <your-env> python=3.12 -y
+    conda create -n <your-env> -c conda-forge --override-channels python=3.12 -y
     conda activate <your-env>
     ```
 
-3. **cyipopt をインストール**
-    `--mep-mode dmf`（DMF 法）で MEP を探索するときに必要です。GSM のみを使用する場合はスキップできます。それでも `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
+3. **cyipopt・xTB・PyTorch を conda-forge からインストール**
+    `--mep-mode dmf`（DMF 法）で MEP を探索するときと、xTB の溶媒補正（`--solvent`）を使うときに必要です。この手順で PyTorch も入るので、手順 4 は飛ばします。GSM のみを使い `--solvent` も使わない場合はスキップできます。それでも `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
 
     ```bash
-    conda install -c conda-forge cyipopt -y
+    conda install -c conda-forge --override-channels cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y   # nvidia-smi の CUDA が 13.0 より小さいなら cuda129
     ```
 
 4. **適切な CUDA ビルドの PyTorch をインストール**
 
-    推奨の例（`cu130`）:
+    手順 3 で PyTorch を入れた場合は、この手順を飛ばします。推奨の例（`cu130`）:
 
     ```bash
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
@@ -118,7 +127,7 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
     **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。環境の名前 `mace-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
-    conda create -n mace-env python=3.11 -y
+    conda create -n mace-env -c conda-forge --override-channels python=3.11 -y
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
@@ -126,7 +135,7 @@ DMF を使う場合は、環境をアクティブ化した直後に、{ref}`詳�
     pip install 'mace-torch>=0.3.8'
     ```
 
-    **DFT**（`-b dft`、`--dft`、`pdb2reaction dft`）: `[dft]` は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 の PyTorch 向け）。cu126 の wheel を使うときは、代わりに `[dft-cuda12]` を導入します。aarch64 では [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) をソースからビルドしてください。GPU のない環境でも `[dft]` で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。
+    **DFT**（`-b dft`、`--dft`、`pdb2reaction dft`）: `[dft]` は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 と、手順 3 の `cuda130` の PyTorch 向け）。cu126 の wheel か `cuda129` のビルドを使うときは、代わりに `[dft-cuda12]` を導入します。aarch64 では [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) をソースからビルドしてください。GPU のない環境でも `[dft]` で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。
 
     ```bash
     pip install "pdb2reaction[dft]"

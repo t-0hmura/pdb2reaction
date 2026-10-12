@@ -131,7 +131,7 @@ result_path_opt/
 ## 使用上の注意点
 
 * **DMF では固定原子が少し動く**: DMF は固定原子をその場に止めず、YAML の `dmf.k_fix`（300 eV/Å²）の調和拘束で保持するので、参照位置からわずかにずれることがあります。GSM では固定されたままです。{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
-* **DMF には `cyipopt` が必要**: `--mep-mode dmf` を使う前に conda-forge からインストールしてください。`pydmf` は `pdb2reaction` に同梱されています。デフォルトの `--dmf-backend gpu` は CUDA が使えないとエラーで停止します。その場合と GPU のメモリ不足のときは `--dmf-backend cpu` を指定してください。
+* **DMF には `cyipopt` が必要**: `--mep-mode dmf` を使う前に、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 3 のとおり PyTorch と一緒に conda-forge からインストールしてください。`pydmf` は `pdb2reaction` に同梱されています。デフォルトの `--dmf-backend gpu` は CUDA が使えないとエラーで停止します。その場合と GPU のメモリ不足のときは `--dmf-backend cpu` を指定してください。
 * **DMF と陰溶媒は併用できない**: MLIP バックエンドで `--mep-mode dmf` と `--solvent` を同時に指定すると、エラーで停止します。溶媒を入れた経路には GSM を使ってください。
 * **DMF で使われないオプション**: `--climb`・`--dump`・`--fix-ends` は、指定しても DMF では使われません。
 * **YAML のオプティマイザ設定の矛盾**: 同じ YAML ファイルの中で、同じキーを `opt:` と実際に動くオプティマイザの節（`lbfgs:`・`opt.lbfgs:`・`stopt.lbfgs:`、または `rfo` の同等の節）とで別の値にすると、エラーで停止します。

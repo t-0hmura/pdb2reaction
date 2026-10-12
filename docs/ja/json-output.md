@@ -58,7 +58,7 @@ cat result_opt/result.json | python -m json.tool
 | `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別の結果。 |
 | `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan の点ごとの結果。 |
 
-### エラー時の欄（`execution_status == "failed"` のとき）
+### エラー時の欄（コマンドが例外で停止した場合）
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|

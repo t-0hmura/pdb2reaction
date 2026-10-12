@@ -12,7 +12,7 @@ orphan: true
 <img src="../overview.jpg" alt="pdb2reaction ワークフロー概要" class="p2r-hero-figure">
 
 {.p2r-tagline}
-**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP）を使用して、酵素複合体などの PDB 構造や小分子の XYZ 構造などから反応機構解析を行うための Python 製 CLI ツールキットです。
+**pdb2reaction** は、酵素複合体や小分子を対象として、機械学習原子間ポテンシャル（MLIP）を用いて PDB/mmCIF/XYZ/GJF の構造から反応機構を解析する Python 製 CLI ツールキットです。
 
 {.p2r-lead}
 初めての方は [はじめに](getting-started.md) からお読みください。

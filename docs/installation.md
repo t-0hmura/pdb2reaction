@@ -15,7 +15,7 @@
 # 4) Install headless Chrome for Plotly static image export (PNG)
 #    Downloads a Chromium binary; requires internet access.
 
-conda create -n p2r python=3.12 -y
+conda create -n p2r -c conda-forge --override-channels python=3.12 -y
 conda activate p2r
 
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # recommended; for cu126 / cu132, change the end
@@ -38,7 +38,16 @@ Check the installation with `pdb2reaction --version`, which prints the installed
 
 ### Optional
 
-For DMF, also install cyipopt right after activating the environment, as in step 3 of {ref}`Step-by-step installation <step-by-step-installation>`. ORB, AIMNet2, MACE, and DFT are installed in step 7 of the same section.
+For DMF (`--mep-mode dmf`) or `--solvent` (xTB), create the environment instead with cyipopt, xTB, and PyTorch from conda-forge, then install pdb2reaction:
+
+```bash
+conda create -n p2r -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda activate p2r
+pip install pdb2reaction
+plotly_get_chrome -y
+```
+
+If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cuda129`. ORB, AIMNet2, MACE, and DFT are installed in step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
 
 (step-by-step-installation)=
 ## Step-by-step installation
@@ -58,20 +67,20 @@ If you prefer to build the environment piece by piece:
 2. **Create and activate a conda environment**
 
     ```bash
-    conda create -n <your-env> python=3.12 -y
+    conda create -n <your-env> -c conda-forge --override-channels python=3.12 -y
     conda activate <your-env>
     ```
 
-3. **Install cyipopt**
-    Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search. You can skip this step if you only use GSM. If `--mep-mode dmf` still stops with an import error, see {ref}`Installation / environment <installation-environment-problems>`.
+3. **Install cyipopt, xTB, and PyTorch from conda-forge**
+    Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search or the xTB solvent correction (`--solvent`); this step also installs PyTorch, so skip step 4. You can skip this step if you only use GSM without `--solvent`. If `--mep-mode dmf` still stops with an import error, see {ref}`Installation / environment <installation-environment-problems>`.
 
     ```bash
-    conda install -c conda-forge cyipopt -y
+    conda install -c conda-forge --override-channels cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y   # cuda129 if nvidia-smi shows CUDA below 13.0
     ```
 
 4. **Install PyTorch with the right CUDA build**
 
-    Recommended example (`cu130`):
+    Skip this step if you installed PyTorch in step 3. Recommended example (`cu130`):
 
     ```bash
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
@@ -121,7 +130,7 @@ If you prefer to build the environment piece by piece:
     **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may rename the environment `mace-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
-    conda create -n mace-env python=3.11 -y
+    conda create -n mace-env -c conda-forge --override-channels python=3.11 -y
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
@@ -129,7 +138,7 @@ If you prefer to build the environment piece by piece:
     pip install 'mace-torch>=0.3.8'
     ```
 
-    **DFT** (`-b dft`, `--dft`, `pdb2reaction dft`): `[dft]` installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132 PyTorch wheels of step 4; with the cu126 wheel, install `[dft-cuda12]` instead. On aarch64, build [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) from source. Without a GPU, `[dft]` still installs PySCF; run DFT with `--dft-engine cpu`.
+    **DFT** (`-b dft`, `--dft`, `pdb2reaction dft`): `[dft]` installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132 PyTorch wheels of step 4 and the `cuda130` build of step 3; with the cu126 wheel or the `cuda129` build, install `[dft-cuda12]` instead. On aarch64, build [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) from source. Without a GPU, `[dft]` still installs PySCF; run DFT with `--dft-engine cpu`.
 
     ```bash
     pip install "pdb2reaction[dft]"

@@ -8,7 +8,7 @@
 <img src="./overview.jpg" alt="pdb2reaction workflow overview" class="p2r-hero-figure">
 
 {.p2r-tagline}
-**pdb2reaction** is a Python CLI toolkit for reaction-mechanism analysis from structures such as PDB files of enzyme complexes and XYZ files of small molecules, using machine-learning interatomic potentials (MLIPs).
+**pdb2reaction** is a Python CLI toolkit for analyzing reaction mechanisms in enzyme complexes and small molecules with machine-learning interatomic potentials (MLIPs), starting from **PDB/mmCIF/XYZ/GJF** structures.
 
 {.p2r-lead}
 New to pdb2reaction? Start with [Getting Started](getting-started.md).

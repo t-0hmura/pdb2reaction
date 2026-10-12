@@ -65,7 +65,7 @@ Every result reports `execution_status` and `scientific_status`; multi-stage and
 | `stage_outcomes` | object[] | One entry per stage with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |
 | `point_outcomes` | object[] | Scan points with `point_id`, `executed`, `converged`, `energy_valid`, `artifact_written`, `seed_eligible`, and `reason`. |
 
-### Error fields (when `execution_status == "failed"`)
+### Error fields (when a command stops on an exception)
 
 | Field | Type | Description |
 |-------|------|-------------|
