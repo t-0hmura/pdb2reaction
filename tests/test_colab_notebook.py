@@ -1345,6 +1345,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "app.style.setProperty('--rx-fit-h',height+'px');" in app
     assert "app.style.setProperty('--rx-view-h',want+'px');" in app
     assert "  syncFitHeight();\n  setInterval(syncFitHeight,500);\n  resizeColabFrame();" in app
+    # The viewer column's CSS resize grip sets its height; the viewer then follows it.
+    assert ".rxapp.rxfit .rxviewer { resize:vertical; overflow:hidden !important; min-height:352px; }" in app
+    assert "      if(col&&col.style.height){" in app
     assert "overflow-y:auto !important; overflow-x:hidden !important;" in app
     assert "scrollbar-gutter:auto; scrollbar-width:auto; scrollbar-color:#2563eb #dbeafe;" in app
     assert ".rxinspector::-webkit-scrollbar { width:14px; }" in app
