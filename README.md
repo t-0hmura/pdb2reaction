@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/_static/pdb2reaction-logo-dark.svg">
-    <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/_static/pdb2reaction-logo.svg" alt="pdb2reaction" width="520">
-  </picture>
+  <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/_static/pdb2reaction-logo-plate.svg" alt="pdb2reaction" width="546">
 </p>
 
 # `pdb2reaction`: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials
