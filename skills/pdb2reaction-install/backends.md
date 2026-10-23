@@ -157,7 +157,7 @@ individual models are checkpoint files inside that repo, not separate repos.
 
 Pick a model with `--backend-model` or `calc.model` in a `--config` YAML:
 `uma-s-1p2p1` (default), `uma-s-1p2p1-ft-d4rev` (ωB97M-D4rev, `omol` only, do not add
-dispersion), `uma-s-1p2`, or `uma-m-1p1`. `p` replaces the decimal point
+dispersion, fairchem-core >= 2.24), `uma-s-1p2`, or `uma-m-1p1`. `p` replaces the decimal point
 (`1p2p1` is 1.2.1). The `facebook/UMA` repo is the authoritative checkpoint list.
 UMA runs in fp32 by default; `--precision fp64` also forces an fp64 Hessian and
 can change TS optimization and Hessian numerics.
@@ -240,7 +240,7 @@ the uninstall and install and the smoke check afterwards. If UMA and MACE end up
 in one env, imports fail with an `e3nn` version error; remove the env with
 `conda env remove -n <YOUR_MACE_ENV>` and rebuild it.
 
-The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model`. MACE has no multi-GPU sharding, and the first call can include download, model
+The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model` and also needs `pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4`. MACE has no multi-GPU sharding, and the first call can include download, model
 loading, and runtime start-up. A model being available does not put a reaction
 inside its reliable domain; validate stationary points with an independent
 frequency calculation and IRC.

@@ -38,12 +38,14 @@ Models besides the defaults:
 
 - `uma-s-1p2p1-ft-d4rev`: UMA-S-1.2.1 fine-tuned at ωB97M-D4rev on about 4M OMol25
   structures. Dispersion is included, so do not add a dispersion correction; it
-  has the `omol` task only and ships no isolated-atom reference energies.
+  has the `omol` task only, ships no isolated-atom reference energies, and needs
+  fairchem-core >= 2.24.
 - `orb_v3_conservative_omol`: OrbMol-v1. `orbmol-v2` (the default) adds learnable
   per-atom charges with a long-range Coulomb term and was trained on OMol25 and
   OPoly26; it needs orb-models >= 0.7.0 (Python 3.12 or newer).
 - `MACE-POLAR-1-S` / `-M` / `-L`: trained on OMol25 with long-range electrostatics
-  from learned charge and spin densities; they need mace-torch >= 0.3.16.
+  from learned charge and spin densities; they need mace-torch >= 0.3.16 and
+  `pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4`.
 - AIMNet2: `aimnet2` (wB97M-D3, the default) and `aimnet2-2025` (improved B97-3c)
   are closed-shell only; `aimnet2-nse` handles open-shell systems with the
   multiplicity from `-m`; `aimnet2-pd` covers Pd, has CPCM(THF) solvation built

@@ -31,9 +31,9 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 デフォルト以外のモデル：
 
-- `uma-s-1p2p1-ft-d4rev`：UMA-S-1.2.1 を OMol25 の約 400 万構造で ωB97M-D4rev に fine-tune したモデルです。分散力を含むので、分散補正を足さないでください。タスクは `omol` だけで、孤立原子の参照エネルギーはありません。
+- `uma-s-1p2p1-ft-d4rev`：UMA-S-1.2.1 を OMol25 の約 400 万構造で ωB97M-D4rev に fine-tune したモデルです。分散力を含むので、分散補正を足さないでください。タスクは `omol` だけで、孤立原子の参照エネルギーはなく、fairchem-core 2.24 以上が要ります。
 - `orb_v3_conservative_omol`：OrbMol-v1 です。デフォルトの `orbmol-v2` は、原子ごとに学習する電荷と長距離の Coulomb 項を加え、OMol25 と OPoly26 で学習したモデルで、orb-models 0.7.0 以上（Python 3.12 以上）が要ります。
-- `MACE-POLAR-1-S`・`-M`・`-L`：OMol25 で学習し、学習した電荷と spin の密度から長距離の静電を計算します。mace-torch 0.3.16 以上が要ります。
+- `MACE-POLAR-1-S`・`-M`・`-L`：OMol25 で学習し、学習した電荷と spin の密度から長距離の静電を計算します。mace-torch 0.3.16 以上と `pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4` が要ります。
 - AIMNet2：`aimnet2`（wB97M-D3、デフォルト）と `aimnet2-2025`（改良した B97-3c）は閉殻だけです。`aimnet2-nse` は開殻の系を `-m` の多重度で扱います。`aimnet2-pd` は Pd を扱い、CPCM（THF）の溶媒をモデルに含み、閉殻だけです。
 
 実行時には、読み込むバックエンドとモデルが `[backend] Preparing MLIP model (<backend> / <model>)...` の形で表示されます。デフォルトのモデルでは括弧の中が `UMA / UMA-S-1.2.1 (OMol)`、`ORB / OrbMol-v2`、`MACE / MACE-OMOL-0`、`AIMNet2 / aimnet2` になります。

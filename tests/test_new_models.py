@@ -102,3 +102,19 @@ def test_mace_polar_names_route_to_mace_polar(monkeypatch, spec, key) -> None:
     calc.device_str, calc.default_dtype = "cpu", "float64"
     assert calc._build_calc(spec) == "polar-calc"
     assert captured == {"model": key, "device": "cpu", "default_dtype": "float64"}
+
+
+@pytest.mark.parametrize(
+    ("backend", "model", "expected"),
+    [
+        ("orb", "orbmol-v2", {"orb_v3", "omol25"}),
+        ("orb", "orb_v3_conservative_omol", {"orb_v3", "omol25"}),
+        ("mace", "MACE-POLAR-1-M", {"mace", "mace_design", "omol25"}),
+        ("uma", "uma-s-1p2p1-ft-d4rev", {"uma", "omol25"}),
+    ],
+)
+def test_new_models_cite_their_model_and_dataset(backend, model, expected) -> None:
+    from pdb2reaction.io.summary import _method_citation_record_keys
+
+    keys = set(_method_citation_record_keys({"mlip_backend": backend, "mlip_model": model}))
+    assert expected <= keys

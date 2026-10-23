@@ -13,7 +13,7 @@ _No changes yet._
 ### Added
 
 - Add `--precision tf32`: TF32 matrix multiplications for UMA (UMA Nitro where fairchem-core provides it) and ORB (`float32-high`), for screening; MACE and AIMNet2 reject it.
-- Support the `uma-s-1p2p1-ft-d4rev` UMA fine-tune (ωB97M-D4rev), the ORB `orbmol-v2` model (conservative, with learnable long-range electrostatics; orb-models >= 0.7.0), and `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16); document the AIMNet2 `aimnet2-2025`, `aimnet2-nse` and `aimnet2-pd` models.
+- Support the `uma-s-1p2p1-ft-d4rev` UMA fine-tune (ωB97M-D4rev; fairchem-core >= 2.24), the ORB `orbmol-v2` model (conservative, with learnable long-range electrostatics; orb-models >= 0.7.0), and `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16 with graph_electrostatics); document the AIMNet2 `aimnet2-2025`, `aimnet2-nse` and `aimnet2-pd` models.
 
 ### Changed
 
