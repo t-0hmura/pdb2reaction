@@ -94,7 +94,8 @@ ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
     # force noise inflates finite-difference Hessians into spurious imaginary
     # modes. Mirrors backends._BACKEND_DEFAULT_PRECISION["orb"] = "fp64".
     "precision": "float64",
-    "compile_model": False,
+    # None leaves compilation to orb-models, which compiles on CUDA and CPU.
+    "compile_model": None,
 }
 
 MACE_BACKEND_DEFAULTS: Dict[str, Any] = {

@@ -6,7 +6,7 @@ The install order, verification, and the failure table are in
 
 ## Core package
 
-- Python 3.11 or newer; 3.12 is recommended. ORB needs 3.11 or 3.12.
+- Python 3.12.
 - PyPI install: [Install order](SKILL.md#install-order). PyTorch must be
   installed first ([CUDA and PyTorch](#cuda-and-pytorch)).
 - DMF: create the env with `cyipopt` and PyTorch from conda-forge
@@ -44,7 +44,7 @@ dependencies:
 
 `<cu_index>` is one of `cu126`, `cu130`, `cu132`, and `cpu`; with `cu126`,
 write `pdb2reaction[orb,aimnet,dft-cuda12]`. For MACE, use the
-same template with `python=3.11` and plain `pdb2reaction`, then do the swap in
+same template with plain `pdb2reaction`, then do the swap in
 [MACE](#mace-separate-environment) inside the new env.
 
 ## CUDA and PyTorch
@@ -192,8 +192,8 @@ Pitfalls:
 
 ## ORB
 
-Use Python 3.12 (orb-models 0.7 or newer) or 3.11 (orb-models 0.5.x). Weights
-download on first use, with no login.
+The `[orb]` extra installs orb-models 0.7 or newer. Weights download on first
+use, with no login.
 
 ```bash
 pip install 'pdb2reaction[orb]'   # or: pip install orb-models
@@ -201,8 +201,7 @@ python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
 
-The default model is `orbmol-v2` (OrbMol-v2, needs orb-models >= 0.7.0 on Python
-3.12+): a conservative model, so forces are derived from the energy, trained on
+The default model is `orbmol-v2` (OrbMol-v2): a conservative model, so forces are derived from the energy, trained on
 OMol25 and OPoly26 with learnable charges and a long-range Coulomb term.
 `orb_v3_conservative_omol` selects OrbMol-v1. The names describe the model
 family, not its accuracy for a given reaction. pdb2reaction runs ORB
@@ -224,7 +223,7 @@ Pitfalls:
 so MACE needs its own env. UMA does not run there.
 
 ```bash
-conda create -n <YOUR_MACE_ENV> python=3.11 -y
+conda create -n <YOUR_MACE_ENV> python=3.12 -y
 conda activate <YOUR_MACE_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 pip install pdb2reaction                 # pulls fairchem-core

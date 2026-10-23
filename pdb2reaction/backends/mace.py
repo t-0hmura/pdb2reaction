@@ -257,7 +257,15 @@ class MACECalculator(MLIPCalculator):
                 from mace.calculators.foundations_models import mace_polar
             except ImportError as exc:
                 raise BackendError("MACE-POLAR-1 needs mace-torch >= 0.3.16.") from exc
-            return mace_polar(model=polar_key, device=self.device_str, default_dtype=self.default_dtype)
+            try:
+                return mace_polar(model=polar_key, device=self.device_str, default_dtype=self.default_dtype)
+            except ModuleNotFoundError as exc:
+                if exc.name != "graph_longrange":
+                    raise
+                raise BackendError(
+                    "MACE-POLAR-1 needs graph_electrostatics: "
+                    "pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4"
+                ) from exc
 
         # Local file / URL
         if os.path.exists(spec) or spec.startswith("http://") or spec.startswith("https://"):

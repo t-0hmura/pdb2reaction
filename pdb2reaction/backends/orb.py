@@ -97,7 +97,7 @@ class OrbCalculator(MLIPCalculator):
         # finite-difference Hessians.  Callers may request "float32-high"
         # explicitly for screening.
         precision: str = "float64",
-        compile_model: bool = False,
+        compile_model: Optional[bool] = None,
         # Base class parameters
         charge: int = 0,
         spin: int = 1,
@@ -141,7 +141,8 @@ class OrbCalculator(MLIPCalculator):
 
         self.model_name = str(model)
         self.precision = _normalize_orb_precision(precision)
-        self.compile_model = bool(compile_model)
+        # None leaves compilation to orb-models (compiled on CUDA and CPU).
+        self.compile_model = None if compile_model is None else bool(compile_model)
 
         if not _is_conservative_orb_model(self.model_name):
             raise BackendError(
@@ -420,7 +421,7 @@ class OrbASECalculator:
         model: str = DEFAULT_ORB_MODEL,
         device: str = "auto",
         precision: str = "float64",
-        compile_model: bool = False,
+        compile_model: Optional[bool] = None,
     ):
         calc = OrbCalculator(
             model=model, device=device, precision=precision,

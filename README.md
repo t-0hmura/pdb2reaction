@@ -46,7 +46,7 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ## Installation
 
-Requirements: Linux, Python 3.11 or later (3.12 recommended; ORB requires 3.11 or 3.12), and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). Details: [docs/installation.md](docs/installation.md).
+Requirements: Linux, Python 3.12, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). Details: [docs/installation.md](docs/installation.md).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
@@ -180,7 +180,7 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
 - **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
 - **DFT** is practical up to about **500 atoms for a single point** and about **300 atoms for an optimization** on an HPC GPU, and up to about **200 atoms on a consumer GPU** (ωB97M-V/def2-SVP, the default; from experience).
-- **MACE and ORB need fp64** (`--precision fp64`, their default); in fp32, extra imaginary modes appear more often. fp64 is slow on consumer GPUs: on HPC GPUs, ORB in fp64 is very cost-effective, and on a consumer GPU, UMA in fp32 gives the best balance.
+- **MACE and ORB need fp64** (`--precision fp64`, their default); with MACE in fp32 or ORB in tf32, extra imaginary modes appear more often. fp64 is slow on consumer GPUs: on HPC GPUs, ORB in fp64 is very cost-effective, and on a consumer GPU, UMA in fp32 gives the best balance.
 - **CPU-only execution** is supported but usually **much slower than GPU**.
 - The bundled pysisyphus is a modified fork; do not install upstream pysisyphus in the same environment.
 

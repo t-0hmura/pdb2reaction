@@ -15,7 +15,7 @@ license-files = [
     "thermoanalysis/LICENSE",
 ]
 dynamic = ["version"]
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.13"
 keywords = [
     "computational-chemistry",
     "enzyme",
@@ -27,7 +27,6 @@ keywords = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Development Status :: 4 - Beta",
     "Topic :: Scientific/Engineering :: Chemistry",
@@ -70,9 +69,8 @@ dependencies = [
 
 [project.optional-dependencies]
 orb = [
-    # orb-models >=0.6 requires Python >=3.12; 0.5.x is the last 3.11-capable line.
-    "orb-models>=0.7.0; python_version >= '3.12'",
-    "orb-models>=0.5.5,<0.6; python_version < '3.12'",
+    # orb-models 0.7 provides orbmol-v2, the default ORB model.
+    "orb-models>=0.7.0",
 ]
 aimnet = ["aimnet>=0.2.0"]
 # NOTE: MACE is intentionally NOT exposed as a `[mace]` extra — `mace-torch`

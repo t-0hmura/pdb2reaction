@@ -17,7 +17,7 @@ when `pdb2reaction --version` prints the version and the smoke check in
 1. On a new or unknown host, run the probes in
    [backends.md](backends.md#probe-the-compute-environment) first.
 2. Create a conda env with Python 3.12 from conda-forge; pdb2reaction needs
-   3.11 or newer, and ORB needs 3.11 or 3.12. If you will use DMF
+   Python 3.12. If you will use DMF
    (`--mep-mode dmf`) or `--solvent`, create it with `cyipopt`, `xtb`, and
    PyTorch from conda-forge instead (below) and skip step 3; `pydmf` comes with
    pdb2reaction.
@@ -68,7 +68,7 @@ different `e3nn` versions.
 | `-b` | Default model | Install | Notes |
 |---|---|---|---|
 | `uma` (default) | `uma-s-1p2p1`; `uma-s-1p2p1-ft-d4rev`, `uma-s-1p2`, `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
-| `orb` | `orbmol-v2` (orb-models >= 0.7.0, Python 3.12+); `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra | fp64 by default |
+| `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra | fp64 by default |
 | `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16) via `--backend-model` | Separate env | fp64 by default |
 | `aimnet2` | `aimnet2`; `aimnet2-2025`, `aimnet2-nse` (open-shell), `aimnet2-pd` via `--backend-model` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
 

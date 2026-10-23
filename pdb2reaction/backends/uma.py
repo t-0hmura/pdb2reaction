@@ -115,6 +115,17 @@ def _uma_inference_settings(precision: str, *, analytical_hessian: bool, paralle
     return _UMAInferenceSettings(**kwargs)
 
 
+def _uma_reference_energies(model: str, reference_type: str):
+    """Reference energies for the parallel predictor, or None when the
+    checkpoint ships none (e.g. uma-s-1p2p1-ft-d4rev), as FAIR-Chem's own
+    loader does."""
+    registry = getattr(getattr(pretrained_mlip, "_MODEL_CKPTS", None), "checkpoints", {})
+    entry = registry.get(model) if hasattr(registry, "get") else None
+    if entry is not None and getattr(entry, reference_type, None) is None:
+        return None
+    return pretrained_mlip.get_reference_energies(model, reference_type=reference_type)
+
+
 def _verify_uma_precision(predictor: Any, precision: str) -> None:
     """Fail if the loaded predictor does not run the requested matmul mode."""
     settings = getattr(predictor, "inference_settings", None)
@@ -261,8 +272,8 @@ class UMAcore:
                     "includes `fairchem-core[extras]`."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
-            form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
+            atom_refs = _uma_reference_energies(model, "atom_refs")
+            form_elem_refs = _uma_reference_energies(model, "form_elem_refs")
             self.predict = ParallelMLIPPredictUnit(
                 inference_model_path=str(ckpt_path),
                 device=self.device_str,
@@ -810,8 +821,8 @@ class UMAASECalculator(FAIRChemCalculator):
                     "from fairchem."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
-            form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
+            atom_refs = _uma_reference_energies(model, "atom_refs")
+            form_elem_refs = _uma_reference_energies(model, "form_elem_refs")
             predictor = ParallelMLIPPredictUnit(
                 inference_model_path=str(ckpt_path),
                 device=device,

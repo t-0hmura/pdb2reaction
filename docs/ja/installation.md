@@ -112,7 +112,7 @@ plotly_get_chrome -y
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
-    **ORB**（Python 3.11／3.12 が必要、3.12 推奨）:
+    **ORB**:
 
     ```bash
     pip install "pdb2reaction[orb]"
@@ -127,7 +127,7 @@ plotly_get_chrome -y
     **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。環境の名前 `mace-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
-    conda create -n mace-env -c conda-forge --override-channels python=3.11 -y
+    conda create -n mace-env -c conda-forge --override-channels python=3.12 -y
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction

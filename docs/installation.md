@@ -115,7 +115,7 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB** (requires Python 3.11 or 3.12; 3.12 recommended):
+    **ORB**:
 
     ```bash
     pip install "pdb2reaction[orb]"
@@ -130,7 +130,7 @@ If you prefer to build the environment piece by piece:
     **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may rename the environment `mace-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
-    conda create -n mace-env -c conda-forge --override-channels python=3.11 -y
+    conda create -n mace-env -c conda-forge --override-channels python=3.12 -y
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction

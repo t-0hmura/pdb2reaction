@@ -42,14 +42,15 @@ Models besides the defaults:
   fairchem-core >= 2.24.
 - `orb_v3_conservative_omol`: OrbMol-v1. `orbmol-v2` (the default) adds learnable
   per-atom charges with a long-range Coulomb term and was trained on OMol25 and
-  OPoly26; it needs orb-models >= 0.7.0 (Python 3.12 or newer).
-- `MACE-POLAR-1-S` / `-M` / `-L`: trained on OMol25 with long-range electrostatics
-  from learned charge and spin densities; they need mace-torch >= 0.3.16 and
+  OPoly26.
+- `MACE-POLAR-1-S` / `-M` / `-L`: trained on OMol25 at ωB97M-V with long-range
+  electrostatics from learned charge and spin densities, for any total charge and
+  spin; they need mace-torch >= 0.3.16 and
   `pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4`.
 - AIMNet2: `aimnet2` (wB97M-D3, the default) and `aimnet2-2025` (improved B97-3c)
   are closed-shell only; `aimnet2-nse` handles open-shell systems with the
-  multiplicity from `-m`; `aimnet2-pd` covers Pd, has CPCM(THF) solvation built
-  into the model, and is closed-shell only.
+  multiplicity from `-m`; `aimnet2-pd` (B97-3c) covers Pd, has CPCM(THF)
+  solvation built into the model, and is closed-shell only.
 
 The run prints the backend and model it loads as
 `[backend] Preparing MLIP model (<backend> / <model>)...`. With the default
@@ -364,8 +365,8 @@ To add a built-in backend with its own `--backend` name, follow recipe 3.2
   the result.
 - With UMA, `--precision tf32` runs FAIR-Chem's UMA Nitro where the installed
   fairchem-core provides it (the `uma-s-1p2p1` checkpoints, one worker); other
-  checkpoints run the compiled path with TF32, and FAIR-Chem logs
-  `Running in a reduced-precision mode`.
+  checkpoints run the compiled path with TF32. FAIR-Chem logs
+  `Running in a reduced-precision mode` for every tf32 run on a GPU.
 - AIMNet2 supports neither `--precision fp64` nor `--deterministic`; both stop
   the run with an error. AIMNet2 casts its model inputs to float32, and it
   computes forces with its own CUDA code outside PyTorch's deterministic mode,

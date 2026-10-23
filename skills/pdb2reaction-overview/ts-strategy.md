@@ -8,7 +8,7 @@ Read this page when you study a reaction mechanism with pdb2reaction: from a hyp
 
 - `--precision fp32|fp64` is accepted by UMA, ORB, and MACE; AIMNet2 accepts fp32 only. `--precision tf32` (TF32 matmul, UMA and ORB only) is for screening, not for TS optimization, frequencies, or IRC. Left unset, each backend keeps its default: `uma` fp32, `orb` fp64, `mace` fp64, `aimnet2` fp32.
 - For UMA, fp64 can change TS optimization and Hessian behaviour, and its speed cost depends on the hardware and model; before production, compare both settings on your system and time one Hessian in each precision on the production GPU.
-- fp64 is slow on consumer GPUs, where UMA in fp32 gives the best balance; on HPC GPUs, ORB in fp64 is cost-effective. ORB and MACE in fp32 leave extra imaginary modes more often.
+- fp64 is slow on consumer GPUs, where UMA in fp32 gives the best balance; on HPC GPUs, ORB in fp64 is cost-effective. ORB in tf32 and MACE in fp32 leave extra imaginary modes more often.
 - Precision is not proof of a saddle; check n_imag and the IRC endpoints with either setting.
 - `--deterministic` requests run-to-run repeatability on the same software and hardware; it does not increase
   numerical precision, remove physical imaginary modes, or guarantee identical

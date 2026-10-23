@@ -118,3 +118,50 @@ def test_new_models_cite_their_model_and_dataset(backend, model, expected) -> No
 
     keys = set(_method_citation_record_keys({"mlip_backend": backend, "mlip_model": model}))
     assert expected <= keys
+
+
+def test_orb_compilation_is_left_to_orb_models() -> None:
+    from pdb2reaction.backends.orb import OrbASECalculator, OrbCalculator
+
+    assert defaults.ORB_BACKEND_DEFAULTS["compile_model"] is None
+    for factory in (OrbCalculator.__init__, OrbASECalculator.__new__):
+        assert inspect.signature(factory).parameters["compile_model"].default is None
+
+
+def test_uma_reference_energies_skip_checkpoints_without_them(monkeypatch) -> None:
+    import pdb2reaction.backends.uma as uma_module
+
+    registry = {
+        "uma-s-1p2p1": SimpleNamespace(atom_refs={"f": 1}, form_elem_refs={"f": 2}),
+        "uma-s-1p2p1-ft-d4rev": SimpleNamespace(atom_refs=None, form_elem_refs=None),
+    }
+    fetched = []
+    fake = SimpleNamespace(
+        _MODEL_CKPTS=SimpleNamespace(checkpoints=registry),
+        get_reference_energies=lambda model, reference_type: fetched.append((model, reference_type)) or {"ok": 1},
+    )
+    monkeypatch.setattr(uma_module, "pretrained_mlip", fake)
+    assert uma_module._uma_reference_energies("uma-s-1p2p1-ft-d4rev", "atom_refs") is None
+    assert uma_module._uma_reference_energies("uma-s-1p2p1", "form_elem_refs") == {"ok": 1}
+    assert fetched == [("uma-s-1p2p1", "form_elem_refs")]
+
+
+def test_mace_polar_without_graph_electrostatics_names_the_package(monkeypatch) -> None:
+    from pdb2reaction.backends.mace import MACECalculator
+
+    def missing(**_kw):
+        raise ModuleNotFoundError("No module named 'graph_longrange'", name="graph_longrange")
+
+    calculators = ModuleType("mace.calculators")
+    for name in ("mace_anicc", "mace_mp", "mace_off", "mace_omol"):
+        setattr(calculators, name, lambda **_kw: None)
+    foundations = ModuleType("mace.calculators.foundations_models")
+    foundations.mace_mp_urls = {}
+    foundations.mace_polar = missing
+    monkeypatch.setitem(sys.modules, "mace", ModuleType("mace"))
+    monkeypatch.setitem(sys.modules, "mace.calculators", calculators)
+    monkeypatch.setitem(sys.modules, "mace.calculators.foundations_models", foundations)
+    calc = object.__new__(MACECalculator)
+    calc.device_str, calc.default_dtype = "cpu", "float64"
+    with pytest.raises(BackendError, match="graph_electrostatics"):
+        calc._build_calc("MACE-POLAR-1-M")
