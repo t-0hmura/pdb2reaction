@@ -156,8 +156,9 @@ account has been granted access on `facebook/UMA`, then log in again. The
 individual models are checkpoint files inside that repo, not separate repos.
 
 Pick a model with `--backend-model` or `calc.model` in a `--config` YAML:
-`uma-s-1p2` (default) or `uma-m-1p1`. `p` replaces the decimal point
-(`1p2` is 1.2). The `facebook/UMA` repo is the authoritative checkpoint list.
+`uma-s-1p2p1` (default), `uma-s-1p2p1-ft-d4rev` (ωB97M-D4rev, `omol` only, do not add
+dispersion), `uma-s-1p2`, or `uma-m-1p1`. `p` replaces the decimal point
+(`1p2p1` is 1.2.1). The `facebook/UMA` repo is the authoritative checkpoint list.
 UMA runs in fp32 by default; `--precision fp64` also forces an fp64 Hessian and
 can change TS optimization and Hessian numerics.
 
@@ -200,9 +201,11 @@ python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
 
-The default model is `orb_v3_conservative_omol`: `conservative` means forces
-are derived from the energy, and `omol` means training on OMol25. That names
-the model family, not its accuracy for a given reaction. pdb2reaction runs ORB
+The default model is `orbmol-v2` (OrbMol-v2, needs orb-models >= 0.7.0 on Python
+3.12+): a conservative model, so forces are derived from the energy, trained on
+OMol25 and OPoly26 with learnable charges and a long-range Coulomb term.
+`orb_v3_conservative_omol` selects OrbMol-v1. The names describe the model
+family, not its accuracy for a given reaction. pdb2reaction runs ORB
 in fp64 by default. `--precision fp32` selects IEEE FP32 (`float32-highest`) and
 `--precision tf32` ORB's `float32-high` mode, which lowers CUDA matmul precision;
 compare either with fp64 on the target system.
@@ -226,7 +229,7 @@ conda activate <YOUR_MACE_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 pip install pdb2reaction                 # pulls fairchem-core
 pip uninstall -y fairchem-core           # remove UMA's e3nn pin
-pip install 'mace-torch>=0.3.8'          # installs the e3nn MACE needs
+pip install 'mace-torch>=0.3.16'         # installs the e3nn MACE needs
 python -c "import mace; print('mace:', mace.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='mace', charge=0, spin=1)"
 ```
@@ -237,7 +240,7 @@ the uninstall and install and the smoke check afterwards. If UMA and MACE end up
 in one env, imports fail with an `e3nn` version error; remove the env with
 `conda env remove -n <YOUR_MACE_ENV>` and rebuild it.
 
-The default model is `MACE-OMOL-0`, run in fp64. MACE has no multi-GPU sharding, and the first call can include download, model
+The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model`. MACE has no multi-GPU sharding, and the first call can include download, model
 loading, and runtime start-up. A model being available does not put a reaction
 inside its reliable domain; validate stationary points with an independent
 frequency calculation and IRC.

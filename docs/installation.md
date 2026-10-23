@@ -135,7 +135,7 @@ If you prefer to build the environment piece by piece:
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
     pip uninstall -y fairchem-core
-    pip install 'mace-torch>=0.3.8'
+    pip install 'mace-torch>=0.3.16'
     ```
 
     **DFT** (`-b dft`, `--dft`, `pdb2reaction dft`): `[dft]` installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132 PyTorch wheels of step 4 and the `cuda130` build of step 3; with the cu126 wheel or the `cuda129` build, install `[dft-cuda12]` instead. On aarch64, build [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) from source. Without a GPU, `[dft]` still installs PySCF; run DFT with `--dft-engine cpu`.

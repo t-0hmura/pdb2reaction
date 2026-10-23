@@ -21,10 +21,24 @@ from .base import (
     _prepare_model_for_autograd_hessian,
     _restore_model_after_autograd_hessian,
 )
+from pdb2reaction.core.defaults import DEFAULT_ORB_MODEL
 
 def _is_conservative_orb_model(model_name: str) -> bool:
+    """Name-level pre-check that rejects direct-force models before loading.
+
+    OrbMol-v2's name carries no "conservative", so the loaded regressor's class
+    is checked as well (``_require_conservative_regressor``).
+    """
     norm = str(model_name).replace("_", "-").lower()
-    return ("conservative" in norm) and ("direct" not in norm)
+    return "direct" not in norm
+
+
+def _require_conservative_regressor(model_obj, model_name: str) -> None:
+    if type(model_obj).__name__ != "ConservativeForcefieldRegressor":
+        raise BackendError(
+            f"Only conservative Orb models are supported. '{model_name}' loads "
+            f"{type(model_obj).__name__}."
+        )
 
 
 # orb_models validates the matmul-precision string strictly ("float32-high" =
@@ -75,7 +89,7 @@ class OrbCalculator(MLIPCalculator):
     def __init__(
         self,
         *,
-        model: str = "orb_v3_conservative_omol",
+        model: str = DEFAULT_ORB_MODEL,
         # orb_models expects "float32-high" (TF32 matmul), "float32-highest"
         # (IEEE FP32), or "float64"; the unified tokens tf32/fp32/fp64 are
         # aliased to them.  Keep the direct API consistent with the CLI/backend
@@ -136,6 +150,7 @@ class OrbCalculator(MLIPCalculator):
 
         self._loader = self._resolve_loader(self.model_name)
         self._model_obj, self._adapter = self._load_model()
+        _require_conservative_regressor(self._model_obj, self.model_name)
         self._ase_calc = self._build_ase_calculator()
 
     def _resolve_loader(self, model_name: str):
@@ -158,6 +173,11 @@ class OrbCalculator(MLIPCalculator):
             if hasattr(self._pretrained, cand):
                 return getattr(self._pretrained, cand)
 
+        if str(model_name).replace("_", "-").lower().startswith("orbmol-v2"):
+            raise BackendError(
+                "orbmol-v2 needs orb-models >= 0.7.0 (Python 3.12 or newer); "
+                "--backend-model orb_v3_conservative_omol selects OrbMol-v1."
+            )
         raise BackendError(f"Unknown Orb model '{model_name}'.")
 
     def _load_model(self):
@@ -397,7 +417,7 @@ class OrbASECalculator:
     def __new__(
         cls,
         *,
-        model: str = "orb_v3_conservative_omol",
+        model: str = DEFAULT_ORB_MODEL,
         device: str = "auto",
         precision: str = "float64",
         compile_model: bool = False,

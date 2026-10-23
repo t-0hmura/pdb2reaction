@@ -67,10 +67,10 @@ different `e3nn` versions.
 
 | `-b` | Default model | Install | Notes |
 |---|---|---|---|
-| `uma` (default) | `uma-s-1p2`; `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
-| `orb` | `orb_v3_conservative_omol` | `[orb]` extra | fp64 by default |
-| `mace` | `MACE-OMOL-0` | Separate env | fp64 by default |
-| `aimnet2` | `aimnet2` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
+| `uma` (default) | `uma-s-1p2p1`; `uma-s-1p2p1-ft-d4rev`, `uma-s-1p2`, `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
+| `orb` | `orbmol-v2` (orb-models >= 0.7.0, Python 3.12+); `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra | fp64 by default |
+| `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16) via `--backend-model` | Separate env | fp64 by default |
+| `aimnet2` | `aimnet2`; `aimnet2-2025`, `aimnet2-nse` (open-shell), `aimnet2-pd` via `--backend-model` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
 
 Select the backend with `-b` on any calculation command, for example
 `pdb2reaction opt -i input.pdb -q 0 -b orb`. Check each candidate model's card

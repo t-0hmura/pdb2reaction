@@ -89,7 +89,7 @@ summary.json    # Same content as result.json (with --out-json)
 | `-m, --multiplicity` | integer | `None` | Spin multiplicity (2S+1); recomputes the energies with the MLIP when given |
 | `--reverse-x/--no-reverse-x` | flag | `False` | Put the last frame on the left |
 | `-b, --backend` | text | `uma` | MLIP for recomputation (`uma`, `orb`, `mace`, `aimnet2`; see [MLIP Backends](backends.md)) |
-| `--backend-model` | text | `None` | Model of the selected backend (e.g. `uma-s-1p2`); without it, the backend's default model |
+| `--backend-model` | text | `None` | Model of the selected backend (e.g. `uma-s-1p2p1`); without it, the backend's default model |
 | `--precision` | `tf32` / `fp32` / `fp64` | per backend | Precision of the recomputation (UMA `fp32`; ORB and MACE `fp64`); `tf32` is for UMA and ORB only; AIMNet2 accepts only `fp32` |
 | `--out-json/--no-out-json` | flag | `False` | Write `result.json` and `summary.json` |
 

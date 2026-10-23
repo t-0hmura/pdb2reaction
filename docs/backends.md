@@ -26,18 +26,33 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | backend | install | model identifier | `--precision` | analytical Hessian | multiple workers |
 |---------|---------|------------------|------------------|--------------------|------------------|
-| `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2` (default) / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | yes (autograd) | yes |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `tf32` / `fp32` / `fp64` | yes (autograd) | no |
-| `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (UMA does not run in this env) | `MACE-OMOL-0` | `fp32` / `fp64` | yes | no |
-| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` only | yes | no |
+| `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2p1` (default) / `uma-s-1p2p1-ft-d4rev` / `uma-s-1p2` / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | yes (autograd) | yes |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orbmol-v2` (default) / `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `tf32` / `fp32` / `fp64` | yes (autograd) | no |
+| `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'` (UMA does not run in this env) | `MACE-OMOL-0` (default) / `MACE-POLAR-1-S` / `-M` / `-L` | `fp32` / `fp64` | yes | no |
+| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` (default) / `aimnet2-2025` / `aimnet2-nse` / `aimnet2-pd` | `fp32` only | yes | no |
 
 `--backend-model NAME` overrides the model variant for the selected `--backend`
 (e.g. `--backend uma --backend-model uma-m-1p1`).
 
+Models besides the defaults:
+
+- `uma-s-1p2p1-ft-d4rev`: UMA-S-1.2.1 fine-tuned at ωB97M-D4rev on about 4M OMol25
+  structures. Dispersion is included, so do not add a dispersion correction; it
+  has the `omol` task only and ships no isolated-atom reference energies.
+- `orb_v3_conservative_omol`: OrbMol-v1. `orbmol-v2` (the default) adds learnable
+  per-atom charges with a long-range Coulomb term and was trained on OMol25 and
+  OPoly26; it needs orb-models >= 0.7.0 (Python 3.12 or newer).
+- `MACE-POLAR-1-S` / `-M` / `-L`: trained on OMol25 with long-range electrostatics
+  from learned charge and spin densities; they need mace-torch >= 0.3.16.
+- AIMNet2: `aimnet2` (wB97M-D3, the default) and `aimnet2-2025` (improved B97-3c)
+  are closed-shell only; `aimnet2-nse` handles open-shell systems with the
+  multiplicity from `-m`; `aimnet2-pd` covers Pd, has CPCM(THF) solvation built
+  into the model, and is closed-shell only.
+
 The run prints the backend and model it loads as
 `[backend] Preparing MLIP model (<backend> / <model>)...`. With the default
-models the parentheses read `UMA / UMA-S-1.2 (OMol)`,
-`ORB / ORB-v3-conservative-OMol`, `MACE / MACE-OMOL-0`, or
+models the parentheses read `UMA / UMA-S-1.2.1 (OMol)`,
+`ORB / OrbMol-v2`, `MACE / MACE-OMOL-0`, or
 `AIMNet2 / aimnet2`.
 
 ### Precision
@@ -214,7 +229,7 @@ import numpy as np
 from pdb2reaction.backends.uma import UMACalculator
 
 # Example: a neutral singlet diatomic on GPU when available
-calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2p1", device="auto")
 
 # UMACalculator expects coordinates in Bohr (shape: [n_atoms, 3])
 coords_bohr = np.array([
@@ -285,7 +300,7 @@ solvent keys, are listed in [YAML Reference › calc](yaml-reference.md#calc).
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge; used only when written in YAML, and `-q`/`-l` override it. | none |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | Model of the selected backend (`--backend-model`). Left at the UMA default, ORB / MACE / AIMNet2 use `orb_v3_conservative_omol` / `MACE-OMOL-0` / `aimnet2`. | `"uma-s-1p2"` |
+| `model` | Model of the selected backend (`--backend-model`). Left at the UMA default, ORB / MACE / AIMNet2 use `orbmol-v2` / `MACE-OMOL-0` / `aimnet2`. | `"uma-s-1p2p1"` |
 | `precision` | MLIP numerical precision (`"tf32"`, `"fp32"` or `"fp64"`); `"auto"` gives fp32 for UMA/AIMNet2 and fp64 for ORB/MACE. | `"auto"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
@@ -310,12 +325,12 @@ calc = create_calculator(
  backend="uma", # one of: "uma", "orb", "mace", "aimnet2", "auto"
  charge=0, spin=1,
  device="cuda", workers=1,
- model="uma-s-1p2",
+ model="uma-s-1p2p1",
 )
 # calc is a pysisyphus-compatible MLIPCalculator.
 
 # ASE-based stages (e.g. DMF path optimization) use the ASE factory:
-ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
+ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2p1", device="cuda")
 ```
 
 pysisyphus-based geometry and path stages use `create_calculator(...)`;

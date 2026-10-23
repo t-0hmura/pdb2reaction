@@ -191,8 +191,8 @@ def test_calculator_provenance_uses_backend_defaults() -> None:
 
     assert calculator_provenance({"backend": "orb"}) == {
         "mlip_backend": "orb",
-        "mlip_model": "orb_v3_conservative_omol",
-        "mlip_model_label": "ORB-v3-conservative-OMol",
+        "mlip_model": "orbmol-v2",
+        "mlip_model_label": "OrbMol-v2",
         "mlip_task": None,
         "mlip_precision": "fp64",
         "primary_method": "mlip",

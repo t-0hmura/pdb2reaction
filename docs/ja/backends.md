@@ -22,14 +22,21 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | バックエンド | インストール | モデル名 | `--precision` | 解析 Hessian | 複数ワーカー |
 |---------|---------|------------------|------------------|--------------------|------------------|
-| `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2`（デフォルト）/ `uma-m-1p1` | `tf32` / `fp32` / `fp64` | あり（autograd） | あり |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
-| `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（この環境では UMA は動きません） | `MACE-OMOL-0` | `fp32` / `fp64` | あり | なし |
-| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` のみ | あり | なし |
+| `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2p1`（デフォルト）/ `uma-s-1p2p1-ft-d4rev` / `uma-s-1p2` / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | あり（autograd） | あり |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orbmol-v2`（デフォルト）/ `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
+| `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'`（この環境では UMA は動きません） | `MACE-OMOL-0`（デフォルト）/ `MACE-POLAR-1-S` / `-M` / `-L` | `fp32` / `fp64` | あり | なし |
+| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2`（デフォルト）/ `aimnet2-2025` / `aimnet2-nse` / `aimnet2-pd` | `fp32` のみ | あり | なし |
 
 `--backend-model NAME` は、選んだ `--backend` のモデルを替えます（例：`--backend uma --backend-model uma-m-1p1`）。
 
-実行時には、読み込むバックエンドとモデルが `[backend] Preparing MLIP model (<backend> / <model>)...` の形で表示されます。デフォルトのモデルでは括弧の中が `UMA / UMA-S-1.2 (OMol)`、`ORB / ORB-v3-conservative-OMol`、`MACE / MACE-OMOL-0`、`AIMNet2 / aimnet2` になります。
+デフォルト以外のモデル：
+
+- `uma-s-1p2p1-ft-d4rev`：UMA-S-1.2.1 を OMol25 の約 400 万構造で ωB97M-D4rev に fine-tune したモデルです。分散力を含むので、分散補正を足さないでください。タスクは `omol` だけで、孤立原子の参照エネルギーはありません。
+- `orb_v3_conservative_omol`：OrbMol-v1 です。デフォルトの `orbmol-v2` は、原子ごとに学習する電荷と長距離の Coulomb 項を加え、OMol25 と OPoly26 で学習したモデルで、orb-models 0.7.0 以上（Python 3.12 以上）が要ります。
+- `MACE-POLAR-1-S`・`-M`・`-L`：OMol25 で学習し、学習した電荷と spin の密度から長距離の静電を計算します。mace-torch 0.3.16 以上が要ります。
+- AIMNet2：`aimnet2`（wB97M-D3、デフォルト）と `aimnet2-2025`（改良した B97-3c）は閉殻だけです。`aimnet2-nse` は開殻の系を `-m` の多重度で扱います。`aimnet2-pd` は Pd を扱い、CPCM（THF）の溶媒をモデルに含み、閉殻だけです。
+
+実行時には、読み込むバックエンドとモデルが `[backend] Preparing MLIP model (<backend> / <model>)...` の形で表示されます。デフォルトのモデルでは括弧の中が `UMA / UMA-S-1.2.1 (OMol)`、`ORB / OrbMol-v2`、`MACE / MACE-OMOL-0`、`AIMNet2 / aimnet2` になります。
 
 (ja-precision-by-gpu-class)=
 ### 精度（precision）
@@ -147,7 +154,7 @@ import numpy as np
 from pdb2reaction.backends.uma import UMACalculator
 
 # 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
-calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2p1", device="auto")
 
 # UMACalculator には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
 coords_bohr = np.array([
@@ -206,7 +213,7 @@ calculator の主な引数です。YAML の `calc` 節のキーと同じです�
 | `backend` | MLIP バックエンド | `"uma"` |
 | `charge` | 総電荷。YAML に書いたときだけ使い、`-q`・`-l` が優先 | なし |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | 選んだバックエンドのモデル（`--backend-model`）。UMA のデフォルトのままなら、ORB・MACE・AIMNet2 は `orb_v3_conservative_omol`・`MACE-OMOL-0`・`aimnet2` を使います | `"uma-s-1p2"` |
+| `model` | 選んだバックエンドのモデル（`--backend-model`）。UMA のデフォルトのままなら、ORB・MACE・AIMNet2 は `orbmol-v2`・`MACE-OMOL-0`・`aimnet2` を使います | `"uma-s-1p2p1"` |
 | `precision` | MLIP の数値精度（`"tf32"`、`"fp32"`、`"fp64"`）。`"auto"` は UMA・AIMNet2 で fp32、ORB・MACE で fp64 | `"auto"` |
 | `task_name` | UMA のバッチに記録するタスクの名前 | `"omol"` |
 | `device` | `"cuda"`、`"cpu"`、または自動選択 | `"auto"` |
@@ -231,12 +238,12 @@ calc = create_calculator(
     backend="uma",        # one of: "uma", "orb", "mace", "aimnet2", "auto"
     charge=0, spin=1,
     device="cuda", workers=1,
-    model="uma-s-1p2",
+    model="uma-s-1p2p1",
 )
 # calc is a pysisyphus-compatible MLIPCalculator.
 
 # ASE-based stages (e.g. DMF path optimization) use the ASE factory:
-ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
+ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2p1", device="cuda")
 ```
 
 pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF（Direct Max Flux）のように ASE を使う段は `create_ase_calculator(...)` を使います。`backend="auto"` は UMA、ORB、MACE、AIMNet2 の順に試し、最初にインポートできたものを使います。YAML の `calc.backend: auto` も同じで、`-b` は `auto` を受け付けません。

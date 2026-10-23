@@ -247,6 +247,18 @@ class MACECalculator(MLIPCalculator):
         if spec_l in ("anicc", "ani", "ani500k"):
             return _safe_anicc()
 
+        # MACE-POLAR-1 (OMol25, long-range electrostatics): MACE-POLAR-1-S/M/L or polar-1-s/m/l
+        polar_key = {
+            f"{prefix}polar-1-{size}": f"polar-1-{size}"
+            for prefix in ("", "mace-") for size in ("s", "m", "l")
+        }.get(spec_l)
+        if polar_key is not None:
+            try:
+                from mace.calculators.foundations_models import mace_polar
+            except ImportError as exc:
+                raise BackendError("MACE-POLAR-1 needs mace-torch >= 0.3.16.") from exc
+            return mace_polar(model=polar_key, device=self.device_str, default_dtype=self.default_dtype)
+
         # Local file / URL
         if os.path.exists(spec) or spec.startswith("http://") or spec.startswith("https://"):
             return _mk_from_path(spec)

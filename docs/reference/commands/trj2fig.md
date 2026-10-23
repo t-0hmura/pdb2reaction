@@ -35,10 +35,11 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
-                                  uma-s-1p2 / uma-m-1p1 for uma,
-                                  orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace).  [default: (the
-                                  selected backend's own model)]
+                                  uma-s-1p2p1 / uma-s-1p2p1-ft-d4rev / uma-m-1p1
+                                  for uma, orbmol-v2 / orb_v3_conservative_omol
+                                  for orb, MACE-OMOL-0 / MACE-POLAR-1-M for
+                                  mace, aimnet2 / aimnet2-nse for aimnet2).
+                                  [default: (the selected backend's own model)]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
                                   fp64. Unset defaults per backend (uma: fp32;
                                   orb, mace: fp64). tf32 uses TF32 matmul for

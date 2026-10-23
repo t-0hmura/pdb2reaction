@@ -140,7 +140,7 @@ calc:
  precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | tf32 | fp32 | fp64; tf32 for uma/orb only; aimnet2 accepts auto/fp32 and rejects fp64
  charge: 0 # Total charge; used only when written here (no built-in default); -q and -l override it
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p2 # UMA: uma-s-1p2 | uma-m-1p1. Without a model set, backend orb / mace / aimnet2 uses orb_v3_conservative_omol / MACE-OMOL-0 / aimnet2
+ model: uma-s-1p2p1 # UMA: uma-s-1p2p1 | uma-s-1p2p1-ft-d4rev | uma-s-1p2 | uma-m-1p1. Without a model set, backend orb / mace / aimnet2 uses orbmol-v2 / MACE-OMOL-0 / aimnet2
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
@@ -687,7 +687,7 @@ geom:
 
 calc:
  backend: uma
- model: uma-s-1p2 # Model name for the selected backend (UMA: uma-s-1p2 | uma-m-1p1)
+ model: uma-s-1p2p1 # Model name for the selected backend (UMA: uma-s-1p2p1 | uma-s-1p2p1-ft-d4rev | uma-s-1p2 | uma-m-1p1)
  device: auto
  hessian_calc_mode: FiniteDifference # Portable default; benchmark Analytical before opting in
 

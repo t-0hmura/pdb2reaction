@@ -46,7 +46,10 @@ GEOM_KW_DEFAULT: Dict[str, Any] = {
 # Single source of truth for the default UMA model name. Every code default
 # (backend factory, calculators, workflows) references this instead of a
 # hardcoded literal so the release model can be bumped in one place.
-DEFAULT_UMA_MODEL = "uma-s-1p2"
+DEFAULT_UMA_MODEL = "uma-s-1p2p1"
+# Default ORB model (OrbMol-v2, conservative); the ORB backend and its ASE factory
+# reference it the same way.
+DEFAULT_ORB_MODEL = "orbmol-v2"
 
 CALC_KW_DEFAULT: Dict[str, Any] = {
     "backend": "uma",
@@ -86,7 +89,7 @@ UMA_CALC_KW: Dict[str, Any] = {
 
 
 ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
-    "model": "orb_v3_conservative_omol",
+    "model": DEFAULT_ORB_MODEL,
     # float64, not orb_models' "float32-high": that mode is TF32 matmul, whose
     # force noise inflates finite-difference Hessians into spurious imaginary
     # modes. Mirrors backends._BACKEND_DEFAULT_PRECISION["orb"] = "fp64".

@@ -132,7 +132,7 @@ plotly_get_chrome -y
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
     pip uninstall -y fairchem-core
-    pip install 'mace-torch>=0.3.8'
+    pip install 'mace-torch>=0.3.16'
     ```
 
     **DFT**（`-b dft`、`--dft`、`pdb2reaction dft`）: `[dft]` は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 と、手順 3 の `cuda130` の PyTorch 向け）。cu126 の wheel か `cuda129` のビルドを使うときは、代わりに `[dft-cuda12]` を導入します。aarch64 では [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) をソースからビルドしてください。GPU のない環境でも `[dft]` で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。

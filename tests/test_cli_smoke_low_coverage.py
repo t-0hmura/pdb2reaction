@@ -427,7 +427,7 @@ def test_trj2fig_recompute_json_records_actual_provenance(
         ),
         (
             ["-b", "uma"],
-            ("uma", "uma-s-1p2", "UMA-S-1.2 (OMol)", "omol", "fp32"),
+            ("uma", "uma-s-1p2p1", "UMA-S-1.2.1 (OMol)", "omol", "fp32"),
             (None, None),
         ),
     ],

@@ -54,7 +54,7 @@ def main() -> None:
         from pdb2reaction.backends.uma import UMACalculator
 
         calculator = UMACalculator(
-            model="uma-s-1p2",
+            model="uma-s-1p2p1",
             task_name="omol",
             precision="fp32",
             workers=1,
@@ -64,7 +64,7 @@ def main() -> None:
         from pdb2reaction.backends.orb import OrbCalculator
 
         calculator = OrbCalculator(
-            model="orb_v3_conservative_omol",
+            model="orbmol-v2",
             precision="float64",
             compile_model=False,
             **common,
