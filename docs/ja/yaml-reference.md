@@ -141,6 +141,7 @@ calc:
  charge: 0 # 全電荷。ここに書いたときだけ使う（組み込みのデフォルト値は無い）。-q と -l が優先
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2p1 # UMA: uma-s-1p2p1 | uma-s-1p2p1-ft-d4rev | uma-s-1p2 | uma-m-1p1。model を書かずに backend を orb / mace / aimnet2 にすると orbmol-v2 / MACE-OMOL-0 / aimnet2
+ compile_model: null # ORB のみ。null は orb-models に従う（Apple の MPS 以外で compile）、false で compile しない
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction

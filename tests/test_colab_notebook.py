@@ -1099,7 +1099,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _preflight_output_scope(argv):" in app
     assert "Run not started: refusing to overwrite the existing output:" in app
     assert '"""Return result(1), result(2), ... without touching prior output."""' in app
-    assert "uma-s-1p2" in app
+    assert "'uma': ['uma-s-1p2p1', 'uma-s-1p2p1-ft-d4rev', 'uma-s-1p2', 'uma-s-1p1', 'uma-m-1p1']," in app
     assert "MODELS = {'mace': ['MACE-OMOL-0']," in app
     assert "DEFAULT_MODEL = {'mace': 'MACE-OMOL-0', 'uma': 'uma-s-1p2p1', 'orb': 'orbmol-v2'}" in app
     assert "options=[('default: per backend', 'auto'), ('tf32', 'tf32'), ('fp32', 'fp32'), ('fp64', 'fp64')]" in app

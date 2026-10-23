@@ -18,6 +18,7 @@ import warnings
 from typing import Optional, Sequence
 
 import numpy as np
+from ase.calculators.calculator import Calculator, all_changes
 
 from .base import MLIPCalculator, BackendError
 
@@ -390,18 +391,35 @@ class MACECalculator(MLIPCalculator):
         return H_np.reshape(dof, dof)
 
 
-class MACEASECalculator:
-    """Factory that returns a MACE ASE calculator for DMF."""
+class MACEASECalculator(Calculator):
+    """ASE adapter around the mace-torch calculator for DMF, on centred coordinates."""
 
-    def __new__(
-        cls,
+    implemented_properties = ["energy", "free_energy", "forces"]
+
+    def __init__(
+        self,
         *,
         model: str = "MACE-OMOL-0",
         device: str = "auto",
         default_dtype: str = "float64",
     ):
-        calc = MACECalculator(
+        super().__init__()
+        self.mace = MACECalculator(
             model=model, device=device, default_dtype=default_dtype,
             charge=0, spin=1,
-        )
-        return calc._calc
+        )._calc
+
+    def calculate(
+        self,
+        atoms=None,
+        properties=("energy", "forces"),
+        system_changes=all_changes,
+    ):
+        super().calculate(atoms, properties, system_changes)
+        # The copy keeps atoms.info, where MACE reads the charge and multiplicity.
+        centred = self.atoms.copy()
+        centred.set_positions(_centered(centred.get_positions()))
+        centred.calc = self.mace
+        energy = float(centred.get_potential_energy())
+        self.results["energy"] = self.results["free_energy"] = energy
+        self.results["forces"] = np.asarray(centred.get_forces(), dtype=np.float64)

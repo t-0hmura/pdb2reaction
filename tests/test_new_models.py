@@ -15,6 +15,8 @@ from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import pytest
+from ase import Atoms
+from ase.calculators.calculator import Calculator, all_changes
 
 from pdb2reaction.backends.base import BackendError
 from pdb2reaction.core import defaults
@@ -168,27 +170,50 @@ def test_mace_polar_without_graph_longrange_names_the_package(monkeypatch) -> No
         calc._build_calc("MACE-POLAR-1-M")
 
 
-def test_mace_sees_coordinates_centred_on_the_origin() -> None:
-    from ase.calculators.calculator import Calculator, all_changes
 
+class _RecordingCalculator(Calculator):
+    """ASE calculator recording the positions and info MACE would see."""
+
+    implemented_properties = ["energy", "forces"]
+
+    def __init__(self):
+        super().__init__()
+        self.seen, self.seen_info = [], []
+
+    def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
+        super().calculate(atoms, properties, system_changes)
+        self.seen.append(self.atoms.get_positions())
+        self.seen_info.append(dict(self.atoms.info))
+        self.results = {"energy": -1.0, "forces": np.ones((len(self.atoms), 3))}
+
+
+_FAR_XYZ = np.array([[40.0, 50.0, 60.0], [41.0, 50.0, 60.0], [40.0, 52.0, 61.0]])
+
+
+def _assert_centred(seen) -> None:
+    assert np.allclose(seen.min(axis=0), -seen.max(axis=0))
+    assert np.allclose(seen - seen[0], _FAR_XYZ - _FAR_XYZ[0])
+
+
+def test_mace_sees_coordinates_centred_on_the_origin() -> None:
     from pdb2reaction.backends.mace import MACECalculator
 
-    class Recording(Calculator):
-        implemented_properties = ["energy", "forces"]
-
-        def __init__(self):
-            super().__init__()
-            self.seen = []
-
-        def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
-            super().calculate(atoms, properties, system_changes)
-            self.seen.append(self.atoms.get_positions())
-            self.results = {"energy": 0.0, "forces": np.zeros((len(self.atoms), 3))}
-
     calc = object.__new__(MACECalculator)
-    calc._calc, calc.charge, calc.mult = Recording(), 0, 1
-    xyz = np.array([[40.0, 50.0, 60.0], [41.0, 50.0, 60.0], [40.0, 52.0, 61.0]])
-    calc._compute_energy_forces_ev(["O", "H", "H"], xyz)
-    seen = calc._calc.seen[-1]
-    assert np.allclose(seen.min(axis=0), -seen.max(axis=0))
-    assert np.allclose(seen - seen[0], xyz - xyz[0])
+    calc._calc, calc.charge, calc.mult = _RecordingCalculator(), 0, 1
+    calc._compute_energy_forces_ev(["O", "H", "H"], _FAR_XYZ)
+    _assert_centred(calc._calc.seen[-1])
+
+
+def test_mace_dmf_calculator_centres_coordinates_and_keeps_charge(monkeypatch) -> None:
+    from pdb2reaction.backends import mace as mace_module
+
+    inner = _RecordingCalculator()
+    monkeypatch.setattr(mace_module, "MACECalculator", lambda **_kw: SimpleNamespace(_calc=inner))
+    atoms = Atoms("OH2", positions=_FAR_XYZ)
+    atoms.info.update(charge=-1, spin=2)
+    atoms.calc = mace_module.MACEASECalculator(model="MACE-POLAR-1-M")
+    assert atoms.get_potential_energy() == -1.0
+    assert np.allclose(atoms.get_forces(), 1.0)
+    _assert_centred(inner.seen[-1])
+    assert inner.seen_info[-1] == {"charge": -1, "spin": 2}
+    assert np.allclose(atoms.get_positions(), _FAR_XYZ)
