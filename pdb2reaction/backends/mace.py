@@ -263,8 +263,8 @@ class MACECalculator(MLIPCalculator):
                 if exc.name != "graph_longrange":
                     raise
                 raise BackendError(
-                    "MACE-POLAR-1 needs graph_electrostatics: "
-                    "pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4"
+                    "MACE-POLAR-1 needs graph-longrange 0.4.0: "
+                    "pip install graph-longrange==0.4.0"
                 ) from exc
 
         # Local file / URL

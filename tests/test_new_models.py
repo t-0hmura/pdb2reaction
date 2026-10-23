@@ -146,7 +146,7 @@ def test_uma_reference_energies_skip_checkpoints_without_them(monkeypatch) -> No
     assert fetched == [("uma-s-1p2p1", "form_elem_refs")]
 
 
-def test_mace_polar_without_graph_electrostatics_names_the_package(monkeypatch) -> None:
+def test_mace_polar_without_graph_longrange_names_the_package(monkeypatch) -> None:
     from pdb2reaction.backends.mace import MACECalculator
 
     def missing(**_kw):
@@ -163,5 +163,5 @@ def test_mace_polar_without_graph_electrostatics_names_the_package(monkeypatch) 
     monkeypatch.setitem(sys.modules, "mace.calculators.foundations_models", foundations)
     calc = object.__new__(MACECalculator)
     calc.device_str, calc.default_dtype = "cpu", "float64"
-    with pytest.raises(BackendError, match="graph_electrostatics"):
+    with pytest.raises(BackendError, match=r"graph-longrange==0\.4\.0"):
         calc._build_calc("MACE-POLAR-1-M")

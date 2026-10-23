@@ -239,7 +239,7 @@ the uninstall and install and the smoke check afterwards. If UMA and MACE end up
 in one env, imports fail with an `e3nn` version error; remove the env with
 `conda env remove -n <YOUR_MACE_ENV>` and rebuild it.
 
-The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model` and also needs `pip install git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.4`. MACE has no multi-GPU sharding, and the first call can include download, model
+The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model` and also needs `pip install graph-longrange==0.4.0`. MACE has no multi-GPU sharding, and the first call can include download, model
 loading, and runtime start-up. A model being available does not put a reaction
 inside its reliable domain; validate stationary points with an independent
 frequency calculation and IRC.

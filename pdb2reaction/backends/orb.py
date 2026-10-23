@@ -41,6 +41,10 @@ def _require_conservative_regressor(model_obj, model_name: str) -> None:
         )
 
 
+# torch.compile's hint that TF32 tensor cores are available but unused; IEEE FP32
+# ("float32-highest") leaves TF32 off on purpose, so the hint is noise there.
+_TF32_HINT = r"TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled"
+
 # orb_models validates the matmul-precision string strictly ("float32-high" =
 # TF32 matmul, "float32-highest" = IEEE FP32, "float64"); the bare "float32" is
 # not one of them. Normalize the unified tokens and the bare "float32" to the
@@ -152,6 +156,8 @@ class OrbCalculator(MLIPCalculator):
         self._loader = self._resolve_loader(self.model_name)
         self._model_obj, self._adapter = self._load_model()
         _require_conservative_regressor(self._model_obj, self.model_name)
+        if self.precision == "float32-highest":
+            warnings.filterwarnings("ignore", message=_TF32_HINT, category=UserWarning)
         self._ase_calc = self._build_ase_calculator()
 
     def _resolve_loader(self, model_name: str):
