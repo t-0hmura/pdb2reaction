@@ -10,6 +10,7 @@ Provides ``UMACalculator`` (PySisyphus-compatible) and ``UMAASECalculator``
 from __future__ import annotations
 
 import time
+import warnings
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Sequence
 
@@ -27,14 +28,13 @@ from fairchem.core.datasets import data_list_collater
 # Optional: only needed when workers > 1
 try:
     from fairchem.core.units.mlip_unit.predict import ParallelMLIPPredictUnit
-    from fairchem.core.units.mlip_unit.api.inference import guess_inference_settings
 except Exception:
     ParallelMLIPPredictUnit = None
-    guess_inference_settings = None
 
-# fp64 base precision: switching OMol-trained UMA from default fp32 to
-# fp64 can have non-trivial impact on TSopt + Hessian numerics. Available
-# via InferenceSettings(base_precision_dtype="float64") in fairchem ≥ 2.0.
+# Every UMA route passes explicit InferenceSettings built from fields
+# (_uma_inference_settings) instead of a preset name: fairchem-core 2.24 turned
+# its named default into a TF32 mode, so relying on it changed the numerics of
+# fp32 runs with the installed fairchem release.
 try:
     from fairchem.core.units.mlip_unit.api.inference import InferenceSettings as _UMAInferenceSettings
 except Exception:
@@ -59,6 +59,75 @@ from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 EV2AU = 1.0 / AU2EV
 F_EVAA_2_AU = EV2AU / ANG2BOHR
 H_EVAA_2_AU = EV2AU / ANG2BOHR / ANG2BOHR
+
+
+UMA_PRECISIONS = ("tf32", "fp32", "fp64")
+
+# torch.compile's hint that TF32 tensor cores are available but unused. fp32
+# leaves TF32 off on purpose (see _uma_inference_settings), so the hint is noise.
+_TF32_HINT = r"TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled"
+
+
+def _check_uma_precision(precision: Any) -> str:
+    value = str(precision or "fp32").lower()
+    if value not in UMA_PRECISIONS:
+        raise BackendError(
+            f"UMA precision must be 'tf32', 'fp32' or 'fp64', got {precision!r}"
+        )
+    if _UMAInferenceSettings is None:
+        raise BackendError(
+            "UMA requires fairchem-core's InferenceSettings; install fairchem-core>=2.22."
+        )
+    return value
+
+
+def _uma_inference_settings(precision: str, *, analytical_hessian: bool, parallel: bool):
+    """Explicit FAIR-Chem InferenceSettings for a UMA precision token.
+
+    - ``fp64``: float64 base precision, not compiled.
+    - ``fp32``: IEEE FP32 (``tf32=False``): the merged-MOLE compiled fast path
+      that fairchem-core 2.22/2.23 used as its default (2.24 names it
+      "high-precision").
+    - ``tf32``: the same fast path with TF32 matmul, and UMA Nitro where the
+      installed fairchem-core has it (2.24+, single worker; FAIR-Chem falls back
+      to the TF32 fast path for checkpoints Nitro cannot serve).
+
+    The analytical Hessian needs a double backward that the compiled model does
+    not support, so that route is not compiled at any precision.
+    """
+    tf32 = precision == "tf32"
+    if precision == "fp64" or analytical_hessian:
+        return _UMAInferenceSettings(
+            tf32=tf32,
+            compile=False,
+            base_precision_dtype="float64" if precision == "fp64" else "float32",
+        )
+    kwargs = dict(
+        tf32=tf32,
+        activation_checkpointing=False,
+        merge_mole=True,
+        compile=True,
+        external_graph_gen=False,
+        internal_graph_gen_version=2,
+    )
+    if tf32 and not parallel and "nitro" in getattr(_UMAInferenceSettings, "__dataclass_fields__", {}):
+        kwargs["nitro"] = True
+    return _UMAInferenceSettings(**kwargs)
+
+
+def _verify_uma_precision(predictor: Any, precision: str) -> None:
+    """Fail if the loaded predictor does not run the requested matmul mode."""
+    settings = getattr(predictor, "inference_settings", None)
+    if settings is None:
+        return
+    loaded = bool(getattr(settings, "tf32", False))
+    if loaded != (precision == "tf32"):
+        raise BackendError(
+            f"UMA was loaded with tf32={loaded}, but --precision {precision} was "
+            "requested; the run would not have the requested precision."
+        )
+    if precision == "fp32":
+        warnings.filterwarnings("ignore", message=_TF32_HINT, category=UserWarning)
 
 
 def _positive_worker_count(value: Any, name: str) -> int:
@@ -171,61 +240,46 @@ class UMAcore:
         )
         self.parallel_predict = self.workers > 1
 
-        # fp32 is the established baseline; fp64 enables full-precision
-        # base inference and can change TSopt + Hessian numerics non-trivially.
-        # Selected per-call via `precision="fp32"|"fp64"`.
-        self.precision = str(precision or "fp32").lower()
-        if self.precision not in ("fp32", "fp64"):
-            raise BackendError(f"UMA precision must be 'fp32' or 'fp64', got {precision!r}")
-        if self.precision == "fp64" and _UMAInferenceSettings is None:
-            raise BackendError(
-                "UMA precision='fp64' requires fairchem-core's InferenceSettings; "
-                "upgrade fairchem-core (≥ 2.0) or pass precision='fp32'."
-            )
-        uma_inference_settings = None
-        if _UMAInferenceSettings is not None and (
-            self.precision == "fp64" or analytical_hessian
-        ):
-            # FAIR-Chem 2.22's named default enables torch.compile. The
-            # compiled backward does not support the double backward used by
-            # pdb2reaction's analytical Hessian, so that route requests the
-            # public non-compiled settings object explicitly.
-            uma_inference_settings = _UMAInferenceSettings(
-                compile=False,
-                base_precision_dtype=(
-                    "float64" if self.precision == "fp64" else "float32"
-                )
-            )
+        # fp32 (IEEE) is the established baseline; fp64 enables full-precision
+        # base inference and can change TSopt + Hessian numerics non-trivially;
+        # tf32 trades matmul precision for speed (opt-in only).
+        self.precision = _check_uma_precision(precision)
+        uma_inference_settings = _uma_inference_settings(
+            self.precision,
+            analytical_hessian=analytical_hessian,
+            parallel=self.parallel_predict,
+        )
 
         self._AtomicData = AtomicData
         self._collater = data_list_collater
 
         if self.parallel_predict:
-            if (ParallelMLIPPredictUnit is None) or (guess_inference_settings is None):
+            if ParallelMLIPPredictUnit is None:
                 raise ImportError(
-                    "workers>1 requested, but ParallelMLIPPredictUnit/guess_inference_settings "
-                    "could not be imported from fairchem. Please ensure your FAIR-Chem installation "
+                    "workers>1 requested, but ParallelMLIPPredictUnit could not be imported "
+                    "from fairchem. Please ensure your FAIR-Chem installation "
                     "includes `fairchem-core[extras]`."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            # fp64 path: pass our InferenceSettings; fp32 path: fairchem default
-            inference_settings = uma_inference_settings or guess_inference_settings("default")
             atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
             form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
             self.predict = ParallelMLIPPredictUnit(
                 inference_model_path=str(ckpt_path),
                 device=self.device_str,
-                inference_settings=inference_settings,
+                inference_settings=uma_inference_settings,
                 atom_refs=atom_refs,
                 form_elem_refs=form_elem_refs,
                 num_workers=self.workers,
                 num_workers_per_node=self.workers_per_node,
             )
         else:
-            predict_kwargs = dict(device=self.device_str, workers=self.workers)
-            if uma_inference_settings is not None:
-                predict_kwargs["inference_settings"] = uma_inference_settings
-            self.predict = pretrained_mlip.get_predict_unit(model, **predict_kwargs)
+            self.predict = pretrained_mlip.get_predict_unit(
+                model,
+                device=self.device_str,
+                workers=self.workers,
+                inference_settings=uma_inference_settings,
+            )
+        _verify_uma_precision(self.predict, self.precision)
 
         self.has_torch_model = hasattr(self.predict, "model") and isinstance(
             getattr(self.predict, "model", None), nn.Module
@@ -744,42 +798,35 @@ class UMAASECalculator(FAIRChemCalculator):
             workers_per_node, "workers_per_node"
         )
 
-        precision = str(precision or "fp32").lower()
-        if precision not in ("fp32", "fp64"):
-            raise BackendError(f"UMA precision must be 'fp32' or 'fp64', got {precision!r}")
-        if precision == "fp64" and _UMAInferenceSettings is None:
-            raise BackendError(
-                "UMA precision='fp64' requires fairchem-core's InferenceSettings; "
-                "upgrade fairchem-core (>= 2.0) or pass precision='fp32'."
-            )
-        uma_inference_settings = (
-            _UMAInferenceSettings(base_precision_dtype="float64")
-            if precision == "fp64" and _UMAInferenceSettings is not None
-            else None
+        precision = _check_uma_precision(precision)
+        uma_inference_settings = _uma_inference_settings(
+            precision, analytical_hessian=False, parallel=num_workers > 1
         )
 
         if num_workers > 1:
-            if (ParallelMLIPPredictUnit is None) or (guess_inference_settings is None):
+            if ParallelMLIPPredictUnit is None:
                 raise ImportError(
-                    "workers>1 requested, but ParallelMLIPPredictUnit/guess_inference_settings "
-                    "could not be imported from fairchem."
+                    "workers>1 requested, but ParallelMLIPPredictUnit could not be imported "
+                    "from fairchem."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            inference_settings = uma_inference_settings or guess_inference_settings("default")
             atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
             form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
             predictor = ParallelMLIPPredictUnit(
                 inference_model_path=str(ckpt_path),
                 device=device,
-                inference_settings=inference_settings,
+                inference_settings=uma_inference_settings,
                 atom_refs=atom_refs,
                 form_elem_refs=form_elem_refs,
                 num_workers=num_workers,
                 num_workers_per_node=num_workers_per_node,
             )
         else:
-            predict_kwargs = dict(device=device, workers=num_workers)
-            if uma_inference_settings is not None:
-                predict_kwargs["inference_settings"] = uma_inference_settings
-            predictor = pretrained_mlip.get_predict_unit(model, **predict_kwargs)
+            predictor = pretrained_mlip.get_predict_unit(
+                model,
+                device=device,
+                workers=num_workers,
+                inference_settings=uma_inference_settings,
+            )
+        _verify_uma_precision(predictor, precision)
         super().__init__(predictor, task_name=str(task_name))

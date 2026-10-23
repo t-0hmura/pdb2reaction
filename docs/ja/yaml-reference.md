@@ -137,7 +137,7 @@ geom:
 ```yaml
 calc:
  backend: uma           # uma, orb, mace, aimnet2, dft, auto
- precision: auto # auto (uma/aimnet2 fp32、orb/mace fp64) | fp32 | fp64; aimnet2 は auto/fp32 のみ受理し fp64 を拒否
+ precision: auto # auto (uma/aimnet2 fp32、orb/mace fp64) | tf32 | fp32 | fp64; tf32 は uma/orb のみ; aimnet2 は auto/fp32 のみ受理し fp64 を拒否
  charge: 0 # 全電荷。ここに書いたときだけ使う（組み込みのデフォルト値は無い）。-q と -l が優先
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # UMA: uma-s-1p2 | uma-m-1p1。model を書かずに backend を orb / mace / aimnet2 にすると orb_v3_conservative_omol / MACE-OMOL-0 / aimnet2

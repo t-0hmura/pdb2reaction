@@ -3169,15 +3169,17 @@ def unbiased_energy_hartree(geom, base_calc) -> float:
 
 
 def _canonical_mlip_precision(backend: str, value: Any) -> Optional[str]:
-    """Return the backend-neutral public precision token (``fp32``/``fp64``)."""
+    """Return the backend-neutral public precision token (``tf32``/``fp32``/``fp64``)."""
     if backend == "custom":
         return None
     token = "" if value is None else str(value).strip().lower()
     if backend == "aimnet2":
         return "fp32"
-    if token in {"fp64", "float64", "double", "highest"}:
+    if token in {"fp64", "float64", "double"}:
         return "fp64"
-    if token in {"fp32", "float32", "float32-high", "float32-highest", "single"}:
+    if token in {"tf32", "float32-high"}:
+        return "tf32"
+    if token in {"fp32", "float32", "float32-highest", "single"}:
         return "fp32"
     return token or None
 

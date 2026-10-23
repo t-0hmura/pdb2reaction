@@ -1,13 +1,12 @@
 """Pins ORB's precision-string normalization.
 
-orb_models validates the matmul-precision string strictly: the bare "float32"
-is not a valid value and silently demotes to the slow "highest" mode, which also
-turns on the donated-buffer aot_autograd path that breaks double-backward
-Hessians. `_normalize_orb_precision` rewrites the legacy / unified tokens to the
-canonical orb_models strings before they reach the loader, so a --config YAML
-carrying calc.precision: float32 (or fp32/fp64) cannot slip a demoted precision
-through. The module-level helper imports no torch / orb_models, so it is testable
-without the ORB backend installed.
+orb_models validates the matmul-precision string strictly ("float32-high" =
+TF32 matmul, "float32-highest" = IEEE FP32, "float64"). `_normalize_orb_precision`
+rewrites the unified tokens and the bare "float32" to the canonical orb_models
+strings before they reach the loader, so a --config YAML carrying
+calc.precision: fp32 means IEEE FP32 as on every other backend. The module-level
+helper imports no torch / orb_models, so it is testable without the ORB backend
+installed.
 """
 
 from __future__ import annotations
@@ -26,14 +25,15 @@ from pdb2reaction.backends.orb import (
 @pytest.mark.parametrize(
     "raw, expected",
     [
-        ("float32", "float32-high"),   # invalid orb string -> canonical fast fp32
-        ("fp32", "float32-high"),       # unified token
-        ("FP32", "float32-high"),       # case-insensitive
+        ("float32", "float32-highest"),  # bare orb string -> IEEE FP32
+        ("fp32", "float32-highest"),     # unified token
+        ("FP32", "float32-highest"),     # case-insensitive
+        ("tf32", "float32-high"),        # unified token for TF32 matmul
         ("fp64", "float64"),            # unified token
         ("FP64", "float64"),
         ("float64", "float64"),         # already canonical -> untouched
         ("float32-high", "float32-high"),
-        ("float32-highest", "float32-highest"),  # unknown-but-valid -> passthrough
+        ("float32-highest", "float32-highest"),  # already canonical -> untouched
     ],
 )
 def test_normalize_orb_precision(raw, expected) -> None:

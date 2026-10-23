@@ -355,9 +355,15 @@ python run_limited.py pdb2reaction opt -i r.pdb -q -1 --precision fp64 --max-cyc
 # test52n: opt --precision fp32 (explicit fp32 dispatch; default is fp32, this pins the explicit path alongside test52m fp64)
 python run_limited.py pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loose --out-dir test52n_opt_fp32 > test52n_opt_fp32.out 2>&1
 
+# test52o: opt --precision tf32 (opt-in TF32 matmul; the result must record tf32)
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --precision tf32 --max-cycles 3 --thresh gau_loose --out-json --out-dir test52o_opt_tf32 > test52o_opt_tf32.out 2>&1
+python assert_release_result.py opt-config test52o_opt_tf32 --expected-charge -1 --expected-model uma-s-1p2 --expected-max-cycles 3 --expected-precision tf32 >> test52o_opt_tf32.out 2>&1
+
 # test53: full `all` with `--backend orb` — exercises the non-default MLIP backend.
 pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test53 > test53.out 2>&1
 python assert_release_result.py provenance test53 --expected-backend orb --expected-model orb_v3_conservative_omol --expected-precision fp64 >> test53.out 2>&1
+# test53b: ORB --precision fp32 (IEEE FP32, float32-highest) with an analytical Hessian
+pdb2reaction sp -i r.pdb -q -1 --backend orb --precision fp32 --hess --hessian-calc-mode Analytical --out-json --out-dir test53b_orb_fp32_hess > test53b_orb_fp32_hess.out 2>&1
 
 # ---- Subcommand-specific regression coverage ----
 # test54: opt --distance-restraint + --restraint-k (harmonic restraint actually applied at runtime, not dry-run)

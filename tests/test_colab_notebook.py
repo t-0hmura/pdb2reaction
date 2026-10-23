@@ -1101,7 +1101,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert '"""Return result(1), result(2), ... without touching prior output."""' in app
     assert "uma-s-1p2" in app
     assert "MODELS = {'mace': ['MACE-OMOL-0']" in app
-    assert "options=[('default: per backend', 'auto'), ('fp32', 'fp32'), ('fp64', 'fp64')]" in app
+    assert "options=[('default: per backend', 'auto'), ('tf32', 'tf32'), ('fp32', 'fp32'), ('fp64', 'fp64')]" in app
     assert "Appended to the command" not in app
     assert "Every remaining option" not in app
     assert "_MOLSTAR_VERSION = '5.11.0'" in app

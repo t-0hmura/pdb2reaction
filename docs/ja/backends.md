@@ -22,8 +22,8 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | バックエンド | インストール | モデル名 | `--precision` | 解析 Hessian | 複数ワーカー |
 |---------|---------|------------------|------------------|--------------------|------------------|
-| `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2`（デフォルト）/ `uma-m-1p1` | `fp32` / `fp64` | あり（autograd） | あり |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `fp32` / `fp64` | あり（autograd） | なし |
+| `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2`（デフォルト）/ `uma-m-1p1` | `tf32` / `fp32` / `fp64` | あり（autograd） | あり |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
 | `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（この環境では UMA は動きません） | `MACE-OMOL-0` | `fp32` / `fp64` | あり | なし |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` のみ | あり | なし |
 
@@ -34,14 +34,14 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 (ja-precision-by-gpu-class)=
 ### 精度（precision）
 
-`--precision fp32|fp64` は、どのバックエンドでも MLIP の推論の浮動小数点精度を決めます。値は UMA の `precision`、ORB の `precision`、MACE の `default_dtype` に渡されます。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。
+`--precision tf32|fp32|fp64` は、MLIP の推論の浮動小数点精度を決めます。`fp32` はどのバックエンドでも IEEE の単精度、`fp64` は倍精度です。`tf32` はテンソルを float32 のまま持ち、NVIDIA の GPU（Ampere 以降）で行列積だけを TF32 で計算します。速くなる代わりに精度が下がります。値は UMA の `precision`、ORB の `precision`（`tf32` → `float32-high`、`fp32` → `float32-highest`、`fp64` → `float64`）、MACE の `default_dtype` に渡されます。MACE と AIMNet2 には TF32 のモードがなく、`tf32` はエラーで止まります。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。
 
 `--precision` を指定しないときは、バックエンドごとのデフォルト値を使います。
 
 | バックエンド | デフォルト値 | 理由 |
 |---------|------|------|
-| `uma` | fp32 | 上流の fairchem の基準の設定です。 |
-| `orb` | fp64 | ORB の `float32-high` を使うときは `--precision fp32` を明示します。 |
+| `uma` | fp32 | インストールした fairchem-core の既定によらず、TF32 を使わない IEEE の FP32 です。 |
+| `orb` | fp64 | ORB の `float32-high`（TF32）は `--precision tf32` で選びます。 |
 | `mace` | fp64 | MACE は上流で `default_dtype="float64"` をデフォルトにしています。 |
 | `aimnet2` | fp32 | 精度の設定がありません。 |
 
@@ -50,7 +50,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | 目的 | 推奨 | 理由 |
 | --- | --- | --- |
 | 通常の計算 | 指定しない | 上のデフォルト値（UMA・AIMNet2 は fp32、ORB・MACE は fp64）のままにします。 |
-| 速さを優先するスクリーニング | 必要なときだけ `--precision fp32` | ORB・MACE の精度が下がります（[使用上の注意点](#使用上の注意点)）。 |
+| 速さを優先するスクリーニング | 必要なときだけ `--precision tf32`（UMA・ORB）か `fp32`（ORB・MACE） | どちらも精度が下がります（[使用上の注意点](#使用上の注意点)）。 |
 | 最終の TS と Hessian | 指定しない。UMA で n_imag ≥ 2 のときは `--precision fp64` と比べる（{ref}`tsopt <ja-wrong-imaginary-mode-count>`） | 精度によらず、`tsopt` の最後の Hessian で n_imag を確かめ、IRC と端点の最適化で TS が狙った R と P をつなぐことを確かめます。 |
 
 fp64 は次のように指定します。
@@ -207,7 +207,7 @@ calculator の主な引数です。YAML の `calc` 節のキーと同じです�
 | `charge` | 総電荷。YAML に書いたときだけ使い、`-q`・`-l` が優先 | なし |
 | `spin` | スピン多重度（2S+1） | `1` |
 | `model` | 選んだバックエンドのモデル（`--backend-model`）。UMA のデフォルトのままなら、ORB・MACE・AIMNet2 は `orb_v3_conservative_omol`・`MACE-OMOL-0`・`aimnet2` を使います | `"uma-s-1p2"` |
-| `precision` | MLIP の数値精度（`"fp32"` か `"fp64"`）。`"auto"` は UMA・AIMNet2 で fp32、ORB・MACE で fp64 | `"auto"` |
+| `precision` | MLIP の数値精度（`"tf32"`、`"fp32"`、`"fp64"`）。`"auto"` は UMA・AIMNet2 で fp32、ORB・MACE で fp64 | `"auto"` |
 | `task_name` | UMA のバッチに記録するタスクの名前 | `"omol"` |
 | `device` | `"cuda"`、`"cpu"`、または自動選択 | `"auto"` |
 | `workers` / `workers_per_node` | 並列の UMA 予測器（UMA だけ。ORB・MACE・AIMNet2 は警告を出して無視します） | `1` / `1` |
@@ -257,7 +257,8 @@ pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF�
 
 ## 使用上の注意点
 
-- ORB と MACE の `--precision fp32` はスクリーニング専用です。有限差分 Hessian のノイズが増えるので、結果を使う前に n_imag を確かめてください。
+- `--precision tf32` と、ORB・MACE の `--precision fp32` はスクリーニング専用です。有限差分 Hessian のノイズが増えるので、結果を使う前に n_imag を確かめてください。
+- UMA の `--precision tf32` は、インストールした fairchem-core に UMA Nitro があれば（`uma-s-1p2p1` 系の checkpoint、ワーカー 1 つ）それで計算します。ほかの checkpoint は TF32 でコンパイルした経路で計算し、FAIR-Chem が `Running in a reduced-precision mode` と出力します。
 - AIMNet2 は `--precision fp64` にも `--deterministic` にも対応せず、どちらもエラーで止まります。AIMNet2 はモデルへの入力を float32 にし、力を PyTorch の決定論的モードの外にある独自の CUDA のコードで計算するので、力はビット単位で再現しません（エネルギーは再現します）。繰り返しの計算を一致させたいときは、UMA、ORB、MACE のいずれかで `--deterministic` を付け、同じ環境で 2 回実行して比べてください。
 
 (ja-workers-analytical-error)=

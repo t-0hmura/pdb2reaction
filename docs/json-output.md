@@ -38,7 +38,7 @@ when the command has the corresponding data:
 | `mlip_model` | string \| null | Optional exact model/checkpoint identifier, kept separate from the backend |
 | `mlip_model_label` | string \| null | Optional publication-facing model label derived from the exact identifier |
 | `mlip_task` | string \| null | Optional backend task used by a multi-domain model; `mlip_model` remains the exact identifier |
-| `mlip_precision` | string \| null | Effective public precision token (`fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
+| `mlip_precision` | string \| null | Effective public precision token (`tf32`, `fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
 
 **`environment`**:
 
@@ -462,7 +462,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
 | `mlip_model_label` | string \| null | Publication-facing model label |
 | `mlip_task` | string \| null | Backend task for a multi-domain model |
-| `mlip_precision` | string \| null | Effective `fp32` / `fp64` token; null for custom calculators |
+| `mlip_precision` | string \| null | Effective `tf32` / `fp32` / `fp64` token; null for custom calculators |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `environment` | object | Hardware info |

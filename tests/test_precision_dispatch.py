@@ -63,13 +63,28 @@ def test_invalid_precision_rejected() -> None:
         apply_precision_to_calc_cfg({"backend": "uma"}, "fp16")
 
 
-def test_orb_fp32_maps_to_reduced_tf32_precision() -> None:
-    """Root cause of the ORB freq HOSP inflation: ORB's fp32 is the reduced
-    'float32-high' (TF32) matmul mode, not true single precision — so an ORB
-    finite-difference Hessian at fp32 carries TF32 force noise (spurious imag)."""
+def test_orb_fp32_maps_to_ieee_fp32() -> None:
+    """fp32 means IEEE FP32 on every backend: ORB's 'float32-high' is TF32
+    matmul, whose force noise inflates finite-difference Hessians into spurious
+    imaginary modes, so fp32 selects 'float32-highest'."""
     cfg = {"backend": "orb"}
     apply_precision_to_calc_cfg(cfg, "fp32")
-    assert cfg["precision"] == "float32-high"
+    assert cfg["precision"] == "float32-highest"
+
+
+def test_tf32_routes_to_uma_and_orb_tf32_modes() -> None:
+    uma_cfg = {"backend": "uma"}
+    apply_precision_to_calc_cfg(uma_cfg, "tf32")
+    assert uma_cfg["precision"] == "tf32"
+    orb_cfg = {"backend": "orb"}
+    apply_precision_to_calc_cfg(orb_cfg, "TF32")
+    assert orb_cfg["precision"] == "float32-high"
+
+
+@pytest.mark.parametrize("backend", ["mace", "aimnet2"])
+def test_tf32_rejected_without_a_tf32_mode(backend) -> None:
+    with pytest.raises(BackendError, match="tf32"):
+        apply_precision_to_calc_cfg({"backend": backend}, "tf32")
 
 
 def test_orb_fp64_maps_to_true_float64() -> None:
@@ -92,12 +107,18 @@ def test_config_borne_precision_dispatched_when_no_cli_flag() -> None:
 
 
 def test_already_dispatched_config_precision_is_passed_through() -> None:
-    """The ('fp32','fp64') guard: a hand-edited config carrying an already
+    """The unified-token guard: a hand-edited config carrying an already
     backend-dispatched value ('float64') must NOT be re-dispatched — re-dispatch
     would raise BackendError since 'float64' is not a unified token."""
     calc_cfg = {"backend": "orb", "precision": "float64"}
     apply_effective_precision(calc_cfg, None)  # 'float64' not a unified token → untouched
     assert calc_cfg["precision"] == "float64"
+
+
+def test_config_borne_tf32_is_dispatched() -> None:
+    calc_cfg = {"backend": "orb", "precision": "tf32"}
+    apply_effective_precision(calc_cfg, None)
+    assert calc_cfg["precision"] == "float32-high"
 
 
 def test_cli_precision_flag_wins_over_config() -> None:
@@ -138,10 +159,10 @@ def test_unspecified_precision_stays_fp32_for_uma(token) -> None:
 
 def test_explicit_fp32_still_reaches_orb_and_mace() -> None:
     """The sentinel exists to keep an explicit ``--precision fp32`` distinguishable
-    from 'unspecified'; fp32 must still downgrade both backends."""
+    from 'unspecified'; fp32 must still downgrade both backends (to IEEE FP32)."""
     orb_cfg = {"backend": "orb", "precision": "auto"}
     apply_effective_precision(orb_cfg, "fp32")
-    assert orb_cfg["precision"] == "float32-high"
+    assert orb_cfg["precision"] == "float32-highest"
 
     mace_cfg = {"backend": "mace", "precision": "auto"}
     apply_effective_precision(mace_cfg, "fp32")

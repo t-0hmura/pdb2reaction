@@ -40,7 +40,7 @@ result_all/
 | `scientific_status`, `scientific_status_reasons` | `success`, `partial`, or `failed`, and the reasons when it is not `success` |
 | `pipeline_mode` | `path-opt`, `path-search`, or `tsopt-only` |
 | `charge`, `spin` | Charge and multiplicity used |
-| `mlip_backend`, `mlip_model`, `mlip_precision` | Backend, exact model, and effective `fp32`/`fp64` (null for a custom calculator) |
+| `mlip_backend`, `mlip_model`, `mlip_precision` | Backend, exact model, and effective `tf32`/`fp32`/`fp64` (null for a custom calculator) |
 | `references` | Methods the run used, as `{method, citation, doi}` records |
 | `segments`, `post_segments` | Per-segment results (next section) |
 | `rate_limiting_step` | `{segment, barrier_kcal, method, mep_barrier_kcal}` for the highest local barrier |

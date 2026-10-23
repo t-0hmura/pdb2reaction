@@ -171,7 +171,8 @@ def test_custom_calculator_provenance_uses_loader_default_factory() -> None:
     ("backend", "cfg", "expected"),
     [
         ("uma", {"precision": "fp64"}, "fp64"),
-        ("orb", {"precision": "float32-high"}, "fp32"),
+        ("uma", {"precision": "tf32"}, "tf32"),
+        ("orb", {"precision": "float32-high"}, "tf32"),
         ("orb", {"precision": "float32-highest"}, "fp32"),
         ("mace", {"default_dtype": "float64"}, "fp64"),
         ("aimnet2", {}, "fp32"),

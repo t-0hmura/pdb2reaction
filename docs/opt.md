@@ -139,7 +139,7 @@ See the [generated CLI reference](reference/commands/opt.md) for every option.
 * **Rigid motions with frozen atoms**: `--flatten` treats rigid motions as [`freq`](freq.md#rigid-modes-with-frozen-boundaries) does.
 * **Frozen atoms and restraints in general**: how to choose frozen atoms and restraints for a cluster model is described in {ref}`Frozen atoms and distance restraints <freeze-atoms-and-restraints>`.
 * **Optimizer state dumps**: with `--dump`, set YAML `opt.dump_restart` to a positive integer N to write `restart_NNN.yaml` every N cycles. pdb2reaction does not read this file back, so rerun `opt` from the final geometry to continue a stopped calculation.
-* **Model and precision**: `--backend-model` selects the model of the backend and `--precision` (`fp32` / `fp64`) its precision; see the generated reference.
+* **Model and precision**: `--backend-model` selects the model of the backend and `--precision` (`tf32` / `fp32` / `fp64`) its precision; see the generated reference.
 
 ---
 

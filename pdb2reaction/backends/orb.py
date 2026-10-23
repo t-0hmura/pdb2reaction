@@ -27,16 +27,16 @@ def _is_conservative_orb_model(model_name: str) -> bool:
     return ("conservative" in norm) and ("direct" not in norm)
 
 
-# orb_models validates the matmul-precision string strictly: the bare "float32"
-# is NOT a valid value and silently demotes to the slow "highest" mode, which
-# also turns on the donated-buffer aot_autograd path that breaks double-backward
-# Hessians (see the precision comment on OrbCalculator.__init__). Normalize the
-# legacy / unified tokens to the canonical orb_models strings before they reach
-# the loader, so a --config YAML carrying calc.precision: float32 (or fp32/fp64)
-# cannot slip a demoted precision through.
+# orb_models validates the matmul-precision string strictly ("float32-high" =
+# TF32 matmul, "float32-highest" = IEEE FP32, "float64"); the bare "float32" is
+# not one of them. Normalize the unified tokens and the bare "float32" to the
+# canonical orb_models strings before they reach the loader, so a --config YAML
+# carrying calc.precision: fp32 means IEEE FP32 as on every other backend, and
+# TF32 is reached only through tf32 / float32-high.
 _PRECISION_ALIASES = {
-    "float32": "float32-high",
-    "fp32": "float32-high",
+    "tf32": "float32-high",
+    "float32": "float32-highest",
+    "fp32": "float32-highest",
     "fp64": "float64",
 }
 
@@ -76,13 +76,12 @@ class OrbCalculator(MLIPCalculator):
         self,
         *,
         model: str = "orb_v3_conservative_omol",
-        # orb_models expects a precision string such as "float32-high",
-        # "float32-highest", or "float64".  The historical value "float32"
-        # is not valid and silently falls through to the slow "highest" mode,
-        # which can also block double-backward Hessians.  Keep the direct API
-        # consistent with the CLI/backend default: float64 avoids the TF32 force
-        # noise observed in trusted finite-difference Hessians.  Callers may
-        # request "float32-high" explicitly for screening.
+        # orb_models expects "float32-high" (TF32 matmul), "float32-highest"
+        # (IEEE FP32), or "float64"; the unified tokens tf32/fp32/fp64 are
+        # aliased to them.  Keep the direct API consistent with the CLI/backend
+        # default: float64 avoids the TF32 force noise observed in trusted
+        # finite-difference Hessians.  Callers may request "float32-high"
+        # explicitly for screening.
         precision: str = "float64",
         compile_model: bool = False,
         # Base class parameters
@@ -268,10 +267,9 @@ class OrbCalculator(MLIPCalculator):
         ``compute_gradient_forces_and_stress`` uses ``create_graph=True``
         and the autograd tape is retained for the second backward pass.
 
-        Requires a conservative Orb model (enforced in ``__init__``) and
-        ``precision='float32-high'``/``'float64'`` so the loader does not
-        enable the aot_autograd donated-buffer optimization that blocks
-        double backward.
+        Requires a conservative Orb model (enforced in ``__init__``). The
+        aot_autograd donated-buffer optimization that blocks double backward
+        is switched off for the duration of the Hessian (see below).
 
         Returns a detached torch tensor of shape ``(3N, 3N)`` on the
         model device; the base dispatcher applies unit conversion,
@@ -353,9 +351,9 @@ class OrbCalculator(MLIPCalculator):
         # the Hessian's double backward. Orb's conservative model enables it, and
         # it frees intermediate buffers after the FIRST backward — the second
         # backward (for the Hessian) then raises "non-empty donated buffers
-        # requires create_graph=False and retain_graph=False". The precision
-        # guard (float32-high/float64) is NOT sufficient: the optimization fires
-        # even at float64, so force it off here. Restored in the finally block.
+        # requires create_graph=False and retain_graph=False". It fires at every
+        # precision, including float64, so force it off here. Restored in the
+        # finally block.
         _prev_donated = None
         try:
             _prev_donated = torch._functorch.config.donated_buffer

@@ -499,7 +499,7 @@ def test_trj2fig_recompute_passes_backend_model_and_precision(
     assert result.exit_code == 0, result.output
     assert created[0]["backend"] == "orb"
     assert created[0]["model"] == "orb_v3_direct_omol"
-    assert created[0]["precision"] == "float32-high"
+    assert created[0]["precision"] == "float32-highest"
 
 
 def test_trj2fig_json_preserves_same_named_outputs(tmp_path: Path) -> None:

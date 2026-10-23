@@ -39,13 +39,12 @@ Options:
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace).  [default: (the
                                   selected backend's own model)]
-  --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
-                                  defaults per backend (uma: fp32; orb, mace:
-                                  fp64). Routed to backend-specific kwargs (UMA
-                                  precision / ORB precision / MACE
-                                  default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.  [default: (per backend: uma fp32;
-                                  orb, mace fp64)]
+  --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
+                                  fp64. Unset defaults per backend (uma: fp32;
+                                  orb, mace: fp64). tf32 uses TF32 matmul for
+                                  speed (uma, orb only); avoid it for Hessians.
+                                  aimnet2: fp32 only.  [default: (per backend:
+                                  uma fp32; orb, mace fp64)]
   --solvent TEXT                  Computationally expensive xTB solvent delta
                                   correction. Examples: water, methanol,
                                   acetonitrile, dmso, thf, toluene. 'none'

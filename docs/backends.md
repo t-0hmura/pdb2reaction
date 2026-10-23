@@ -26,8 +26,8 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | backend | install | model identifier | `--precision` | analytical Hessian | multiple workers |
 |---------|---------|------------------|------------------|--------------------|------------------|
-| `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2` (default) / `uma-m-1p1` | `fp32` / `fp64` | yes (autograd) | yes |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `fp32` / `fp64` | yes (autograd) | no |
+| `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2` (default) / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | yes (autograd) | yes |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `tf32` / `fp32` / `fp64` | yes (autograd) | no |
 | `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (UMA does not run in this env) | `MACE-OMOL-0` | `fp32` / `fp64` | yes | no |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | `fp32` only | yes | no |
 
@@ -42,16 +42,21 @@ models the parentheses read `UMA / UMA-S-1.2 (OMol)`,
 
 ### Precision
 
-`--precision fp32|fp64` sets the floating-point precision of MLIP inference for
-every backend: the value is passed to UMA `precision`, ORB `precision`, and MACE
-`default_dtype`. AIMNet2 has no precision setting, so `fp32` changes nothing.
+`--precision tf32|fp32|fp64` sets the floating-point precision of MLIP
+inference. `fp32` is IEEE single precision and `fp64` double precision on every
+backend. `tf32` keeps tensors in float32 but runs matrix multiplications in TF32
+on NVIDIA GPUs (Ampere or newer): faster, and less precise. The value is passed
+to UMA `precision`, ORB `precision` (`tf32` → `float32-high`, `fp32` →
+`float32-highest`, `fp64` → `float64`), and MACE `default_dtype`. MACE and
+AIMNet2 have no TF32 mode, so `tf32` stops with an error; AIMNet2 has no
+precision setting, so `fp32` changes nothing.
 
 When `--precision` is not given, each backend takes its own default:
 
 | backend | default | why |
 |---------|---------|-----|
-| `uma` | fp32 | The upstream fairchem baseline. |
-| `orb` | fp64 | Use `--precision fp32` to select ORB's reduced `float32-high` mode explicitly. |
+| `uma` | fp32 | IEEE FP32 with TF32 off, whatever the installed fairchem-core selects by default. |
+| `orb` | fp64 | `--precision tf32` selects ORB's `float32-high` (TF32) mode. |
 | `mace` | fp64 | MACE ships `default_dtype="float64"` upstream. |
 | `aimnet2` | fp32 | No precision knob. |
 
@@ -60,7 +65,7 @@ Which value to choose depends on the purpose:
 | Purpose | Recommended | Why |
 | --- | --- | --- |
 | Routine run | Leave unset | Keeps the defaults above: UMA/AIMNet2 fp32, ORB/MACE fp64. |
-| Speed screening | `--precision fp32` only when needed | This lowers ORB/MACE precision (see [Notes](#notes)). |
+| Speed screening | `--precision tf32` (UMA, ORB) or `fp32` (ORB, MACE) only when needed | Both lower the precision (see [Notes](#notes)). |
 | Final TS/Hessian | Leave unset; with UMA, compare `--precision fp64` when n_imag ≥ 2 ([tsopt](tsopt.md#wrong-imaginary-mode-count-after-optimization)) | Whatever the precision, check n_imag from the final Hessian of `tsopt` and confirm with IRC and the endpoint optimizations that the TS connects the intended R and P. |
 
 Enable fp64 with:
@@ -281,7 +286,7 @@ solvent keys, are listed in [YAML Reference › calc](yaml-reference.md#calc).
 | `charge` | Total system charge; used only when written in YAML, and `-q`/`-l` override it. | none |
 | `spin` | Spin multiplicity (2S+1). | `1` |
 | `model` | Model of the selected backend (`--backend-model`). Left at the UMA default, ORB / MACE / AIMNet2 use `orb_v3_conservative_omol` / `MACE-OMOL-0` / `aimnet2`. | `"uma-s-1p2"` |
-| `precision` | MLIP numerical precision (`"fp32"` or `"fp64"`); `"auto"` gives fp32 for UMA/AIMNet2 and fp64 for ORB/MACE. | `"auto"` |
+| `precision` | MLIP numerical precision (`"tf32"`, `"fp32"` or `"fp64"`); `"auto"` gives fp32 for UMA/AIMNet2 and fp64 for ORB/MACE. | `"auto"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ORB / MACE / AIMNet2 ignore them with a warning). | `1` / `1` |
@@ -337,8 +342,13 @@ To add a built-in backend with its own `--backend` name, follow recipe 3.2
 
 ## Notes
 
-- `--precision fp32` on ORB or MACE is for screening only: expect noisier
-  finite-difference Hessians and check n_imag before you use the result.
+- `--precision tf32`, and `--precision fp32` on ORB or MACE, are for screening
+  only: expect noisier finite-difference Hessians and check n_imag before you use
+  the result.
+- With UMA, `--precision tf32` runs FAIR-Chem's UMA Nitro where the installed
+  fairchem-core provides it (the `uma-s-1p2p1` checkpoints, one worker); other
+  checkpoints run the compiled path with TF32, and FAIR-Chem logs
+  `Running in a reduced-precision mode`.
 - AIMNet2 supports neither `--precision fp64` nor `--deterministic`; both stop
   the run with an error. AIMNet2 casts its model inputs to float32, and it
   computes forces with its own CUDA code outside PyTorch's deterministic mode,

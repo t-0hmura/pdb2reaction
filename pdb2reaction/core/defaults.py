@@ -61,7 +61,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "workers": 1,
     "workers_per_node": 1,
     # "auto" (resolve per backend: uma/aimnet2 fp32, orb/mace fp64 — see
-    # backends._BACKEND_DEFAULT_PRECISION) | "fp32" | "fp64". The sentinel keeps
+    # backends._BACKEND_DEFAULT_PRECISION) | "tf32" | "fp32" | "fp64". The sentinel keeps
     # "user named no precision" distinguishable from an explicit "--precision fp32";
     # a literal "fp32" here dispatched reduced precision to ORB and MACE.
     "precision": "auto",

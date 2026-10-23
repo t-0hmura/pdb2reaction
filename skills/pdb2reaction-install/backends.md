@@ -203,8 +203,9 @@ python -c "from pdb2reaction.backends import create_calculator; create_calculato
 The default model is `orb_v3_conservative_omol`: `conservative` means forces
 are derived from the energy, and `omol` means training on OMol25. That names
 the model family, not its accuracy for a given reaction. pdb2reaction runs ORB
-in fp64 by default. `--precision fp32` selects ORB's `float32-high` mode, which
-lowers CUDA matmul precision, so compare it with fp64 on the target system.
+in fp64 by default. `--precision fp32` selects IEEE FP32 (`float32-highest`) and
+`--precision tf32` ORB's `float32-high` mode, which lowers CUDA matmul precision;
+compare either with fp64 on the target system.
 
 Pitfalls:
 

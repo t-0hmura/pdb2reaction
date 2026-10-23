@@ -137,7 +137,7 @@ Energy/force calculator configuration.
 ```yaml
 calc:
  backend: uma           # uma, orb, mace, aimnet2, dft, or auto
- precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | fp32 | fp64; aimnet2 accepts auto/fp32 and rejects fp64
+ precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | tf32 | fp32 | fp64; tf32 for uma/orb only; aimnet2 accepts auto/fp32 and rejects fp64
  charge: 0 # Total charge; used only when written here (no built-in default); -q and -l override it
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # UMA: uma-s-1p2 | uma-m-1p1. Without a model set, backend orb / mace / aimnet2 uses orb_v3_conservative_omol / MACE-OMOL-0 / aimnet2

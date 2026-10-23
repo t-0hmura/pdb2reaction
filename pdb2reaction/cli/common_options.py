@@ -273,22 +273,23 @@ def add_coord_type_option(
 
 
 def add_precision_option() -> Callable[[Callable], Callable]:
-    """Attach `--precision fp32|fp64` to a Click command.
+    """Attach `--precision tf32|fp32|fp64` to a Click command.
 
-    Backend-agnostic precision flag. The CLI body routes the value into
-    the backend-specific configuration key via
+    Backend-agnostic precision flag. ``fp32`` is IEEE FP32 on every backend;
+    ``tf32`` (TF32 matmul, FP32 storage) is an opt-in speed mode. The CLI body
+    routes the value into the backend-specific configuration key via
     ``pdb2reaction.backends.apply_precision_to_calc_cfg``:
 
-    - ``uma``  -> ``precision`` ('fp32' | 'fp64')
-    - ``orb``  -> ``precision`` ('float32-high' | 'float64')
-    - ``mace`` -> ``default_dtype`` ('float32' | 'float64')
-    - ``aimnet2`` -> fp32 is a no-op; fp64 is rejected (its model inputs
-      are cast to float32 upstream, so fp64 cannot be honoured)
+    - ``uma``  -> ``precision`` ('tf32' | 'fp32' | 'fp64')
+    - ``orb``  -> ``precision`` ('float32-high' | 'float32-highest' | 'float64')
+    - ``mace`` -> ``default_dtype`` ('float32' | 'float64'); tf32 is rejected
+    - ``aimnet2`` -> fp32 is a no-op; tf32 and fp64 are rejected (its model
+      inputs are cast to float32 upstream, so fp64 cannot be honoured)
 
     Unset resolves per backend (``backends._BACKEND_DEFAULT_PRECISION``):
-    UMA fp32 (its upstream fairchem baseline), ORB and MACE fp64. Precision
-    affects model evaluation and finite-difference derivatives, so frequency
-    and IRC results should be validated for the selected backend and precision.
+    UMA fp32, ORB and MACE fp64. Precision affects model evaluation and
+    finite-difference derivatives, so frequency and IRC results should be
+    validated for the selected backend and precision.
 
     Wire targets: every subcommand that constructs a backend calculator
     (opt, tsopt, freq, irc, sp, scan / scan2d / scan3d, path-opt,
@@ -298,14 +299,14 @@ def add_precision_option() -> Callable[[Callable], Callable]:
         return click.option(
             "--precision",
             "precision",
-            type=click.Choice(["fp32", "fp64"], case_sensitive=False),
+            type=click.Choice(["tf32", "fp32", "fp64"], case_sensitive=False),
             default=None,
             show_default="per backend: uma fp32; orb, mace fp64",
             help=(
-                "MLIP backend precision: fp32 or fp64. Unset defaults per "
-                "backend (uma: fp32; orb, mace: fp64). Routed to "
-                "backend-specific kwargs (UMA precision / ORB precision / "
-                "MACE default_dtype). aimnet2: fp32 no-op; fp64 rejected."
+                "MLIP backend precision: tf32, fp32 (IEEE) or fp64. Unset "
+                "defaults per backend (uma: fp32; orb, mace: fp64). tf32 uses "
+                "TF32 matmul for speed (uma, orb only); avoid it for Hessians. "
+                "aimnet2: fp32 only."
             ),
         )(func)
     return decorator

@@ -31,7 +31,7 @@ cat result_opt/result.json | python -m json.tool
 | `mlip_model` | string \| null | 任意。バックエンドと分けて記録する、正確なモデル/チェックポイント名 |
 | `mlip_model_label` | string \| null | 任意。正確な識別子から導出した論文表記用のモデル名 |
 | `mlip_task` | string \| null | 任意。複数ドメインのモデルで使ったバックエンドのタスク。正確な識別子は `mlip_model` に保持 |
-| `mlip_precision` | string \| null | 実効精度の共通表記（`fp32` / `fp64`）。dtype をユーザーのコードが管理する自作の calculator では null |
+| `mlip_precision` | string \| null | 実効精度の共通表記（`tf32` / `fp32` / `fp64`）。dtype をユーザーのコードが管理する自作の calculator では null |
 
 **`environment`**:
 
@@ -433,7 +433,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
 | `mlip_model_label` | string \| null | 論文表記用のモデル名 |
 | `mlip_task` | string \| null | 複数ドメインのモデルで使ったバックエンドのタスク |
-| `mlip_precision` | string \| null | 実効の `fp32` / `fp64` 表記。自作の calculator では null |
+| `mlip_precision` | string \| null | 実効の `tf32` / `fp32` / `fp64` 表記。自作の calculator では null |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |

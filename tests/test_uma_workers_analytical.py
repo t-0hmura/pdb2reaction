@@ -264,6 +264,7 @@ def test_analytical_mode_uses_noncompiled_precision_matched_settings(
 
     settings = captured["inference_settings"]
     assert settings.kwargs == {
+        "tf32": False,
         "compile": False,
         "base_precision_dtype": expected_dtype,
     }
@@ -451,7 +452,6 @@ def _lazy_preparation_core(monkeypatch, *, device, precision, workers=1):
     monkeypatch.setattr(uma_module.pretrained_mlip, "get_reference_energies",
                         lambda *_args, **_kwargs: {}, raising=False)
     monkeypatch.setattr(uma_module, "ParallelMLIPPredictUnit", parallel_factory)
-    monkeypatch.setattr(uma_module, "guess_inference_settings", lambda name: name)
     core = UMAcore(["O", "H", "H"], model="uma-s-1p2", charge=-1, spin=2,
                    device=device, precision=precision, workers=workers)
     assert events == [("construct", "parallel" if workers > 1 else "serial")]
