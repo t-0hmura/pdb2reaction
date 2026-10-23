@@ -13,6 +13,7 @@ import inspect
 import sys
 from types import ModuleType, SimpleNamespace
 
+import numpy as np
 import pytest
 
 from pdb2reaction.backends.base import BackendError
@@ -165,3 +166,29 @@ def test_mace_polar_without_graph_longrange_names_the_package(monkeypatch) -> No
     calc.device_str, calc.default_dtype = "cpu", "float64"
     with pytest.raises(BackendError, match=r"graph-longrange==0\.4\.0"):
         calc._build_calc("MACE-POLAR-1-M")
+
+
+def test_mace_sees_coordinates_centred_on_the_origin() -> None:
+    from ase.calculators.calculator import Calculator, all_changes
+
+    from pdb2reaction.backends.mace import MACECalculator
+
+    class Recording(Calculator):
+        implemented_properties = ["energy", "forces"]
+
+        def __init__(self):
+            super().__init__()
+            self.seen = []
+
+        def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
+            super().calculate(atoms, properties, system_changes)
+            self.seen.append(self.atoms.get_positions())
+            self.results = {"energy": 0.0, "forces": np.zeros((len(self.atoms), 3))}
+
+    calc = object.__new__(MACECalculator)
+    calc._calc, calc.charge, calc.mult = Recording(), 0, 1
+    xyz = np.array([[40.0, 50.0, 60.0], [41.0, 50.0, 60.0], [40.0, 52.0, 61.0]])
+    calc._compute_energy_forces_ev(["O", "H", "H"], xyz)
+    seen = calc._calc.seen[-1]
+    assert np.allclose(seen.min(axis=0), -seen.max(axis=0))
+    assert np.allclose(seen - seen[0], xyz - xyz[0])

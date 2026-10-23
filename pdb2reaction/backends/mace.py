@@ -32,6 +32,19 @@ MACE_MP_ALIASES_FALLBACK = [
 ]
 
 
+def _centered(coord_ang) -> np.ndarray:
+    """Coordinates moved so that their bounding box is centred on the origin.
+
+    For a non-periodic system mace-torch sizes the box it builds from the
+    largest absolute coordinate (mace/data/neighborhood.py), and MACE-POLAR-1
+    sizes its k-space grid from that box, so a cluster far from the origin
+    (PDB coordinates) runs out of GPU memory. Energies, forces and Hessians do
+    not change under a translation.
+    """
+    xyz = np.asarray(coord_ang, dtype=np.float64)
+    return xyz - 0.5 * (xyz.min(axis=0) + xyz.max(axis=0))
+
+
 class MACECalculator(MLIPCalculator):
     """MACE backend via mace.calculators."""
 
@@ -276,7 +289,7 @@ class MACECalculator(MLIPCalculator):
     def _compute_energy_forces_ev(self, elem, coord_ang):
         from ase import Atoms
 
-        atoms = Atoms(symbols=list(elem), positions=np.asarray(coord_ang, dtype=np.float64))
+        atoms = Atoms(symbols=list(elem), positions=_centered(coord_ang))
         atoms.info["charge"] = int(self.charge)
         atoms.info["spin"] = int(self.mult)
         atoms.calc = self._calc
@@ -321,8 +334,7 @@ class MACECalculator(MLIPCalculator):
                 "--hessian-calc-mode FiniteDifference."
             )
 
-        atoms = Atoms(symbols=list(elem),
-                      positions=np.asarray(coord_ang, dtype=np.float64))
+        atoms = Atoms(symbols=list(elem), positions=_centered(coord_ang))
         atoms.info["charge"] = int(self.charge)
         atoms.info["spin"] = int(self.mult)
         atoms.calc = self._calc
