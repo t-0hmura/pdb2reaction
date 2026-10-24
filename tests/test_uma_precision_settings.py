@@ -12,8 +12,10 @@ from types import SimpleNamespace
 
 import pytest
 
-import pdb2reaction.backends.uma as uma_module
-from pdb2reaction.backends.base import BackendError
+pytest.importorskip("fairchem")
+
+import pdb2reaction.backends.uma as uma_module  # noqa: E402
+from pdb2reaction.backends.base import BackendError  # noqa: E402
 
 
 @dataclass
