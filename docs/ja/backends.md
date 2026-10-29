@@ -23,7 +23,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | バックエンド | インストール | モデル名 | `--precision` | 解析 Hessian | 複数ワーカー |
 |---------|---------|------------------|------------------|--------------------|------------------|
 | `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2p1`（デフォルト）/ `uma-s-1p2p1-ft-d4rev` / `uma-s-1p2` / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | あり（autograd） | あり |
-| `orb` | `pip install "pdb2reaction[orb]"` | `orbmol-v2`（デフォルト）/ `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
+| `orb` | 別の環境で `pip install "pdb2reaction[orb]"`（UMA は元の環境で使います） | `orbmol-v2`（デフォルト）/ `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
 | `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'`（この環境では UMA は動きません） | `MACE-OMOL-0`（デフォルト）/ `MACE-POLAR-1-S` / `-M` / `-L` | `fp32` / `fp64` | あり | なし |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2`（デフォルト）/ `aimnet2-2025` / `aimnet2-nse` / `aimnet2-pd` | `fp32` のみ | あり | なし |
 

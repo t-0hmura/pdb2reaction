@@ -5,7 +5,7 @@ description: "Install and environment setup for pdb2reaction: the core package, 
 
 # Install pdb2reaction
 
-Check the machine → `torch==2.13.0` from the PyTorch index that matches the driver → `pip install pdb2reaction` (UMA's `fairchem-core` is a core dependency) → optional extras, or a separate env for MACE → `hf auth login` for UMA → `pdb2reaction --version`.
+Check the machine → `torch==2.13.0` from the PyTorch index that matches the driver → `pip install pdb2reaction` (UMA's `fairchem-core` is a core dependency) → optional extras, or a separate env for ORB or MACE → `hf auth login` for UMA → `pdb2reaction --version`.
 
 pdb2reaction needs a PyTorch wheel that matches the NVIDIA driver and at least
 one MLIP backend; DFT and the `xtb` executable are optional. The install is done
@@ -54,21 +54,22 @@ conda activate <YOUR_ENV>
 | Extra | Pulls in | When you need it |
 |---|---|---|
 | (none) | UMA via `fairchem-core`, base deps | Default; `-b uma` works |
-| `[orb]` | `orb-models` | `-b orb` |
+| `[orb]` | `orb-models` | `-b orb`, in a separate env |
 | `[aimnet]` | `aimnet>=0.2.0` | `-b aimnet2` |
 | `[dft]` | PySCF, CUDA 13 GPU4PySCF and CuPy on Linux x86_64 | `-b dft`, `--dft`, `pdb2reaction dft` with a `cu130` or `cu132` wheel or the conda-forge `cuda130` build |
 | `[dft-cuda12]` | PySCF, CUDA 12 GPU4PySCF and CuPy | Same, with a `cu126` wheel or the `cuda129` build |
 | `[ci]`, `[dev]`, `[docs]` | test, pytest, and Sphinx dependencies | Contributing and building docs |
 
 There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need
-different `e3nn` versions.
+different `e3nn` versions. Install `[orb]` in its own env too: `orb-models`
+pins `nvalchemi-toolkit-ops<0.4`, so pip lowers `fairchem-core` there.
 
 ## Choose a backend
 
 | `-b` | Default model | Install | Notes |
 |---|---|---|---|
 | `uma` (default) | `uma-s-1p2p1`; `uma-s-1p2p1-ft-d4rev`, `uma-s-1p2`, `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
-| `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra | fp64 by default |
+| `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra in a separate env | fp64 by default |
 | `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16) via `--backend-model` | Separate env | fp64 by default |
 | `aimnet2` | `aimnet2`; `aimnet2-2025`, `aimnet2-nse` (open-shell), `aimnet2-pd` via `--backend-model` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
 

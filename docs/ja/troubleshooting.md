@@ -33,7 +33,7 @@
 | DMF モードのインポートエラー（`cyipopt`）、または `No module named 'dmf'` | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください（`pydmf` は `pdb2reaction` と一緒に入ります）。デフォルトの GPU 版でそれでもインポートに失敗するときは、`pip install 'pydmf[torch]'` | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | UMA モデルで 401 / 403 / アクセス制限付きリポジトリのエラー（`huggingface_hub.errors.GatedRepoError`） | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | `e3nn` / `fairchem-core` のインポートの競合（UMA の環境に MACE を入れた） | MACE 専用の環境を使ってください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
-| `ORB backend requires orb-models and torch`（AIMNet2 / MACE も同様） | バックエンドの追加パッケージを入れてください：`pip install "pdb2reaction[orb]"`。MACE は別の環境に入れます | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
+| `ORB backend requires orb-models and torch`（AIMNet2 / MACE も同様） | バックエンドの追加パッケージを入れてください：ORB は別の環境に `pip install "pdb2reaction[orb]"`。MACE も別の環境に入れます | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | CUDA / GPU の実行時エラー | GPU、PyTorch のビルド、ドライバをまとめて確かめてください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | 図の出力に失敗する | `plotly_get_chrome -y` でヘッドレス Chrome を入れてください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 
@@ -116,7 +116,7 @@
 | 症状 | 原因 | 対処 |
 | --- | --- | --- |
 | UMA のダウンロードに失敗する（`huggingface_hub.errors.GatedRepoError`、`401`、`403`） | Hugging Face にログインしていない、または UMA モデルのライセンスに同意していない | 環境・マシンごとに一度 `hf auth login` を実行し、Hugging Face の UMA モデルのページでライセンスに同意してください。HPC では、計算ノードからモデルのキャッシュ（`$FAIRCHEM_CACHE_DIR`、デフォルトは `~/.cache/fairchem`）に書き込めるかを確かめます |
-| `ORB backend requires orb-models and torch`、`AIMNet2 backend requires torch and aimnet`、`Could not import mace.calculators because mace-torch is not installed` | バックエンドのパッケージがこの環境に入っていない | ORB：`pip install "pdb2reaction[orb]"`。AIMNet2：`pip install "pdb2reaction[aimnet]"`。MACE：別の環境（次の行） |
+| `ORB backend requires orb-models and torch`、`AIMNet2 backend requires torch and aimnet`、`Could not import mace.calculators because mace-torch is not installed` | バックエンドのパッケージがこの環境に入っていない | ORB：別の環境で `pip install "pdb2reaction[orb]"`。AIMNet2：`pip install "pdb2reaction[aimnet]"`。MACE：別の環境（次の行） |
 | `e3nn` / `fairchem-core` のインポートの競合 | UMA の環境に MACE を入れた。`mace-torch` は `e3nn==0.4.4` に固定し、`fairchem-core` は `e3nn>=0.5` を必要とする | MACE 専用の conda 環境を使ってください：`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'` |
 | 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | `python -m pip check` を実行してください。PyG / `torch_scatter` は、エラーがそれを名指ししたときだけ入れます。今の `orb-models` はこれを必要としません |
 | `torch.cuda.is_available()` が `False`、またはインポート時に CUDA の実行時エラー | PyTorch のビルドが計算ノードの GPU・ドライバに合っていない | `nvidia-smi`、`python -m torch.utils.collect_env`、`python -m pip check` で、割り当てられた GPU、入っている wheel、ドライバを確かめてください。真偽値だけでは原因は分かりません。`nvidia-smi` が示す `CUDA Version` はドライバが扱える最も新しい CUDA です。それ以下の CUDA の wheel（`cu126`、`cu130`、`cu132`）を入れてください。ローカルの CUDA toolkit は要りません |

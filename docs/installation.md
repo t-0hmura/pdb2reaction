@@ -115,9 +115,12 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB**:
+    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would lower UMA's `fairchem-core` to an older release. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. You may rename the environment `orb-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
+    conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
+    conda activate orb-env
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install "pdb2reaction[orb]"
     ```
 

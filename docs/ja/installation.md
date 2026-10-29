@@ -112,9 +112,12 @@ plotly_get_chrome -y
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
-    **ORB**:
+    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、同じ環境に入れると UMA の `fairchem-core` が古い版に下がります。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
+    conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
+    conda activate orb-env
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install "pdb2reaction[orb]"
     ```
 

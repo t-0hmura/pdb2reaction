@@ -196,13 +196,19 @@ Pitfalls:
   scheduler and Ray logs, check that every worker has the same env and visible
   devices, and reproduce with one worker before changing CUDA packages.
 
-## ORB
+## ORB (separate environment)
 
 The `[orb]` extra installs orb-models 0.7 or newer. Weights download on first
-use, with no login.
+use, with no login. orb-models pins `nvalchemi-toolkit-ops<0.4`, so in the
+same env pip lowers `fairchem-core` to 2.22, and UMA models that need a newer
+fairchem (such as `uma-s-1p2p1-ft-d4rev`) no longer load. Give ORB its own env
+and keep UMA in the main one.
 
 ```bash
-pip install 'pdb2reaction[orb]'   # or: pip install orb-models
+conda create -n <YOUR_ORB_ENV> python=3.12 -y
+conda activate <YOUR_ORB_ENV>
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
+pip install 'pdb2reaction[orb]'
 python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
