@@ -115,7 +115,7 @@
 
 | 症状 | 原因 | 対処 |
 | --- | --- | --- |
-| UMA のダウンロードに失敗する（`huggingface_hub.errors.GatedRepoError`、`401`、`403`） | Hugging Face にログインしていない、または UMA モデルのライセンスに同意していない | 環境・マシンごとに一度 `hf auth login` を実行し、Hugging Face の UMA モデルのページでライセンスに同意してください。HPC では、計算ノードから Hugging Face のキャッシュディレクトリに書き込めるかを確かめます |
+| UMA のダウンロードに失敗する（`huggingface_hub.errors.GatedRepoError`、`401`、`403`） | Hugging Face にログインしていない、または UMA モデルのライセンスに同意していない | 環境・マシンごとに一度 `hf auth login` を実行し、Hugging Face の UMA モデルのページでライセンスに同意してください。HPC では、計算ノードからモデルのキャッシュ（`$FAIRCHEM_CACHE_DIR`、デフォルトは `~/.cache/fairchem`）に書き込めるかを確かめます |
 | `ORB backend requires orb-models and torch`、`AIMNet2 backend requires torch and aimnet`、`Could not import mace.calculators because mace-torch is not installed` | バックエンドのパッケージがこの環境に入っていない | ORB：`pip install "pdb2reaction[orb]"`。AIMNet2：`pip install "pdb2reaction[aimnet]"`。MACE：別の環境（次の行） |
 | `e3nn` / `fairchem-core` のインポートの競合 | UMA の環境に MACE を入れた。`mace-torch` は `e3nn==0.4.4` に固定し、`fairchem-core` は `e3nn>=0.5` を必要とする | MACE 専用の conda 環境を使ってください：`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'` |
 | 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | `python -m pip check` を実行してください。PyG / `torch_scatter` は、エラーがそれを名指ししたときだけ入れます。今の `orb-models` はこれを必要としません |

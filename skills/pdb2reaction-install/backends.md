@@ -185,7 +185,13 @@ Pitfalls:
 - `freq` runs out of VRAM: compare Hessian modes and model sizes on a pilot,
   reduce the Hessian target, or move Hessian assembly to CPU.
 - The first call is slow: checkpoint download and cache filling
-  (`~/.cache/huggingface/hub/`) or model start-up dominate.
+  (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) or model start-up
+  dominate.
+- Compute nodes without internet access: with the same env and the same
+  `FAIRCHEM_CACHE_DIR` on a shared filesystem, fetch each model once on a
+  login node, e.g.
+  `python -c "from fairchem.core import pretrained_mlip; pretrained_mlip.get_predict_unit('uma-s-1p2p1', device='cpu')"`,
+  then `export HF_HUB_OFFLINE=1` in the job script.
 - `Ray actor died` is not specific. Capture the actor traceback and the
   scheduler and Ray logs, check that every worker has the same env and visible
   devices, and reproduce with one worker before changing CUDA packages.

@@ -128,7 +128,7 @@ installed. An `ImportError` points to that backend's section in
 | `torch.cuda.is_available()` is `False` | CPU wheel, hidden GPU, driver and wheel mismatch, or mixed libraries | Run `python -m torch.utils.collect_env` and `python -m pip check` before changing the wheel |
 | `OSError: libcusolver.so.11 not found` | CUDA wheel dependency missing or shadowed by `LD_LIBRARY_PATH` | Compare with a clean environment ([CUDA and PyTorch](backends.md#cuda-and-pytorch)) |
 | `e3nn` conflict on `pip install` | UMA and MACE in one env | Separate env for MACE |
-| `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the Hugging Face cache |
+| `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
 | Plot export fails, or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly | `plotly_get_chrome -y` |
