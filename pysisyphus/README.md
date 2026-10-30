@@ -23,7 +23,7 @@ The bundled fork keeps these divergences explicit and limits changes outside the
 |------|------------|------|
 | `pysisyphus/Geometry.py`, `pysisyphus/tr_projection.py` | ordered full/active PHVA metadata, non-mutating normal modes, and constrained rigid-null projection | frozen-boundary vibrational physics |
 | `pysisyphus/irc/IRC.py` | initial-displacement memory hygiene for large-system IRC; constrained rigid-null treatment; opt-in `require_pos_def_hessian` PSD convergence guard | chemistry-rule adjacent, freq-stage VRAM invariant |
-| `pysisyphus/optimizers/Optimizer.py`, `LBFGS.py`, `RFOptimizer.py` | atomic coordinate/history rollback and uphill-trial rejection for minimizers | optimizer state integrity |
+| `pysisyphus/optimizers/Optimizer.py`, `LBFGS.py`, `RFOptimizer.py` | atomic coordinate/history rollback and uphill-trial rejection for minimizers; progress-table convergence marks only for the criteria the preset checks | optimizer state integrity |
 | `pysisyphus/optimizers/HessianOptimizer.py` | opt-in `trust_band` rho-band trust update, `hessian_update_window` multistep TS-BFGS, `weighted_trust` per-coord-type L_inf trust; coordinate/history rollback for rejected minimizer trials; `get_xp`-based torch/numpy dispatch where shared API allows | optimizer step control / trust radius |
 | `pysisyphus/optimizers/hessian_updates.py` | device-resident rank-two `bofill_update`, in-place application where ownership permits, and opt-in CPU offload; `multistep_ts_bfgs_update` helper; re-exports `_outer / _dot` from `_array` shim | bounded device memory with explicit fallback |
 | `pysisyphus/optimizers/restrict_step.py` | `per_coord_type_weights` + `weighted_max_internal_step` helpers | weighted L∞ trust check |

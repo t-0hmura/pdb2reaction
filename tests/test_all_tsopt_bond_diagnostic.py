@@ -164,3 +164,47 @@ def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_
     assert expected in str(segment["bond_changes"])
     assert (out / "_work/path_opt/hei_seg_01.xyz").is_file()
     assert (out / "_work/path_opt/mep_seg_01_trj.xyz").is_file()
+
+
+def test_refine_path_root_summary_fails_closed_until_post_processing(tmp_path, monkeypatch):
+    # A run that dies in TSOPT must not leave the raw path-search success at the root.
+    monkeypatch.delenv(RUN_ID_ENV, raising=False)
+    out = tmp_path / "out"
+    inputs = [_write(tmp_path / f"input{i}.pdb", _pdb(i)) for i in (0, 2)]
+
+    def child(name, _cli, args, **kwargs):
+        assert name == "path_search"
+        child_out = Path(args[args.index("--out-dir") + 1])
+        _write(child_out / "mep_seg_01_trj.xyz", "".join(_frame(i) for i in range(3)))
+        _write(child_out / "hei_seg_01.xyz", _frame(1))
+        _write(child_out / "hei_seg_01.pdb", _pdb(1))
+        payload = {
+            "execution_status": "completed", "scientific_status": "success",
+            "path_optimizers": [],
+            "segments": [{"index": 1, "tag": "seg_001", "kind": "seg",
+                          "converged": True, "barrier_kcal": 62.75,
+                          "bond_changes": "Bond formed"}],
+        }
+        _write(child_out / "summary.json", json.dumps(apply_current_run_id(payload)))
+
+    def stop_at_ts(hei, *args, **kwargs):
+        raise ReachedTSDispatch
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", child)
+    monkeypatch.setattr(all_workflow, "run_trj2fig", lambda *args, **kwargs: None)
+    monkeypatch.setattr(all_workflow, "close_matplotlib_figures", lambda: None)
+    monkeypatch.setattr(all_workflow, "_run_tsopt_on_hei", stop_at_ts)
+    args = ["all", *[arg for path in inputs for arg in ("-i", str(path))]]
+    args += ["-q", "0", "-m", "1", "--out-dir", str(out), "--no-preopt",
+             "--no-freeze-links", "--refine-path", "--no-tsopt-from-mep-tan",
+             "--tsopt", "true"]
+    with pytest.raises(ReachedTSDispatch):
+        CliRunner().invoke(root_cli, args, catch_exceptions=False)
+
+    root = json.loads((out / "summary.json").read_text())
+    assert root["scientific_status"] != "success"
+    assert root["execution_status"] == "failed"
+    assert root["segments"][0]["tag"] == "seg_001"
+    assert "resume_identity" in root
+    raw = json.loads((out / "_work/path_search/summary.json").read_text())
+    assert raw["scientific_status"] == "success"

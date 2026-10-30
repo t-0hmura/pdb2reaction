@@ -46,6 +46,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
     optional_positive_int,
+    is_child_mode,
 )
 from pdb2reaction.cli.common_options import (
     add_solvent_xtb_cmd_option,
@@ -896,16 +897,18 @@ def cli(
                 if 0 < _n_frames <= 3 and not _reached_cycle_cap:
                     _quick_directions.append(_direction)
             if _quick_directions:
+                # Under `all`, name the parent's flags.
+                _irc_flag = "--irc-" if is_child_mode() else "--"
                 _warning = (
                     "[irc] IRC stopped after only a few frames in "
                     + ", ".join(_quick_directions)
                     + ". Retry with a smaller maximum step, for example "
-                    "--step-size 0.05."
+                    f"{_irc_flag}step-size 0.05."
                 )
                 if not eulerpc.never_stop:
                     _warning += (
                         " If a small uphill/flat section is intentional, also "
-                        "consider --never-stop; it is opt-in."
+                        f"consider {_irc_flag}never-stop; it is opt-in."
                     )
                 click.echo(
                     _warning,

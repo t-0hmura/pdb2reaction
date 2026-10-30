@@ -17,6 +17,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Colab notebook: from 721 px wide the GUI fits the visible notebook pane with the header, steps and command dock on screen, Mol* clicks no longer move the camera, the Setup viewer height can be dragged, and the token cached in the runtime is read before the Colab secret.
 - Docs and skills: ORB is installed in its own environment, like MACE; the UMA model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) and offline use on compute nodes (`HF_HUB_OFFLINE=1`) are documented.
 
+### Fixed
+
+- With `--refine-path`, the root `summary.json` keeps the provisional `partial`/`failed` verdict until post-processing finishes, so a run that stops during TS optimization no longer leaves the path-search `success` there.
+- The IRC warning for a branch that stops after a few frames names the `all` options (`--irc-step-size`, `--irc-never-stop`) when IRC runs inside `all`.
+- The optimizer progress table marks only the convergence criteria the preset checks; GSM rows no longer mark the energy and step columns, and `gau` rows no longer mark the energy change.
+
 ## [0.6.0] — 2026-10-24
 
 ### Breaking changes

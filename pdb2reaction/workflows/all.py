@@ -8765,12 +8765,21 @@ def cli(
             key="path.summary",
             out_dir=out_dir,
         )
-        _copy_public_logged(
-            summary_path,
-            out_dir / "summary.json",
-            label="summary.json",
-            echo=False,
-        )
+        if refine_path:
+            # The raw path-search summary reads as success; the root keeps the
+            # fail-closed provisional verdict until post-processing re-authors it.
+            root_summary = deepcopy(provisional_root_summary)
+            for key in ("resume_identity", "scan", "path_optimizers"):
+                if key in summary:
+                    root_summary[key] = summary[key]
+            _publish_root_summary(root_summary)
+        else:
+            _copy_public_logged(
+                summary_path,
+                out_dir / "summary.json",
+                label="summary.json",
+                echo=False,
+            )
     _refresh_current_public_outputs(manifest, out_dir)
     _persist_run_manifest(manifest, out_dir)
     segments = _read_summary(summary_path)
