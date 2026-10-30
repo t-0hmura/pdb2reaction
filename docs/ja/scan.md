@@ -110,7 +110,7 @@ pdb2reaction scan -i input.pdb -l 'SAM:1,GPP:-3' -m 1 -s scan.yaml --dump -o ./r
 (ja-section-bond)=
 ### 結合変化の検出
 
-両原子の共有結合半径の和に `bond_factor`（デフォルト `1.20`）を掛けた値を T とします。2 原子の距離が T − `margin_fraction` × T（デフォルト `0.05`）以下なら、結合しているとみなします。結合の形成・切断として報告するのは、距離が `delta_fraction` × T（デフォルト `0.05`）以上変わった組だけです。`path-search` も同じ基準を使います。キーは YAML の [`bond`](yaml-reference.md#bond) の節にあります。
+両原子の共有結合半径の和に `bond_factor`（デフォルト `1.20`）を掛けた値を T とします。2 原子の距離が T − `margin_fraction` × T（デフォルト `0.05`）以下なら、結合しているとみなします。結合の形成・切断として報告するのは、距離が `delta_fraction` × T（デフォルト `0.05`）以上変わった組だけです。金属原子を含む組では、配位の揺らぎを数えないよう、必要な変化を `metal_delta_fraction` × T（デフォルト `0.40`。Mg–O で約 1.0 Å）とします。`path-search` も同じ基準を使います。キーは YAML の [`bond`](yaml-reference.md#bond) の節にあります。
 
 ---
 

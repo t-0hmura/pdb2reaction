@@ -641,6 +641,7 @@ bond:
  bond_factor: 1.2 # Covalent-radius scaling for cutoff
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking
+ metal_delta_fraction: 0.40 # Minimum relative change for pairs that contain a metal atom
 ```
 
 ## 例: 設定ファイルの全体例
