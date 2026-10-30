@@ -80,9 +80,8 @@ Options:
                                   ./result_path_opt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for endpoint
-                                  preoptimization and the post-alignment
-                                  relaxation only (gau_loose|gau|gau_tight|gau_v
-                                  tight|baker|never).  [default: (gau)]
+                                  preoptimization only (gau_loose|gau|gau_tight|
+                                  gau_vtight|baker|never).  [default: (gau)]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer (gau_loose|gau|gau_tight|gau_vtight|

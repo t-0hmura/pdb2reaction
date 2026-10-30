@@ -97,6 +97,7 @@ A misspelled section name prints `[config] WARNING: YAML section(s) … are not 
 | `scan` | `gau` |
 | `scan2d`, `scan3d` | `baker` |
 | `path-opt`, `path-search` (single-structure optimizations) | `gau` |
+| `path-opt`, `path-search`, `all` (input alignment, independent of `--thresh`) | `gau` |
 | `path-opt`, `path-search` (GSM string: `--thresh-gsm`, `stopt.thresh`) | `gau_loose` |
 | `all` (pre-opt and scan relaxations, `--thresh`) | `gau` |
 | `all` (TS and post-IRC endpoint optimizations, `--thresh-post`) | `baker` |

@@ -97,6 +97,7 @@ max_cycles: 100000
 | `scan` | `gau` |
 | `scan2d`, `scan3d` | `baker` |
 | `path-opt`、`path-search`（単一構造の最適化） | `gau` |
+| `path-opt`、`path-search`、`all`（入力の整列。`--thresh` に依らない） | `gau` |
 | `path-opt`、`path-search`（GSM のストリング: `--thresh-gsm`、`stopt.thresh`） | `gau_loose` |
 | `all`（事前最適化とスキャンの緩和、`--thresh`） | `gau` |
 | `all`（TS と IRC 後の端点の最適化、`--thresh-post`） | `baker` |

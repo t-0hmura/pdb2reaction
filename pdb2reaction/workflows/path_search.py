@@ -2915,13 +2915,11 @@ def cli(
             click.echo("[init] Skipping endpoint preoptimization as requested by --no-preopt.")
 
         # Align adjacent inputs in sequence, guided by freeze constraints.
-        align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         if align:
             try:
                 emit("\n====== Aligning adjacent inputs in sequence (freeze-guided scan + relaxation) ======\n", narrative=True)
                 alignment_results = align_and_refine_sequence_inplace(
                     geoms,
-                    thresh=align_thresh,
                     shared_calc=shared_calc,
                     out_dir=out_dir_path / "align_refine",
                     verbose=True,

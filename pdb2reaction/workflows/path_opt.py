@@ -816,8 +816,7 @@ def _optimize_single(
     default=None,
     show_default="gau",
     help=(
-        "Convergence preset for endpoint preoptimization and the "
-        "post-alignment relaxation only "
+        "Convergence preset for endpoint preoptimization only "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
@@ -1376,7 +1375,6 @@ def cli(
             )
 
         # External Kabsch alignment (if freeze_atoms exist, use only them)
-        align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         try:
             click.echo(
                 "\n====== Aligning all inputs to the first structure "
@@ -1384,7 +1382,6 @@ def cli(
             )
             alignment_results = align_and_refine_sequence_inplace(
                 geoms,
-                thresh=align_thresh,
                 shared_calc=shared_calc,
                 out_dir=out_dir_path / "align_refine",
                 verbose=True,

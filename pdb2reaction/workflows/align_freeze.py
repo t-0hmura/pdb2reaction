@@ -25,7 +25,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG
 
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
+from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL, LBFGS_KW
 from pdb2reaction.core.output import emit
 from pdb2reaction.core.utils import as_list
 
@@ -290,6 +290,18 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
 
 # Scan + relaxation (stepwise matching of union(`freeze_atoms`) to the reference)
 
+def _alignment_lbfgs(geom, out_dir: Path, max_cycles: int) -> LBFGS:
+    """L-BFGS for the alignment relaxations: package defaults with the gau preset.
+
+    Alignment prepares the inputs, so it does not follow the ``--thresh`` of the
+    user's single-structure optimizations.
+    """
+    return LBFGS(
+        geom,
+        **{**LBFGS_KW, "thresh": "gau", "out_dir": str(out_dir), "max_cycles": int(max_cycles)},
+    )
+
+
 def scan_freeze_atoms_toward_target_inplace(
     g_ref,
     g_mob,
@@ -298,7 +310,6 @@ def scan_freeze_atoms_toward_target_inplace(
     per_step_cycles: int = 1000,
     final_cycles: int = 10000,
     max_steps: int = 100,
-    thresh: str = "gau",
     shared_calc=None,
     out_dir: Path = Path("./result_align_refine/"),
     charge: int = 0,
@@ -309,7 +320,8 @@ def scan_freeze_atoms_toward_target_inplace(
 ) -> Dict[str, Any]:
     """
     Move the **union** of `freeze_atoms` from (`g_ref`, `g_mob`) toward the reference (`g_ref`) by `step_A` Å
-    per iteration. At each step, keep the anchors fixed and run a short LBFGS relaxation on the remaining atoms.
+    per iteration. At each step, keep the anchors fixed and run a short LBFGS relaxation on the remaining atoms
+    (package L-BFGS defaults with the gau preset, independent of ``--thresh``).
     Finally, enforce exact coincidence of the anchors and perform a finishing relaxation. Updates `g_mob` in place.
 
     Args:
@@ -317,7 +329,6 @@ def scan_freeze_atoms_toward_target_inplace(
         per_step_cycles: Maximum LBFGS iterations per intermediate relaxation with anchors fixed.
         final_cycles: Maximum LBFGS iterations for the final relaxation after anchors coincide.
         max_steps: Maximum number of scan steps before giving up.
-        thresh: LBFGS convergence threshold keyword (passed to pysisyphus LBFGS).
         shared_calc: Optional calculator to reuse across geometries.
         out_dir: Output directory for LBFGS runs.
         charge, spin, model, device: Calculator configuration for UMA if no calculator is attached.
@@ -377,14 +388,7 @@ def scan_freeze_atoms_toward_target_inplace(
                 final_converged = False
                 try:
                     g_mob.freeze_atoms = np.array(idx, int)
-                    optimizer = LBFGS(
-                        g_mob,
-                        out_dir=str(out_dir),
-                        max_cycles=int(final_cycles),
-                        print_every=100,
-                        thresh=thresh,
-                        dump=False,
-                    )
+                    optimizer = _alignment_lbfgs(g_mob, out_dir, final_cycles)
                     optimizer.run()
                     from pdb2reaction.workflows._outcomes import optimizer_converged_bit
 
@@ -407,14 +411,7 @@ def scan_freeze_atoms_toward_target_inplace(
             _set_all_coords_disabling_freeze(g_mob, Q_next)
             try:
                 g_mob.freeze_atoms = np.array(idx, int)
-                LBFGS(
-                    g_mob,
-                    out_dir=str(out_dir),
-                    max_cycles=int(per_step_cycles),
-                    print_every=100,
-                    thresh=thresh,
-                    dump=False,
-                ).run()
+                _alignment_lbfgs(g_mob, out_dir, per_step_cycles).run()
             except (ZeroStepLength, OptimizationError) as e:
                 if verbose:
                     click.echo(f"[scan] WARNING: Exception occurred in relaxation: {e} (continuing)", err=True)
@@ -445,7 +442,6 @@ def align_and_refine_pair_inplace(
     per_step_cycles: int = 1000,
     final_cycles: int = 10000,
     max_steps: int = 100,
-    thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
     model: str = DEFAULT_UMA_MODEL,
@@ -458,7 +454,7 @@ def align_and_refine_pair_inplace(
       (2) scan + relaxation (stepwise matching of the union of `freeze_atoms` to the reference).
     Updates `g_mob` in place.
 
-    Args mirror `scan_freeze_atoms_toward_target_inplace` (including `thresh`).
+    Args mirror `scan_freeze_atoms_toward_target_inplace`.
 
     Returns:
         {
@@ -473,7 +469,6 @@ def align_and_refine_pair_inplace(
         per_step_cycles=per_step_cycles,
         final_cycles=final_cycles,
         max_steps=max_steps,
-        thresh=thresh,
         shared_calc=shared_calc,
         out_dir=out_dir,
         charge=charge, spin=spin, model=model, device=device,
@@ -491,7 +486,6 @@ def align_and_refine_sequence_inplace(
     per_step_cycles: int = 1000,
     final_cycles: int = 10000,
     max_steps: int = 100,
-    thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
     model: str = DEFAULT_UMA_MODEL,
@@ -528,7 +522,6 @@ def align_and_refine_sequence_inplace(
             per_step_cycles=per_step_cycles,
             final_cycles=final_cycles,
             max_steps=max_steps,
-            thresh=thresh,
             charge=charge, spin=spin, model=model, device=device,
             verbose=verbose,
         )
