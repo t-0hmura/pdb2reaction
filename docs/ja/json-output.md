@@ -444,6 +444,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
+| `mlip_precision_post` | string \| null | TS 最適化・IRC・端点の最適化・freq の実効の `tf32` / `fp32` / `fp64` 表記（`--precision-post`）。指定しなければ `mlip_precision` と同じ |
 | `rate_limiting_step` | object | 反応のあるすべてのセグメントで使える最上位の手法（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で求めた局所障壁の最大値。使った手法 `method` と、MEP から求めた障壁 `mep_barrier_kcal` も含みます。微視的速度論による律速段階の判定ではありません。 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応エネルギーを求めた手法（`MEP`、`MLIP`、`MLIP_Gibbs`、`DFT`、`DFT//MLIP_Gibbs`） |

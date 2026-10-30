@@ -41,7 +41,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 (ja-precision-by-gpu-class)=
 ### 精度（precision）
 
-`--precision tf32|fp32|fp64` は、MLIP の推論の浮動小数点精度を決めます。`fp32` はどのバックエンドでも IEEE の単精度、`fp64` は倍精度です。`tf32` はテンソルを float32 のまま持ち、NVIDIA の GPU（Ampere 以降）で行列積だけを TF32 で計算します。速くなる代わりに精度が下がります。値は UMA の `precision`、ORB の `precision`（`tf32` → `float32-high`、`fp32` → `float32-highest`、`fp64` → `float64`）、MACE の `default_dtype` に渡されます。MACE と AIMNet2 には TF32 のモードがなく、`tf32` はエラーで止まります。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。
+`--precision tf32|fp32|fp64` は、MLIP の推論の浮動小数点精度を決めます。`fp32` はどのバックエンドでも IEEE の単精度、`fp64` は倍精度です。`tf32` はテンソルを float32 のまま持ち、NVIDIA の GPU（Ampere 以降）で行列積だけを TF32 で計算します。速くなる代わりに精度が下がります。値は UMA の `precision`、ORB の `precision`（`tf32` → `float32-high`、`fp32` → `float32-highest`、`fp64` → `float64`）、MACE の `default_dtype` に渡されます。MACE と AIMNet2 には TF32 のモードがなく、`tf32` はエラーで止まります。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。`all` では、TS 最適化・IRC・端点の最適化・freq の精度を `--precision-post` で決め、指定しなければ `--precision` に従います。
 
 `--precision` を指定しないときは、バックエンドごとのデフォルト値を使います。
 

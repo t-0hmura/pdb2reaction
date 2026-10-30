@@ -376,8 +376,15 @@ Options:
                                   fp64. Unset defaults per backend (uma: fp32;
                                   orb, mace: fp64). tf32 uses TF32 matmul for
                                   speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  aimnet2: fp32 only. --precision-post overrides
+                                  it for TSOPT, IRC, endpoint optimization and
+                                  freq.  [default: (per backend: uma fp32; orb,
+                                  mace fp64)]
+  --precision-post [tf32|fp32|fp64]
+                                  MLIP precision (tf32, fp32 or fp64) for TSOPT,
+                                  IRC, the post-IRC endpoint optimizations and
+                                  freq. Unset uses --precision.  [default:
+                                  (inherits --precision)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2p1 / uma-s-1p2p1-ft-d4rev / uma-m-1p1
                                   for uma, orbmol-v2 / orb_v3_conservative_omol

@@ -69,6 +69,7 @@ def build_pipeline_summary_payload(
     mlip_model_label: Optional[str] = None,
     mlip_task: Optional[str] = None,
     mlip_precision: Optional[str],
+    mlip_precision_post: Optional[str] = None,
     command_str: str,
     q_int: int,
     spin: int,
@@ -130,6 +131,7 @@ def build_pipeline_summary_payload(
         "mlip_model_label": mlip_model_label,
         "mlip_task": mlip_task,
         "mlip_precision": mlip_precision,
+        "mlip_precision_post": mlip_precision_post,
         "execution_status": summary.get("execution_status"),
         "scientific_status": summary.get("scientific_status"),
         "scientific_status_reasons": summary.get(

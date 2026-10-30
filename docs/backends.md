@@ -67,7 +67,9 @@ on NVIDIA GPUs (Ampere or newer): faster, and less precise. The value is passed
 to UMA `precision`, ORB `precision` (`tf32` → `float32-high`, `fp32` →
 `float32-highest`, `fp64` → `float64`), and MACE `default_dtype`. MACE and
 AIMNet2 have no TF32 mode, so `tf32` stops with an error; AIMNet2 has no
-precision setting, so `fp32` changes nothing.
+precision setting, so `fp32` changes nothing. In `all`, `--precision-post` sets
+the precision of TS optimization, IRC, the endpoint optimizations and freq;
+unset, they use `--precision`.
 
 When `--precision` is not given, each backend takes its own default:
 

@@ -151,6 +151,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_deterministic_option,
     add_precision_option,
+    add_precision_post_option,
     add_print_every_option,
     add_dft_calculator_options,
 )
@@ -663,6 +664,7 @@ def _append_explicit_child_runtime_argv(
     solvent_model: Optional[str] = None,
     max_nodes: Optional[int] = None,
     preopt: Optional[bool] = None,
+    precision: Optional[str] = None,
 ) -> None:
     """Forward only parent-explicit runtime values to a child command.
 
@@ -670,6 +672,8 @@ def _append_explicit_child_runtime_argv(
     precedence.  Explicit values, including ``1``, must be forwarded because
     they may intentionally override a different value in the shared YAML.
     """
+    if precision is not None:
+        child_args.extend(["--precision", str(precision).lower()])
     if dmf_backend is not None:
         child_args.extend(["--dmf-backend", str(dmf_backend).lower()])
     if workers is not None:
@@ -1958,6 +1962,7 @@ def _enrich_summary(
     mlip_model_label: Optional[str] = None,
     mlip_task: Optional[str] = None,
     mlip_precision: Optional[str] = None,
+    mlip_precision_post: Optional[str] = None,
     charge: int,
     spin: int,
     command: str = "",
@@ -2147,6 +2152,10 @@ def _enrich_summary(
     summary["mlip_model_label"] = mlip_model_label
     summary["mlip_task"] = mlip_task
     summary["mlip_precision"] = mlip_precision
+    # Precision of TSOPT, IRC, endpoint optimization and freq (--precision-post).
+    summary["mlip_precision_post"] = (
+        mlip_precision if mlip_precision_post is None else mlip_precision_post
+    )
     if calculator_provenance_data is not None:
         for key in (
             "primary_method",
@@ -2837,6 +2846,7 @@ def _run_freq_for_state(
         backend=None if _freq_custom else overrides.get("backend"),
         solvent=overrides.get("solvent"),
         solvent_model=overrides.get("solvent_model"),
+        precision=overrides.get("precision"),
     )
 
     if args_yaml is not None:
@@ -3470,6 +3480,7 @@ def _run_tsopt_on_hei(
             backend=None if _ts_custom else _runtime.get("backend"),
             solvent=_runtime.get("solvent"),
             solvent_model=_runtime.get("solvent_model"),
+            precision=_runtime.get("precision"),
         )
 
         if args_yaml is not None:
@@ -3932,6 +3943,7 @@ def _irc_and_match(
         backend=None if _irc_custom else _runtime.get("backend"),
         solvent=_runtime.get("solvent"),
         solvent_model=_runtime.get("solvent_model"),
+        precision=_runtime.get("precision"),
     )
 
     if args_yaml is not None:
@@ -4901,7 +4913,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_print_every_option()
-@add_precision_option()
+@add_precision_option(post_option=True)
+@add_precision_post_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -4996,6 +5009,7 @@ def cli(
     print_every: Optional[int],
     cli_coord_type: Optional[str],
     precision: Optional[str],
+    precision_post: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -5857,6 +5871,8 @@ def cli(
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(_dry_calc_cfg, calc_file, calc_factory)
         from pdb2reaction.backends import apply_effective_precision
+        if precision_post is not None:
+            apply_effective_precision(deepcopy(_dry_calc_cfg), precision_post)
         apply_effective_precision(_dry_calc_cfg, precision)
         from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
         finalize_dft_calculator_config(ctx, _dry_calc_cfg)
@@ -6294,10 +6310,18 @@ def cli(
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
     apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
     from pdb2reaction.backends import apply_effective_precision
+    # TSOPT, IRC, endpoint optimization and freq resolve --precision-post from
+    # the mapping before --precision is applied, as their child commands do;
+    # unset, they share calc_cfg_shared.
+    calc_cfg_post = calc_cfg_shared
+    if precision_post is not None:
+        calc_cfg_post = deepcopy(calc_cfg_shared)
+        apply_effective_precision(calc_cfg_post, precision_post)
     apply_effective_precision(calc_cfg_shared, precision)
     from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
     finalize_dft_calculator_config(ctx, calc_cfg_shared)
     if str(calc_cfg_shared.get("backend", "")).lower() == "dft":
+        calc_cfg_post = calc_cfg_shared  # DFT has no MLIP precision.
         child_dft_settings = dict(calc_cfg_shared["dft_settings"])
         child_dft_settings["save_scf_checkpoint"] = False
         child_dft_settings["checkpoint_path"] = None
@@ -6313,6 +6337,7 @@ def cli(
     _mlip_model_label_shared = _shared_provenance["mlip_model_label"]
     _mlip_task_shared = _shared_provenance["mlip_task"]
     _mlip_precision_shared = _shared_provenance["mlip_precision"]
+    _mlip_precision_post = calculator_provenance(calc_cfg_post)["mlip_precision"]
     _primary_diagram_label = (
         "DFT" if _mlip_backend_shared == "dft" else "MLIP"
     )
@@ -6457,6 +6482,9 @@ def cli(
     ):
         if cli_param_overridden(ctx, _name):
             child_runtime_overrides[_name] = _value
+    # These overrides reach only the post-MEP children (tsopt, irc, freq).
+    if precision_post is not None:
+        child_runtime_overrides["precision"] = precision_post
     freq_overrides.update(child_runtime_overrides)
     if calc_cfg_shared.get("calc_file"):
         freq_overrides["calc_file"] = calc_cfg_shared["calc_file"]
@@ -6482,7 +6510,7 @@ def cli(
             ts_initial_pdb,
             q_int,
             spin,
-            calc_cfg_shared,
+            calc_cfg_post,
             args_yaml,
             tsroot,
             freeze_links_flag,
@@ -6582,6 +6610,7 @@ def cli(
                 mlip_model_label=_mlip_model_label_shared,
                 mlip_task=_mlip_task_shared,
                 mlip_precision=_mlip_precision_shared,
+                mlip_precision_post=_mlip_precision_post,
                 charge=q_int,
                 spin=spin,
                 command=command_str,
@@ -6641,6 +6670,7 @@ def cli(
                 "mlip_model_label": _mlip_model_label_shared,
                 "mlip_task": _mlip_task_shared,
                 "mlip_precision": _mlip_precision_shared,
+                "mlip_precision_post": _mlip_precision_post,
                 "execution_status": summary.get("execution_status"),
                 "scientific_status": summary.get("scientific_status"),
                 "scientific_status_reasons": summary.get(
@@ -6730,7 +6760,7 @@ def cli(
             q_int=q_int,
             spin=spin,
             freeze_links_flag=freeze_links_flag,
-            calc_cfg=calc_cfg_shared,
+            calc_cfg=calc_cfg_post,
             args_yaml=args_yaml,
             convert_files=convert_files,
             irc_step_size=irc_step_size,
@@ -6818,7 +6848,7 @@ def cli(
                 "reactant",
                 dump=dump,
                 thresh=thresh_post,
-                calc_identity_cfg=calc_cfg_shared,
+                calc_identity_cfg=calc_cfg_post,
                 reject_uphill=_reject_uphill_eff,
                 stop_plateau=_stop_plateau_eff,
                 stop_plateau_thresh=stop_plateau_thresh,
@@ -6859,7 +6889,7 @@ def cli(
                 "product",
                 dump=dump,
                 thresh=thresh_post,
-                calc_identity_cfg=calc_cfg_shared,
+                calc_identity_cfg=calc_cfg_post,
                 reject_uphill=_reject_uphill_eff,
                 stop_plateau=_stop_plateau_eff,
                 stop_plateau_thresh=stop_plateau_thresh,
@@ -6947,6 +6977,7 @@ def cli(
                 mlip_backend=_mlip_backend_shared, mlip_model=_mlip_model_shared,
                 mlip_model_label=_mlip_model_label_shared, mlip_task=_mlip_task_shared,
                 mlip_precision=_mlip_precision_shared,
+                mlip_precision_post=_mlip_precision_post,
                 freeze_atoms=_freeze_atoms_for_log(),
                 config={
                     "tsopt": do_tsopt, "thermo": do_thermo, "dft": do_dft,
@@ -7258,6 +7289,7 @@ def cli(
             mlip_model_label=_mlip_model_label_shared,
             mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
+            mlip_precision_post=_mlip_precision_post,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -7419,6 +7451,7 @@ def cli(
                     "mlip_model_label": _mlip_model_label_shared,
                     "mlip_task": _mlip_task_shared,
                     "mlip_precision": _mlip_precision_shared,
+                    "mlip_precision_post": _mlip_precision_post,
                     "command": command_str,
                     "charge": q_int,
                     "spin": spin,
@@ -7469,6 +7502,7 @@ def cli(
                     mlip_model_label=_mlip_model_label_shared,
                     mlip_task=_mlip_task_shared,
                     mlip_precision=_mlip_precision_shared,
+                    mlip_precision_post=_mlip_precision_post,
                     charge=q_int,
                     spin=spin,
                     command=command_str,
@@ -8287,6 +8321,7 @@ def cli(
             mlip_model_label=_mlip_model_label_shared,
             mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
+            mlip_precision_post=_mlip_precision_post,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -8399,6 +8434,7 @@ def cli(
                 "mlip_model_label": _mlip_model_label_shared,
                 "mlip_task": _mlip_task_shared,
                 "mlip_precision": _mlip_precision_shared,
+                "mlip_precision_post": _mlip_precision_post,
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
@@ -8577,6 +8613,7 @@ def cli(
             mlip_model_label=_mlip_model_label_shared,
             mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
+            mlip_precision_post=_mlip_precision_post,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -8820,6 +8857,7 @@ def cli(
             mlip_model_label=_mlip_model_label_shared,
             mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
+            mlip_precision_post=_mlip_precision_post,
             command_str=command_str,
             q_int=q_int,
             spin=spin,
@@ -9066,7 +9104,7 @@ def cli(
                 hei_model_path,
                 q_int,
                 spin,
-                calc_cfg_shared,
+                calc_cfg_post,
                 args_yaml,
                 seg_dir,
                 freeze_links_flag,
@@ -9172,7 +9210,7 @@ def cli(
                 q_int=q_int,
                 spin=spin,
                 freeze_links_flag=freeze_links_flag,
-                calc_cfg=calc_cfg_shared,
+                calc_cfg=calc_cfg_post,
                 args_yaml=args_yaml,
                 convert_files=convert_files,
                 irc_step_size=irc_step_size,
@@ -9251,7 +9289,7 @@ def cli(
                     f"seg_{seg_idx:02d}_reactant",
                     dump=dump,
                     thresh=thresh_post,
-                    calc_identity_cfg=calc_cfg_shared,
+                    calc_identity_cfg=calc_cfg_post,
                     reject_uphill=_reject_uphill_eff,
                     stop_plateau=_stop_plateau_eff,
                     stop_plateau_thresh=stop_plateau_thresh,
@@ -9292,7 +9330,7 @@ def cli(
                     f"seg_{seg_idx:02d}_product",
                     dump=dump,
                     thresh=thresh_post,
-                    calc_identity_cfg=calc_cfg_shared,
+                    calc_identity_cfg=calc_cfg_post,
                     reject_uphill=_reject_uphill_eff,
                     stop_plateau=_stop_plateau_eff,
                     stop_plateau_thresh=stop_plateau_thresh,
@@ -9517,7 +9555,7 @@ def cli(
                 )
                 continue
 
-            calc_args = _without_auto_checkpoint_target(calc_cfg_shared)
+            calc_args = _without_auto_checkpoint_target(calc_cfg_post)
             calc = create_calculator(**calc_args)
             gL.set_calculator(calc)
             gR.set_calculator(calc)
@@ -9906,6 +9944,7 @@ def cli(
         mlip_model_label=_mlip_model_label_shared,
         mlip_task=_mlip_task_shared,
         mlip_precision=_mlip_precision_shared,
+        mlip_precision_post=_mlip_precision_post,
         charge=q_int,
         spin=spin,
         command=command_str,
