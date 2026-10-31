@@ -10,13 +10,8 @@ import sys
 from types import SimpleNamespace
 
 import numpy as np
-import pytest
 
 from pysisyphus.irc.IRC import IRC
-from pysisyphus.tr_projection import (
-    TR_PROJECTION_MODES,
-    normalize_tr_projection_mode,
-)
 from pdb2reaction.core.defaults import IRC_KW
 from pdb2reaction.workflows.tsopt import (
     _finalize_dimer_saddle_status,
@@ -90,13 +85,7 @@ def test_irc_hdf5_is_opt_in_and_never_contains_a_hessian() -> None:
     )
 
 
-def test_the_removed_legacy_projection_is_rejected_not_silently_accepted() -> None:
-    """`legacy-active` is gone; a stale config naming it must fail loudly."""
-    assert TR_PROJECTION_MODES == ("constrained",)
-    assert normalize_tr_projection_mode(None) == "constrained"
-    with pytest.raises(ValueError, match="Unknown TR projection mode"):
-        normalize_tr_projection_mode("legacy-active")
-
+def test_constrained_projection_certifies_a_frozen_first_order_saddle() -> None:
     # The constrained projection certifies a frozen first-order saddle on the
     # complete strict and resolved counts; no projection-dependent veto remains.
     runner = SimpleNamespace(

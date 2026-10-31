@@ -2,49 +2,45 @@
 
 from __future__ import annotations
 
-import ast
+import re
 from pathlib import Path
 
+from click.testing import CliRunner
+
+from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.core.utils import (
     DRY_RUN_COMPLETE_MESSAGE,
     emit_dry_run_complete,
 )
 
 
-WORKFLOWS = (
-    "all", "dft", "freq", "irc", "opt", "path_opt", "path_search",
-    "scan", "scan2d", "scan3d", "sp", "tsopt",
-)
-EXPECTED_CALLS = {name: 1 for name in WORKFLOWS} | {"scan3d": 2}
 EXPECTED = "[Dry run] --dry-run completed. Input command is valid."
 
-
-def _call_names(nodes: list[ast.stmt]) -> set[str]:
-    names: set[str] = set()
-    for root in nodes:
-        for node in ast.walk(root):
-            if not isinstance(node, ast.Call):
-                continue
-            if isinstance(node.func, ast.Name):
-                names.add(node.func.id)
-            elif isinstance(node.func, ast.Attribute):
-                names.add(node.func.attr)
-    return names
-
-
-def _is_terminal(nodes: list[ast.stmt]) -> bool:
-    return any(
-        isinstance(node, ast.Return)
-        or (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "sys"
-            and node.func.attr == "exit"
-        )
-        for root in nodes
-        for node in ast.walk(root)
-    )
+_SMOKE = Path(__file__).resolve().parent / "smoke"
+_R, _P, _TS = (str(_SMOKE / name) for name in ("r.pdb", "p.pdb", "ts.gjf"))
+DRY_RUN_COMMANDS = {
+    "all": ["all", "-i", _R, _P, "-q", "-1"],
+    "dft": ["dft", "-i", _TS],
+    "freq": ["freq", "-i", _TS],
+    "irc": ["irc", "-i", _TS],
+    "opt": ["opt", "-i", _R, "-q", "-1"],
+    "path-opt": ["path-opt", "-i", _R, _P, "-q", "-1"],
+    "path-search": ["path-search", "-i", _R, "-i", _P, "-q", "-1"],
+    "scan": ["scan", "-i", _R, "-q", "-1", "--scan-lists", "[(1,5,1.8)]"],
+    "scan2d": [
+        "scan2d", "-i", _R, "-q", "-1", "--scan-lists", "[(1,5,1.8,2.2),(1,6,1.7,2.1)]",
+    ],
+    "scan3d": [
+        "scan3d", "-i", _R, "-q", "-1",
+        "--scan-lists", "[(1,5,1.8,2.2),(1,6,1.7,2.1),(2,3,1.0,1.2)]",
+    ],
+    "sp": ["sp", "-i", _R, "-q", "-1"],
+    "tsopt": ["tsopt", "-i", _TS],
+}
+WORKFLOWS_WITH_PLAN_BLOCK = {"dft", "freq", "irc", "opt", "path-opt", "path-search", "tsopt"}
+# The block is a titled key/value table; the title also appears in the echoed command line
+# when this test is selected by name, so match the underlined title only.
+PLAN_BLOCK = re.compile(r"^dry_run_plan\n-+$", re.MULTILINE)
 
 
 def test_canonical_dry_run_footer_is_exact(capsys) -> None:
@@ -53,49 +49,24 @@ def test_canonical_dry_run_footer_is_exact(capsys) -> None:
     assert capsys.readouterr().out.rstrip().splitlines()[-1] == EXPECTED
 
 
-def test_every_dry_run_workflow_uses_the_canonical_terminal_footer() -> None:
-    workflows = Path(__file__).resolve().parents[1] / "pdb2reaction" / "workflows"
-    for name in WORKFLOWS:
-        path = workflows / f"{name}.py"
-        source = path.read_text(encoding="utf-8")
-        assert '"--dry-run/--no-dry-run"' in source, name
-        assert "emit_dry_run_complete" in source, name
-        assert source.count("emit_dry_run_complete()") == EXPECTED_CALLS[name], name
-        assert "[dry-run] Validation complete" not in source, name
-
-        tree = ast.parse(source, filename=str(path))
-        terminals = [
-            node for node in ast.walk(tree)
-            if isinstance(node, ast.If)
-            and isinstance(node.test, ast.Name)
-            and node.test.id == "dry_run"
-            and _is_terminal(node.body)
-        ]
-        assert terminals, name
-        for terminal in terminals:
-            calls = _call_names(terminal.body)
-            assert "format_elapsed" not in calls, name
-            assert calls & {"emit_dry_run_complete", "_emit_final_summary"}, name
+def test_every_dry_run_workflow_uses_the_canonical_terminal_footer(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    for name, argv in DRY_RUN_COMMANDS.items():
+        result = CliRunner().invoke(root_cli, [*argv, "--dry-run"])
+        assert result.exit_code == 0, (name, result.output)
+        assert result.output.rstrip().splitlines()[-1] == EXPECTED, name
+        assert "[dry-run] Validation complete" not in result.output, name
+        assert "Elapsed" not in result.output, name
 
 
-def test_dry_run_plan_block_is_shown_only_at_verbose_three() -> None:
-    workflows = Path(__file__).resolve().parents[1] / "pdb2reaction" / "workflows"
-    seen = set()
-    for name in WORKFLOWS:
-        tree = ast.parse((workflows / f"{name}.py").read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not node.args:
-                continue
-            block = node.args[0]
-            if (
-                isinstance(block, ast.Call)
-                and isinstance(block.func, ast.Name)
-                and block.func.id == "pretty_block"
-                and block.args
-                and isinstance(block.args[0], ast.Constant)
-                and block.args[0].value == "dry_run_plan"
-            ):
-                seen.add(name)
-                keywords = {kw.arg for kw in (*node.keywords, *block.keywords)}
-                assert "force" not in keywords, name
-    assert seen == {"dft", "freq", "irc", "opt", "path_opt", "path_search", "tsopt"}
+def test_dry_run_plan_block_is_shown_only_at_verbose_three(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    shown = set()
+    for name, argv in DRY_RUN_COMMANDS.items():
+        default = CliRunner().invoke(root_cli, [*argv, "--dry-run"])
+        full = CliRunner().invoke(root_cli, [*argv, "--dry-run", "-v", "3"])
+        assert default.exit_code == 0 and full.exit_code == 0, (name, full.output)
+        assert not PLAN_BLOCK.search(default.output), name
+        if PLAN_BLOCK.search(full.output):
+            shown.add(name)
+    assert shown == WORKFLOWS_WITH_PLAN_BLOCK

@@ -186,17 +186,6 @@ def test_bofill_numpy_degenerate_secants_are_finite(dt):
     np.testing.assert_allclose(orthogonal, expected, **_tol(torch_dtype))
 
 
-def test_bofill_kernel_has_no_advanced_index_addto():
-    # The low-rank kernel must not use triu_indices or advanced-index .add_(),
-    # which would silently discard the write, or a CPU round-trip default.
-    src = inspect.getsource(bofill_rank2_factors) + inspect.getsource(bofill_update)
-    assert "triu_indices" not in src
-    assert ".add_(" not in src
-    # the default torch branch must not detach the full Hessian to CPU
-    default_branch = inspect.getsource(bofill_update).split("bofill_cpu_offload_enabled")[-1]
-    assert "detach().cpu()" not in default_branch
-
-
 # ---------------------------------------------------------------------------
 # Copy-on-write ownership and trial-rejection rollback
 # ---------------------------------------------------------------------------

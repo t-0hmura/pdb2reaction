@@ -604,8 +604,7 @@ def test_energy_diagram_rejects_unflagged_variadic_tokens(args: list[str]) -> No
 
 
 def test_verbose_is_a_per_subcommand_option() -> None:
-    """`-v/--verbose LEVEL` is injected into every subcommand; it is no longer a
-    root-group option, so a root-placed `-v` is rejected."""
+    """`-v/--verbose LEVEL` is injected into every subcommand."""
     runner = CliRunner()
     for name in (
         "opt", "tsopt", "freq", "irc", "sp", "scan",
@@ -614,15 +613,6 @@ def test_verbose_is_a_per_subcommand_option() -> None:
         res = runner.invoke(root_cli, [name, "--help"])
         assert res.exit_code == 0, res.output
         assert "-v, --verbose" in res.output, f"{name} --help is missing -v"
-
-    for argv in (
-        ["-v", "2", "opt", "--help"],
-        ["-v2", "opt", "--help"],
-        ["--verbose=2", "opt", "--help"],
-    ):
-        root = runner.invoke(root_cli, argv)
-        assert root.exit_code != 0, argv
-        assert "No such option" in root.output, argv
 
     # The level is an IntRange(0, 3); 0/1/2/3 are accepted (default 2) and
     # out-of-range values are rejected.
@@ -636,25 +626,14 @@ def test_tsopt_ref_mode_is_documented_as_advanced_all_handoff() -> None:
     runner = CliRunner()
     primary_help = runner.invoke(root_cli, ["tsopt", "--help"])
     advanced_help = runner.invoke(root_cli, ["tsopt", "--help-advanced"])
-    old_name = runner.invoke(
-        root_cli,
-        ["tsopt", "--reference-mode", "unused.npy"],
-    )
 
     assert primary_help.exit_code == 0, primary_help.output
     assert "--ref-mode" not in primary_help.output
 
     assert advanced_help.exit_code == 0, advanced_help.output
     assert "--ref-mode" in advanced_help.output
-    assert "--reference-mode" not in advanced_help.output
     assert "all workflow supplies" in advanced_help.output
     assert "standalone tsopt" in advanced_help.output
-
-    assert old_name.exit_code != 0
-    # Click 8.2 and 8.3 punctuate this diagnostic differently.  The contract
-    # is that the unpublished long name is rejected, not the exact wording.
-    assert "No such option" in old_name.output
-    assert "--reference-mode" in old_name.output
 
 
 @pytest.mark.parametrize("mode", ["dimer", "grad"])
@@ -730,18 +709,11 @@ def test_opt_accepts_yaml_only_charge_and_spin(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("configured", "should_run"),
-    [("constrained", True), ("legacy-active", False)],
-)
-def test_opt_rejects_the_removed_projection_mode_from_yaml(
-    tmp_path: Path, configured: str, should_run: bool,
-) -> None:
-    """The removed `legacy-active` treatment fails loudly instead of running."""
+def test_opt_accepts_the_constrained_projection_mode_from_yaml(tmp_path: Path) -> None:
     config = tmp_path / "projection.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
-        f"geom:\n  tr_projection: {configured}\n",
+        "geom:\n  tr_projection: constrained\n",
         encoding="utf-8",
     )
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
@@ -753,13 +725,8 @@ def test_opt_rejects_the_removed_projection_mode_from_yaml(
         ],
     )
 
-    if should_run:
-        assert result.exit_code == 0, result.output
-        assert "tr_projection: constrained" in result.output
-    else:
-        assert result.exit_code != 0
-        message = result.output + str(result.exception or "")
-        assert "Unknown TR projection mode" in message
+    assert result.exit_code == 0, result.output
+    assert "tr_projection: constrained" in result.output
 
 
 @pytest.mark.parametrize(

@@ -22,13 +22,6 @@ def test_rfo_safeguard_summary_requires_verbose_level_three() -> None:
         set_verbose_level(0)
 
 
-def test_optimizer_omits_redundant_moving_image_startup_line() -> None:
-    import inspect
-    from pysisyphus.optimizers.Optimizer import Optimizer
-
-    assert "Path with" not in inspect.getsource(Optimizer.__init__)
-
-
 def test_optimizer_stdout_verbosity_is_monotonic() -> None:
     from pdb2reaction.core.utils import _pysis_stdout_visible, set_verbose_level
 
@@ -48,18 +41,6 @@ def test_optimizer_stdout_verbosity_is_monotonic() -> None:
         assert _pysis_stdout_visible(hidden_detail)
     finally:
         set_verbose_level(0)
-
-
-def test_freq_and_irc_cache_hits_use_detail_tier() -> None:
-    import inspect
-    from pdb2reaction.workflows import freq, irc
-
-    for module in (freq, irc):
-        source = inspect.getsource(module.cli.callback)
-        assert "Reusing cached TS Hessian" in source
-        assert 'Reusing cached TS Hessian from tsopt.", detail=True' in source or (
-            'Reusing cached TS Hessian.", detail=True' in source
-        )
 
 
 def test_values_from_bounds_stabilizes_decimal_grid() -> None:

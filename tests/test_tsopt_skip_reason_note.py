@@ -20,8 +20,8 @@ FINAL_FREQ_SKIPPED = "final Hessian skipped (--skip-final-freq)"
 
 
 def _fake_ts_optimizer(runs):
-    """Optimizer stand-in; ``runs[i] = (cycles, converged)`` for the i-th run,
-    where ``cycles=None`` spends the whole ``max_cycles`` given to that run."""
+    """Optimizer stand-in; ``runs[i] = (cycles, converged[, stalled])`` for the i-th
+    run, where ``cycles=None`` spends the whole ``max_cycles`` given to that run."""
 
     class FakeTSOptimizer:
         instances = []
@@ -35,11 +35,11 @@ def _fake_ts_optimizer(runs):
             FakeTSOptimizer.instances.append(self)
 
         def run(self):
-            cycles, converged = runs[len(FakeTSOptimizer.instances) - 1]
+            cycles, converged, *stalled = runs[len(FakeTSOptimizer.instances) - 1]
             used = int(self.max_cycles) if cycles is None else cycles
             self.cur_cycle = used - 1
             self.is_converged = converged
-            self.is_stalled = False
+            self.is_stalled = bool(stalled and stalled[0])
             self.stop_reason = ""
             self._last_exact_target_mode_is_negative = None
             self.final_fn.write_text(self.geometry.as_xyz(), encoding="utf-8")
@@ -117,6 +117,19 @@ def test_unconverged_flatten_retry_records_budget_reason(monkeypatch, tmp_path):
     )
 
     assert payload["flatten_skip_reason"] == BUDGET_DURING, result.output
+    assert len(phva_calls) == 1
+
+
+def test_heavy_flatten_retries_receive_only_the_remaining_cycle_budget(monkeypatch, tmp_path):
+    # The first run stops on an energy plateau after one cycle of a three-cycle budget.
+    payload, result, phva_calls = _run_rsprfo(
+        monkeypatch, tmp_path, runs=[(1, False, True), (None, False)], max_cycles=3,
+        extra_args=["--flatten"],
+    )
+
+    first, retry = tsopt.TSOPT_CLASS_MAP["rsprfo"].instances
+    assert (first.max_cycles, retry.max_cycles) == (3, 2), result.output
+    assert payload["n_opt_cycles"] == 3
     assert len(phva_calls) == 1
 
 

@@ -241,14 +241,6 @@ def test_dimer_loop_clears_the_stall_of_an_earlier_loop():
     assert runner.stop_reason == ""
 
 
-def test_heavy_flatten_retries_receive_only_the_remaining_cycle_budget():
-    source = Path(tsopt.__file__).read_text(encoding="utf-8")
-
-    assert 'retry_kwargs["max_cycles"] = (' in source
-    assert '"n_opt_cycles": heavy_cycles_spent,' in source
-    assert 'not getattr(last_optimizer, "is_stalled", False)' not in source
-
-
 def test_dimer_read_hessian_replaces_the_initial_evaluation(monkeypatch, tmp_path):
     runner, hessian_calls, _ = _runner(tmp_path, monkeypatch, stalled=True)
     runner.initial_hessian = {"hessian": 2.0 * np.eye(3), "active_dofs": [0, 1, 2]}

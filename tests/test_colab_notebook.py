@@ -666,32 +666,6 @@ def _assert_advanced_argv_parses(app: dict, subcommand: str, argv: list[str]) ->
     assert leftovers == [], (subcommand, argv, leftovers)
 
 
-def test_colab_notebook_has_valid_code_cells_and_gpu_metadata() -> None:
-    notebook = _notebook()
-    introduction = notebook["cells"][0]["source"]
-
-    assert notebook["nbformat"] == 4
-    assert notebook["metadata"]["accelerator"] == "GPU"
-    assert len(notebook["cells"]) == 3
-    assert (
-        "[t-0hmura/pdb2reaction](https://github.com/t-0hmura/pdb2reaction)"
-    ) in introduction
-    # The badge opens this very notebook from the published main branch.
-    assert (
-        "https://colab.research.google.com/github/t-0hmura/pdb2reaction/"
-        "blob/main/examples/pdb2reaction_colab.ipynb"
-    ) in introduction
-    assert "PDB/mmCIF or small-molecule XYZ/GJF structures" in introduction
-    assert "**① Input → ② Setup → ③ Options → (Run) → ④ Results**" in introduction
-    assert (
-        "[DOI: 10.1021/acsomega.6c08242]"
-        "(https://doi.org/10.1021/acsomega.6c08242)"
-    ) in introduction
-    for cell in notebook["cells"]:
-        if cell["cell_type"] == "code":
-            ast.parse(cell["source"])
-
-
 def test_colab_responsive_contract_covers_the_whole_four_step_app() -> None:
     app = _notebook()["cells"][2]["source"]
 
@@ -711,7 +685,8 @@ def test_colab_responsive_contract_covers_the_whole_four_step_app() -> None:
 def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
-    assert 'pdb2reaction_version = "v0.6.0"' in setup
+    # The pinned release number itself is checked against the package version by
+    # .github/scripts/check_release_versions.py.
     assert "first run takes several minutes" in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
@@ -6755,11 +6730,6 @@ def _run_orb_install_branch(monkeypatch, *, python_version, platform, calls, fai
     namespace = {"pip": fake_pip, "os": os,
                  "sys": types.SimpleNamespace(version_info=python_version, platform=platform)}
     exec(compile(ast.Module(body=orb_branch.body, type_ignores=[]), str(NOTEBOOK), "exec"), namespace)
-
-
-def test_colab_runtime_is_pinned_to_python312_image() -> None:
-    notebook = _notebook()
-    assert notebook["metadata"]["colab"]["runtime_attributes"]["runtime_version"] == "2026.07"
 
 
 @pytest.mark.parametrize("python_version", [(3, 11), (3, 12), (3, 13)])

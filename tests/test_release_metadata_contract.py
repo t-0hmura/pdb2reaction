@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
-
-import tomllib
-from packaging.markers import default_environment
-from packaging.requirements import Requirement
 
 
 def _load(name: str):
@@ -23,60 +18,6 @@ def _load(name: str):
 
 
 rel = _load("check_release_versions")
-REPO_ROOT = Path(__file__).parents[1]
-
-
-def test_dft_gpu_dependencies_are_linux_only() -> None:
-    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    requirements = {
-        req.name: req
-        for req in map(Requirement, data["project"]["optional-dependencies"]["dft"])
-    }
-    for package in ("gpu4pyscf-cuda13x", "cupy-cuda13x"):
-        marker = requirements[package].marker
-        assert marker is not None
-        for platform, expected in (("linux", True), ("darwin", False), ("win32", False)):
-            env = default_environment()
-            env.update({"sys_platform": platform, "platform_machine": "x86_64"})
-            assert marker.evaluate(env) is expected
-    cuda12 = {
-        req.name: req
-        for req in map(Requirement, data["project"]["optional-dependencies"]["dft-cuda12"])
-    }
-    assert {"gpu4pyscf-cuda12x", "cupy-cuda12x"} <= set(cuda12)
-
-
-def test_runtime_metadata_allows_the_current_fairchem_stack() -> None:
-    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert '"torch~=' not in text
-    requirements = {r.name: r for r in map(Requirement, tomllib.loads(text)["project"]["dependencies"])}
-    assert "2.22.0" in requirements["fairchem-core"].specifier
-    assert "3.0.0" not in requirements["fairchem-core"].specifier
-    assert "2.4.6" in requirements["numpy"].specifier
-    assert "2.5.0" not in requirements["numpy"].specifier
-    assert "2.13.0" in requirements["torch"].specifier
-    assert "2.14.0" not in requirements["torch"].specifier
-
-
-def test_no_deps_ci_jobs_install_the_current_fairchem_torch_minor() -> None:
-    install = (
-        "pip install torch==2.13.0 --index-url "
-        "https://download.pytorch.org/whl/cpu"
-    )
-    for name in ("test.yml", "docs_quality.yml", "markers.yml"):
-        text = (REPO_ROOT / ".github" / "workflows" / name).read_text(
-            encoding="utf-8"
-        )
-        assert install in text, name
-
-
-def test_public_single_model_examples_have_balanced_terminators() -> None:
-    for filename in ("1.R.pdb", "2.IM.pdb"):
-        lines = (REPO_ROOT / "examples" / filename).read_text(
-            encoding="utf-8"
-        ).splitlines()
-        assert lines[-1] == "END"
-        assert not any(line.startswith(("MODEL", "ENDMDL")) for line in lines)
 
 
 # --- landing-page release substitution ------------------------------- #

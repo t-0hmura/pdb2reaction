@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
-
 import numpy as np
 import pytest
 import torch
@@ -11,13 +9,59 @@ import torch
 from pdb2reaction.io import hessian_cache
 
 
-def test_dimer_cache_reuse_is_visible_at_v2() -> None:
-    from pdb2reaction.workflows.tsopt import HessianDimer
+def test_dimer_cache_reuse_is_visible_at_v2(monkeypatch) -> None:
+    from pdb2reaction.workflows import tsopt
 
-    source = inspect.getsource(HessianDimer._calc_full_hessian_cached)
-    marker = "Reusing cached raw Hessian"
-    offset = source.index(marker)
-    assert "detail=True" in source[offset : offset + 200]
+    cached = torch.eye(3)
+    runner = object.__new__(tsopt.HessianDimer)
+    runner._reuse_cached_hessian = lambda: cached
+    runner._sync_geom_hessian_cache = lambda hessian: None
+    messages = []
+    monkeypatch.setattr(tsopt, "emit", lambda text, **tags: messages.append((text, tags)))
+
+    assert runner._calc_full_hessian_cached(allow_reuse=True) is cached
+
+    ((text, tags),) = messages
+    assert "Reusing cached raw Hessian" in text
+    assert tags == {"detail": True}
+
+
+@pytest.mark.parametrize("command", ["freq", "irc"])
+def test_freq_and_irc_cache_hits_use_detail_tier(monkeypatch, tmp_path, command) -> None:
+    from click.testing import CliRunner
+
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import freq, irc
+
+    class Stopped(Exception):
+        pass
+
+    def stop(*args, **kwargs):
+        raise Stopped
+
+    workflow = {"freq": freq, "irc": irc}[command]
+    monkeypatch.setattr(
+        hessian_cache,
+        "load_matching",
+        lambda *args, **kwargs: {"hessian": torch.eye(3, dtype=torch.float64), "active_dofs": None},
+    )
+    monkeypatch.setattr(hessian_cache, "identity_from_context", lambda *args, **kwargs: {})
+    monkeypatch.setattr(workflow, "create_calculator", lambda **kwargs: object())
+    monkeypatch.setattr(freq, "_frequencies_cm_and_modes", stop)
+    monkeypatch.setattr(irc, "EulerPC", stop)
+    messages = []
+    monkeypatch.setattr(
+        workflow, "emit", lambda text="", **tags: messages.append((text, tags))
+    )
+    source = tmp_path / "input.xyz"
+    source.write_text("1\nhelium\nHe 0 0 0\n", encoding="utf-8")
+
+    CliRunner().invoke(root_cli, [
+        command, "-i", str(source), "-q", "0", "-m", "1", "-o", str(tmp_path / "out"),
+    ])
+
+    reuse = [tags for text, tags in messages if "Reusing cached TS Hessian" in text]
+    assert reuse == [{"detail": True}]
 
 
 def setup_function() -> None:

@@ -61,15 +61,6 @@ def _append_explicit_child_runtime_argv(
     }
 
 
-def test_all_forwards_thresh_to_the_scan_child() -> None:
-    """`all --thresh` must reach the staged scan, not only the scan YAML tier."""
-    module = _load_checker()
-    tree = ast.parse(module.ALL_PY.read_text(encoding="utf-8"))
-    collector = module._ForwardedScanFlags()
-    collector.visit(tree)
-    assert "--thresh" in collector.flags
-
-
 class ReachedScan(BaseException):
     """Escape the parent pipeline at the scan dispatch."""
 

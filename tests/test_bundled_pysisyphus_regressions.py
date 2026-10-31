@@ -1615,21 +1615,35 @@ def test_quartic_fit_reports_no_fit_for_a_degenerate_line() -> None:
 
 def test_sim_gediis_weights_use_the_inverse_hessian_quadratic_form() -> None:
     """The GEDIIS energy model uses f^T H^-1 f, not a row-summed contraction."""
-    forces = np.array([[0.3, -0.1], [0.05, 0.2]])
-    hessian = np.array([[2.0, 0.7], [0.7, 3.0]])
+    coords = np.array([[-0.5, 0.2], [-0.45, -0.4]])
+    forces = np.array([[0.2, -0.12], [-0.24, -0.13]])
+    energies = np.array([0.02, 0.0])
+    hessian = np.array([[2.0, 0.7], [0.7, 3.0]])  # off-diagonal: the contractions differ
     hessian_inv = np.linalg.pinv(hessian, rcond=1e-6)
-    expected = np.array([row @ hessian_inv @ row for row in forces])
 
-    actual = np.einsum("ki,ij,kj->k", forces, hessian_inv, forces)
+    # Newest point first, as gediis orders it; scan the weight c of the newest point
+    # over the two-point model of Moss and Li (2008), Eq. (5).
+    newest_coords, newest_forces = coords[::-1], forces[::-1]
+    overlap = np.einsum("jk,ik->ji", newest_coords, newest_forces)
+    linear = np.einsum("ik,ik->i", newest_coords, newest_forces)
+    weight = np.linspace(0.0, 1.0, 100001)
+    mix = np.stack([weight, 1.0 - weight], axis=1)
 
-    np.testing.assert_allclose(actual, expected)
-    # The previous row-summed contraction differs for an off-diagonal Hessian.
-    assert not np.allclose(
-        np.einsum("ki,ji,ki->k", forces, hessian_inv, forces), expected
-    )
-    source = inspect.getsource(gdiis_module.gediis)
-    assert 'einsum("ki,ij,kj->k"' in source
-    assert 'einsum("ki,ji,ki->k"' not in source
+    def best_weight(quadratic_term):
+        model = (
+            0.5 * mix @ quadratic_term
+            - np.einsum("ni,nj,ji->n", mix, mix, overlap)
+            + mix @ linear
+        )
+        return weight[np.argmin(model)]
+
+    inverse_hessian_form = np.array([f @ hessian_inv @ f for f in newest_forces])
+    row_summed = np.einsum("ki,ji,ki->k", newest_forces, hessian_inv, newest_forces)
+
+    result = gdiis_module.gediis(coords, energies, forces, hessian=hessian)
+
+    assert result.coeffs[0] == pytest.approx(best_weight(inverse_hessian_form), abs=2e-3)
+    assert abs(result.coeffs[0] - best_weight(row_summed)) > 0.1
 
 
 def test_eulerpc_corrector_keeps_the_last_advancing_microstep() -> None:
@@ -1677,8 +1691,34 @@ def test_irc_gives_integration_and_energy_rise_priority_over_convergence() -> No
     assert irc._energy_stop_message() == ""
 
 
-def test_irc_resolves_the_requested_hessian_init() -> None:
+def test_irc_resolves_the_requested_hessian_init(monkeypatch) -> None:
     """hessian_init is resolved through get_guess_hessian instead of ignored."""
-    source = inspect.getsource(IRC.run)
-    assert "get_guess_hessian(" in source, source
-    assert "self.init_hessian = self.geometry.hessian" not in source
+    seen = []
+
+    class _SeedingStopped(Exception):
+        pass
+
+    def get_guess_hessian(geometry, requested):
+        seen.append((geometry, requested))
+        raise _SeedingStopped
+
+    class _TsProbe(IRC):
+        coords = mw_coords = gradient = mw_gradient = np.zeros(3)
+        energy = -1.0
+
+        def __init__(self, geometry, requested):
+            self.geometry = geometry
+            self.hessian_init = requested
+
+        def report_conv_thresholds(self):
+            pass
+
+        def log(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setitem(IRC.run.__globals__, "get_guess_hessian", get_guess_hessian)
+    geometry = object()
+    with pytest.raises(_SeedingStopped):
+        _TsProbe(geometry, "unit").run()
+
+    assert seen == [(geometry, "unit")]

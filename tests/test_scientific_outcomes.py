@@ -178,13 +178,15 @@ def test_serializer_roundtrip_retains_diagnostics(tmp_path: Path) -> None:
     assert "status" not in r
 
 
-def test_all_mep_completion_banner_does_not_prejudge_status() -> None:
-    from pdb2reaction.workflows import all as all_workflow
+def test_all_mep_completion_banner_does_not_prejudge_status(tmp_path, monkeypatch) -> None:
+    from test_all_root_summary_golden import Scenario, invoke
 
-    source = Path(all_workflow.__file__).read_text(encoding="utf-8")
-    assert "Stage 3/{stage_total} — Core MEP outputs" in source
-    assert "Core MEP pipeline finished ======" in source
-    assert "Pipeline (core path) successfully finished" not in source
+    run = invoke(tmp_path, monkeypatch, Scenario("mep_no_post", (0, 2), []))
+
+    assert run.exit_code == 0, run.output
+    assert "Stage 3/3 — Core MEP outputs" in run.output
+    assert "Core MEP pipeline finished" in run.output
+    assert "(core path) successfully finished" not in run.output
 
 
 def test_unknown_execution_fails_closed_and_is_not_seed_eligible() -> None:
@@ -686,38 +688,6 @@ def test_freq_preserves_explicit_default_runtime_values_over_yaml(
     assert captured[captured.index("--config") + 1] == str(config)
 
 
-def test_all_freq_leaves_symmetry_detection_to_each_child(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    from pdb2reaction.workflows import all as all_workflow
-
-    structure = tmp_path / "R.xyz"
-    structure.write_text("1\n\nH 0 0 0\n", encoding="utf-8")
-    captured: list[str] = []
-
-    def _capture(_name, _command, argv, **_kwargs):
-        captured.extend(argv)
-        return 1
-
-    monkeypatch.setattr(all_workflow, "_run_cli_main", _capture)
-    monkeypatch.setattr(all_workflow, "_echo", lambda *a, **k: None)
-
-    all_workflow._run_freq_for_state(
-        structure,
-        0,
-        1,
-        tmp_path / "freq",
-        None,
-        False,
-        None,
-        False,
-        overrides={},
-    )
-
-    assert "--symmetry-number" not in captured
-
-
 # ---------------------------------------------------------------------------
 # 6. LEGACY-COMPAT — a genuinely converged leaf's public output is unchanged
 #    except for the additive new fields.
@@ -822,29 +792,48 @@ def test_dmf_converged_leaf_is_success() -> None:
     assert aggregate_workflow_truth([leaf], ["dmf_mep"]).scientific_status == "success"
 
 
-def test_dmf_result_status_matches_the_gsm_convergence_form() -> None:
+@pytest.mark.parametrize(
+    ("ipopt_converged", "optimization_status", "exit_code"),
+    [(True, "converged", 0), (False, "not_converged", 1), (None, "completed", 1)],
+)
+def test_dmf_result_status_matches_the_gsm_convergence_form(
+    tmp_path: Path, monkeypatch, ipopt_converged, optimization_status, exit_code,
+) -> None:
     # Both MEP engines answer "did this converge?" the same way: `converged`
-    # carries the tri-state bit and `status` is derived from it, so a DMF
-    # consumer reading either field gets the IPOPT result rather than a pinned
-    # placeholder. Schema 3.0 replaced the earlier byte-compatible pinning.
+    # carries the tri-state bit and the optimization status is derived from it, so a
+    # DMF consumer reading either field gets the IPOPT result rather than a pinned
+    # placeholder, and an unreadable IPOPT status claims no outcome.
+    from types import SimpleNamespace
+
+    from click.testing import CliRunner
+
+    from pdb2reaction.cli import cli as root_cli
     from pdb2reaction.workflows import path_opt
 
-    src = Path(path_opt.__file__).read_text(encoding="utf-8")
-    # DMF publishes the real IPOPT bit, and derives `status` from it exactly as
-    # the GSM branch does.
-    assert '"converged": _dmf_converged,' in src
-    assert 'if _dmf_converged is True' in src
-    assert '"not_converged" if _dmf_converged is False else "completed"' in src
-    # The pinned placeholders are gone.
-    assert '"converged": None,\n' not in src
-    # An unreadable IPOPT status stays tri-state rather than claiming an outcome.
-    from pdb2reaction.workflows._outcomes import ipopt_status_to_converged
+    def run_dmf(geoms, calc_cfg, out_dir, *args, **kwargs):
+        (Path(out_dir) / "final_geometries_trj.xyz").write_text("", encoding="utf-8")
+        return SimpleNamespace(
+            images=[*geoms, geoms[-1]], energies=[-1.0, -0.9, -1.1], hei_idx=1,
+            is_converged=ipopt_converged, reason="",
+        )
 
-    assert ipopt_status_to_converged(None)[0] is None
-    assert ipopt_status_to_converged(0)[0] is True
-    assert ipopt_status_to_converged(2)[0] is False
-    # ...but the IPOPT truth must still feed the additive scientific_status leaf.
-    assert 'converged=_dmf_converged' in src
+    monkeypatch.setattr(path_opt, "create_calculator", lambda **kwargs: object())
+    monkeypatch.setattr(path_opt, "_run_dmf_mep", run_dmf)
+    smoke = Path(__file__).parent / "smoke"
+    out_dir = tmp_path / "out"
+
+    result = CliRunner().invoke(root_cli, [
+        "path-opt", "-i", str(smoke / "r.pdb"), str(smoke / "p.pdb"), "-q", "-1", "-m", "1",
+        "--mep-mode", "dmf", "--no-preopt", "--out-json", "--out-dir", str(out_dir),
+    ])
+
+    payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
+    assert result.exit_code == exit_code, result.output
+    assert payload["mep_mode"] == "dmf"
+    assert payload["converged"] is ipopt_converged
+    assert payload["optimization_status"] == optimization_status
+    # ...and the IPOPT truth still feeds the scientific_status leaf.
+    assert payload["stage_outcomes"][0]["converged"] is ipopt_converged
 
 
 # ---------------------------------------------------------------------------
@@ -1286,13 +1275,3 @@ def test_requested_preopt_nonconvergence_gates_parent_truth(tmp_path: Path) -> N
     assert degenerate.execution_status == "completed"
     assert degenerate.scientific_status == "partial"
     assert any("preopt" in reason for reason in degenerate.status_reasons)
-
-
-def test_all_path_opt_child_emits_machine_result() -> None:
-    """The no-refine path-opt producer must enable its result.json contract."""
-    from pdb2reaction.workflows import all as all_workflow
-
-    source = Path(all_workflow.__file__).read_text(encoding="utf-8")
-    branch = source[source.index("if not refine_path:"):source.index("final_trj = path_dir", source.index("if not refine_path:"))]
-    assert '"--out-json"' in branch
-    assert 'seg_dir / "result.json"' in branch

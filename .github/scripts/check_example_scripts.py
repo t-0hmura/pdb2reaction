@@ -5,6 +5,7 @@ Asserts the exact ``PUBLIC_SHELL_EXAMPLES`` paths exist, runs ``bash -n`` on
 each, and validates their ``pdb2reaction`` invocations against the live CLI via
 the shared command contract. Scientific execution stays in the explicit smoke
 lanes; this lane only proves the advertised scripts parse and use real options.
+It also checks that the single-model example structures are plain PDB files.
 """
 
 from __future__ import annotations
@@ -17,9 +18,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import docs_command_contract as contract  # noqa: E402
 
+PUBLIC_SINGLE_MODEL_EXAMPLES = ("1.R.pdb", "2.IM.pdb")
+
+
+def check_single_model_examples() -> list[str]:
+    """The single-model example PDBs end with END and carry no MODEL/ENDMDL records."""
+    errors: list[str] = []
+    for filename in PUBLIC_SINGLE_MODEL_EXAMPLES:
+        path = contract.REPO_ROOT / "examples" / filename
+        rel = contract.rel_to_repo(path)
+        if not path.exists():
+            errors.append(f"public example structure missing: {rel}")
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if not lines or lines[-1] != "END":
+            errors.append(f"{rel}: the last line must be 'END'")
+        if any(line.startswith(("MODEL", "ENDMDL")) for line in lines):
+            errors.append(f"{rel}: a single-model example must not carry MODEL/ENDMDL records")
+    return errors
+
 
 def main() -> int:
-    errors: list[str] = []
+    errors: list[str] = check_single_model_examples()
     total_cmds = 0
     for path in contract.PUBLIC_SHELL_EXAMPLES:
         rel = contract.rel_to_repo(path)

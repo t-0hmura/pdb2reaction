@@ -1,37 +1,10 @@
-"""Dependency constraints backed by current runtime/API requirements."""
+"""Version metadata of the installed package.
+
+The dependency floors, extras and Python range in ``pyproject.toml`` are checked by
+``.github/scripts/check_release_versions.py``.
+"""
 
 from __future__ import annotations
-
-from pathlib import Path
-import tomllib
-
-import pytest
-from packaging.requirements import Requirement
-from packaging.specifiers import SpecifierSet
-
-
-def _project() -> dict:
-    path = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    return tomllib.loads(path.read_text(encoding="utf-8"))["project"]
-
-
-def test_runtime_dependency_floors_match_consumed_apis() -> None:
-    project = _project()
-    dependencies = set(project["dependencies"])
-    extras = project["optional-dependencies"]
-
-    assert "pydmf>=1.2" in dependencies
-    assert "plotly>=6.1.1" in dependencies
-    assert extras["aimnet"] == ["aimnet>=0.2.0"]
-
-
-def test_orb_extra_requires_the_orbmol_v2_release() -> None:
-    requirements = [Requirement(value) for value in _project()["optional-dependencies"]["orb"]]
-    assert len(requirements) == 1 and requirements[0].marker is None
-    assert requirements[0].name == "orb-models"
-    specifier = requirements[0].specifier
-    assert "0.7.0" in specifier and "0.8.0" in specifier
-    assert "0.5.5" not in specifier and "0.6.99" not in specifier
 
 
 def test_version_tuple_matches_the_packaged_version() -> None:
@@ -40,11 +13,3 @@ def test_version_tuple_matches_the_packaged_version() -> None:
 
     assert _version.__version_tuple__ == _version.version_tuple == Version(_version.__version__).release
     assert _version.version == _version.__version__
-
-
-@pytest.mark.parametrize(("version", "supported"), [
-    ("3.10.18", False), ("3.11.13", False), ("3.12.0", True),
-    ("3.12.13", True), ("3.13.0", False), ("3.14.0", False),
-])
-def test_python_requirement_is_python_3_12(version, supported):
-    assert (version in SpecifierSet(_project()["requires-python"])) is supported

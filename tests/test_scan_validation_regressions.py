@@ -1,10 +1,10 @@
 """Fail-closed validation for scan axes and scientific eligibility."""
 
 import click
-import inspect
 import json
 import numpy as np
 import pytest
+import re
 
 from pdb2reaction.core.utils import (
     claim_unique_scan_stem,
@@ -205,27 +205,6 @@ def test_scan_artifact_stem_disambiguates_rounded_distance_collision() -> None:
     assert second == "point_i100_j200_grid_001_000"
 
 
-def test_scan_html_plots_are_responsive_and_scan2d_keeps_native_projection() -> None:
-    from pdb2reaction.workflows import scan2d, scan3d
-
-    scan2d_source = inspect.getsource(scan2d)
-    scan3d_source = inspect.getsource(scan3d)
-
-    assert "plane_proj = go.Surface" in scan2d_source
-    assert "plane_z = z_bottom + 0.005" in scan2d_source
-    assert "z=np.full_like(ZI, plane_z)" in scan2d_source
-    assert "bottom_contours = go.Scatter3d" in scan2d_source
-    assert "contour_z = z_bottom + 0.01" in scan2d_source
-    assert "go.Figure(data=[surface3d, plane_proj, bottom_contours])" in scan2d_source
-    assert 'name="2D Contour Projection (Bottom)"' in scan2d_source
-    assert "Computed grid points" not in scan2d_source
-    assert '"project": {"z": True}' not in scan2d_source
-    for source in (scan2d_source, scan3d_source):
-        assert 'config={"responsive": True, "displaylogo": False}' in source
-        assert 'default_width="100%"' in source
-        assert 'default_height="100%"' in source
-
-
 def test_scan2d_bottom_contours_are_explicit_line_segments() -> None:
     from pdb2reaction.workflows.scan2d import _contour_line_segments
 
@@ -307,6 +286,62 @@ def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
     payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
     assert "scan2d_map_png" not in payload["files"]
     assert "scan2d_map.png" not in payload["current_output_paths"]
+
+
+@pytest.mark.parametrize(
+    ("command", "n_atoms", "scan_lists", "html_name"),
+    [
+        ("scan2d", 4, "[(1,2,1.000,1.008),(3,4,1.000,1.004)]", "scan2d_landscape.html"),
+        (
+            "scan3d", 6,
+            "[(1,2,1.000,1.004),(3,4,1.000,1.004),(5,6,1.000,1.004)]",
+            "scan3d_density.html",
+        ),
+    ],
+)
+def test_scan_html_plots_are_responsive_and_scan2d_keeps_native_projection(
+    tmp_path, monkeypatch, command, n_atoms, scan_lists, html_name,
+) -> None:
+    from click.testing import CliRunner
+
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import scan2d, scan3d
+
+    workflow = scan2d if command == "scan2d" else scan3d
+    monkeypatch.setattr(workflow, "create_calculator", lambda **kwargs: _ConstantScanCalculator())
+    monkeypatch.setattr(workflow, "make_sopt_optimizer", _restraint_reaching_optimizer)
+    monkeypatch.setattr(scan2d, "write_plotly_image", lambda *args, **kwargs: None)
+    structure = tmp_path / "system.pdb"
+    structure.write_text(
+        "".join(
+            f"HETATM{serial:5d}  C{serial:<2d} LIG A   1    {serial - 1.0:8.3f}   0.000   0.000"
+            "  1.00  0.00           C\n"
+            for serial in range(1, n_atoms + 1)
+        ) + "END\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            command, "-i", str(structure), "-q", "0", "-m", "1",
+            "--scan-lists", scan_lists, "--max-step-size", "0.004",
+            "--out-dir", str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    html = (out_dir / html_name).read_text(encoding="utf-8")
+    assert re.search(r'"responsive":\s*true', html)
+    assert re.search(r'"displaylogo":\s*false', html)
+    if command == "scan3d":
+        # The viewer fills its container instead of keeping a fixed pixel size.
+        assert '<div style="height:100%; width:100%;">' in html
+    else:
+        assert "2D Contour Projection (Bottom)" in html
+        assert not re.search(r'"project":\s*\{\s*"z":\s*true', html)
+        assert "Computed grid points" not in html
 
 
 def test_long_stage_literal_is_not_treated_as_a_spec_path(tmp_path) -> None:

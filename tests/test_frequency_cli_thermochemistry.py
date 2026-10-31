@@ -129,8 +129,5 @@ def test_frequency_always_loads_cartesian_coordinates(tmp_path, monkeypatch):
     monkeypatch.setattr(workflow, "geom_loader", stop)
     base = ["freq", "-i", str(source), "-q", "0", "-m", "1", "--no-freeze-links",
             "-o", str(tmp_path / "out")]
-    rejected = CliRunner().invoke(root_cli, [*base, "--coord-type", "dlc"])
-    assert rejected.exit_code == 2
-    assert "No such option" in rejected.output
     CliRunner().invoke(root_cli, [*base, "--config", str(config)])
     assert seen == ["cart"]

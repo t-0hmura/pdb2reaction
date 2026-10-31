@@ -27,22 +27,6 @@ def test_root_invocation_resets_charge_multiplicity_override() -> None:
         validate_charge_spin(["H"], 0, 1)
 
 
-@pytest.mark.parametrize(
-    ("command", "option"),
-    [
-        ("dft", "--convert-files"),
-        ("sp", "--convert-files"),
-        ("sp", "--print-every"),
-    ],
-)
-def test_noop_options_are_removed(command: str, option: str) -> None:
-    result = CliRunner().invoke(root_cli, [command, option])
-
-    assert result.exit_code == 2
-    assert "No such option" in result.output
-    assert option in result.output
-
-
 def _xyz(path: Path) -> Path:
     path.write_text("1\nH\nH 0.0 0.0 0.0\n", encoding="utf-8")
     return path

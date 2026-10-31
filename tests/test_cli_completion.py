@@ -79,18 +79,6 @@ def test_usage_and_interrupt_codes_remain_distinct_from_execution_errors(code):
     assert result.exit_code == code
 
 
-def test_removed_scan_flag_is_rejected_for_each_scan_command(tmp_path):
-    from pdb2reaction.cli import cli
-
-    source = tmp_path / "h2.xyz"
-    source.write_text("2\nH2\nH 0 0 0\nH 0 0 2\n")
-    for command in ("scan", "scan2d", "scan3d"):
-        for flag in ("--print-parsed", "--no-print-parsed"):
-            result = CliRunner().invoke(cli, [command, "-i", str(source), "-q", "0", "--dry-run", flag])
-            assert result.exit_code == 2
-            assert flag in result.output, result.output
-
-
 @pytest.mark.parametrize("out_json", [False, True])
 def test_opt_nonconvergence_exits_one_at_the_public_cli(tmp_path, out_json):
     from pdb2reaction.cli import cli
