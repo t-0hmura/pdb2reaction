@@ -32,7 +32,9 @@ _PATTERNS = (
 
 _ORIGINAL_ERROR_MAX = 300
 
-# The operating-system packages of Chrome for Testing (its .deb and .rpm dependencies).
+# The operating-system packages of Chrome for Testing (its .deb and .rpm dependencies). libcurl is left out of the
+# dnf list: RHEL 9 images carry libcurl-minimal, which provides libcurl.so.4 (the only curl library Chrome needs)
+# and conflicts with libcurl.
 _CHROME_APT = (
     "ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 "
     "libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 libglib2.0-0 libgtk-3-0 "
@@ -41,7 +43,7 @@ _CHROME_APT = (
 )
 _CHROME_DNF = (
     "alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs dbus-libs expat "
-    "glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr libcurl libgcc "
+    "glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr libgcc "
     "liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs "
     "vulkan-loader wget xdg-utils"
 )
@@ -58,7 +60,7 @@ _MESSAGES = {
         "Missing system prerequisite: C compiler (gcc).\n"
         "  UMA on a GPU builds GPU code at run time through PyTorch (Triton), and no C compiler was found.\n"
         "  Install one, then run the command again:\n"
-        "    Ubuntu/Debian:  sudo apt-get install -y gcc\n"
+        "    Ubuntu/Debian:  sudo apt-get update && sudo apt-get install -y gcc\n"
         "    Rocky/RHEL:     sudo dnf install -y gcc\n"
         "    No sudo (HPC):  module load gcc   or   conda install -c conda-forge c-compiler"
     ),
@@ -66,7 +68,7 @@ _MESSAGES = {
         "Missing system prerequisite: C++ compiler (g++).\n"
         "  UMA on a CPU builds its kernels at run time through PyTorch (Inductor), and no C++ compiler was found.\n"
         "  Install one, then run the command again:\n"
-        "    Ubuntu/Debian:  sudo apt-get install -y g++\n"
+        "    Ubuntu/Debian:  sudo apt-get update && sudo apt-get install -y g++\n"
         "    Rocky/RHEL:     sudo dnf install -y gcc-c++\n"
         "    No sudo (HPC):  module load gcc   or   conda install -c conda-forge cxx-compiler"
     ),
@@ -77,6 +79,7 @@ _MESSAGES = {
         "  1. Install Chrome (needs internet access):  plotly_get_chrome -y",
         "  2. Install the libraries Chrome loads:",
         "     Ubuntu/Debian (Ubuntu 22.04 and Debian 12: libasound2 instead of libasound2t64):",
+        "       sudo apt-get update",
         _command("sudo apt-get install -y " + _CHROME_APT, 7),
         "     Rocky/RHEL:",
         _command("sudo dnf install -y " + _CHROME_DNF, 7),

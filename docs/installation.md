@@ -62,6 +62,7 @@ pip and conda do not install a compiler or the libraries Chrome needs. A worksta
 Ubuntu/Debian (on Ubuntu 22.04 and Debian 12, write `libasound2` instead of `libasound2t64`; drop `sudo` if you are root):
 
 ```bash
+sudo apt-get update
 sudo apt-get install -y gcc g++
 sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
   libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
@@ -75,8 +76,8 @@ Rocky/RHEL:
 sudo dnf install -y gcc gcc-c++
 sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
   dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
-  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
-  systemd-libs vulkan-loader wget xdg-utils
+  libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs \
+  vulkan-loader wget xdg-utils
 ```
 
 Without sudo (HPC), run `module load gcc`, or add the compilers to your environment with `conda install -c conda-forge c-compiler cxx-compiler`. Ask the administrator for Chrome's libraries; without them `all` and `path-search` still finish and only skip the PNG files.

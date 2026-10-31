@@ -46,6 +46,26 @@ def _wrapped(inner: str) -> Exception:
     return InductorError(inner)
 
 
+@pytest.fixture(autouse=True)
+def _default_console_state(monkeypatch):
+    """Run every test at the default verbosity with the console gate off.
+
+    The CLI keeps its verbosity and console gate in module globals and never resets them, so other tests leave them
+    behind: test_utils.py-style tests end at -v 0, which silences even errors once any CLI test has installed the patched
+    click.echo. These tests read the messages from stderr, so they must not depend on what ran before; monkeypatch puts
+    the previous values back afterwards.
+    """
+    from pdb2reaction.core import output, utils
+
+    for module, name, value in (
+        (output, "_VERBOSE_LEVEL", 2),
+        (utils, "_GATE_ACTIVE", False),
+        (utils, "_PIPELINE_MODE", False),
+        (utils, "_CHILD_MODE", False),
+    ):
+        monkeypatch.setattr(module, name, value)
+
+
 # ---------------------------------------------------------------------------
 # The message
 # ---------------------------------------------------------------------------
@@ -67,12 +87,13 @@ def test_message_links_to_a_docs_section_that_exists():
 
 
 def test_compiler_messages_give_the_install_commands():
+    # An official image has no apt package lists: apt-get install alone stops with "Unable to locate package".
     gpu = pre.guidance(pre.KIND_C_COMPILER)
-    assert "sudo apt-get install -y gcc" in gpu
+    assert "sudo apt-get update && sudo apt-get install -y gcc" in gpu
     assert "sudo dnf install -y gcc" in gpu
     assert "conda install -c conda-forge c-compiler" in gpu
     cpu = pre.guidance(pre.KIND_CXX_COMPILER)
-    assert "sudo apt-get install -y g++" in cpu
+    assert "sudo apt-get update && sudo apt-get install -y g++" in cpu
     assert "sudo dnf install -y gcc-c++" in cpu
     assert "conda install -c conda-forge cxx-compiler" in cpu
 
@@ -80,10 +101,12 @@ def test_compiler_messages_give_the_install_commands():
 def test_chrome_message_gives_both_steps_and_both_package_lists():
     text = pre.guidance(pre.KIND_CHROME)
     assert "plotly_get_chrome -y" in text
-    assert "sudo apt-get install -y ca-certificates" in text
+    assert text.index("sudo apt-get update") < text.index("sudo apt-get install -y ca-certificates")
     assert "libnss3" in text and "libgbm1" in text and "xdg-utils" in text
     assert "sudo dnf install -y alsa-lib" in text
     assert "nss" in text and "mesa-libgbm" in text and "vulkan-loader" in text
+    # RHEL 9 images carry libcurl-minimal, which provides libcurl.so.4 and conflicts with the libcurl package.
+    assert "libcurl" not in text.split("Rocky/RHEL:", 1)[1].split()
 
 
 def test_original_error_is_one_bounded_line():

@@ -62,6 +62,7 @@ pip と conda は、コンパイラと Chrome が使うライブラリを入れ�
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
 
 ```bash
+sudo apt-get update
 sudo apt-get install -y gcc g++
 sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
   libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
@@ -75,8 +76,8 @@ Rocky/RHEL:
 sudo dnf install -y gcc gcc-c++
 sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
   dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
-  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
-  systemd-libs vulkan-loader wget xdg-utils
+  libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs \
+  vulkan-loader wget xdg-utils
 ```
 
 sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。入っていなくても `all` と `path-search` は最後まで実行され、PNG だけが作られません。

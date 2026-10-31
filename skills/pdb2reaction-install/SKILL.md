@@ -74,8 +74,8 @@ PNG export needs the operating-system libraries of the Chrome that
 on a CPU), then install:
 
 ```bash
-sudo apt-get install -y gcc g++                    # Ubuntu/Debian
-sudo dnf install -y gcc gcc-c++                    # Rocky/RHEL
+sudo apt-get update && sudo apt-get install -y gcc g++    # Ubuntu/Debian
+sudo dnf install -y gcc gcc-c++                            # Rocky/RHEL
 ```
 
 Without sudo, use `module load gcc` or `conda install -c conda-forge c-compiler cxx-compiler`;
@@ -84,6 +84,7 @@ only the PNG files). The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 a
 Debian 12: `libasound2` instead of `libasound2t64`):
 
 ```bash
+sudo apt-get update
 sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
   libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
   libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
@@ -95,8 +96,8 @@ and for Rocky/RHEL:
 ```bash
 sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
   dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
-  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
-  systemd-libs vulkan-loader wget xdg-utils
+  libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs \
+  vulkan-loader wget xdg-utils
 ```
 
 A missing one stops the command with `Missing system prerequisite:` and the same
