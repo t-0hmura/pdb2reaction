@@ -26,6 +26,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 - With `--refine-path`, the root `summary.json` keeps the provisional `partial`/`failed` verdict until post-processing finishes, so a run that stops during TS optimization no longer leaves the path-search `success` there.
 - `all` with a TS-only input: when the endpoint optimization fails, the root `summary.json` records `primary_method` and the full `config` like the other exits. An error while comparing IRC endpoints with the MEP bonds is reported as `bond_change_check_failed:<error>` instead of a bond mismatch.
+- GPU DFT (`-b dft`, `dft`) loads the environment's libcusolver when the system has no CUDA toolkit registered; gpu4pyscf searched only the system library cache, so a node with only the NVIDIA driver stopped with "Unable to load libcusolver".
 - The IRC warning for a branch that stops after a few frames names the `all` options (`--irc-step-size`, `--irc-never-stop`) when IRC runs inside `all`.
 - The optimizer progress table marks only the convergence criteria the preset checks; GSM rows no longer mark the energy and step columns, and `gau` rows no longer mark the energy change.
 

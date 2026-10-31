@@ -1008,6 +1008,9 @@ def cli(
                     pass
 
                 try:
+                    from pdb2reaction.backends.pyscf_dft import ensure_gpu4pyscf_cusolver
+
+                    ensure_gpu4pyscf_cusolver()
                     from gpu4pyscf import dft as gdf
 
                     # ``rks_lowmem`` is available only in recent gpu4pyscf and
