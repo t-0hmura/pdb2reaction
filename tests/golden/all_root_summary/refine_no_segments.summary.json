@@ -1,0 +1,87 @@
+{
+  "out_dir": "<TMP>/out/_work/path_search",
+  "n_images": 0,
+  "n_segments": 0,
+  "segments": [],
+  "execution_status": "completed",
+  "scientific_status": "success",
+  "path_optimizers": [
+    "lbfgs"
+  ],
+  "run_id": "golden-run",
+  "resume_identity": {
+    "schema_version": 1,
+    "pipeline_mode": "path-search",
+    "inputs": [
+      {
+        "path": "<TMP>/input0.pdb",
+        "size": 162,
+        "sha256": "fb8fc3ddafa4c3af9c2c4ee9be4500d09624da6292a2b33292b488bec9122b60"
+      },
+      {
+        "path": "<TMP>/input2.pdb",
+        "size": 162,
+        "sha256": "b5676dc7eb8f1c6d0a45ad20a12e74fa9611cb619def12c576fb98c15f5ea32f"
+      }
+    ],
+    "ref_pdb": null,
+    "path_request": {
+      "add_linkh": true,
+      "center": null,
+      "climb": true,
+      "config_sha256": null,
+      "coord_type": null,
+      "dmf_backend": "gpu",
+      "exclude_backbone": false,
+      "freeze_atoms": [],
+      "freeze_links": false,
+      "gsm_param": null,
+      "include_h2o": true,
+      "ligand_charge": null,
+      "max_cycles_dmf": null,
+      "max_cycles_gsm": null,
+      "max_depth": null,
+      "max_nodes": 20,
+      "mep_mode": "gsm",
+      "modified_residue": "",
+      "opt_mode": "grad",
+      "preopt": false,
+      "radius": 2.6,
+      "radius_het2het": 0.0,
+      "refine_path": true,
+      "scan_bias_k": null,
+      "scan_endopt": null,
+      "scan_lists": [],
+      "scan_max_step_size": null,
+      "scan_one_based": true,
+      "scan_preopt": null,
+      "scan_relax_max_cycles": null,
+      "selected_resn": "",
+      "thresh": null,
+      "thresh_dmf": null,
+      "thresh_gsm": null
+    },
+    "calculator_identity": {
+      "mlip_backend": "uma",
+      "mlip_model": "uma-s-1p2p1",
+      "mlip_precision": "fp32",
+      "mlip_task": "omol",
+      "primary_method": "mlip"
+    },
+    "charge": 0,
+    "spin": 1
+  },
+  "pipeline_stop": {
+    "stage": "post",
+    "reason": "no_segments"
+  },
+  "key_output_files": {
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary"
+  },
+  "current_output_paths": [
+    "summary.json",
+    "summary.log"
+  ],
+  "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt"
+}

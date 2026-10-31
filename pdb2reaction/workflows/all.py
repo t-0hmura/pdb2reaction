@@ -183,16 +183,6 @@ _ALL_FORWARDED_YAML_SECTIONS = (
 )
 
 
-def _public_merged_coordinate_suffix(input_paths: Sequence[Path]) -> str:
-    """Choose the user-facing merged-trajectory format from original inputs."""
-
-    return (
-        ".cif"
-        if any(path.suffix.lower() in {".cif", ".mmcif"} for path in input_paths)
-        else ".pdb"
-    )
-
-
 def _validate_reference_merge_request(
     *,
     requested: bool,
@@ -609,10 +599,7 @@ def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
     """Append ``flag`` and ``value`` (converted to string) to ``args`` when ``value`` is not ``None``."""
     if value is None:
         return
-    if isinstance(value, bool):
-        args.extend([flag, "True" if value else "False"])
-    else:
-        args.extend([flag, str(value)])
+    args.extend([flag, str(value)])
 
 
 def _append_toggle_arg(args: List[str], flag: str, value: bool | None) -> None:
@@ -1955,7 +1942,6 @@ def _apply_pipeline_truth(
 def _enrich_summary(
     summary: dict,
     *,
-    version: str,
     pipeline_mode: str,
     mlip_backend: str,
     mlip_model: Optional[str],
@@ -2117,18 +2103,14 @@ def _enrich_summary(
     summary["pdb2reaction_version"] = __version__
     summary["schema_version"] = RESULT_JSON_SCHEMA_VERSION
     summary["pipeline_mode"] = pipeline_mode
-    summary["status"] = status
-    if status_reasons:
-        summary["status_reasons"] = status_reasons
-    else:
-        summary.pop("status_reasons", None)
-    # Keep the legacy overloaded ``status`` intact and
-    # expose the execution/scientific split plus expected/observed segment IDs so
-    # a forward-compatible consumer can tell "the pipeline ran" from "the science
-    # is complete and usable". ``scientific_status`` is computed from explicit
-    # final per-segment optimization outcomes and requested output completeness.
-    # IRC stop conditions and frequency/topology diagnostics remain separately
-    # available without imposing another optimizer acceptance criterion.
+    # The legacy overloaded ``status`` is not published; it only joins the
+    # leaf aggregate below. Expose the execution/scientific split plus
+    # expected/observed segment IDs so a consumer can tell "the pipeline ran"
+    # from "the science is complete and usable". ``scientific_status`` is
+    # computed from explicit final per-segment optimization outcomes and
+    # requested output completeness. IRC stop conditions and
+    # frequency/topology diagnostics remain separately available without
+    # imposing another optimizer acceptance criterion.
     _apply_pipeline_truth(
         summary,
         post_segments=post_segments,
@@ -3631,6 +3613,7 @@ def _orient_irc_endpoints(
         gL_end = _geom_from_angstrom(elems, c_first, freeze_atoms)
         gR_end = _geom_from_angstrom(elems, c_last, freeze_atoms)
         bond_cfg = dict(_path_search.BOND_KW)
+        check_errors: List[str] = []
 
         def _matches(x, y) -> bool:
             try:
@@ -3640,6 +3623,7 @@ def _orient_irc_endpoints(
                 logger.debug(
                     "Bond-change check failed during IRC endpoint matching: %s", exc
                 )
+                check_errors.append(str(exc))
                 return False
 
         L_L = _matches(g_left, gL_end)
@@ -3695,9 +3679,12 @@ def _orient_irc_endpoints(
 
         assignment["reversed"] = bool(reverse_irc)
         if not assignment["connectivity_validated"]:
+            # A failed bond-change check is not a topology mismatch.
             assignment.setdefault(
                 "reason",
-                "neither endpoint pairing matched the MEP bond topology",
+                f"bond_change_check_failed:{check_errors[0]}"
+                if check_errors
+                else "neither endpoint pairing matched the MEP bond topology",
             )
     except Exception as exc:
         assignment["method"] = "unresolved"
@@ -5299,10 +5286,6 @@ def cli(
     _mode_alias = {
         "grad": "grad",
         "hess": "hess",
-        "lbfgs": "grad",
-        "rfo": "hess",
-        "dimer": "grad",
-        "rsprfo": "hess",
     }
     opt_mode_norm = _mode_alias.get(str(opt_mode).strip().lower(), "hess")
     opt_mode_post_norm = (
@@ -5431,6 +5414,38 @@ def cli(
             "mlip_model": _mlip_model_shared,
             "mlip_task": _mlip_task_shared,
         }
+
+    def _summary_config(
+        *, dft_status: Optional[str] = None, dft_stage_done: bool = False
+    ) -> Dict[str, Any]:
+        """The ``config`` block of the aggregate summary, built the same on every exit.
+
+        TS-only summaries also carry ``dft_status``; ``dft_func_basis`` is added
+        once the TS-only DFT stage has been reached.
+        """
+        post_mode = tsopt_opt_mode_default if do_tsopt else None
+        config: Dict[str, Any] = {
+            "refine_path": refine_path,
+            "flatten": bool(flatten),
+            "tsopt": do_tsopt,
+            "thermo": do_thermo,
+            "dft": do_dft,
+        }
+        if single_tsopt_mode:
+            config["dft_status"] = dft_status
+            if dft_stage_done:
+                config["dft_func_basis"] = dft_func_basis_use if do_dft else None
+        config["opt_mode"] = opt_mode_norm
+        config["opt_mode_post"] = post_mode
+        if not single_tsopt_mode:
+            config["preopt"] = bool(preopt)
+        config["path_opt_mode"] = None if single_tsopt_mode else opt_mode_norm
+        config["post_opt_mode"] = post_mode
+        config["ts_opt_mode"] = post_mode
+        config["endpoint_opt_mode"] = post_mode
+        config["mep_mode"] = mep_mode_kind
+        config["dmf_correlated"] = dmf_correlated_effective
+        return config
 
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
@@ -5960,15 +5975,39 @@ def cli(
             _claim_public(dst)
         return moved
 
-    def _publish_root_summary(payload: Dict[str, Any]) -> Path:
-        """Publish the current aggregate without modifying the saved MEP summary."""
+    def _publish_root_summary(
+        payload: Dict[str, Any],
+        *,
+        warn_on_failure: bool = False,
+        echo: bool = False,
+    ) -> bool:
+        """Write ``<out>/summary.json``; every root summary goes through here.
+
+        Declares the public destination, stamps the run ID, writes *payload*
+        atomically and claims the file. A caller that also publishes a stage
+        summary passes the same dict, so both files carry identical bytes
+        without copying one to the other. With ``warn_on_failure`` a failed
+        write is reported and False is returned for the caller to act on;
+        otherwise the error propagates.
+        """
 
         destination = out_dir / "summary.json"
         _declare_public(destination)
         payload["run_id"] = manifest.run_id
-        published = _write_summary_json(destination, payload)
+        try:
+            _write_summary_json(destination, payload)
+        except Exception as exc:
+            if not warn_on_failure:
+                raise
+            _echo(
+                f"[all] WARNING: Failed to copy summary.json to {destination}: {exc}",
+                err=True,
+            )
+            return False
         _claim_public(destination)
-        return published
+        if echo:
+            _echo_detail(f"[all] Copied summary.json → {destination}")
+        return True
 
     def _write_public_energy_diagram(
         prefix: Path,
@@ -6490,6 +6529,727 @@ def cli(
         freq_overrides["calc_file"] = calc_cfg_shared["calc_file"]
         if calc_cfg_shared.get("calc_factory"):
             freq_overrides["calc_factory"] = calc_cfg_shared["calc_factory"]
+
+    def _post_process_segment(
+        record: Optional[Dict[str, Any]],
+        *,
+        seg_idx: int,
+        seg_dir: Path,
+        seg_tag: Optional[str],
+        ts_start: Path,
+        ref_pdb: Optional[Path],
+        irc_model_pdb: Path,
+        struct_template: Path,
+        segment_tsopt_overrides: Dict[str, Any],
+        endpoint_trajectory: Optional[Path],
+        freq_root: Path,
+        dft_root: Path,
+    ) -> Dict[str, Any]:
+        """Post-process one reactive segment: TS optimization, IRC, endpoint
+        optimization, then the requested thermochemistry and DFT stages.
+
+        A MEP segment passes its ``seg_tag`` and fills its ``post_segments``
+        entry ``record`` in place. The TS-only route is the same path for one
+        segment without a MEP: ``seg_tag`` and ``record`` are None, the IRC
+        endpoints are ordered by energy instead of against the MEP, and the
+        caller builds its own record from the returned values.
+
+        Returns the stage values with ``status``: ``"stopped_before_irc"``
+        (the TS optimization does not allow IRC), ``"endpoint_failed"`` (an
+        endpoint optimization raised; the calculator is already released) or
+        ``"done"``.
+        """
+        ts_only = seg_tag is None
+        ts_label = "TS" if ts_only else f"TS{seg_idx}"
+        stage_label = "Single TSOPT" if ts_only else f"Segment {seg_idx:02d}"
+        where = "in TSOPT-only mode" if ts_only else f"for segment {seg_idx:02d}"
+        struct_dir = seg_dir / "structures"
+        post: Dict[str, Any] = {}
+
+        ts_pdb, g_ts = _run_tsopt_on_hei(
+            ts_start,
+            q_int,
+            spin,
+            calc_cfg_post,
+            args_yaml,
+            seg_dir,
+            freeze_links_flag,
+            tsopt_opt_mode_default,
+            ref_pdb,
+            convert_files,
+            overrides=segment_tsopt_overrides,
+            runtime_overrides=child_runtime_overrides,
+            manifest=manifest,
+            artifact_prefix=f"post.{seg_idx:02d}.tsopt",
+            public_root=out_dir,
+        )
+
+        tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
+        tsopt_decision = dict(
+            getattr(g_ts, "_tsopt_continuation", {})
+            or _tsopt_continuation_decision(
+                tsopt_payload,
+                skip_final_freq=bool(
+                    segment_tsopt_overrides.get("skip_final_freq", False)
+                ),
+            )
+        )
+        tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
+        tsopt_record = {
+            **tsopt_decision,
+            **_tsopt_result_validity(tsopt_payload, g_ts, ts_pdb),
+            "result_json": (
+                None if tsopt_result_path is None else str(tsopt_result_path)
+            ),
+            "final_structure": str(ts_pdb),
+            **_tsopt_summary_metadata(tsopt_payload),
+        }
+        post.update(
+            ts_pdb=ts_pdb,
+            tsopt_payload=tsopt_payload,
+            tsopt_decision=tsopt_decision,
+            tsopt_record=tsopt_record,
+        )
+        if not ts_only:
+            record["tsopt"] = tsopt_record
+            if tsopt_payload.get("n_imaginary_modes") is not None:
+                record["ts_imag"] = _ts_imag_record(
+                    tsopt_payload["n_imaginary_modes"],
+                    tsopt_payload.get("imaginary_frequencies_cm"),
+                    tsopt_payload.get("frequency_zero_cutoff_cm"),
+                )
+
+        if not bool(tsopt_decision.get("continue_irc")):
+            post["status"] = "stopped_before_irc"
+            return post
+
+        reaction_mode_fallback = bool(tsopt_decision.get("reaction_mode_fallback"))
+        reaction_mode_source = (
+            tsopt_decision.get("reaction_mode_source") or "unspecified"
+        )
+        if reaction_mode_fallback:
+            _echo(
+                "[all] WARNING: reference-aligned negative-mode selection was "
+                "unavailable or invalid; IRC falls back to exact-PHVA root 0. "
+                "Reaction-mode identity is unverified "
+                f"({tsopt_decision.get('reaction_mode_fallback_reason')}).",
+                err=True,
+            )
+        if int(tsopt_decision.get("n_imaginary_modes") or 0) > 1:
+            mode_identity = (
+                (
+                    "aligned with the supplied reference direction"
+                    if ts_only
+                    else "aligned with the MEP/reference direction"
+                )
+                if not reaction_mode_fallback
+                and reaction_mode_source == "mep-reference-overlap"
+                else f"selected by {reaction_mode_source}"
+            )
+            _echo(
+                "[all] WARNING: continuing diagnostic IRC from a numerically "
+                "converged higher-order saddle using negative exact-PHVA mode "
+                f"{tsopt_decision.get('reaction_mode_index')} {mode_identity}; "
+                "this is not first-order TS certification.",
+                err=True,
+            )
+
+        irc_res = _irc_and_match(
+            seg_idx=seg_idx,
+            seg_dir=seg_dir,
+            ref_pdb_for_seg=ts_pdb,
+            seg_model_pdb=irc_model_pdb,
+            ref_pdb_template=ref_pdb,
+            g_ts=g_ts,
+            q_int=q_int,
+            spin=spin,
+            freeze_links_flag=freeze_links_flag,
+            calc_cfg=calc_cfg_post,
+            args_yaml=args_yaml,
+            convert_files=convert_files,
+            irc_step_size=irc_step_size,
+            irc_max_cycles=irc_max_cycles,
+            irc_never_stop=irc_never_stop,
+            irc_root=tsopt_decision.get("reaction_mode_index"),
+            seg_tag=seg_tag,
+            endpoint_trajectory=endpoint_trajectory,
+            session=session,
+            manifest=manifest,
+            artifact_prefix=f"post.{seg_idx:02d}.irc",
+            public_root=out_dir,
+            runtime_overrides=child_runtime_overrides,
+            hessian_calc_mode=hessian_calc_mode,
+        )
+        _persist_run_manifest(manifest, out_dir)
+
+        gL = irc_res["left_min_geom"]
+        gR = irc_res["right_min_geom"]
+        gT = irc_res["ts_geom"]
+        calculator_lease = irc_res["calculator_lease"]
+        irc_plot_path = irc_res.get("irc_plot_path")
+        irc_trj_path = irc_res.get("irc_trj_path")
+
+        if ts_only:
+            eL = float(gL.energy)
+            eR_raw = float(gR.energy)
+            # The higher-energy IRC endpoint is presented as the reactant (with
+            # a deterministic left-side tie rule). This is an energy-order
+            # presentation convention, NOT a chemically established reaction
+            # direction; the R/P labels, files, barrier and delta are unchanged,
+            # but a consumer must not read chemical direction into them. See
+            # docs/all.md / docs/ja/all.md.
+            flipped = eL < eR_raw
+            g_react_irc, g_prod_irc = (gR, gL) if flipped else (gL, gR)
+            endpoint_assignment = {
+                "policy": "higher_energy_endpoint_as_reactant",
+                "chemical_direction_known": False,
+                "left_role": "reactant" if eL >= eR_raw else "product",
+                "right_role": "product" if eL >= eR_raw else "reactant",
+                "left_energy_hartree": float(eL),
+                "right_energy_hartree": float(eR_raw),
+                "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant",
+            }
+        else:
+            # _irc_and_match already oriented left/right to the MEP endpoints;
+            # ``reverse_irc`` records that the IRC direction was swapped.
+            flipped = bool(irc_res.get("reverse_irc", False))
+            g_react_irc, g_prod_irc = gL, gR
+            endpoint_assignment = irc_res.get("endpoint_assignment")
+            if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
+                record["irc_plot"] = str(irc_plot_path)
+            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
+                record["irc_traj"] = str(irc_trj_path)
+            record["irc"] = irc_res.get("irc_outcome")
+            record["endpoint_assignment"] = endpoint_assignment
+            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
+                irc_trj_for_all.append((irc_trj_path, flipped))
+        post.update(
+            irc_res=irc_res,
+            irc_plot_path=irc_plot_path,
+            irc_trj_path=irc_trj_path,
+            endpoint_assignment=endpoint_assignment,
+        )
+
+        # Each route keeps its write order, which is also the order in which
+        # the endpoint energies are evaluated.
+        if ts_only:
+            p_react_irc = _save_single_geom_as_pdb_for_tools(
+                g_react_irc, struct_template, struct_dir, "reactant_irc"
+            )
+            p_prod_irc = _save_single_geom_as_pdb_for_tools(
+                g_prod_irc, struct_template, struct_dir, "product_irc"
+            )
+            pT = _save_single_geom_as_pdb_for_tools(
+                gT, struct_template, struct_dir, "ts"
+            )
+        else:
+            p_react_irc = _save_single_geom_as_pdb_for_tools(
+                g_react_irc, struct_template, struct_dir, "reactant_irc"
+            )
+            pT = _save_single_geom_as_pdb_for_tools(
+                gT, struct_template, struct_dir, "ts"
+            )
+            p_prod_irc = _save_single_geom_as_pdb_for_tools(
+                g_prod_irc, struct_template, struct_dir, "product_irc"
+            )
+
+        endpoint_opt_dir = seg_dir / "endpoint_opt"
+        ensure_dir(endpoint_opt_dir)
+        endpoint_failures: Dict[str, Any] = {}
+
+        # Map the IRC left/right (forward/backward) Hessians to R/P.
+        from pdb2reaction.io.hessian_cache import (
+            discard as _hess_discard,
+            load as _hess_load,
+            store as _hess_store,
+        )
+        react_hk, prod_hk = (
+            ("irc_right", "irc_left") if flipped else ("irc_left", "irc_right")
+        )
+        endpoint_prefix = "" if ts_only else f"seg_{seg_idx:02d}_"
+        optimized: Dict[str, Tuple[Any, Optional[bool], Dict[str, Any]]] = {}
+        for state, g_irc, hess_key in (
+            ("reactant", g_react_irc, react_hk),
+            ("product", g_prod_irc, prod_hk),
+        ):
+            _hess_discard("irc_endpoint")
+            _c = _hess_load(hess_key)
+            if _c:
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
+            opt_conv: Optional[bool] = None
+            opt_outcome: Dict[str, Any] = {}
+            try:
+                g_opt, _, opt_conv = _optimize_endpoint_geom(
+                    g_irc,
+                    tsopt_opt_mode_default,
+                    endpoint_opt_dir,
+                    f"{endpoint_prefix}{state}",
+                    dump=dump,
+                    thresh=thresh_post,
+                    calc_identity_cfg=calc_cfg_post,
+                    reject_uphill=_reject_uphill_eff,
+                    stop_plateau=_stop_plateau_eff,
+                    stop_plateau_thresh=stop_plateau_thresh,
+                    stop_plateau_window=stop_plateau_window,
+                    print_every=print_every_override,
+                    outcome=opt_outcome,
+                )
+            except Exception as e:
+                _echo(
+                    f"[post] WARNING: {state.capitalize()} endpoint optimization failed {where}: {e}",
+                    err=True,
+                )
+                opt_conv = None
+                opt_outcome.update(
+                    {
+                        "optimization_status": "error",
+                        "converged": None,
+                        "error_type": type(e).__name__,
+                        "error": str(e),
+                    }
+                )
+                endpoint_failures[state] = {
+                    "error_type": type(e).__name__, "error": str(e),
+                }
+                g_opt = None
+            optimized[state] = (g_opt, opt_conv, opt_outcome)
+        g_react_opt, react_conv, react_outcome = optimized["reactant"]
+        g_prod_opt, prod_conv, prod_outcome = optimized["product"]
+        post.update(
+            react_conv=react_conv,
+            prod_conv=prod_conv,
+            react_outcome=react_outcome,
+            prod_outcome=prod_outcome,
+        )
+
+        if endpoint_failures:
+            # Current coordinates may be an unaccepted partial iterate; keep the
+            # original IRC snapshot distinct from this diagnostic observation.
+            for state, geom, irc_path in (
+                ("reactant", g_react_irc, p_react_irc),
+                ("product", g_prod_irc, p_prod_irc),
+            ):
+                if state not in endpoint_failures:
+                    continue
+                failure = endpoint_failures[state]
+                failure["irc_structure"] = str(irc_path)
+                failure["geometry_role"] = "last_observed_acceptance_unknown"
+                try:
+                    failure["coordinates_finite"] = bool(np.isfinite(geom.cart_coords).all())
+                    if failure["coordinates_finite"]:
+                        observed = endpoint_opt_dir / f"{state}_last_observed.xyz"
+                        commit_exact(observed, geom.as_xyz().encode("utf-8"))
+                        failure["last_observed_xyz"] = str(observed)
+                except Exception as exc:
+                    failure["diagnostic_error"] = str(exc)
+            endpoint_stop = {
+                "stage": "endpoint_opt", "segment": seg_idx,
+                "reason": "endpoint_execution_failed", "failures": endpoint_failures,
+                "diagnostic_dir": str(endpoint_opt_dir), "ts_structure": str(pT),
+            }
+            commit_json(endpoint_opt_dir / "failure.json", endpoint_stop)
+            if not ts_only:
+                record["pipeline_stop"] = endpoint_stop
+                record["endpoint_opt"] = {
+                    "reactant_converged": react_conv,
+                    "product_converged": prod_conv,
+                    "reactant": dict(react_outcome),
+                    "product": dict(prod_outcome),
+                    "failures": endpoint_failures,
+                }
+            # Release the parent calculator before the caller records the stop.
+            calculator_lease.release()
+            for geom in (gL, gR, gT, g_react_opt, g_prod_opt):
+                if geom is not None:
+                    geom.calculator = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            post.update(
+                status="endpoint_failed",
+                endpoint_failures=endpoint_failures,
+                endpoint_stop=endpoint_stop,
+            )
+            return post
+
+        if not ts_only:
+            connectivity = _validate_optimized_endpoint_pair(
+                g_react_opt,
+                g_prod_opt,
+                endpoint_trajectory=endpoint_trajectory,
+                freeze_atoms=irc_res.get("freeze_atoms") or [],
+                seg_tag=seg_tag,
+            )
+            record["endpoint_opt"] = {
+                "reactant_converged": react_conv,
+                "product_converged": prod_conv,
+                "reactant": dict(react_outcome),
+                "product": dict(prod_outcome),
+                "connectivity_validated": connectivity.get(
+                    "connectivity_validated"
+                ),
+                "connectivity": connectivity,
+            }
+
+        # Clean up endpoint_opt as a temporary working directory
+        if not dump and react_conv is True and prod_conv is True:
+            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+            _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
+
+        p_react = _save_single_geom_as_pdb_for_tools(
+            g_react_opt, struct_template, struct_dir, "reactant"
+        )
+        p_prod = _save_single_geom_as_pdb_for_tools(
+            g_prod_opt, struct_template, struct_dir, "product"
+        )
+        state_structs = {"R": p_react, "TS": pT, "P": p_prod}
+
+        scf_checkpoints: Dict[str, Path] = {}
+        working_scf_checkpoint = irc_res.get("scf_checkpoint")
+        if working_scf_checkpoint is not None:
+            # The TS checkpoint already has a manifest identity from tsopt.
+            # Refresh it against the exact serialized TS coordinates, then add
+            # only the two endpoint roles (three large files total).
+            saved_ts = _save_role_scf_checkpoint(
+                calculator_lease.calculator,
+                geom_loader(pT, coord_type=DEFAULT_COORD_TYPE),
+                working_scf_checkpoint,
+                manifest=manifest,
+                key=f"post.{seg_idx:02d}.scf_checkpoint.TS",
+            )
+            if saved_ts is not None:
+                scf_checkpoints["TS"] = saved_ts
+            for role, geometry_path in (("R", p_react), ("P", p_prod)):
+                saved = _save_role_scf_checkpoint(
+                    calculator_lease.calculator,
+                    geometry_path,
+                    seg_dir / "_work" / "dft_scf" / f"{role}.chk",
+                    manifest=manifest,
+                    key=f"post.{seg_idx:02d}.scf_checkpoint.{role}",
+                )
+                if saved is not None:
+                    scf_checkpoints[role] = saved
+            _persist_run_manifest(manifest, out_dir)
+
+        e_react = float(g_react_opt.energy)
+        eT = float(gT.energy)
+        e_prod = float(g_prod_opt.energy)
+        diag_payload = _write_public_energy_diagram(
+            seg_dir / "energy_diagram_MLIP",
+            labels=["R", ts_label, "P"],
+            energies_au=[e_react, eT, e_prod],
+            title_note=f"({_primary_diagram_label}, TSOPT + IRC)",
+        )
+        if diag_payload:
+            energy_diagrams.append(diag_payload)
+
+        if not ts_only:
+            tsopt_seg_energies.append((e_react, eT, e_prod))
+            record["mlip"] = {
+                "labels": ["R", ts_label, "P"],
+                "energies_au": [e_react, eT, e_prod],
+                "energies_kcal": [0.0, (eT - e_react) * AU2KCALPERMOL, (e_prod - e_react) * AU2KCALPERMOL],
+                "diagram": str(seg_dir / "energy_diagram_MLIP.png"),
+                "structures": state_structs,
+                "barrier_kcal": (eT - e_react) * AU2KCALPERMOL,
+                "delta_kcal": (e_prod - e_react) * AU2KCALPERMOL,
+            }
+            try:
+                _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
+                _seg_out = _copy_structures_to_seg_dir(
+                    state_structs,
+                    out_dir,
+                    seg_idx,
+                    _input_suffix,
+                    prepared_input=prepared_all_inputs[0],
+                    manifest=manifest,
+                )
+                _echo(f"[all] Wrote R/TS/P for segment {seg_idx:02d} → {_seg_out}", narrative=True)
+            except Exception as e:
+                _echo(
+                    f"[all] WARNING: Failed to copy structures for segment {seg_idx:02d}: {e}",
+                    err=True,
+                )
+
+        # ── Release GPU memory before freq/thermo/DFT ──
+        # Geometry objects from IRC/endpoint-opt hold calculator references;
+        # freq/DFT run as CLI subprocesses and don't need them.
+        calculator_lease.release()
+        for _g in (gL, gR, gT, g_ts, g_react_opt, g_prod_opt):
+            if _g is not None and hasattr(_g, "calculator"):
+                _g.calculator = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        thermo_payloads: Dict[str, Dict[str, Any]] = {}
+        GR = GT = GP = None
+        dG_R = dG_T = dG_P = None
+        eR_dft = eT_dft = eP_dft = None
+        dft_all_ok: Optional[bool] = None
+        GR_dft_mlip = GT_dft_mlip = GP_dft_mlip = None
+
+        if do_thermo:
+            _echo()
+            _echo_detail(f"[thermo] {stage_label}: freq on TS/R/P")
+            tT = _run_freq_for_state(
+                pT,
+                q_int,
+                spin,
+                freq_root / "TS",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb,
+                convert_files,
+                overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("TS"),
+            )
+            from pdb2reaction.io.hessian_cache import clear as _clear_hess_cache
+            _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
+            tR = _run_freq_for_state(
+                p_react,
+                q_int,
+                spin,
+                freq_root / "R",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb,
+                convert_files,
+                overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("R"),
+            )
+            tP = _run_freq_for_state(
+                p_prod,
+                q_int,
+                spin,
+                freq_root / "P",
+                args_yaml,
+                freeze_links_flag,
+                ref_pdb,
+                convert_files,
+                overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("P"),
+            )
+            thermo_payloads = {"R": tR, "TS": tT, "P": tP}
+            GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
+            GT = _thermo_value_ha(tT, "sum_EE_and_thermal_free_energy_ha")
+            GP = _thermo_value_ha(tP, "sum_EE_and_thermal_free_energy_ha")
+            dG_R = _thermo_value_ha(tR, "thermal_correction_free_energy_ha")
+            dG_T = _thermo_value_ha(tT, "thermal_correction_free_energy_ha")
+            dG_P = _thermo_value_ha(tP, "thermal_correction_free_energy_ha")
+            if not ts_only:
+                from pdb2reaction.workflows._all_helpers import (
+                    build_thermo_symmetry_provenance,
+                )
+                _thermo_symmetry = build_thermo_symmetry_provenance(
+                    thermo_payloads
+                )
+                if _thermo_symmetry:
+                    record["thermo_symmetry"] = _thermo_symmetry
+                ts_freq_info = _read_imaginary_frequency(
+                    freq_root / "TS",
+                    tsopt_payload.get("frequency_zero_cutoff_cm"),
+                )
+                if ts_freq_info is not None:
+                    record["ts_imag"] = ts_freq_info
+                    if ts_freq_info.get("nu_imag_max_cm") is not None:
+                        record["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
+            try:
+                if all(value is not None for value in (GR, GT, GP)):
+                    gibbs_vals = [GR, GT, GP]
+                    diag_payload = _write_public_energy_diagram(
+                        seg_dir / "energy_diagram_G_MLIP",
+                        labels=["R", ts_label, "P"],
+                        energies_au=gibbs_vals,
+                        title_note=f"({_primary_diagram_label} + Thermal Correction)",
+                        ylabel="ΔG (kcal/mol)",
+                    )
+                    if diag_payload:
+                        energy_diagrams.append(diag_payload)
+                    if not ts_only:
+                        g_mlip_seg_energies.append((GR, GT, GP))
+                        record["gibbs_mlip"] = {
+                            "labels": ["R", ts_label, "P"],
+                            "energies_au": gibbs_vals,
+                            "energies_kcal": [
+                                (GR - GR) * AU2KCALPERMOL,
+                                (GT - GR) * AU2KCALPERMOL,
+                                (GP - GR) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(seg_dir / "energy_diagram_G_MLIP.png"),
+                            "structures": state_structs,
+                            "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
+                            "delta_kcal": (GP - GR) * AU2KCALPERMOL,
+                        }
+                else:
+                    _echo(
+                        "[thermo] NOTE: one or more R/TS/P free energies "
+                        "are unavailable; Gibbs diagram skipped.",
+                        err=ts_only,
+                    )
+            except Exception as e:
+                _echo(
+                    f"[thermo] WARNING: failed to build Gibbs diagram: {e}",
+                    err=True,
+                )
+
+        if do_dft:
+            # Clear the calculator retained by Geometry before forking the DFT
+            # subprocess so it does not inherit the GPU-pinned model.
+            # ── Aggressively release GPU memory before DFT subprocess ──
+            for _obj in (gL, gR, gT, g_ts, g_react_opt, g_prod_opt):
+                if _obj is not None:
+                    if hasattr(_obj, "calculator"):
+                        _obj.calculator = None
+                    if hasattr(_obj, "results"):
+                        _obj.results = {}
+            del _obj
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            _echo()
+            _echo_detail(f"[dft] {stage_label}: DFT on R/TS/P")
+            dft_jobs = [
+                ("R", p_react, dft_root / "R"),
+                ("TS", pT, dft_root / "TS"),
+                ("P", p_prod, dft_root / "P"),
+            ]
+            dft_payloads = _run_dft_sequence(
+                dft_jobs,
+                q_int,
+                spin,
+                args_yaml,
+                dft_func_basis,
+                dft_overrides,
+                dft_engine,
+                ref_pdb,
+                convert_files,
+                allow_charge_mult_mismatch=dft_allow_charge_mult_mismatch,
+            )
+            dR = dft_payloads.get("R") or {}
+            dT = dft_payloads.get("TS") or {}
+            dP = dft_payloads.get("P") or {}
+            eR_dft = _dft_energy_ha(dR)
+            eT_dft = _dft_energy_ha(dT)
+            eP_dft = _dft_energy_ha(dP)
+            dft_all_ok = all(e is not None for e in (eR_dft, eT_dft, eP_dft))
+            if not dft_all_ok:
+                _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
+                _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
+                if not ts_only:
+                    record["dft"] = {
+                        "scientific_status": "failed",
+                        "failed_states": _failed_states,
+                    }
+            if dft_all_ok:
+                try:
+                    diag_payload = _write_public_energy_diagram(
+                        seg_dir / "energy_diagram_DFT",
+                        labels=["R", ts_label, "P"],
+                        energies_au=[eR_dft, eT_dft, eP_dft],
+                        title_note=(
+                            f"({dft_func_basis_use} // MLIP)"
+                            if ts_only
+                            else f"({dft_func_basis_use})"
+                        ),
+                    )
+                    if diag_payload:
+                        energy_diagrams.append(diag_payload)
+                    if not ts_only:
+                        dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
+                        record["dft"] = {
+                            "labels": ["R", ts_label, "P"],
+                            "energies_au": [eR_dft, eT_dft, eP_dft],
+                            "energies_kcal": [
+                                0.0,
+                                (eT_dft - eR_dft) * AU2KCALPERMOL,
+                                (eP_dft - eR_dft) * AU2KCALPERMOL,
+                            ],
+                            "diagram": str(seg_dir / "energy_diagram_DFT.png"),
+                            "structures": state_structs,
+                            "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
+                            "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
+                        }
+                except Exception as e:
+                    _echo(
+                        f"[dft] WARNING: failed to build DFT diagram: {e}",
+                        err=True,
+                    )
+
+            if (
+                do_thermo
+                and dft_all_ok
+                and all(value is not None for value in (dG_R, dG_T, dG_P))
+            ):
+                try:
+                    GR_dft_mlip = eR_dft + dG_R
+                    GT_dft_mlip = eT_dft + dG_T
+                    GP_dft_mlip = eP_dft + dG_P
+                    if all(
+                        np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])
+                    ):
+                        diag_payload = _write_public_energy_diagram(
+                            seg_dir / "energy_diagram_G_DFT_plus_MLIP",
+                            labels=["R", ts_label, "P"],
+                            energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
+                            title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
+                            ylabel="ΔG (kcal/mol)",
+                        )
+                        if diag_payload:
+                            energy_diagrams.append(diag_payload)
+                        if not ts_only:
+                            g_dft_mlip_seg_energies.append(
+                                (GR_dft_mlip, GT_dft_mlip, GP_dft_mlip)
+                            )
+                            record["gibbs_dft_mlip"] = {
+                                "labels": ["R", ts_label, "P"],
+                                "energies_au": [GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
+                                "energies_kcal": [
+                                    (GR_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                    (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                    (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                ],
+                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png"),
+                                "structures": state_structs,
+                                "barrier_kcal": (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                "delta_kcal": (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                            }
+                    elif ts_only:
+                        _echo(
+                            "[dft//mlip] NOTE: thermochemistry unavailable; "
+                            "DFT//MLIP Gibbs diagram skipped.",
+                            err=True,
+                        )
+                    else:
+                        _echo(
+                            "[dft//mlip] WARNING: DFT//MLIP Gibbs energies non-finite; diagram skipped.",
+                            err=True,
+                        )
+                except Exception as e:
+                    _echo(
+                        f"[dft//mlip] WARNING: failed to build DFT//MLIP Gibbs diagram: {e}",
+                        err=True,
+                    )
+
+        post.update(
+            status="done",
+            g_react_opt=g_react_opt,
+            g_prod_opt=g_prod_opt,
+            p_react=p_react,
+            p_ts=pT,
+            p_prod=p_prod,
+            e_react=e_react,
+            e_ts=eT,
+            e_prod=e_prod,
+            thermo_payloads=thermo_payloads,
+            G=(GR, GT, GP),
+            dft_energies=(eR_dft, eT_dft, eP_dft),
+            dft_all_ok=dft_all_ok,
+            G_dft_mlip=(GR_dft_mlip, GT_dft_mlip, GP_dft_mlip),
+        )
+        return post
+
     if single_tsopt_mode:
         _echo_section("====== [all] TSOPT-only single-structure mode ======")
         tsroot = out_dir / SEGMENTS_DIRNAME / "seg_01"
@@ -6506,45 +7266,32 @@ def cli(
         dft_root = _resolve_override_dir(tsroot / "dft", dft_out_dir)
 
         _tsopt_ref = ref_pdb_for_topology or (ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None)
-        ts_pdb, g_ts = _run_tsopt_on_hei(
-            ts_initial_pdb,
-            q_int,
-            spin,
-            calc_cfg_post,
-            args_yaml,
-            tsroot,
-            freeze_links_flag,
-            tsopt_opt_mode_default,
-            _tsopt_ref,
-            convert_files,
-            overrides=tsopt_overrides,
-            runtime_overrides=child_runtime_overrides,
-            manifest=manifest,
-            artifact_prefix="post.01.tsopt",
-            public_root=out_dir,
+        model_ref = ref_pdb_for_topology or ts_initial_pdb
+        # The TS-only route is the segment post-processing for one segment
+        # without a MEP (seg_tag=None); this branch keeps its own summary.
+        post = _post_process_segment(
+            None,
+            seg_idx=1,
+            seg_dir=tsroot,
+            seg_tag=None,
+            ts_start=ts_initial_pdb,
+            ref_pdb=_tsopt_ref,
+            irc_model_pdb=model_ref,
+            struct_template=model_ref,
+            segment_tsopt_overrides=tsopt_overrides,
+            endpoint_trajectory=None,
+            freq_root=freq_root,
+            dft_root=dft_root,
         )
-
-        _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
-        _tsopt_decision = dict(
-            getattr(g_ts, "_tsopt_continuation", {})
-            or _tsopt_continuation_decision(
-                _tsopt_payload,
-                skip_final_freq=bool(tsopt_overrides.get("skip_final_freq", False)),
-            )
-        )
-        _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
+        ts_pdb = post["ts_pdb"]
+        _tsopt_payload = post["tsopt_payload"]
+        _tsopt_decision = post["tsopt_decision"]
         _tsopt_record: Dict[str, Any] = {
-            **_tsopt_decision,
-            **_tsopt_result_validity(_tsopt_payload, g_ts, ts_pdb),
-            "result_json": (
-                None if _tsopt_result_path is None else str(_tsopt_result_path)
-            ),
-            "final_structure": str(ts_pdb),
-            **_tsopt_summary_metadata(_tsopt_payload),
+            **post["tsopt_record"],
             "files": _tsopt_payload.get("files") or {},
         }
 
-        if not bool(_tsopt_decision.get("continue_irc")):
+        if post["status"] == "stopped_before_irc":
             ensure_dir(struct_dir)
             _published_ts: Optional[Path] = None
             try:
@@ -6601,7 +7348,6 @@ def cli(
             }
             _enrich_summary(
                 summary,
-                version="",
                 pipeline_mode="tsopt-only",
                 out_dir=out_dir,
                 calculator_provenance_data=_shared_provenance,
@@ -6615,24 +7361,7 @@ def cli(
                 spin=spin,
                 command=command_str,
                 post_segments=[_stop_log],
-                config={
-                    "refine_path": refine_path,
-                    "flatten": bool(flatten),
-                    "tsopt": do_tsopt,
-                    "thermo": do_thermo,
-                    "dft": do_dft,
-                    "dft_status": None,
-                    "opt_mode": opt_mode_norm,
-                    "opt_mode_post": (
-                        tsopt_opt_mode_default if do_tsopt else None
-                    ),
-                    "path_opt_mode": None,
-                    "post_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                    "ts_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                    "endpoint_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                    "mep_mode": mep_mode_kind,
-                    "dmf_correlated": dmf_correlated_effective,
-                },
+                config=_summary_config(),
                 freeze_atoms=_freeze_atoms_for_log(),
                 manifest=manifest,
             )
@@ -6645,12 +7374,7 @@ def cli(
                 key="ts.summary.01",
                 out_dir=out_dir,
             )
-            _copy_public_logged(
-                tsroot / "summary.json",
-                out_dir / "summary.json",
-                label="summary.json",
-                echo=False,
-            )
+            _publish_root_summary(summary, warn_on_failure=True)
             citation_post_segments = [_stop_log]
             summary_payload = {
                 "root_out_dir": str(out_dir),
@@ -6721,227 +7445,19 @@ def cli(
             )
             return
 
-        _reaction_mode_fallback = bool(
-            _tsopt_decision.get("reaction_mode_fallback")
-        )
-        _reaction_mode_source = (
-            _tsopt_decision.get("reaction_mode_source") or "unspecified"
-        )
-        if _reaction_mode_fallback:
-            _echo(
-                "[all] WARNING: reference-aligned negative-mode selection was "
-                "unavailable or invalid; IRC falls back to exact-PHVA root 0. "
-                "Reaction-mode identity is unverified "
-                f"({_tsopt_decision.get('reaction_mode_fallback_reason')}).",
-                err=True,
-            )
-        if int(_tsopt_decision.get("n_imaginary_modes") or 0) > 1:
-            _mode_identity = (
-                "aligned with the supplied reference direction"
-                if not _reaction_mode_fallback
-                and _reaction_mode_source == "mep-reference-overlap"
-                else f"selected by {_reaction_mode_source}"
-            )
-            _echo(
-                "[all] WARNING: continuing diagnostic IRC from a numerically "
-                "converged higher-order saddle using negative exact-PHVA mode "
-                f"{_tsopt_decision.get('reaction_mode_index')} {_mode_identity}; "
-                "this is not first-order TS certification.",
-                err=True,
-            )
-
-        irc_res = _irc_and_match(
-            seg_idx=1,
-            seg_dir=tsroot,
-            ref_pdb_for_seg=ts_pdb,
-            seg_model_pdb=ref_pdb_for_topology or ts_initial_pdb,
-            ref_pdb_template=_tsopt_ref,
-            g_ts=g_ts,
-            q_int=q_int,
-            spin=spin,
-            freeze_links_flag=freeze_links_flag,
-            calc_cfg=calc_cfg_post,
-            args_yaml=args_yaml,
-            convert_files=convert_files,
-            irc_step_size=irc_step_size,
-            irc_max_cycles=irc_max_cycles,
-            irc_never_stop=irc_never_stop,
-            irc_root=_tsopt_decision.get("reaction_mode_index"),
-            seg_tag=None,
-            session=session,
-            manifest=manifest,
-            artifact_prefix="post.01.irc",
-            public_root=out_dir,
-            runtime_overrides=child_runtime_overrides,
-            hessian_calc_mode=hessian_calc_mode,
-        )
-        _persist_run_manifest(manifest, out_dir)
-        gL = irc_res["left_min_geom"]
-        gR = irc_res["right_min_geom"]
-        gT = irc_res["ts_geom"]
-        calculator_lease = irc_res["calculator_lease"]
-        irc_plot_path = irc_res.get("irc_plot_path")
+        irc_res = post["irc_res"]
+        irc_plot_path = post["irc_plot_path"]
         # Bound here so the endpoint-failure record can cite the IRC trajectory.
-        irc_trj_path = irc_res.get("irc_trj_path")
+        irc_trj_path = post["irc_trj_path"]
+        endpoint_assignment = post["endpoint_assignment"]
+        _react_opt_conv = post["react_conv"]
+        _prod_opt_conv = post["prod_conv"]
+        _react_opt_outcome = post["react_outcome"]
+        _prod_opt_outcome = post["prod_outcome"]
 
-        eL = float(gL.energy)
-        eR_raw = float(gR.energy)
-        eT = float(gT.energy)
-
-        if eL >= eR_raw:
-            g_react_irc, e_react_irc = gL, eL
-            g_prod_irc, e_prod_irc = gR, eR_raw
-        else:
-            g_react_irc, e_react_irc = gR, eR_raw
-            g_prod_irc, e_prod_irc = gL, eL
-
-        # Record the endpoint-assignment provenance. In TS-only mode the
-        # higher-energy IRC endpoint is presented as the reactant (with a
-        # deterministic left-side tie rule). This is an energy-order presentation
-        # convention, NOT a chemically established reaction direction; the R/P
-        # labels, files, barrier and delta are unchanged, but a consumer must not
-        # read chemical direction into them. See docs/all.md / docs/ja/all.md.
-        endpoint_assignment = {
-            "policy": "higher_energy_endpoint_as_reactant",
-            "chemical_direction_known": False,
-            "left_role": "reactant" if eL >= eR_raw else "product",
-            "right_role": "product" if eL >= eR_raw else "reactant",
-            "left_energy_hartree": float(eL),
-            "right_energy_hartree": float(eR_raw),
-            "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant",
-        }
-
-        ensure_dir(struct_dir)
-        model_ref = ref_pdb_for_topology or ts_initial_pdb
-        p_react_irc = _save_single_geom_as_pdb_for_tools(
-            g_react_irc, model_ref, struct_dir, "reactant_irc"
-        )
-        p_prod_irc = _save_single_geom_as_pdb_for_tools(
-            g_prod_irc, model_ref, struct_dir, "product_irc"
-        )
-        pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
-
-        endpoint_opt_dir = tsroot / "endpoint_opt"
-        ensure_dir(endpoint_opt_dir)
-        _endpoint_failures: Dict[str, Any] = {}
-
-        # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
-        from pdb2reaction.io.hessian_cache import (
-            discard as _hess_discard,
-            load as _hess_load,
-            store as _hess_store,
-        )
-        _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
-        _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
-
-        _hess_discard("irc_endpoint")
-        _c = _hess_load(_react_hk)
-        if _c:
-            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
-        _react_opt_conv: Optional[bool] = None
-        _react_opt_outcome: Dict[str, Any] = {}
-        try:
-            g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
-                g_react_irc,
-                tsopt_opt_mode_default,
-                endpoint_opt_dir,
-                "reactant",
-                dump=dump,
-                thresh=thresh_post,
-                calc_identity_cfg=calc_cfg_post,
-                reject_uphill=_reject_uphill_eff,
-                stop_plateau=_stop_plateau_eff,
-                stop_plateau_thresh=stop_plateau_thresh,
-                stop_plateau_window=stop_plateau_window,
-                print_every=print_every_override,
-                outcome=_react_opt_outcome,
-            )
-        except Exception as e:
-            _echo(
-                f"[post] WARNING: Reactant endpoint optimization failed in TSOPT-only mode: {e}",
-                err=True,
-            )
-            _react_opt_conv = None
-            _react_opt_outcome.update(
-                {
-                    "optimization_status": "error",
-                    "converged": None,
-                    "error_type": type(e).__name__,
-                    "error": str(e),
-                }
-            )
-            _endpoint_failures["reactant"] = {
-                "error_type": type(e).__name__, "error": str(e),
-            }
-            g_react_opt = None
-
-        _hess_discard("irc_endpoint")
-        _c = _hess_load(_prod_hk)
-        if _c:
-            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
-        _prod_opt_conv: Optional[bool] = None
-        _prod_opt_outcome: Dict[str, Any] = {}
-        try:
-            g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
-                g_prod_irc,
-                tsopt_opt_mode_default,
-                endpoint_opt_dir,
-                "product",
-                dump=dump,
-                thresh=thresh_post,
-                calc_identity_cfg=calc_cfg_post,
-                reject_uphill=_reject_uphill_eff,
-                stop_plateau=_stop_plateau_eff,
-                stop_plateau_thresh=stop_plateau_thresh,
-                stop_plateau_window=stop_plateau_window,
-                print_every=print_every_override,
-                outcome=_prod_opt_outcome,
-            )
-        except Exception as e:
-            _echo(
-                f"[post] WARNING: Product endpoint optimization failed in TSOPT-only mode: {e}",
-                err=True,
-            )
-            _prod_opt_conv = None
-            _prod_opt_outcome.update(
-                {
-                    "optimization_status": "error",
-                    "converged": None,
-                    "error_type": type(e).__name__,
-                    "error": str(e),
-                }
-            )
-            _endpoint_failures["product"] = {
-                "error_type": type(e).__name__, "error": str(e),
-            }
-            g_prod_opt = None
-
-        if _endpoint_failures:
-            # Current coordinates may be an unaccepted partial iterate; keep the
-            # original IRC snapshot distinct from this diagnostic observation.
-            for _state, _geom, _irc_path in (
-                ("reactant", g_react_irc, p_react_irc),
-                ("product", g_prod_irc, p_prod_irc),
-            ):
-                if _state not in _endpoint_failures:
-                    continue
-                _failure = _endpoint_failures[_state]
-                _failure["irc_structure"] = str(_irc_path)
-                _failure["geometry_role"] = "last_observed_acceptance_unknown"
-                try:
-                    _failure["coordinates_finite"] = bool(np.isfinite(_geom.cart_coords).all())
-                    if _failure["coordinates_finite"]:
-                        _observed = endpoint_opt_dir / f"{_state}_last_observed.xyz"
-                        commit_exact(_observed, _geom.as_xyz().encode("utf-8"))
-                        _failure["last_observed_xyz"] = str(_observed)
-                except Exception as exc:
-                    _failure["diagnostic_error"] = str(exc)
-            _endpoint_stop = {
-                "stage": "endpoint_opt", "segment": 1,
-                "reason": "endpoint_execution_failed", "failures": _endpoint_failures,
-                "diagnostic_dir": str(endpoint_opt_dir), "ts_structure": str(pT),
-            }
-            commit_json(endpoint_opt_dir / "failure.json", _endpoint_stop)
+        if post["status"] == "endpoint_failed":
+            _endpoint_failures = post["endpoint_failures"]
+            _endpoint_stop = post["endpoint_stop"]
             _stop_log = {
                 "index": 1, "tag": "seg_01", "kind": "tsopt",
                 "post_dir": str(tsroot), "pipeline_stop": _endpoint_stop,
@@ -6958,40 +7474,29 @@ def cli(
                 },
                 "tsopt": _tsopt_record,
             }
-            calculator_lease.release()
-            for _geom in (gL, gR, gT, g_react_irc, g_prod_irc, g_react_opt, g_prod_opt):
-                if _geom is not None:
-                    _geom.calculator = None
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
             summary = {
                 "out_dir": str(tsroot), "n_images": None, "n_segments": 1,
                 "segments": [{"index": 1, "tag": "seg_01", "kind": "tsopt"}],
                 "pipeline_stop": _endpoint_stop, "energy_diagrams": [],
             }
             _enrich_summary(
-                summary, version="", pipeline_mode="tsopt-only",
+                summary, pipeline_mode="tsopt-only",
                 out_dir=out_dir, manifest=manifest, post_segments=[_stop_log],
                 charge=q_int, spin=spin, command=command_str,
+                calculator_provenance_data=_shared_provenance,
                 mlip_backend=_mlip_backend_shared, mlip_model=_mlip_model_shared,
                 mlip_model_label=_mlip_model_label_shared, mlip_task=_mlip_task_shared,
                 mlip_precision=_mlip_precision_shared,
                 mlip_precision_post=_mlip_precision_post,
                 freeze_atoms=_freeze_atoms_for_log(),
-                config={
-                    "tsopt": do_tsopt, "thermo": do_thermo, "dft": do_dft,
-                    "ts_opt_mode": tsopt_opt_mode_default,
-                    "endpoint_opt_mode": tsopt_opt_mode_default,
-                    "mep_mode": mep_mode_kind,
-                },
+                config=_summary_config(),
             )
             citation_post_segments = [_stop_log]
             _publish_manifest_summary(
                 tsroot / "summary.json", summary, manifest=manifest,
                 key="ts.summary.01", out_dir=out_dir,
             )
-            _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+            _publish_root_summary(summary, warn_on_failure=True)
             _write_endpoint_failure_summary_log(
                 summary, out_dir=out_dir, tsroot=tsroot, manifest=manifest,
                 citation_payload=_all_method_citation_payload(),
@@ -7001,230 +7506,24 @@ def cli(
             _emit_final_summary(out_dir, time_start, manifest, citation_payload=_all_method_citation_payload())
             return
 
-        # Clean up endpoint_opt as a temporary working directory
-        if not dump and _react_opt_conv is True and _prod_opt_conv is True:
-            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-            _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
+        g_react_opt = post["g_react_opt"]
+        g_prod_opt = post["g_prod_opt"]
+        pR = post["p_react"]
+        pT = post["p_ts"]
+        pP = post["p_prod"]
+        e_react = post["e_react"]
+        eT = post["e_ts"]
+        e_prod = post["e_prod"]
+        thermo_payloads = post["thermo_payloads"]
+        GR, GT, GP = post["G"]
+        eR_dft, eT_dft, eP_dft = post["dft_energies"]
+        _dft_all_ok = post["dft_all_ok"]
+        GR_dft_mlip, GT_dft_mlip, GP_dft_mlip = post["G_dft_mlip"]
 
-        pR = _save_single_geom_as_pdb_for_tools(
-            g_react_opt, model_ref, struct_dir, "reactant"
+        _ts_only_dft_status = (
+            "failed" if (do_dft and not _dft_all_ok)
+            else ("converged" if (do_dft and _dft_all_ok) else None)
         )
-        pP = _save_single_geom_as_pdb_for_tools(
-            g_prod_opt, model_ref, struct_dir, "product"
-        )
-
-        scf_checkpoints: Dict[str, Path] = {}
-        working_scf_checkpoint = irc_res.get("scf_checkpoint")
-        if working_scf_checkpoint is not None:
-            # The TS checkpoint already has a manifest identity from tsopt.
-            # Refresh it against the exact serialized TS coordinates, then add
-            # only the two endpoint roles (three large files total).
-            saved_ts = _save_role_scf_checkpoint(
-                calculator_lease.calculator,
-                geom_loader(pT, coord_type=DEFAULT_COORD_TYPE),
-                working_scf_checkpoint,
-                manifest=manifest,
-                key="post.01.scf_checkpoint.TS",
-            )
-            if saved_ts is not None:
-                scf_checkpoints["TS"] = saved_ts
-            for role, geometry_path in (("R", pR), ("P", pP)):
-                saved = _save_role_scf_checkpoint(
-                    calculator_lease.calculator,
-                    geometry_path,
-                    tsroot / "_work" / "dft_scf" / f"{role}.chk",
-                    manifest=manifest,
-                    key=f"post.01.scf_checkpoint.{role}",
-                )
-                if saved is not None:
-                    scf_checkpoints[role] = saved
-            _persist_run_manifest(manifest, out_dir)
-
-        e_react = float(g_react_opt.energy)
-        e_prod = float(g_prod_opt.energy)
-
-        diag_payload = _write_public_energy_diagram(
-            tsroot / "energy_diagram_MLIP",
-            labels=["R", "TS", "P"],
-            energies_au=[e_react, eT, e_prod],
-            title_note=f"({_primary_diagram_label}, TSOPT + IRC)",
-        )
-        if diag_payload:
-            energy_diagrams.append(diag_payload)
-
-        # Clear the calculator retained by Geometry before the frequency
-        # subprocess so VRAM accounting does not include both stages.
-        # ── Release GPU memory before freq/thermo/DFT ──
-        calculator_lease.release()
-        for _g in [locals().get(n) for n in ("gL", "gR", "gT", "g_react_irc", "g_prod_irc", "g_react_opt", "g_prod_opt")]:
-            if _g is not None and hasattr(_g, "calculator"):
-                _g.calculator = None
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        thermo_payloads: Dict[str, Dict[str, Any]] = {}
-        GR = GT = GP = None
-        dG_R = dG_T = dG_P = None
-        GR_dft_mlip = GT_dft_mlip = GP_dft_mlip = None
-
-        ref_pdb_for_tsopt_only = ref_pdb_for_topology or (
-            ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
-        )
-
-        if do_thermo:
-            _echo()
-            _echo_detail("[thermo] Single TSOPT: freq on TS/R/P")
-            tT = _run_freq_for_state(
-                pT,
-                q_int,
-                spin,
-                freq_root / "TS",
-                args_yaml,
-                freeze_links_flag,
-                ref_pdb_for_tsopt_only,
-                convert_files,
-                overrides=freq_overrides,
-                scf_checkpoint=scf_checkpoints.get("TS"),
-            )
-            from pdb2reaction.io.hessian_cache import clear as _clear_hess_cache
-            _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
-            tR = _run_freq_for_state(
-                pR,
-                q_int,
-                spin,
-                freq_root / "R",
-                args_yaml,
-                freeze_links_flag,
-                ref_pdb_for_tsopt_only,
-                convert_files,
-                overrides=freq_overrides,
-                scf_checkpoint=scf_checkpoints.get("R"),
-            )
-            tP = _run_freq_for_state(
-                pP,
-                q_int,
-                spin,
-                freq_root / "P",
-                args_yaml,
-                freeze_links_flag,
-                ref_pdb_for_tsopt_only,
-                convert_files,
-                overrides=freq_overrides,
-                scf_checkpoint=scf_checkpoints.get("P"),
-            )
-            thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-            GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
-            GT = _thermo_value_ha(tT, "sum_EE_and_thermal_free_energy_ha")
-            GP = _thermo_value_ha(tP, "sum_EE_and_thermal_free_energy_ha")
-            dG_R = _thermo_value_ha(tR, "thermal_correction_free_energy_ha")
-            dG_T = _thermo_value_ha(tT, "thermal_correction_free_energy_ha")
-            dG_P = _thermo_value_ha(tP, "thermal_correction_free_energy_ha")
-            try:
-                if any(value is None for value in (GR, GT, GP)):
-                    _echo(
-                        "[thermo] NOTE: one or more R/TS/P free energies are "
-                        "unavailable; Gibbs diagram skipped.",
-                        err=True,
-                    )
-                else:
-                    diag_payload = _write_public_energy_diagram(
-                        tsroot / "energy_diagram_G_MLIP",
-                        labels=["R", "TS", "P"],
-                        energies_au=[GR, GT, GP],
-                        title_note=f"({_primary_diagram_label} + Thermal Correction)",
-                        ylabel="ΔG (kcal/mol)",
-                    )
-                    if diag_payload:
-                        energy_diagrams.append(diag_payload)
-            except Exception as e:
-                _echo(
-                    f"[thermo] WARNING: failed to build Gibbs diagram: {e}",
-                    err=True,
-                )
-
-        if do_dft:
-            # Release calculator-owning references before the DFT subprocess.
-            # Keep endpoint geometries and thermochemistry payloads: they are
-            # still consumed by bond analysis, diagrams, and summary output.
-            g_ts = None
-            calc = None
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            _echo()
-            _echo_detail("[dft] Single TSOPT: DFT on R/TS/P")
-            dft_jobs = [
-                ("R", pR, dft_root / "R"),
-                ("TS", pT, dft_root / "TS"),
-                ("P", pP, dft_root / "P"),
-            ]
-            dft_payloads = _run_dft_sequence(
-                dft_jobs,
-                q_int,
-                spin,
-                args_yaml,
-                dft_func_basis,
-                dft_overrides,
-                dft_engine,
-                ref_pdb_for_tsopt_only,
-                convert_files,
-                allow_charge_mult_mismatch=dft_allow_charge_mult_mismatch,
-            )
-            dR = dft_payloads.get("R") or {}
-            dT = dft_payloads.get("TS") or {}
-            dP = dft_payloads.get("P") or {}
-            eR_dft = _dft_energy_ha(dR)
-            eT_dft = _dft_energy_ha(dT)
-            eP_dft = _dft_energy_ha(dP)
-            _dft_all_ok = all(e is not None for e in (eR_dft, eT_dft, eP_dft))
-            if not _dft_all_ok:
-                _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
-                _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
-            if _dft_all_ok:
-                try:
-                    diag_payload = _write_public_energy_diagram(
-                        tsroot / "energy_diagram_DFT",
-                        labels=["R", "TS", "P"],
-                        energies_au=[eR_dft, eT_dft, eP_dft],
-                        title_note=f"({dft_func_basis_use} // MLIP)",
-                    )
-                    if diag_payload:
-                        energy_diagrams.append(diag_payload)
-                except Exception as e:
-                    _echo(f"[dft] WARNING: failed to build DFT diagram: {e}", err=True)
-
-            if (
-                do_thermo
-                and _dft_all_ok
-                and all(value is not None for value in (dG_R, dG_T, dG_P))
-            ):
-                try:
-                    GR_dft_mlip = eR_dft + dG_R
-                    GT_dft_mlip = eT_dft + dG_T
-                    GP_dft_mlip = eP_dft + dG_P
-                    if not all(np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])):
-                        _echo(
-                            "[dft//mlip] NOTE: thermochemistry unavailable; "
-                            "DFT//MLIP Gibbs diagram skipped.",
-                            err=True,
-                        )
-                    else:
-                        diag_payload = _write_public_energy_diagram(
-                            tsroot / "energy_diagram_G_DFT_plus_MLIP",
-                            labels=["R", "TS", "P"],
-                            energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
-                            title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
-                            ylabel="ΔG (kcal/mol)",
-                        )
-                        if diag_payload:
-                            energy_diagrams.append(diag_payload)
-                except Exception as e:
-                    _echo(
-                        f"[dft//mlip] WARNING: failed to build DFT//MLIP Gibbs diagram: {e}",
-                        err=True,
-                    )
 
         # Build summary.json for TSOPT-only runs, mirroring path_search/path_opt outputs
         bond_cfg = dict(_path_search.BOND_KW)
@@ -7280,7 +7579,6 @@ def cli(
             summary["energy_diagrams"] = list(energy_diagrams)
         _enrich_summary(
             summary,
-            version="",
             pipeline_mode="tsopt-only",
             out_dir=out_dir,
             calculator_provenance_data=_shared_provenance,
@@ -7293,23 +7591,9 @@ def cli(
             charge=q_int,
             spin=spin,
             command=command_str,
-            config={
-                "refine_path": refine_path,
-                "flatten": bool(flatten),
-                "tsopt": do_tsopt,
-                "thermo": do_thermo,
-                "dft": do_dft,
-                "dft_status": "failed" if (do_dft and not _dft_all_ok) else ("converged" if (do_dft and _dft_all_ok) else None),
-                "dft_func_basis": dft_func_basis_use if do_dft else None,
-                "opt_mode": opt_mode_norm,
-                "opt_mode_post": tsopt_opt_mode_default,
-                "path_opt_mode": None,
-                "post_opt_mode": tsopt_opt_mode_default,
-                "ts_opt_mode": tsopt_opt_mode_default,
-                "endpoint_opt_mode": tsopt_opt_mode_default,
-                "mep_mode": mep_mode_kind,
-                "dmf_correlated": dmf_correlated_effective,
-            },
+            config=_summary_config(
+                dft_status=_ts_only_dft_status, dft_stage_done=True
+            ),
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
         )
@@ -7322,7 +7606,7 @@ def cli(
                 out_dir=out_dir,
             )
             _echo_detail(f"[write] Wrote '{tsroot / 'summary.json'}'.")
-            _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json")
+            _publish_root_summary(summary, warn_on_failure=True, echo=True)
             try:
                 ts_freq_info = (
                     _read_imaginary_frequency(
@@ -7493,7 +7777,6 @@ def cli(
                 # derive the corresponding local barrier/reaction energy.
                 _enrich_summary(
                     summary,
-                    version="",
                     pipeline_mode="tsopt-only",
                     out_dir=out_dir,
                     calculator_provenance_data=_shared_provenance,
@@ -7507,33 +7790,9 @@ def cli(
                     spin=spin,
                     command=command_str,
                     post_segments=[segment_log],
-                    config={
-                        "refine_path": refine_path,
-                        "flatten": bool(flatten),
-                        "tsopt": do_tsopt,
-                        "thermo": do_thermo,
-                        "dft": do_dft,
-                        "dft_status": (
-                            "failed"
-                            if do_dft and not _dft_all_ok
-                            else (
-                                "converged"
-                                if do_dft and _dft_all_ok
-                                else None
-                            )
-                        ),
-                        "dft_func_basis": (
-                            dft_func_basis_use if do_dft else None
-                        ),
-                        "opt_mode": opt_mode_norm,
-                        "opt_mode_post": tsopt_opt_mode_default,
-                        "path_opt_mode": None,
-                        "post_opt_mode": tsopt_opt_mode_default,
-                        "ts_opt_mode": tsopt_opt_mode_default,
-                        "endpoint_opt_mode": tsopt_opt_mode_default,
-                        "mep_mode": mep_mode_kind,
-                        "dmf_correlated": dmf_correlated_effective,
-                    },
+                    config=_summary_config(
+                        dft_status=_ts_only_dft_status, dft_stage_done=True
+                    ),
                     freeze_atoms=_freeze_atoms_for_log(),
                     manifest=manifest,
                 )
@@ -7556,7 +7815,7 @@ def cli(
                         key="ts.summary.01",
                         out_dir=out_dir,
                     )
-                    _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+                    _publish_root_summary(summary, warn_on_failure=True)
                 except Exception as exc:
                     _echo(
                         f"[write] WARNING: Failed to refresh summary.json in TSOPT-only mode: {exc}",
@@ -7616,13 +7875,7 @@ def cli(
             key="ts.summary.01",
             out_dir=out_dir,
         )
-        copied = _copy_public_logged(
-            tsroot / "summary.json",
-            out_dir / "summary.json",
-            label="summary.json",
-            echo=False,
-        )
-        if not copied:
+        if not _publish_root_summary(summary, warn_on_failure=True):
             raise click.ClickException(
                 f"Failed to publish summary.json to {out_dir / 'summary.json'}."
             )
@@ -8312,7 +8565,6 @@ def cli(
             summary["energy_diagrams"] = list(energy_diagrams)
         _enrich_summary(
             summary,
-            version="",
             pipeline_mode="path-opt",
             out_dir=out_dir,
             calculator_provenance_data=_shared_provenance,
@@ -8325,22 +8577,7 @@ def cli(
             charge=q_int,
             spin=spin,
             command=command_str,
-            config={
-                "refine_path": refine_path,
-                "flatten": bool(flatten),
-                "tsopt": do_tsopt,
-                "thermo": do_thermo,
-                "dft": do_dft,
-                "opt_mode": opt_mode_norm,
-                "opt_mode_post": tsopt_opt_mode_default if do_tsopt else None,
-                "preopt": bool(preopt),
-                "path_opt_mode": opt_mode_norm,
-                "post_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "ts_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "endpoint_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "mep_mode": mep_mode_kind,
-                "dmf_correlated": dmf_correlated_effective,
-            },
+            config=_summary_config(),
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
         )
@@ -8380,11 +8617,7 @@ def cli(
             # Keep the child summary in path_dir for later segment processing,
             # while the root publication records the parent pipeline request
             # before post-processing begins.
-            _copy_public_logged(
-                manifest.path("path.summary"),
-                out_dir / "summary.json",
-                label="summary.json",
-            )
+            _publish_root_summary(summary, warn_on_failure=True, echo=True)
             _refresh_current_public_outputs(manifest, out_dir)
             _persist_run_manifest(manifest, out_dir)
         except Exception as e:
@@ -8604,7 +8837,6 @@ def cli(
         provisional_root_summary["path_optimizers"] = sorted(path_optimizers)
         _enrich_summary(
             provisional_root_summary,
-            version="",
             pipeline_mode="path-search",
             out_dir=out_dir,
             calculator_provenance_data=_shared_provenance,
@@ -8618,22 +8850,7 @@ def cli(
             spin=spin,
             command=command_str,
             post_segments=None,
-            config={
-                "refine_path": refine_path,
-                "flatten": bool(flatten),
-                "tsopt": do_tsopt,
-                "thermo": do_thermo,
-                "dft": do_dft,
-                "opt_mode": opt_mode_norm,
-                "opt_mode_post": tsopt_opt_mode_default if do_tsopt else None,
-                "preopt": bool(preopt),
-                "path_opt_mode": opt_mode_norm,
-                "post_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "ts_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "endpoint_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-                "mep_mode": mep_mode_kind,
-                "dmf_correlated": dmf_correlated_effective,
-            },
+            config=_summary_config(),
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
         )
@@ -8742,10 +8959,10 @@ def cli(
                         f"Failed to publish segment {segment_index:02d} MEP trajectory."
                     )
 
-            # summary.json / summary.log stay COPIES: the path_dir copy is
-            # re-read (segments) and re-authored later, and the root copy is
-            # consumed by the final-summary banner.
-            _write_summary_json(out_dir / "summary.json", provisional_root_summary)
+            # The root keeps the fail-closed provisional verdict until
+            # post-processing re-authors it; the path_dir summary is re-read
+            # (segments) and re-authored later.
+            _publish_root_summary(provisional_root_summary)
             _echo_detail(
                 f"[all] Published provisional summary.json → {out_dir / 'summary.json'}"
             )
@@ -8811,12 +9028,7 @@ def cli(
                     root_summary[key] = summary[key]
             _publish_root_summary(root_summary)
         else:
-            _copy_public_logged(
-                summary_path,
-                out_dir / "summary.json",
-                label="summary.json",
-                echo=False,
-            )
+            _publish_root_summary(summary, warn_on_failure=True)
     _refresh_current_public_outputs(manifest, out_dir)
     _persist_run_manifest(manifest, out_dir)
     segments = _read_summary(summary_path)
@@ -9063,539 +9275,48 @@ def cli(
 
         struct_dir = seg_dir / "structures"
         ensure_dir(struct_dir)
-        state_structs: Dict[str, Path] = {}
 
-        if do_tsopt:
-            _seg_tsopt_overrides = dict(tsopt_overrides)
-            if (
-                len(reactive) > 1
-                and tsopt_out_dir is not None
-                and tsopt_out_dir.is_absolute()
-            ):
-                _seg_tsopt_overrides["out_dir"] = (
-                    tsopt_out_dir / f"seg_{seg_idx:02d}"
-                )
-            _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.npz"
-            mep_key = f"path.mep.{seg_idx:02d}.trajectory"
-            current_mep = (
-                manifest.produced[mep_key][0] if mep_key in manifest.produced else None
-            )
-            if tsopt_from_mep_tan and not tsopt_reference_mode_applicable:
-                _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
-                    False, current_mep, hei_model_path, _hei_mode_path
-                )
-                _reference_mode_status.update({
-                    "enabled": False,
-                    "requested": True,
-                    "status": "not_applicable_to_dimer",
-                    "reason": "Dimer does not consume Hessian reference modes",
-                })
-            else:
-                _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
-                    tsopt_reference_mode_enabled,
-                    current_mep,
-                    hei_model_path,
-                    _hei_mode_path,
-                )
-            segment_log["reference_mode"] = _reference_mode_status
-            if _hei_mode_path is not None:
-                _seg_tsopt_overrides["reference_mode"] = _hei_mode_path
-            ts_pdb, g_ts = _run_tsopt_on_hei(
-                hei_model_path,
-                q_int,
-                spin,
-                calc_cfg_post,
-                args_yaml,
-                seg_dir,
-                freeze_links_flag,
-                tsopt_opt_mode_default,
-                ref_pdb_for_seg,
-                convert_files,
-                overrides=_seg_tsopt_overrides,
-                runtime_overrides=child_runtime_overrides,
-                manifest=manifest,
-                artifact_prefix=f"post.{seg_idx:02d}.tsopt",
-                public_root=out_dir,
-            )
-
-            _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
-            _tsopt_decision = dict(
-                getattr(g_ts, "_tsopt_continuation", {})
-                or _tsopt_continuation_decision(
-                    _tsopt_payload,
-                    skip_final_freq=bool(
-                        _seg_tsopt_overrides.get("skip_final_freq", False)
-                    ),
-                )
-            )
-            _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
-            segment_log["tsopt"] = {
-                **_tsopt_decision,
-                **_tsopt_result_validity(_tsopt_payload, g_ts, ts_pdb),
-                "result_json": (
-                    None if _tsopt_result_path is None else str(_tsopt_result_path)
-                ),
-                "final_structure": str(ts_pdb),
-                **_tsopt_summary_metadata(_tsopt_payload),
-            }
-            if _tsopt_payload.get("n_imaginary_modes") is not None:
-                segment_log["ts_imag"] = _ts_imag_record(
-                    _tsopt_payload["n_imaginary_modes"],
-                    _tsopt_payload.get("imaginary_frequencies_cm"),
-                    _tsopt_payload.get("frequency_zero_cutoff_cm"),
-                )
-
-            if not bool(_tsopt_decision.get("continue_irc")):
-                pipeline_stop = {
-                    "stage": "before_irc",
-                    "segment": seg_idx,
-                    "reason": _tsopt_decision.get("reason"),
-                    "tsopt_result": segment_log["tsopt"],
-                }
-                segment_log["pipeline_stop"] = dict(pipeline_stop)
-                summary["stopped_before_irc"] = True
-                summary["pipeline_stop"] = dict(pipeline_stop)
-                _echo(
-                    "[all] TS artifacts were finalized, but IRC and every later "
-                    f"stage were skipped for segment {seg_idx:02d}: "
-                    f"{_tsopt_decision.get('reason')}",
-                    err=True,
-                )
-                _persist_run_manifest(manifest, out_dir)
-                break
-
-            _reaction_mode_fallback = bool(
-                _tsopt_decision.get("reaction_mode_fallback")
-            )
-            _reaction_mode_source = (
-                _tsopt_decision.get("reaction_mode_source") or "unspecified"
-            )
-            if _reaction_mode_fallback:
-                _echo(
-                    "[all] WARNING: reference-aligned negative-mode selection was "
-                    "unavailable or invalid; IRC falls back to exact-PHVA root 0. "
-                    "Reaction-mode identity is unverified "
-                    f"({_tsopt_decision.get('reaction_mode_fallback_reason')}).",
-                    err=True,
-                )
-            if int(_tsopt_decision.get("n_imaginary_modes") or 0) > 1:
-                _mode_identity = (
-                    "aligned with the MEP/reference direction"
-                    if not _reaction_mode_fallback
-                    and _reaction_mode_source == "mep-reference-overlap"
-                    else f"selected by {_reaction_mode_source}"
-                )
-                _echo(
-                    "[all] WARNING: continuing diagnostic IRC from a numerically "
-                    "converged higher-order saddle using negative exact-PHVA mode "
-                    f"{_tsopt_decision.get('reaction_mode_index')} {_mode_identity}; "
-                    "this is not first-order TS certification.",
-                    err=True,
-                )
-
-            endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
-            current_endpoint_trajectory = (
-                manifest.produced[endpoint_key][0]
-                if endpoint_key in manifest.produced
-                else None
-            )
-
-            irc_res = _irc_and_match(
-                seg_idx=seg_idx,
-                seg_dir=seg_dir,
-                ref_pdb_for_seg=ts_pdb,
-                seg_model_pdb=hei_model_path,
-                ref_pdb_template=ref_pdb_for_seg,
-                g_ts=g_ts,
-                q_int=q_int,
-                spin=spin,
-                freeze_links_flag=freeze_links_flag,
-                calc_cfg=calc_cfg_post,
-                args_yaml=args_yaml,
-                convert_files=convert_files,
-                irc_step_size=irc_step_size,
-                irc_max_cycles=irc_max_cycles,
-                irc_never_stop=irc_never_stop,
-                irc_root=_tsopt_decision.get("reaction_mode_index"),
-                seg_tag=str(seg_tag),
-                endpoint_trajectory=current_endpoint_trajectory,
-                session=session,
-                manifest=manifest,
-                artifact_prefix=f"post.{seg_idx:02d}.irc",
-                public_root=out_dir,
-                runtime_overrides=child_runtime_overrides,
-                hessian_calc_mode=hessian_calc_mode,
-            )
-            _persist_run_manifest(manifest, out_dir)
-
-            gL = irc_res["left_min_geom"]
-            gR = irc_res["right_min_geom"]
-            gT = irc_res["ts_geom"]
-            calculator_lease = irc_res["calculator_lease"]
-            irc_plot_path = irc_res.get("irc_plot_path")
-            irc_trj_path = irc_res.get("irc_trj_path")
-            reverse_irc = bool(irc_res.get("reverse_irc", False))
-
-            if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
-                segment_log["irc_plot"] = str(irc_plot_path)
-            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
-                segment_log["irc_traj"] = str(irc_trj_path)
-
-            segment_log["irc"] = irc_res.get("irc_outcome")
-            segment_log["endpoint_assignment"] = irc_res.get(
-                "endpoint_assignment"
-            )
-
-            if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
-                irc_trj_for_all.append((irc_trj_path, reverse_irc))
-
-            ref_struct_template = ref_pdb_for_seg or hei_model_path
-            p_react_irc = _save_single_geom_as_pdb_for_tools(
-                gL, ref_struct_template, struct_dir, "reactant_irc"
-            )
-            pT = _save_single_geom_as_pdb_for_tools(
-                gT, ref_struct_template, struct_dir, "ts"
-            )
-            p_prod_irc = _save_single_geom_as_pdb_for_tools(
-                gR, ref_struct_template, struct_dir, "product_irc"
-            )
-
-            endpoint_opt_dir = seg_dir / "endpoint_opt"
-            ensure_dir(endpoint_opt_dir)
-            _endpoint_failures: Dict[str, Any] = {}
-
-            # Map IRC left/right Hessians → R/P endpoint
-            # When reverse_irc is True, _irc_and_match swapped left/right to match GSM endpoints,
-            # so "irc_left" (=forward) now corresponds to gR and "irc_right" (=backward) to gL.
-            from pdb2reaction.io.hessian_cache import (
-                discard as _hess_discard,
-                load as _hess_load,
-                store as _hess_store,
-            )
-            _left_hk  = "irc_right" if reverse_irc else "irc_left"
-            _right_hk = "irc_left"  if reverse_irc else "irc_right"
-
-            _hess_discard("irc_endpoint")
-            _c = _hess_load(_left_hk)
-            if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
-            _react_opt_conv: Optional[bool] = None
-            _react_opt_outcome: Dict[str, Any] = {}
-            try:
-                g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
-                    gL,
-                    tsopt_opt_mode_default,
-                    endpoint_opt_dir,
-                    f"seg_{seg_idx:02d}_reactant",
-                    dump=dump,
-                    thresh=thresh_post,
-                    calc_identity_cfg=calc_cfg_post,
-                    reject_uphill=_reject_uphill_eff,
-                    stop_plateau=_stop_plateau_eff,
-                    stop_plateau_thresh=stop_plateau_thresh,
-                    stop_plateau_window=stop_plateau_window,
-                    print_every=print_every_override,
-                    outcome=_react_opt_outcome,
-                )
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: Reactant endpoint optimization failed for segment {seg_idx:02d}: {e}",
-                    err=True,
-                )
-                _react_opt_conv = None
-                _react_opt_outcome.update(
-                    {
-                        "optimization_status": "error",
-                        "converged": None,
-                        "error_type": type(e).__name__,
-                        "error": str(e),
-                    }
-                )
-                _endpoint_failures["reactant"] = {
-                    "error_type": type(e).__name__, "error": str(e),
-                }
-                g_react_opt = None
-
-            _hess_discard("irc_endpoint")
-            _c = _hess_load(_right_hk)
-            if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
-            _prod_opt_conv: Optional[bool] = None
-            _prod_opt_outcome: Dict[str, Any] = {}
-            try:
-                g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
-                    gR,
-                    tsopt_opt_mode_default,
-                    endpoint_opt_dir,
-                    f"seg_{seg_idx:02d}_product",
-                    dump=dump,
-                    thresh=thresh_post,
-                    calc_identity_cfg=calc_cfg_post,
-                    reject_uphill=_reject_uphill_eff,
-                    stop_plateau=_stop_plateau_eff,
-                    stop_plateau_thresh=stop_plateau_thresh,
-                    stop_plateau_window=stop_plateau_window,
-                    print_every=print_every_override,
-                    outcome=_prod_opt_outcome,
-                )
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: Product endpoint optimization failed for segment {seg_idx:02d}: {e}",
-                    err=True,
-                )
-                _prod_opt_conv = None
-                _prod_opt_outcome.update(
-                    {
-                        "optimization_status": "error",
-                        "converged": None,
-                        "error_type": type(e).__name__,
-                        "error": str(e),
-                    }
-                )
-                _endpoint_failures["product"] = {
-                    "error_type": type(e).__name__, "error": str(e),
-                }
-                g_prod_opt = None
-
-            if _endpoint_failures:
-                # Current coordinates may be an unaccepted partial iterate; keep the
-                # original IRC snapshot distinct from this diagnostic observation.
-                for _state, _geom, _irc_path in (
-                    ("reactant", gL, p_react_irc),
-                    ("product", gR, p_prod_irc),
-                ):
-                    if _state not in _endpoint_failures:
-                        continue
-                    _failure = _endpoint_failures[_state]
-                    _failure["irc_structure"] = str(_irc_path)
-                    _failure["geometry_role"] = "last_observed_acceptance_unknown"
-                    try:
-                        _failure["coordinates_finite"] = bool(np.isfinite(_geom.cart_coords).all())
-                        if _failure["coordinates_finite"]:
-                            _observed = endpoint_opt_dir / f"{_state}_last_observed.xyz"
-                            commit_exact(_observed, _geom.as_xyz().encode("utf-8"))
-                            _failure["last_observed_xyz"] = str(_observed)
-                    except Exception as exc:
-                        _failure["diagnostic_error"] = str(exc)
-                _endpoint_stop = {
-                    "stage": "endpoint_opt", "segment": seg_idx,
-                    "reason": "endpoint_execution_failed", "failures": _endpoint_failures,
-                    "diagnostic_dir": str(endpoint_opt_dir), "ts_structure": str(pT),
-                }
-                commit_json(endpoint_opt_dir / "failure.json", _endpoint_stop)
-                segment_log["pipeline_stop"] = _endpoint_stop
-                segment_log["endpoint_opt"] = {
-                    "reactant_converged": _react_opt_conv,
-                    "product_converged": _prod_opt_conv,
-                    "reactant": dict(_react_opt_outcome),
-                    "product": dict(_prod_opt_outcome),
-                    "failures": _endpoint_failures,
-                }
-                calculator_lease.release()
-                for _geom in (gL, gR, gT, g_react_opt, g_prod_opt):
-                    if _geom is not None:
-                        _geom.calculator = None
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                _echo(f"[all] Segment {seg_idx:02d}: endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
-                continue
-
-            _optimized_connectivity = _validate_optimized_endpoint_pair(
-                g_react_opt,
-                g_prod_opt,
-                endpoint_trajectory=current_endpoint_trajectory,
-                freeze_atoms=irc_res.get("freeze_atoms") or [],
-                seg_tag=str(seg_tag),
-            )
-            segment_log["endpoint_opt"] = {
-                "reactant_converged": _react_opt_conv,
-                "product_converged": _prod_opt_conv,
-                "reactant": dict(_react_opt_outcome),
-                "product": dict(_prod_opt_outcome),
-                "connectivity_validated": _optimized_connectivity.get(
-                    "connectivity_validated"
-                ),
-                "connectivity": _optimized_connectivity,
-            }
-
-            if not dump and _react_opt_conv is True and _prod_opt_conv is True:
-                shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-                _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
-
-            pL = _save_single_geom_as_pdb_for_tools(
-                g_react_opt, ref_struct_template, struct_dir, "reactant"
-            )
-            pR = _save_single_geom_as_pdb_for_tools(
-                g_prod_opt, ref_struct_template, struct_dir, "product"
-            )
-            state_structs = {"R": pL, "TS": pT, "P": pR}
-
-            scf_checkpoints: Dict[str, Path] = {}
-            working_scf_checkpoint = irc_res.get("scf_checkpoint")
-            if working_scf_checkpoint is not None:
-                saved_ts = _save_role_scf_checkpoint(
-                    calculator_lease.calculator,
-                    geom_loader(pT, coord_type=DEFAULT_COORD_TYPE),
-                    working_scf_checkpoint,
-                    manifest=manifest,
-                    key=f"post.{seg_idx:02d}.scf_checkpoint.TS",
-                )
-                if saved_ts is not None:
-                    scf_checkpoints["TS"] = saved_ts
-                for role, geometry_path in (("R", pL), ("P", pR)):
-                    saved = _save_role_scf_checkpoint(
-                        calculator_lease.calculator,
-                        geometry_path,
-                        seg_dir / "_work" / "dft_scf" / f"{role}.chk",
-                        manifest=manifest,
-                        key=f"post.{seg_idx:02d}.scf_checkpoint.{role}",
-                    )
-                    if saved is not None:
-                        scf_checkpoints[role] = saved
-                _persist_run_manifest(manifest, out_dir)
-
-            eR = float(g_react_opt.energy)
-            eT = float(gT.energy)
-            eP = float(g_prod_opt.energy)
-            diag_payload = _write_public_energy_diagram(
-                seg_dir / "energy_diagram_MLIP",
-                labels=["R", f"TS{seg_idx}", "P"],
-                energies_au=[eR, eT, eP],
-                title_note=f"({_primary_diagram_label}, TSOPT + IRC)",
-            )
-            if diag_payload:
-                energy_diagrams.append(diag_payload)
-
-            tsopt_seg_energies.append((eR, eT, eP))
-
-            segment_log["mlip"] = {
-                "labels": ["R", f"TS{seg_idx}", "P"],
-                "energies_au": [eR, eT, eP],
-                "energies_kcal": [0.0, (eT - eR) * AU2KCALPERMOL, (eP - eR) * AU2KCALPERMOL],
-                "diagram": str(seg_dir / "energy_diagram_MLIP.png"),
-                "structures": state_structs,
-                "barrier_kcal": (eT - eR) * AU2KCALPERMOL,
-                "delta_kcal": (eP - eR) * AU2KCALPERMOL,
-            }
-
-            try:
-                _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
-                _seg_out = _copy_structures_to_seg_dir(
-                    state_structs,
-                    out_dir,
-                    seg_idx,
-                    _input_suffix,
-                    prepared_input=prepared_all_inputs[0],
-                    manifest=manifest,
-                )
-                _echo(f"[all] Wrote R/TS/P for segment {seg_idx:02d} → {_seg_out}", narrative=True)
-            except Exception as e:
-                _echo(
-                    f"[all] WARNING: Failed to copy structures for segment {seg_idx:02d}: {e}",
-                    err=True,
-                )
-
-        elif do_thermo or do_dft:
-            seg_model_key = f"path.mep.{seg_idx:02d}.pdb"
-            seg_model_path = (
-                manifest.produced[seg_model_key][0]
-                if seg_model_key in manifest.produced
-                else None
-            )
-
-            # Decide reference topology (if any) for freeze-atoms detection and conversion.
-            freeze_ref: Optional[Path] = ref_pdb_for_seg
-            if freeze_ref is None and seg_model_path is not None and seg_model_path.suffix.lower() == ".pdb":
-                freeze_ref = seg_model_path
-            elif freeze_ref is None and hei_model_path.suffix.lower() == ".pdb":
-                freeze_ref = hei_model_path
-
-            freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
-
-            try:
-                endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
-                endpoint_path = (
-                    manifest.produced[endpoint_key][0]
-                    if endpoint_key in manifest.produced
-                    else None
-                )
-                if endpoint_path is None:
-                    _echo(
-                        f"[post] WARNING: current endpoint trajectory was not claimed for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
-                        err=True,
-                    )
-                    continue
-                elems, c_first, c_last = read_xyz_first_last(endpoint_path)
-                endpoints = (
-                    _geom_from_angstrom(elems, c_first, freeze_atoms),
-                    _geom_from_angstrom(elems, c_last, freeze_atoms),
-                )
-                gL, gR = endpoints
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: failed to load segment endpoints from final_geometries_trj.xyz for segment {seg_idx:02d}: {e}. Skipping segment.",
-                    err=True,
-                )
-                continue
-
-            try:
-                g_ts = geom_loader(
-                    hei_model_path,
-                    coord_type=DEFAULT_COORD_TYPE,
-                    freeze_atoms=freeze_atoms,
-                )
-                if freeze_atoms:
-                    fa = np.array(freeze_atoms, dtype=int)
-                    g_ts.freeze_atoms = fa
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: failed to load HEI geometry for segment {seg_idx:02d}: {e}. Skipping segment.",
-                    err=True,
-                )
-                continue
-
-            calc_args = _without_auto_checkpoint_target(calc_cfg_post)
-            calc = create_calculator(**calc_args)
-            gL.set_calculator(calc)
-            gR.set_calculator(calc)
-            g_ts.set_calculator(calc)
-
-            ref_for_structs = ref_pdb_for_seg or (seg_model_path if seg_model_path is not None else hei_model_path)
-            pL = _save_single_geom_as_pdb_for_tools(
-                gL, ref_for_structs, struct_dir, "reactant_mep"
-            )
-            pR = _save_single_geom_as_pdb_for_tools(
-                gR, ref_for_structs, struct_dir, "product_mep"
-            )
-            pT = _save_single_geom_as_pdb_for_tools(
-                g_ts, ref_for_structs, struct_dir, "ts_from_hei"
-            )
-            state_structs = {"R": pL, "TS": pT, "P": pR}
-
-        # ── Release GPU memory before freq/thermo/DFT ──
-        # Geometry objects from IRC/endpoint-opt hold calculator references;
-        # freq/DFT run as CLI subprocesses and don't need them.
-        if do_tsopt:
-            calculator_lease.release()
-        else:
-            close_calc = getattr(calc, "close", None)
-            if callable(close_calc):
-                close_calc()
-        for _g in (
-            locals().get("gL"), locals().get("gR"), locals().get("gT"),
-            locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
+        _seg_tsopt_overrides = dict(tsopt_overrides)
+        if (
+            len(reactive) > 1
+            and tsopt_out_dir is not None
+            and tsopt_out_dir.is_absolute()
         ):
-            if _g is not None and hasattr(_g, "calculator"):
-                _g.calculator = None
-        calc = None
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            _seg_tsopt_overrides["out_dir"] = (
+                tsopt_out_dir / f"seg_{seg_idx:02d}"
+            )
+        _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.npz"
+        mep_key = f"path.mep.{seg_idx:02d}.trajectory"
+        current_mep = (
+            manifest.produced[mep_key][0] if mep_key in manifest.produced else None
+        )
+        if tsopt_from_mep_tan and not tsopt_reference_mode_applicable:
+            _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
+                False, current_mep, hei_model_path, _hei_mode_path
+            )
+            _reference_mode_status.update({
+                "enabled": False,
+                "requested": True,
+                "status": "not_applicable_to_dimer",
+                "reason": "Dimer does not consume Hessian reference modes",
+            })
+        else:
+            _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
+                tsopt_reference_mode_enabled,
+                current_mep,
+                hei_model_path,
+                _hei_mode_path,
+            )
+        segment_log["reference_mode"] = _reference_mode_status
+        if _hei_mode_path is not None:
+            _seg_tsopt_overrides["reference_mode"] = _hei_mode_path
 
-        thermo_payloads: Dict[str, Dict[str, Any]] = {}
-        GR = GT = GP = None
-        dG_R = dG_T = dG_P = None
+        endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
+        current_endpoint_trajectory = (
+            manifest.produced[endpoint_key][0]
+            if endpoint_key in manifest.produced
+            else None
+        )
         freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
         dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
         if len(reactive) > 1:
@@ -9604,265 +9325,41 @@ def cli(
             if dft_out_dir is not None and dft_out_dir.is_absolute():
                 dft_seg_root = dft_out_dir / f"seg_{seg_idx:02d}"
 
-        if (do_thermo or do_dft) and not state_structs:
+        post = _post_process_segment(
+            segment_log,
+            seg_idx=seg_idx,
+            seg_dir=seg_dir,
+            seg_tag=str(seg_tag),
+            ts_start=hei_model_path,
+            ref_pdb=ref_pdb_for_seg,
+            irc_model_pdb=hei_model_path,
+            struct_template=ref_pdb_for_seg or hei_model_path,
+            segment_tsopt_overrides=_seg_tsopt_overrides,
+            endpoint_trajectory=current_endpoint_trajectory,
+            freq_root=freq_seg_root,
+            dft_root=dft_seg_root,
+        )
+        if post["status"] == "stopped_before_irc":
+            pipeline_stop = {
+                "stage": "before_irc",
+                "segment": seg_idx,
+                "reason": post["tsopt_decision"].get("reason"),
+                "tsopt_result": segment_log["tsopt"],
+            }
+            segment_log["pipeline_stop"] = dict(pipeline_stop)
+            summary["stopped_before_irc"] = True
+            summary["pipeline_stop"] = dict(pipeline_stop)
             _echo(
-                f"[post] WARNING: No segment structures prepared for segment {seg_idx:02d}; skipping thermo/DFT.",
+                "[all] TS artifacts were finalized, but IRC and every later "
+                f"stage were skipped for segment {seg_idx:02d}: "
+                f"{post['tsopt_decision'].get('reason')}",
                 err=True,
             )
+            _persist_run_manifest(manifest, out_dir)
+            break
+        if post["status"] == "endpoint_failed":
+            _echo(f"[all] Segment {seg_idx:02d}: endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
             continue
-
-        p_react = state_structs.get("R")
-        p_ts = state_structs.get("TS")
-        p_prod = state_structs.get("P")
-
-        if do_thermo:
-            if not (p_react and p_ts and p_prod):
-                _echo(
-                    f"[thermo] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping thermo.",
-                    err=True,
-                )
-            else:
-                _echo()
-                _echo_detail(
-                    f"[thermo] Segment {seg_idx:02d}: freq on TS/R/P"
-                )
-                tT = _run_freq_for_state(
-                    p_ts,
-                    q_int,
-                    spin,
-                    freq_seg_root / "TS",
-                    args_yaml,
-                    freeze_links_flag,
-                    ref_pdb_for_seg,
-                    convert_files,
-                    overrides=freq_overrides,
-                    scf_checkpoint=scf_checkpoints.get("TS"),
-                )
-                from pdb2reaction.io.hessian_cache import clear as _clear_hess_cache
-                _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
-                tR = _run_freq_for_state(
-                    p_react,
-                    q_int,
-                    spin,
-                    freq_seg_root / "R",
-                    args_yaml,
-                    freeze_links_flag,
-                    ref_pdb_for_seg,
-                    convert_files,
-                    overrides=freq_overrides,
-                    scf_checkpoint=scf_checkpoints.get("R"),
-                )
-                tP = _run_freq_for_state(
-                    p_prod,
-                    q_int,
-                    spin,
-                    freq_seg_root / "P",
-                    args_yaml,
-                    freeze_links_flag,
-                    ref_pdb_for_seg,
-                    convert_files,
-                    overrides=freq_overrides,
-                    scf_checkpoint=scf_checkpoints.get("P"),
-                )
-                thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-                from pdb2reaction.workflows._all_helpers import (
-                    build_thermo_symmetry_provenance,
-                )
-                GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
-                GT = _thermo_value_ha(tT, "sum_EE_and_thermal_free_energy_ha")
-                GP = _thermo_value_ha(tP, "sum_EE_and_thermal_free_energy_ha")
-                dG_R = _thermo_value_ha(tR, "thermal_correction_free_energy_ha")
-                dG_T = _thermo_value_ha(tT, "thermal_correction_free_energy_ha")
-                dG_P = _thermo_value_ha(tP, "thermal_correction_free_energy_ha")
-                _thermo_symmetry = build_thermo_symmetry_provenance(
-                    thermo_payloads
-                )
-                if _thermo_symmetry:
-                    segment_log["thermo_symmetry"] = _thermo_symmetry
-                ts_freq_info = _read_imaginary_frequency(
-                    freq_seg_root / "TS",
-                    (
-                        _tsopt_payload.get("frequency_zero_cutoff_cm")
-                        if do_tsopt
-                        else None
-                    ),
-                )
-                if ts_freq_info is not None:
-                    segment_log["ts_imag"] = ts_freq_info
-                    if ts_freq_info.get("nu_imag_max_cm") is not None:
-                        segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
-                try:
-                    if all(value is not None for value in (GR, GT, GP)):
-                        gibbs_vals = [GR, GT, GP]
-                        diag_payload = _write_public_energy_diagram(
-                            seg_dir / "energy_diagram_G_MLIP",
-                            labels=["R", f"TS{seg_idx}", "P"],
-                            energies_au=gibbs_vals,
-                            title_note=f"({_primary_diagram_label} + Thermal Correction)",
-                            ylabel="ΔG (kcal/mol)",
-                        )
-                        if diag_payload:
-                            energy_diagrams.append(diag_payload)
-                        g_mlip_seg_energies.append((GR, GT, GP))
-                        segment_log["gibbs_mlip"] = {
-                            "labels": ["R", f"TS{seg_idx}", "P"],
-                            "energies_au": gibbs_vals,
-                            "energies_kcal": [
-                                (GR - GR) * AU2KCALPERMOL,
-                                (GT - GR) * AU2KCALPERMOL,
-                                (GP - GR) * AU2KCALPERMOL,
-                            ],
-                            "diagram": str(seg_dir / "energy_diagram_G_MLIP.png"),
-                            "structures": state_structs,
-                            "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
-                            "delta_kcal": (GP - GR) * AU2KCALPERMOL,
-                        }
-                    else:
-                        _echo(
-                            "[thermo] NOTE: one or more R/TS/P free energies "
-                            "are unavailable; Gibbs diagram skipped."
-                        )
-                except Exception as e:
-                    _echo(
-                        f"[thermo] WARNING: failed to build Gibbs diagram: {e}",
-                        err=True,
-                    )
-
-        if do_dft:
-            # Clear the calculator retained by Geometry before forking the DFT
-            # subprocess so it does not inherit the GPU-pinned model.
-            # ── Aggressively release GPU memory before DFT subprocess ──
-            for _obj in (
-                locals().get("gL"), locals().get("gR"), locals().get("gT"),
-                locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
-                locals().get("calc"),
-            ):
-                if _obj is not None:
-                    if hasattr(_obj, "calculator"):
-                        _obj.calculator = None
-                    if hasattr(_obj, "results"):
-                        _obj.results = {}
-            del _obj
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            if not (p_react and p_ts and p_prod):
-                _echo(
-                    f"[dft] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping DFT.",
-                    err=True,
-                )
-            else:
-                _echo()
-                _echo_detail(f"[dft] Segment {seg_idx:02d}: DFT on R/TS/P")
-                dft_jobs = [
-                    ("R", p_react, dft_seg_root / "R"),
-                    ("TS", p_ts, dft_seg_root / "TS"),
-                    ("P", p_prod, dft_seg_root / "P"),
-                ]
-                dft_payloads = _run_dft_sequence(
-                    dft_jobs,
-                    q_int,
-                    spin,
-                    args_yaml,
-                    dft_func_basis,
-                    dft_overrides,
-                    dft_engine,
-                    ref_pdb_for_seg,
-                    convert_files,
-                    allow_charge_mult_mismatch=dft_allow_charge_mult_mismatch,
-                )
-                dR = dft_payloads.get("R") or {}
-                dT = dft_payloads.get("TS") or {}
-                dP = dft_payloads.get("P") or {}
-                eR_dft = _dft_energy_ha(dR)
-                eT_dft = _dft_energy_ha(dT)
-                eP_dft = _dft_energy_ha(dP)
-                _dft_all_ok = all(e is not None for e in (eR_dft, eT_dft, eP_dft))
-                if not _dft_all_ok:
-                    _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
-                    _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
-                    segment_log["dft"] = {
-                        "scientific_status": "failed",
-                        "failed_states": _failed_states,
-                    }
-                if _dft_all_ok:
-                    try:
-                        diag_payload = _write_public_energy_diagram(
-                            seg_dir / "energy_diagram_DFT",
-                            labels=["R", f"TS{seg_idx}", "P"],
-                            energies_au=[eR_dft, eT_dft, eP_dft],
-                            title_note=f"({dft_func_basis_use})",
-                        )
-                        if diag_payload:
-                            energy_diagrams.append(diag_payload)
-                        dft_seg_energies.append((eR_dft, eT_dft, eP_dft))
-                        segment_log["dft"] = {
-                            "labels": ["R", f"TS{seg_idx}", "P"],
-                            "energies_au": [eR_dft, eT_dft, eP_dft],
-                            "energies_kcal": [
-                                0.0,
-                                (eT_dft - eR_dft) * AU2KCALPERMOL,
-                                (eP_dft - eR_dft) * AU2KCALPERMOL,
-                            ],
-                            "diagram": str(seg_dir / "energy_diagram_DFT.png"),
-                            "structures": state_structs,
-                            "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
-                            "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
-                        }
-                    except Exception as e:
-                        _echo(
-                            f"[dft] WARNING: failed to build DFT diagram: {e}",
-                            err=True,
-                        )
-
-                if (
-                    do_thermo
-                    and _dft_all_ok
-                    and all(value is not None for value in (dG_R, dG_T, dG_P))
-                ):
-                    try:
-                        GR_dft_mlip = eR_dft + dG_R
-                        GT_dft_mlip = eT_dft + dG_T
-                        GP_dft_mlip = eP_dft + dG_P
-                        if all(
-                            np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])
-                        ):
-                            diag_payload = _write_public_energy_diagram(
-                                seg_dir / "energy_diagram_G_DFT_plus_MLIP",
-                                labels=["R", f"TS{seg_idx}", "P"],
-                                energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
-                                title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
-                                ylabel="ΔG (kcal/mol)",
-                            )
-                            if diag_payload:
-                                energy_diagrams.append(diag_payload)
-                            g_dft_mlip_seg_energies.append(
-                                (GR_dft_mlip, GT_dft_mlip, GP_dft_mlip)
-                            )
-                            segment_log["gibbs_dft_mlip"] = {
-                                "labels": ["R", f"TS{seg_idx}", "P"],
-                                "energies_au": [GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
-                                "energies_kcal": [
-                                    (GR_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
-                                    (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
-                                    (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
-                                ],
-                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png"),
-                                "structures": state_structs,
-                                "barrier_kcal": (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
-                                "delta_kcal": (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
-                            }
-                        else:
-                            _echo(
-                                "[dft//mlip] WARNING: DFT//MLIP Gibbs energies non-finite; diagram skipped.",
-                                err=True,
-                            )
-                    except Exception as e:
-                        _echo(
-                            f"[dft//mlip] WARNING: failed to build DFT//MLIP Gibbs diagram: {e}",
-                            err=True,
-                        )
 
     if len(tsopt_seg_energies) == len(all_reactive):
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
@@ -9935,7 +9432,6 @@ def cli(
         summary.pop("pipeline_stop", None)
     _enrich_summary(
         summary,
-        version="",
         pipeline_mode="path-search" if refine_path else "path-opt",
         out_dir=out_dir,
         calculator_provenance_data=_shared_provenance,
@@ -9949,22 +9445,7 @@ def cli(
         spin=spin,
         command=command_str,
         post_segments=post_segment_logs,
-        config={
-            "refine_path": refine_path,
-            "flatten": bool(flatten),
-            "tsopt": do_tsopt,
-            "thermo": do_thermo,
-            "dft": do_dft,
-            "opt_mode": opt_mode_norm,
-            "opt_mode_post": tsopt_opt_mode_default if do_tsopt else None,
-            "preopt": bool(preopt),
-            "path_opt_mode": opt_mode_norm,
-            "post_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-            "ts_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-            "endpoint_opt_mode": tsopt_opt_mode_default if do_tsopt else None,
-            "mep_mode": mep_mode_kind,
-            "dmf_correlated": dmf_correlated_effective,
-        },
+        config=_summary_config(),
         freeze_atoms=_freeze_atoms_for_log(),
         manifest=manifest,
     )
@@ -9982,12 +9463,7 @@ def cli(
         _echo_detail(
             f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams."
         )
-        if not _copy_public_logged(
-            path_dir / "summary.json",
-            dst_summary,
-            label="summary.json",
-            echo=False,
-        ):
+        if not _publish_root_summary(summary, warn_on_failure=True):
             raise click.ClickException(
                 f"Failed to publish summary.json to {dst_summary}."
             )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import inspect
 import os
 from pathlib import Path
 
@@ -12,27 +11,46 @@ from click.testing import CliRunner
 
 from pdb2reaction.workflows import all as all_workflow
 from pdb2reaction.core.result_commit import RUN_ID_ENV, apply_current_run_id
+from test_all_root_summary_golden import SEGMENT_1, SEGMENT_2, Scenario, invoke
 
 
-def test_refine_path_publishes_each_segment_mep_trajectory() -> None:
-    source = inspect.getsource(all_workflow.cli.callback)
-    assert "segment_mep_publications" in source
-    assert 'f"seg_{segment_index:02d}"' in source
-    assert '"mep_trj.xyz"' in source
-    assert "Failed to publish segment" in source
+def test_refine_path_publishes_each_segment_mep_trajectory(tmp_path, monkeypatch) -> None:
+    scenario = Scenario("refine_two_segments", (0, 2), ["--refine-path"],
+                        path_search_segments=[SEGMENT_1, SEGMENT_2])
+    run = invoke(tmp_path, monkeypatch, scenario)
+    assert run.exit_code == 0, run.output
+    current = json.loads((run.out / "summary.json").read_text())["current_output_paths"]
+    for index in (1, 2):
+        published = run.out / "segments" / f"seg_{index:02d}" / "mep_trj.xyz"
+        source = run.out / "_work" / "path_search" / f"mep_seg_{index:02d}_trj.xyz"
+        assert published.read_bytes() == source.read_bytes()
+        assert f"segments/seg_{index:02d}/mep_trj.xyz" in current
 
 
-def test_stopped_ts_summary_reuses_the_final_citation_payload() -> None:
-    source = inspect.getsource(all_workflow.cli.callback)
-    stopped_branch = source.split(
-        'if not bool(_tsopt_decision.get("continue_irc")):', 1
-    )[1]
-    stopped_writer = stopped_branch.split("summary_payload = {", 1)[1].split(
-        "write_summary_log", 1
-    )[0]
+def test_refine_path_stops_when_a_segment_mep_trajectory_is_not_published(
+    tmp_path, monkeypatch,
+) -> None:
+    real_copy = all_workflow._copy_logged
 
-    assert "citation_post_segments = [_stop_log]" in stopped_branch
-    assert "summary_payload.update(_all_method_citation_payload())" in stopped_writer
+    def copy(src, dst, **kwargs):
+        if Path(dst).as_posix().endswith("segments/seg_02/mep_trj.xyz"):
+            return False
+        return real_copy(src, dst, **kwargs)
+
+    monkeypatch.setattr(all_workflow, "_copy_logged", copy)
+    scenario = Scenario("refine_two_segments", (0, 2), ["--refine-path"],
+                        path_search_segments=[SEGMENT_1, SEGMENT_2])
+    run = invoke(tmp_path, monkeypatch, scenario)
+    assert run.exit_code == 1
+    assert "Failed to publish segment 02 MEP trajectory." in run.output
+
+
+def test_stopped_ts_summary_reuses_the_final_citation_payload(tmp_path, monkeypatch) -> None:
+    # The stopped TS record is the citation source of the log and the final banner.
+    scenario = Scenario("ts_only_stopped", (1,), ["--tsopt"], tsopt_converged=False)
+    run = invoke(tmp_path, monkeypatch, scenario)
+    assert "RS-P-RFO:" in (run.out / "summary.log").read_text(encoding="utf-8")
+    assert "RS-P-RFO:" in run.output
 
 
 def test_all_extraction_remaps_original_freeze_indices_before_path_search(

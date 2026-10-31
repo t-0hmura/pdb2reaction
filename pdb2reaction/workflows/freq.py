@@ -69,7 +69,7 @@ from pdb2reaction.core.utils import (
     echo_resolved_device,
 )
 from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
-from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
+from pdb2reaction.cli.decorators import load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
 
@@ -297,13 +297,11 @@ def _validated_symmetry_number(value: object) -> Optional[int]:
 
 
 def _symmetry_number_source(
-    *, config_has_value: bool, override_has_value: bool, resolved_value: object
+    *, config_has_value: bool, resolved_value: object
 ) -> str:
     """Describe which configuration layer supplied the resolved symmetry number."""
     if resolved_value is None:
         return "auto"
-    if override_has_value:
-        return "override"
     if config_has_value:
         return "config"
     return "auto"
@@ -636,15 +634,7 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -740,23 +730,9 @@ def cli(
     calc_cfg["charge"] = int(charge)
     calc_cfg["spin"] = int(spin)
 
-    apply_yaml_overrides(
-        override_layer_cfg,
-        [
-            (geom_cfg, (("geom",),)),
-            (calc_cfg, (("calc",),)),
-            (freq_cfg, (("freq",),)),
-            (thermo_cfg, thermo_paths),
-        ],
-    )
-    _override_has_symmetry_number = (
-        yaml_section_has_key(override_layer_cfg, thermo_paths, "symmetry_number")
-        and thermo_cfg.get("symmetry_number") is not None
-    )
     _validate_freq_thermo_config(freq_cfg, thermo_cfg)
     symmetry_number_source = _symmetry_number_source(
         config_has_value=_config_has_symmetry_number,
-        override_has_value=_override_has_symmetry_number,
         resolved_value=thermo_cfg["symmetry_number"],
     )
     from pysisyphus.tr_projection import normalize_tr_projection_mode
@@ -801,7 +777,6 @@ def cli(
                 "yaml_layers",
                 {
                     "config": None if config_yaml is None else str(config_yaml),
-                    "override_yaml": None if override_yaml is None else str(override_yaml),
                     "merged_keys": sorted(merged_yaml_cfg.keys()),
                 },
             force=True)
@@ -838,7 +813,6 @@ def cli(
             source_path,
             ref_pdb,
             config_yaml,
-            override_yaml,
             Path(read_hess) if read_hess else None,
             Path(dump_hess) if dump_hess else None,
         ),

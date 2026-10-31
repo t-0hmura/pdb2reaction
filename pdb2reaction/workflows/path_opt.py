@@ -87,7 +87,7 @@ from pdb2reaction.workflows._path_yaml_helpers import (
     check_single_opt_yaml_conflicts,
 )
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
-from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
+from pdb2reaction.cli.decorators import load_merged_yaml_cfg, _write_error_json, render_cli_exception
 
 logger = logging.getLogger(__name__)
 
@@ -956,15 +956,7 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -1000,16 +992,6 @@ def cli(
         lbfgs_cfg = dict(LBFGS_KW)
         rfo_cfg = dict(RFO_KW)
 
-        def _apply_single_opt_yaml_layer(layer_cfg: Dict[str, Any]) -> None:
-            apply_single_opt_yaml_layer(
-                layer_cfg,
-                lbfgs_cfg=lbfgs_cfg,
-                rfo_cfg=rfo_cfg,
-                stopt_cfg=stopt_cfg,
-                opt_base_kw=OPT_BASE_KW,
-                deep_update=deep_update,
-            )
-
         apply_yaml_overrides(
             config_layer_cfg,
             [
@@ -1020,7 +1002,14 @@ def cli(
                 (stopt_cfg, (("stopt",),)),
             ],
         )
-        _apply_single_opt_yaml_layer(config_layer_cfg)
+        apply_single_opt_yaml_layer(
+            config_layer_cfg,
+            lbfgs_cfg=lbfgs_cfg,
+            rfo_cfg=rfo_cfg,
+            stopt_cfg=stopt_cfg,
+            opt_base_kw=OPT_BASE_KW,
+            deep_update=deep_update,
+        )
 
         # Resolve charge/spin from templates/ligand charge and then apply precedence.
         resolved_charge, resolved_spin = resolve_charge_spin(
@@ -1090,18 +1079,6 @@ def cli(
             lbfgs_cfg["print_every"] = int(print_every)
             rfo_cfg["print_every"] = int(print_every)
 
-        apply_yaml_overrides(
-            override_layer_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (dmf_cfg, (("dmf",),)),
-                (gs_cfg, (("gs",),)),
-                (stopt_cfg, (("stopt",),)),
-            ],
-        )
-        _apply_single_opt_yaml_layer(override_layer_cfg)
-
         mep_mode_kind = mep_mode.strip().lower()
 
         if mep_mode_kind == "gsm" and int(gs_cfg["max_nodes"]) < 2:
@@ -1141,10 +1118,9 @@ def cli(
         else:
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
-        for layer_cfg in (config_layer_cfg, override_layer_cfg):
-            check_single_opt_yaml_conflicts(
-                layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
-            )
+        check_single_opt_yaml_conflicts(
+            config_layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
+        )
 
         single_opt_cfg = dict(single_opt_cfg)
         preopt_max_cycles_effective = single_opt_cfg.get(
@@ -1232,7 +1208,6 @@ def cli(
                     "yaml_layers",
                     {
                         "config": None if config_yaml is None else str(config_yaml),
-                        "override_yaml": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
                 force=True)

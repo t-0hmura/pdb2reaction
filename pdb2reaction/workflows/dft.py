@@ -41,7 +41,7 @@ from pdb2reaction.core.utils import (
     cli_param_overridden,
     optional_positive_int,
 )
-from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
+from pdb2reaction.cli.decorators import load_merged_yaml_cfg, _write_error_json
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_DFT
 from pdb2reaction.cli.common_options import add_allow_charge_mult_mismatch_option
 from pdb2reaction.core.dft_settings import PCM_DIELECTRIC
@@ -687,15 +687,7 @@ def cli(
     out_json: bool,
     dry_run: bool,
 ) -> None:
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, _ = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -880,7 +872,6 @@ def cli(
                         "yaml_layers",
                         {
                             "config": None if config_yaml is None else str(config_yaml),
-                            "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
                     force=True),

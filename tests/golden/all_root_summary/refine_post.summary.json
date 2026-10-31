@@ -1,0 +1,659 @@
+{
+  "out_dir": "<TMP>/out/_work/path_search",
+  "n_images": 3,
+  "n_segments": 1,
+  "segments": [
+    {
+      "index": 1,
+      "tag": "seg_001",
+      "kind": "seg",
+      "converged": true,
+      "barrier_kcal": 31.38,
+      "delta_kcal": -6.28,
+      "bond_changes": "C1-O1 distance change"
+    }
+  ],
+  "execution_status": "completed",
+  "scientific_status": "success",
+  "path_optimizers": [
+    "lbfgs"
+  ],
+  "run_id": "golden-run",
+  "resume_identity": {
+    "schema_version": 1,
+    "pipeline_mode": "path-search",
+    "inputs": [
+      {
+        "path": "<TMP>/input0.pdb",
+        "size": 162,
+        "sha256": "fb8fc3ddafa4c3af9c2c4ee9be4500d09624da6292a2b33292b488bec9122b60"
+      },
+      {
+        "path": "<TMP>/input2.pdb",
+        "size": 162,
+        "sha256": "b5676dc7eb8f1c6d0a45ad20a12e74fa9611cb619def12c576fb98c15f5ea32f"
+      }
+    ],
+    "ref_pdb": null,
+    "path_request": {
+      "add_linkh": true,
+      "center": null,
+      "climb": true,
+      "config_sha256": null,
+      "coord_type": null,
+      "dmf_backend": "gpu",
+      "exclude_backbone": false,
+      "freeze_atoms": [],
+      "freeze_links": false,
+      "gsm_param": null,
+      "include_h2o": true,
+      "ligand_charge": null,
+      "max_cycles_dmf": null,
+      "max_cycles_gsm": null,
+      "max_depth": null,
+      "max_nodes": 20,
+      "mep_mode": "gsm",
+      "modified_residue": "",
+      "opt_mode": "grad",
+      "preopt": false,
+      "radius": 2.6,
+      "radius_het2het": 0.0,
+      "refine_path": true,
+      "scan_bias_k": null,
+      "scan_endopt": null,
+      "scan_lists": [],
+      "scan_max_step_size": null,
+      "scan_one_based": true,
+      "scan_preopt": null,
+      "scan_relax_max_cycles": null,
+      "selected_resn": "",
+      "thresh": null,
+      "thresh_dmf": null,
+      "thresh_gsm": null
+    },
+    "calculator_identity": {
+      "mlip_backend": "uma",
+      "mlip_model": "uma-s-1p2p1",
+      "mlip_precision": "fp32",
+      "mlip_task": "omol",
+      "primary_method": "mlip"
+    },
+    "charge": 0,
+    "spin": 1
+  },
+  "energy_diagrams": [
+    {
+      "name": "energy_diagram_MLIP",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        31.375473703143086,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "title": "(MLIP, TSOPT + IRC)",
+      "energies_au": [
+        -100.0,
+        -99.95,
+        -100.01
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_MLIP.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_G_MLIP",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        30.120454755011302,
+        -5.647585266575208
+      ],
+      "ylabel": "ΔG (kcal/mol)",
+      "title": "(MLIP + Thermal Correction)",
+      "energies_au": [
+        -99.99,
+        -99.94200000000001,
+        -99.99900000000001
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_G_MLIP.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_DFT",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        31.375473703143086,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "title": "(wb97m-v/def2-svp)",
+      "energies_au": [
+        -100.25,
+        -100.2,
+        -100.26
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_DFT.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_G_DFT_plus_MLIP",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        30.120454755011302,
+        -5.647585266575208
+      ],
+      "ylabel": "ΔG (kcal/mol)",
+      "title": "(wb97m-v/def2-svp // MLIP + Thermal Correction)",
+      "energies_au": [
+        -100.24,
+        -100.19200000000001,
+        -100.24900000000001
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_G_DFT_plus_MLIP.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_MLIP_all",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        31.375473703143086,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "title": "(MLIP, TSOPT + IRC; all segments)",
+      "energies_au": [
+        -100.0,
+        -99.95,
+        -100.01
+      ],
+      "image": "<TMP>/out/energy_diagram_MLIP_all.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_G_MLIP_all",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        30.120454755011302,
+        -5.647585266575208
+      ],
+      "ylabel": "ΔG (kcal/mol)",
+      "title": "(MLIP + Thermal Correction; all segments)",
+      "energies_au": [
+        -99.99,
+        -99.94200000000001,
+        -99.99900000000001
+      ],
+      "image": "<TMP>/out/energy_diagram_G_MLIP_all.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_DFT_all",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        31.375473703143086,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "title": "(wb97m-v/def2-svp; all segments)",
+      "energies_au": [
+        -100.25,
+        -100.2,
+        -100.26
+      ],
+      "image": "<TMP>/out/energy_diagram_DFT_all.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_G_DFT_plus_MLIP_all",
+      "labels": [
+        "R",
+        "TS1",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        30.120454755011302,
+        -5.647585266575208
+      ],
+      "ylabel": "ΔG (kcal/mol)",
+      "title": "(wb97m-v/def2-svp // MLIP + Thermal Correction; all segments)",
+      "energies_au": [
+        -100.24,
+        -100.19200000000001,
+        -100.24900000000001
+      ],
+      "image": "<TMP>/out/energy_diagram_G_DFT_plus_MLIP_all.png",
+      "image_written": true
+    }
+  ],
+  "stopped_before_irc": false,
+  "pdb2reaction_version": "<VERSION>",
+  "schema_version": "4.0",
+  "pipeline_mode": "path-search",
+  "expected_item_ids": [
+    "segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1"
+  ],
+  "mlip_backend": "uma",
+  "mlip_model": "uma-s-1p2p1",
+  "mlip_model_label": "UMA-S-1.2.1 (OMol)",
+  "mlip_task": "omol",
+  "mlip_precision": "fp32",
+  "mlip_precision_post": "fp32",
+  "primary_method": "mlip",
+  "primary_method_label": "MLIP",
+  "charge": 0,
+  "spin": 1,
+  "n_segments_reactive": 1,
+  "rate_limiting_step": {
+    "segment": 1,
+    "barrier_kcal": 30.12,
+    "method": "DFT//MLIP_Gibbs",
+    "mep_barrier_kcal": 31.38
+  },
+  "overall_reaction_energy_kcal": -5.65,
+  "overall_reaction_energy_method": "DFT//MLIP_Gibbs",
+  "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt --thermo --dft",
+  "config": {
+    "refine_path": true,
+    "flatten": false,
+    "tsopt": true,
+    "thermo": true,
+    "dft": true,
+    "opt_mode": "grad",
+    "opt_mode_post": "hess",
+    "preopt": false,
+    "path_opt_mode": "grad",
+    "post_opt_mode": "hess",
+    "ts_opt_mode": "hess",
+    "endpoint_opt_mode": "hess",
+    "mep_mode": "gsm",
+    "dmf_correlated": true
+  },
+  "references": [
+    {
+      "method": "pdb2reaction",
+      "citation": "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242",
+      "doi": "10.1021/acsomega.6c08242"
+    },
+    {
+      "method": "pysisyphus engine",
+      "citation": "Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390",
+      "doi": "10.1002/qua.26390"
+    },
+    {
+      "method": "UMA",
+      "citation": "Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310",
+      "doi": "10.52202/085713-4310"
+    },
+    {
+      "method": "OMol25",
+      "citation": "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762",
+      "doi": "10.48550/arXiv.2505.08762"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Peters, B.; Heyden, A.; Bell, A. T.; Chakraborty, A. A growing string method for determining transition states: Comparison to the nudged elastic band and string methods. J. Chem. Phys. 120, 7877-7886 (2004). https://doi.org/10.1063/1.1691018",
+      "doi": "10.1063/1.1691018"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Zimmerman, P. M. Reliable Transition State Searches Integrated with the Growing String Method. J. Chem. Theory Comput. 9, 3043-3050 (2013). https://doi.org/10.1021/ct400319w",
+      "doi": "10.1021/ct400319w"
+    },
+    {
+      "method": "Limited-memory BFGS (L-BFGS)",
+      "citation": "Liu, D. C.; Nocedal, J. On the limited memory BFGS method for large scale optimization. Math. Program. 45, 503-528 (1989). https://doi.org/10.1007/BF01589116",
+      "doi": "10.1007/BF01589116"
+    },
+    {
+      "method": "quasi-RRHO thermochemistry",
+      "citation": "Grimme, S. Supramolecular Binding Thermodynamics by Dispersion-Corrected Density Functional Theory. Chem. Eur. J. 18, 9955-9964 (2012). https://doi.org/10.1002/chem.201200497",
+      "doi": "10.1002/chem.201200497"
+    },
+    {
+      "method": "Euler predictor-corrector IRC (EulerPC)",
+      "citation": "Hratchian, H. P.; Frisch, M. J.; Schlegel, H. B. Steepest Descent Reaction Path Integration Using a First-Order Predictor-Corrector Method. J. Chem. Phys. 133, 224101 (2010). https://doi.org/10.1063/1.3514202",
+      "doi": "10.1063/1.3514202"
+    },
+    {
+      "method": "Euler predictor-corrector IRC (EulerPC)",
+      "citation": "Hratchian, H. P.; Schlegel, H. B. Accurate Reaction Paths Using a Hessian-Based Predictor-Corrector Integrator. J. Chem. Phys. 120, 9918-9924 (2004). https://doi.org/10.1063/1.1724823",
+      "doi": "10.1063/1.1724823"
+    },
+    {
+      "method": "RFO / P-RFO",
+      "citation": "Banerjee, A.; Adams, N.; Simons, J.; Shepard, R. Search for stationary points on surfaces. J. Phys. Chem. 89, 52-57 (1985). https://doi.org/10.1021/j100247a015",
+      "doi": "10.1021/j100247a015"
+    },
+    {
+      "method": "RS-P-RFO",
+      "citation": "Besalú, E.; Bofill, J. M. On the automatic restricted-step rational-function-optimization method. Theor. Chem. Acc. 100, 265-274 (1998). https://doi.org/10.1007/s002140050387",
+      "doi": "10.1007/s002140050387"
+    }
+  ],
+  "post_segments": [
+    {
+      "index": 1,
+      "tag": "seg_001",
+      "kind": "seg",
+      "bond_changes": "C1-O1 distance change",
+      "mep_barrier_kcal": 31.38,
+      "mep_delta_kcal": -6.28,
+      "post_dir": "<TMP>/out/segments/seg_01",
+      "reference_mode": {
+        "enabled": false,
+        "status": "disabled",
+        "cache_file": null,
+        "candidate_count": 0,
+        "candidate_labels": [],
+        "reason": "--no-tsopt-from-mep-tan"
+      },
+      "tsopt": {
+        "continue_irc": true,
+        "reason": "first_order_saddle",
+        "optimization_status": "converged",
+        "saddle_validation": "first_order",
+        "hessian_status": "completed",
+        "hessian_error": null,
+        "n_imaginary_modes": 1,
+        "n_negative_modes": 1,
+        "reaction_mode_index": 0,
+        "reaction_mode_frequency_cm": -500.0,
+        "reaction_mode_overlap": 0.9,
+        "reaction_mode_source": "mep-reference-overlap",
+        "reaction_mode_fallback": false,
+        "reaction_mode_fallback_reason": null,
+        "flatten_enabled": false,
+        "skip_final_freq": false,
+        "energy_hartree": -99.95,
+        "energy_valid": true,
+        "structure_valid": true,
+        "result_json": "<TMP>/out/segments/seg_01/ts/result.json",
+        "final_structure": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz",
+        "imaginary_frequencies_cm": [
+          -500.0
+        ],
+        "frequency_zero_cutoff_cm": 5.0,
+        "imaginary_mode_criterion": "exact_phva",
+        "imaginary_frequency_threshold_cm": 5.0,
+        "n_opt_cycles": 7,
+        "max_cycles": 100000,
+        "stop_reason": "converged"
+      },
+      "ts_imag": {
+        "n_imag": 1,
+        "nu_imag_max_cm": -500.0,
+        "min_abs_imag_cm": 500.0,
+        "min_freq_cm": -500.0,
+        "frequency_zero_cutoff_cm": 5.0,
+        "n_imaginary_modes": 1,
+        "n_negative_modes": 1,
+        "optimization_status": "converged",
+        "saddle_validation": "first_order"
+      },
+      "irc_plot": "<TMP>/out/segments/seg_01/irc/irc_plot.png",
+      "irc_traj": "<TMP>/out/segments/seg_01/irc/finished_irc_trj.xyz",
+      "irc": {
+        "traj": "<TMP>/out/segments/seg_01/irc/finished_irc_trj.xyz",
+        "forward_requested": true,
+        "forward_integration_converged": true,
+        "forward_integration_stop_reason": "converged",
+        "n_frames_forward": 1,
+        "backward_requested": true,
+        "backward_integration_converged": true,
+        "backward_integration_stop_reason": "converged",
+        "n_frames_backward": 1
+      },
+      "endpoint_assignment": {
+        "method": "bond_topology",
+        "reversed": false,
+        "connectivity_validated": true,
+        "match_matrix": {
+          "left_to_mep_left": true,
+          "left_to_mep_right": false,
+          "right_to_mep_left": false,
+          "right_to_mep_right": true
+        }
+      },
+      "endpoint_opt": {
+        "reactant_converged": true,
+        "product_converged": true,
+        "reactant": {
+          "optimization_status": "converged",
+          "converged": true,
+          "n_opt_cycles": 4,
+          "max_cycles": 100000
+        },
+        "product": {
+          "optimization_status": "converged",
+          "converged": true,
+          "n_opt_cycles": 5,
+          "max_cycles": 100000
+        },
+        "connectivity_validated": true,
+        "connectivity": {
+          "source": "optimized_endpoints",
+          "method": "bond_topology",
+          "connectivity_validated": true,
+          "match_matrix": {
+            "left_to_mep_left": true,
+            "left_to_mep_right": false,
+            "right_to_mep_left": false,
+            "right_to_mep_right": true
+          }
+        }
+      },
+      "mlip": {
+        "labels": [
+          "R",
+          "TS1",
+          "P"
+        ],
+        "energies_au": [
+          -100.0,
+          -99.95,
+          -100.01
+        ],
+        "energies_kcal": [
+          0.0,
+          31.375473703143086,
+          -6.275094740632184
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_MLIP.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 31.375473703143086,
+        "delta_kcal": -6.275094740632184
+      },
+      "thermo_symmetry": {
+        "R": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        },
+        "TS": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        },
+        "P": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        }
+      },
+      "ts_imag_freq_cm": -500.0,
+      "gibbs_mlip": {
+        "labels": [
+          "R",
+          "TS1",
+          "P"
+        ],
+        "energies_au": [
+          -99.99,
+          -99.94200000000001,
+          -99.99900000000001
+        ],
+        "energies_kcal": [
+          0.0,
+          30.120454755011302,
+          -5.647585266575208
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_G_MLIP.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 30.120454755011302,
+        "delta_kcal": -5.647585266575208
+      },
+      "dft": {
+        "labels": [
+          "R",
+          "TS1",
+          "P"
+        ],
+        "energies_au": [
+          -100.25,
+          -100.2,
+          -100.26
+        ],
+        "energies_kcal": [
+          0.0,
+          31.375473703143086,
+          -6.275094740632184
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_DFT.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 31.375473703143086,
+        "delta_kcal": -6.275094740632184
+      },
+      "gibbs_dft_mlip": {
+        "labels": [
+          "R",
+          "TS1",
+          "P"
+        ],
+        "energies_au": [
+          -100.24,
+          -100.19200000000001,
+          -100.24900000000001
+        ],
+        "energies_kcal": [
+          0.0,
+          30.120454755011302,
+          -5.647585266575208
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_G_DFT_plus_MLIP.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 30.120454755011302,
+        "delta_kcal": -5.647585266575208
+      }
+    }
+  ],
+  "current_output_paths": [
+    "energy_diagram_DFT_all.png",
+    "energy_diagram_G_DFT_plus_MLIP_all.png",
+    "energy_diagram_G_MLIP_all.png",
+    "energy_diagram_MEP.png",
+    "energy_diagram_MLIP_all.png",
+    "irc_plot_all.png",
+    "mep_trj.xyz",
+    "segments/seg_01/energy_diagram_DFT.png",
+    "segments/seg_01/energy_diagram_G_DFT_plus_MLIP.png",
+    "segments/seg_01/energy_diagram_G_MLIP.png",
+    "segments/seg_01/energy_diagram_MLIP.png",
+    "segments/seg_01/irc/finished_irc_trj.xyz",
+    "segments/seg_01/irc/irc_plot.png",
+    "segments/seg_01/mep_trj.xyz",
+    "segments/seg_01/product.pdb",
+    "segments/seg_01/reactant.pdb",
+    "segments/seg_01/ts.pdb",
+    "segments/seg_01/ts/final_geometry.pdb",
+    "segments/seg_01/ts/final_geometry.xyz",
+    "segments/seg_01/ts/result.json",
+    "summary.json",
+    "summary.log"
+  ],
+  "key_output_files": {
+    "energy_diagram_DFT_all.png": "Current-run pipeline output",
+    "energy_diagram_G_DFT_plus_MLIP_all.png": "Current-run pipeline output",
+    "energy_diagram_G_MLIP_all.png": "Current-run pipeline output",
+    "energy_diagram_MEP.png": "MEP energy plot",
+    "energy_diagram_MLIP_all.png": "Current-run pipeline output",
+    "irc_plot_all.png": "Aggregated IRC plot",
+    "mep_trj.xyz": "Full MEP trajectory",
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary",
+    "seg_01": {
+      "description": "Per-segment results for seg_01",
+      "files": [
+        "energy_diagram_DFT.png",
+        "energy_diagram_G_DFT_plus_MLIP.png",
+        "energy_diagram_G_MLIP.png",
+        "energy_diagram_MLIP.png",
+        "irc/finished_irc_trj.xyz",
+        "irc/irc_plot.png",
+        "mep_trj.xyz",
+        "product.pdb",
+        "reactant.pdb",
+        "ts.pdb",
+        "ts/final_geometry.pdb",
+        "ts/final_geometry.xyz",
+        "ts/result.json"
+      ]
+    }
+  },
+  "environment": "<ENVIRONMENT>"
+}

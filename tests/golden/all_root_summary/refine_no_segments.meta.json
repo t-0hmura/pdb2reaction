@@ -1,0 +1,50 @@
+{
+ "exit_code": 1,
+ "children": [
+  [
+   "path_search",
+   "-i",
+   "<TMP>/input0.pdb",
+   "-i",
+   "<TMP>/input2.pdb",
+   "-q",
+   "0",
+   "-m",
+   "1",
+   "--no-freeze-links",
+   "--mep-mode",
+   "gsm",
+   "--opt-mode",
+   "grad",
+   "--out-dir",
+   "<TMP>/out/_work/path_search",
+   "--convert-files",
+   "--no-write-hei-mode-cache",
+   "--no-preopt"
+  ]
+ ],
+ "endpoint_calls": [],
+ "dft_calls": [],
+ "files": [
+  "_work/.run.lock",
+  "_work/_run_manifest.json",
+  "_work/path_search/summary.json",
+  "_work/path_search/summary.log",
+  "summary.json",
+  "summary.log"
+ ],
+ "manifest_produced": [
+  [
+   "path.summary",
+   "<TMP>/out/_work/path_search/summary.json"
+  ],
+  [
+   "output.public.summary.json",
+   "<TMP>/out/summary.json"
+  ],
+  [
+   "output.public.summary.log",
+   "<TMP>/out/summary.log"
+  ]
+ ]
+}

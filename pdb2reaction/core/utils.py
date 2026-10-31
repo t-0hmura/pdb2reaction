@@ -1916,14 +1916,6 @@ def set_freeze_atoms_or_warn(
         click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.", err=True)
 
 
-def read_xyz_energies(path: Path | str) -> List[float]:
-    """Extract Hartree energies with the strict shared XYZ parser."""
-    from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
-
-    parsed = read_xyz_trajectory(path, require_energies=True)
-    return [float(value) for value in parsed["energies_ha"]]
-
-
 def parse_xyz_block(
     block: Sequence[str],
     *,
@@ -2231,19 +2223,6 @@ def apply_ref_pdb_override(
         prepared_input._normalized_structures.extend(prepared_ref._normalized_structures)
         prepared_ref._normalized_structures.clear()
     return prepared_input.source_path
-
-
-def fill_charge_spin_from_gjf(
-    charge: Optional[int],
-    spin: Optional[int],
-    template: Optional[GjfTemplate],
-) -> Tuple[Optional[int], Optional[int]]:
-    if template is not None:
-        if charge is None:
-            charge = template.charge
-        if spin is None:
-            spin = template.spin
-    return charge, spin
 
 
 def fill_charge_spin_from_gjf_inputs(

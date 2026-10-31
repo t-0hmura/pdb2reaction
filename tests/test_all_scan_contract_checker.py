@@ -4,6 +4,8 @@ import ast
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 def _load_checker():
     path = (
@@ -66,3 +68,52 @@ def test_all_forwards_thresh_to_the_scan_child() -> None:
     collector = module._ForwardedScanFlags()
     collector.visit(tree)
     assert "--thresh" in collector.flags
+
+
+class ReachedScan(BaseException):
+    """Escape the parent pipeline at the scan dispatch."""
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--dump", "--scan-zero-based", "--scan-preopt", "--scan-endopt",
+         "--scan-max-step-size", "0.2", "--scan-bias-k", "100",
+         "--scan-relax-max-cycles", "50", "--thresh", "gau", "--print-every", "5",
+         "--backend", "uma", "--workers", "2", "--workers-per-node", "1",
+         "--solvent", "water", "--solvent-model", "alpb"],
+        ["--no-dump", "--scan-one-based", "--no-scan-preopt", "--no-scan-endopt"],
+    ],
+    ids=["set", "unset"],
+)
+def test_all_scan_argv_is_accepted_by_the_scan_command(tmp_path, monkeypatch, extra) -> None:
+    """Every option ``all`` forwards to ``scan`` parses with the real scan command."""
+    from click.testing import CliRunner
+
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import all as all_workflow
+    from pdb2reaction.workflows import scan as scan_workflow
+    from test_all_root_summary_golden import pdb_frame, write
+
+    captured = []
+
+    def first_child(name, _cli, args, **_kwargs):
+        captured.append((name, list(args)))
+        raise ReachedScan
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", first_child)
+    source = write(tmp_path / "input0.pdb", pdb_frame(0))
+    scan_lists = "[(0,1,1.97)]" if "--scan-zero-based" in extra else "[(1,2,1.97)]"
+    args = ["all", "-i", str(source), "-q", "0", "-m", "1",
+            "--out-dir", str(tmp_path / "out"), "--no-preopt", "--no-freeze-links",
+            "--scan-lists", scan_lists, *extra]
+    with pytest.raises(ReachedScan):
+        CliRunner().invoke(root_cli, args, catch_exceptions=False)
+
+    ((name, scan_args),) = captured
+    assert name == "scan"
+    context = scan_workflow.cli.make_context("scan", list(scan_args))
+    # The scan command keeps unknown tokens in ctx.args; none may be an option.
+    assert [token for token in context.args if token.startswith("-")] == []
+    if "--thresh" in extra:
+        assert scan_args[scan_args.index("--thresh") + 1] == "gau"

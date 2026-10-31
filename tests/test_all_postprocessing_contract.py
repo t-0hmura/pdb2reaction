@@ -266,7 +266,6 @@ def test_path_postprocessing_uses_terminal_tsopt_imaginary_mode_record(
 
     _enrich_summary(
         summary,
-        version="",
         pipeline_mode="path-opt",
         out_dir=tmp_path,
         mlip_backend="orb",

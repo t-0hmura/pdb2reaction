@@ -1,0 +1,230 @@
+{
+  "out_dir": "<TMP>/out/segments/seg_01",
+  "n_images": 1,
+  "n_segments": 1,
+  "stopped_before_irc": true,
+  "pipeline_stop": {
+    "stage": "before_irc",
+    "segment": 1,
+    "reason": "ts_optimization_not_converged",
+    "tsopt_result": {
+      "continue_irc": false,
+      "reason": "ts_optimization_not_converged",
+      "optimization_status": "not_converged",
+      "saddle_validation": "unavailable",
+      "hessian_status": "skipped",
+      "hessian_error": null,
+      "n_imaginary_modes": null,
+      "n_negative_modes": null,
+      "reaction_mode_index": null,
+      "reaction_mode_frequency_cm": null,
+      "reaction_mode_overlap": null,
+      "reaction_mode_source": null,
+      "reaction_mode_fallback": false,
+      "reaction_mode_fallback_reason": null,
+      "flatten_enabled": false,
+      "skip_final_freq": false,
+      "energy_hartree": -99.95,
+      "energy_valid": true,
+      "structure_valid": true,
+      "result_json": "<TMP>/out/segments/seg_01/ts/result.json",
+      "final_structure": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz",
+      "imaginary_frequencies_cm": null,
+      "frequency_zero_cutoff_cm": null,
+      "imaginary_mode_criterion": null,
+      "imaginary_frequency_threshold_cm": null,
+      "n_opt_cycles": 40,
+      "max_cycles": 40,
+      "stop_reason": "max_cycles_reached",
+      "files": {
+        "final_geometry": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+      },
+      "published_structure": "<TMP>/out/segments/seg_01/structures/ts.xyz"
+    }
+  },
+  "segments": [
+    {
+      "index": 1,
+      "tag": "seg_01",
+      "kind": "tsopt",
+      "converged": false,
+      "bond_changes": ""
+    }
+  ],
+  "pdb2reaction_version": "<VERSION>",
+  "schema_version": "4.0",
+  "pipeline_mode": "tsopt-only",
+  "execution_status": "completed",
+  "scientific_status": "failed",
+  "expected_item_ids": [
+    "segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1"
+  ],
+  "scientific_status_reasons": [
+    "no usable energy diagram was produced",
+    "all:segment_1:tsopt:ts_optimization_not_converged"
+  ],
+  "mlip_backend": "uma",
+  "mlip_model": "uma-s-1p2p1",
+  "mlip_model_label": "UMA-S-1.2.1 (OMol)",
+  "mlip_task": "omol",
+  "mlip_precision": "fp32",
+  "mlip_precision_post": "fp32",
+  "primary_method": "mlip",
+  "primary_method_label": "MLIP",
+  "charge": 0,
+  "spin": 1,
+  "run_id": "golden-run",
+  "n_segments_reactive": 1,
+  "command": "pdb2reaction all -i <TMP>/input1.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --tsopt --thermo",
+  "config": {
+    "refine_path": false,
+    "flatten": false,
+    "tsopt": true,
+    "thermo": true,
+    "dft": false,
+    "dft_status": null,
+    "opt_mode": "grad",
+    "opt_mode_post": "hess",
+    "path_opt_mode": null,
+    "post_opt_mode": "hess",
+    "ts_opt_mode": "hess",
+    "endpoint_opt_mode": "hess",
+    "mep_mode": "---",
+    "dmf_correlated": true
+  },
+  "references": [
+    {
+      "method": "pdb2reaction",
+      "citation": "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242",
+      "doi": "10.1021/acsomega.6c08242"
+    },
+    {
+      "method": "pysisyphus engine",
+      "citation": "Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390",
+      "doi": "10.1002/qua.26390"
+    },
+    {
+      "method": "UMA",
+      "citation": "Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310",
+      "doi": "10.52202/085713-4310"
+    },
+    {
+      "method": "OMol25",
+      "citation": "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762",
+      "doi": "10.48550/arXiv.2505.08762"
+    },
+    {
+      "method": "RFO / P-RFO",
+      "citation": "Banerjee, A.; Adams, N.; Simons, J.; Shepard, R. Search for stationary points on surfaces. J. Phys. Chem. 89, 52-57 (1985). https://doi.org/10.1021/j100247a015",
+      "doi": "10.1021/j100247a015"
+    },
+    {
+      "method": "RS-P-RFO",
+      "citation": "Besalú, E.; Bofill, J. M. On the automatic restricted-step rational-function-optimization method. Theor. Chem. Acc. 100, 265-274 (1998). https://doi.org/10.1007/s002140050387",
+      "doi": "10.1007/s002140050387"
+    }
+  ],
+  "post_segments": [
+    {
+      "index": 1,
+      "tag": "seg_01",
+      "kind": "tsopt",
+      "bond_changes": "",
+      "post_dir": "<TMP>/out/segments/seg_01",
+      "tsopt": {
+        "continue_irc": false,
+        "reason": "ts_optimization_not_converged",
+        "optimization_status": "not_converged",
+        "saddle_validation": "unavailable",
+        "hessian_status": "skipped",
+        "hessian_error": null,
+        "n_imaginary_modes": null,
+        "n_negative_modes": null,
+        "reaction_mode_index": null,
+        "reaction_mode_frequency_cm": null,
+        "reaction_mode_overlap": null,
+        "reaction_mode_source": null,
+        "reaction_mode_fallback": false,
+        "reaction_mode_fallback_reason": null,
+        "flatten_enabled": false,
+        "skip_final_freq": false,
+        "energy_hartree": -99.95,
+        "energy_valid": true,
+        "structure_valid": true,
+        "result_json": "<TMP>/out/segments/seg_01/ts/result.json",
+        "final_structure": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz",
+        "imaginary_frequencies_cm": null,
+        "frequency_zero_cutoff_cm": null,
+        "imaginary_mode_criterion": null,
+        "imaginary_frequency_threshold_cm": null,
+        "n_opt_cycles": 40,
+        "max_cycles": 40,
+        "stop_reason": "max_cycles_reached",
+        "files": {
+          "final_geometry": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+        },
+        "published_structure": "<TMP>/out/segments/seg_01/structures/ts.xyz"
+      },
+      "pipeline_stop": {
+        "stage": "before_irc",
+        "segment": 1,
+        "reason": "ts_optimization_not_converged",
+        "tsopt_result": {
+          "continue_irc": false,
+          "reason": "ts_optimization_not_converged",
+          "optimization_status": "not_converged",
+          "saddle_validation": "unavailable",
+          "hessian_status": "skipped",
+          "hessian_error": null,
+          "n_imaginary_modes": null,
+          "n_negative_modes": null,
+          "reaction_mode_index": null,
+          "reaction_mode_frequency_cm": null,
+          "reaction_mode_overlap": null,
+          "reaction_mode_source": null,
+          "reaction_mode_fallback": false,
+          "reaction_mode_fallback_reason": null,
+          "flatten_enabled": false,
+          "skip_final_freq": false,
+          "energy_hartree": -99.95,
+          "energy_valid": true,
+          "structure_valid": true,
+          "result_json": "<TMP>/out/segments/seg_01/ts/result.json",
+          "final_structure": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz",
+          "imaginary_frequencies_cm": null,
+          "frequency_zero_cutoff_cm": null,
+          "imaginary_mode_criterion": null,
+          "imaginary_frequency_threshold_cm": null,
+          "n_opt_cycles": 40,
+          "max_cycles": 40,
+          "stop_reason": "max_cycles_reached",
+          "files": {
+            "final_geometry": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+          },
+          "published_structure": "<TMP>/out/segments/seg_01/structures/ts.xyz"
+        }
+      }
+    }
+  ],
+  "current_output_paths": [
+    "segments/seg_01/structures/ts.xyz",
+    "segments/seg_01/ts/final_geometry.pdb",
+    "segments/seg_01/ts/final_geometry.xyz",
+    "segments/seg_01/ts/result.json"
+  ],
+  "key_output_files": {
+    "seg_01": {
+      "description": "Per-segment results for seg_01",
+      "files": [
+        "structures/ts.xyz",
+        "ts/final_geometry.pdb",
+        "ts/final_geometry.xyz",
+        "ts/result.json"
+      ]
+    }
+  },
+  "environment": "<ENVIRONMENT>"
+}

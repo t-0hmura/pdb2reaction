@@ -465,22 +465,22 @@ def test_multiframe_gjf_conversion_warns_that_output_is_coordinate_archive(
     assert out.exists()
 
 
-def test_read_xyz_energies_rejects_bare_integer_frame_comment(
+def test_xyz_energy_reader_rejects_bare_integer_frame_comment(
     tmp_path: Path,
 ) -> None:
-    from pdb2reaction.core.utils import read_xyz_energies
+    from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 
     trajectory = tmp_path / "frames.xyz"
     trajectory.write_text("1\n0\nH 0.0 0.0 0.0\n", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="Ambiguous integer-only"):
-        read_xyz_energies(trajectory)
+        read_xyz_trajectory(trajectory, require_energies=True)
 
 
-def test_read_xyz_energies_accepts_keyed_integer_and_decimal_values(
+def test_xyz_energy_reader_accepts_keyed_integer_and_decimal_values(
     tmp_path: Path,
 ) -> None:
-    from pdb2reaction.core.utils import read_xyz_energies
+    from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 
     trajectory = tmp_path / "energies.xyz"
     trajectory.write_text(
@@ -489,7 +489,8 @@ def test_read_xyz_energies_accepts_keyed_integer_and_decimal_values(
         encoding="utf-8",
     )
 
-    assert read_xyz_energies(trajectory) == [-100.0, -99.5]
+    parsed = read_xyz_trajectory(trajectory, require_energies=True)
+    assert [float(value) for value in parsed["energies_ha"]] == [-100.0, -99.5]
 
 
 @pytest.mark.parametrize("raw", [1, -2, 0, "3", "-1.0", 2.0, "  4  "])

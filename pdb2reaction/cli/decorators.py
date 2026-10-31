@@ -13,27 +13,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 
 import click
 
-from pdb2reaction.core.utils import deep_update, load_yaml_dict
-
-
-def resolve_yaml_sources(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    args_yaml_legacy: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    """Resolve internal YAML-source compatibility inputs.
-
-    Public commands expose one ``--config`` layer. ``override_yaml`` and
-    ``args_yaml_legacy`` remain callable compatibility inputs for embedded
-    callers; they are not additional public CLI layers.
-    """
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
+from pdb2reaction.core.utils import load_yaml_dict
 
 
 # Union of the top-level sections read by any subcommand, so a shared config file does not warn.
@@ -57,24 +37,18 @@ def _warn_unknown_yaml_sections(merged: Dict[str, Any]) -> None:
 
 def load_merged_yaml_cfg(
     config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """Load and merge YAML config and override files.
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Load the ``--config`` YAML file.
 
-    Returns ``(merged, config_dict, override_dict)`` so that callers can
-    use the individual layers for staged ``apply_yaml_overrides`` and the
-    merged dict for ``show_config`` display without re-reading the files.
+    Returns ``(merged, config_dict)``: ``config_dict`` is the layer that
+    ``apply_yaml_overrides`` applies, and ``merged`` is an independent deep
+    copy for lookups and ``show_config`` display, so changes to one never
+    reach the other.
     """
     config_dict = load_yaml_dict(config_yaml)
-    override_dict = load_yaml_dict(override_yaml)
-    # Keep the returned provenance layers immutable from the perspective of
-    # callers. ``deep_update`` assigns previously unseen nested mappings by
-    # reference, so both inputs must be copied before forming the effective
-    # tree.
     merged: Dict[str, Any] = deepcopy(config_dict)
-    deep_update(merged, deepcopy(override_dict))
     _warn_unknown_yaml_sections(merged)
-    return merged, config_dict, override_dict
+    return merged, config_dict
 
 
 def _write_error_json_with_chain(exc, klass, label):

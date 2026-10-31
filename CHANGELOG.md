@@ -20,10 +20,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `run.log` in the output directory is written while the command runs and also records output from C libraries (DMF's Ipopt), child processes and early logging handlers; rerunning into the same `-o` appends to it instead of replacing it.
 - Colab notebook: from 721 px wide the GUI fits the visible notebook pane with the header, steps and command dock on screen, Mol* clicks no longer move the camera, the Setup viewer height can be dragged, and the token cached in the runtime is read before the Colab secret.
 - Docs and skills: ORB is installed in its own environment, like MACE; the UMA model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) and offline use on compute nodes (`HF_HUB_OFFLINE=1`) are documented.
+- `--show-config` no longer prints the always-empty `override_yaml` entry (`override:` in `path-search`), and thermochemistry no longer documents the unreachable `symmetry_number_source: "override"`.
 
 ### Fixed
 
 - With `--refine-path`, the root `summary.json` keeps the provisional `partial`/`failed` verdict until post-processing finishes, so a run that stops during TS optimization no longer leaves the path-search `success` there.
+- `all` with a TS-only input: when the endpoint optimization fails, the root `summary.json` records `primary_method` and the full `config` like the other exits. An error while comparing IRC endpoints with the MEP bonds is reported as `bond_change_check_failed:<error>` instead of a bond mismatch.
 - The IRC warning for a branch that stops after a few frames names the `all` options (`--irc-step-size`, `--irc-never-stop`) when IRC runs inside `all`.
 - The optimizer progress table marks only the convergence criteria the preset checks; GSM rows no longer mark the energy and step columns, and `gau` rows no longer mark the energy change.
 

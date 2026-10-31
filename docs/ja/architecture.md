@@ -48,7 +48,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ ├── cli/ # === L1 Interface ===
 │ │ ├── app.py Click group + _LAZY_SUBCOMMANDS registry (absolute paths)
 │ │ ├── common_options.py @add_print_every_option / @add_irc_pos_def_option / @add_precision_option / @add_coord_type_option / @add_ml_charge_spin_options
-│ │ ├── decorators.py resolve_yaml_sources / load_merged_yaml_cfg / _write_error_json
+│ │ ├── decorators.py load_merged_yaml_cfg / _write_error_json
 │ │ ├── help_pages.py --help-advanced pager
 │ │ ├── bool_compat.py --flag / --no-flag normalization
 │ │ └── default_group.py subcommand resolver, lazy module import

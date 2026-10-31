@@ -125,7 +125,7 @@ from pdb2reaction.cli.common_options import (
     add_precision_option,
     add_dft_calculator_options,
 )
-from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
+from pdb2reaction.cli.decorators import run_cli, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
 
@@ -2445,21 +2445,12 @@ def cli(
             model_ref_parsed.append(p)
         model_ref_pdb_paths = tuple(model_ref_parsed)
 
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     error_stopt_cfg = dict(STOPT_KW)
     error_stopt_cfg["out_dir"] = out_dir
     apply_yaml_overrides(config_layer_cfg, [(error_stopt_cfg, (("stopt",),))])
     if cli_param_overridden(ctx, "out_dir"):
         error_stopt_cfg["out_dir"] = out_dir
-    apply_yaml_overrides(override_layer_cfg, [(error_stopt_cfg, (("stopt",),))])
     error_out_dir = Path(error_stopt_cfg["out_dir"]).resolve()
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
@@ -2541,16 +2532,6 @@ def cli(
         search_cfg = dict(SEARCH_KW)
         search_cfg["refine_mode"] = refine_mode_kind
 
-        def _apply_single_opt_yaml_layer(layer_cfg: Dict[str, Any]) -> None:
-            apply_single_opt_yaml_layer(
-                layer_cfg,
-                lbfgs_cfg=lbfgs_cfg,
-                rfo_cfg=rfo_cfg,
-                stopt_cfg=stopt_cfg,
-                opt_base_kw=OPT_BASE_KW,
-                deep_update=deep_update,
-            )
-
         apply_yaml_overrides(
             config_layer_cfg,
             [
@@ -2563,7 +2544,14 @@ def cli(
                 (search_cfg, (("search",),)),
             ],
         )
-        _apply_single_opt_yaml_layer(config_layer_cfg)
+        apply_single_opt_yaml_layer(
+            config_layer_cfg,
+            lbfgs_cfg=lbfgs_cfg,
+            rfo_cfg=rfo_cfg,
+            stopt_cfg=stopt_cfg,
+            opt_base_kw=OPT_BASE_KW,
+            deep_update=deep_update,
+        )
 
         resolved_charge = charge
         resolved_spin = spin
@@ -2642,21 +2630,6 @@ def cli(
             lbfgs_cfg["print_every"] = int(print_every)
             rfo_cfg["print_every"] = int(print_every)
 
-        # Final YAML overrides (highest precedence)
-        apply_yaml_overrides(
-            override_layer_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (dmf_cfg, (("dmf",),)),
-                (gs_cfg, (("gs",),)),
-                (stopt_cfg, (("stopt",),)),
-                (bond_cfg, (("bond",),)),
-                (search_cfg, (("search",),)),
-            ],
-        )
-        _apply_single_opt_yaml_layer(override_layer_cfg)
-
         if mep_mode_kind == "gsm" and int(
             search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", GS_KW["max_nodes"]))
         ) < 2:
@@ -2727,10 +2700,9 @@ def cli(
         else:
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
-        for layer_cfg in (config_layer_cfg, override_layer_cfg):
-            check_single_opt_yaml_conflicts(
-                layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
-            )
+        check_single_opt_yaml_conflicts(
+            config_layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
+        )
         if preopt:
             preopt_cycles = optional_positive_int(
                 single_opt_cfg.get("max_cycles"), "preopt max_cycles"
@@ -2800,7 +2772,6 @@ def cli(
                     "yaml_layers",
                     {
                         "config": None if config_yaml is None else str(config_yaml),
-                        "override": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
                 force=True)
@@ -3353,22 +3324,7 @@ def cli(
         summary["preopt_converged"] = _preopt_converged
         summary["path_optimizers"] = sorted(path_optimizers)
         _path_truth = _agg_truth(_path_leaves, _path_expected)
-        # Legacy byte-compat: `status` stays the diagram-based value it always
-        # had — "success" when an energy diagram was produced, else "partial".
-        # The endpoint-HEI demotion applies when there
-        # is no reactive segment (segments=[]), a raw R/P diagram is a diagnostic
-        # artifact only and must not read "success". All other convergence truth
-        # is carried by the additive scientific_status, not this legacy field.
-        _reactive_segs = [
-            s for s in combined_all.segments if getattr(s, "kind", "seg") != "bridge"
-        ]
-        _legacy_status = "success" if summary.get("energy_diagrams") else "partial"
-        if _legacy_status == "success" and not _reactive_segs:
-            _legacy_status = "partial"  # endpoint-HEI demotion
-        summary["status"] = _legacy_status
         _attach_outcomes(summary, truth=_path_truth, stage_outcomes=_path_leaves)
-        summary.pop("status", None)
-        summary.pop("status_reasons", None)
         record_completion(summary, command="path-search")
         from pdb2reaction.core.utils import calculator_provenance
 

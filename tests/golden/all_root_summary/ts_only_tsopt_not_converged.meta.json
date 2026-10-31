@@ -1,0 +1,75 @@
+{
+ "exit_code": 1,
+ "children": [
+  [
+   "tsopt",
+   "-i",
+   "<TMP>/input1.pdb",
+   "-q",
+   "0",
+   "-m",
+   "1",
+   "--out-dir",
+   "<TMP>/out/segments/seg_01/ts",
+   "--no-freeze-links",
+   "--convert-files",
+   "--opt-mode",
+   "hess",
+   "--ref-pdb",
+   "<TMP>/input1.pdb",
+   "--out-json"
+  ]
+ ],
+ "endpoint_calls": [],
+ "dft_calls": [],
+ "files": [
+  "_work/.run.lock",
+  "_work/_run_manifest.json",
+  "segments/seg_01/structures/ts.xyz",
+  "segments/seg_01/summary.json",
+  "segments/seg_01/summary.log",
+  "segments/seg_01/ts/final_geometry.pdb",
+  "segments/seg_01/ts/final_geometry.xyz",
+  "segments/seg_01/ts/result.json",
+  "summary.json",
+  "summary.log"
+ ],
+ "manifest_produced": [
+  [
+   "post.01.tsopt.result",
+   "<TMP>/out/segments/seg_01/ts/result.json"
+  ],
+  [
+   "output.public.segments/seg_01/ts/result.json",
+   "<TMP>/out/segments/seg_01/ts/result.json"
+  ],
+  [
+   "post.01.tsopt.geometry",
+   "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+  ],
+  [
+   "output.public.segments/seg_01/ts/final_geometry.xyz",
+   "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+  ],
+  [
+   "output.public.segments/seg_01/ts/final_geometry.pdb",
+   "<TMP>/out/segments/seg_01/ts/final_geometry.pdb"
+  ],
+  [
+   "output.public.segments/seg_01/structures/ts.xyz",
+   "<TMP>/out/segments/seg_01/structures/ts.xyz"
+  ],
+  [
+   "ts.summary.01",
+   "<TMP>/out/segments/seg_01/summary.json"
+  ],
+  [
+   "output.public.summary.json",
+   "<TMP>/out/summary.json"
+  ],
+  [
+   "output.public.summary.log",
+   "<TMP>/out/summary.log"
+  ]
+ ]
+}

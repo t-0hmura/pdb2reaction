@@ -58,7 +58,7 @@ from pdb2reaction.cli.common_options import (
     add_irc_pos_def_option,
     add_dft_calculator_options,
 )
-from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
+from pdb2reaction.cli.decorators import load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
 
@@ -522,15 +522,7 @@ def cli(
     calc_factory: Optional[str],
     irc_pos_def: Optional[bool],
 ) -> None:
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -614,15 +606,6 @@ def cli(
             # the UMA_CALC_KW default 0 when -q was not passed.
             calc_cfg["charge"] = int(resolved_charge)
             calc_cfg["spin"] = int(resolved_spin)
-
-            apply_yaml_overrides(
-                override_layer_cfg,
-                [
-                    (geom_cfg, (("geom",),)),
-                    (calc_cfg, (("calc",),)),
-                    (irc_cfg, (("irc",),)),
-                ],
-            )
             from pysisyphus.tr_projection import normalize_tr_projection_mode
             geom_cfg["tr_projection"] = normalize_tr_projection_mode(
                 geom_cfg.get("tr_projection")
@@ -698,7 +681,6 @@ def cli(
                         "yaml_layers",
                         {
                             "config": None if config_yaml is None else str(config_yaml),
-                            "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
                     force=True)
@@ -732,7 +714,6 @@ def cli(
                     geom_input_path,
                     ref_pdb,
                     config_yaml,
-                    override_yaml,
                     Path(read_hess) if read_hess else None,
                 ),
             )

@@ -1,0 +1,57 @@
+========================================================================
+pdb2reaction summary.log
+========================================================================
+Input              : pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt
+Root out_dir       : <TMP>/out
+Path module dir    : <TMP>/out/_work/path_search
+Pipeline mode      : MEP
+refine-path        : True
+TSOPT/IRC          : True
+Thermochemistry    : False
+DFT single-point   : False
+MEP mode           : gsm
+Code version       : pdb2reaction <VERSION>
+MLIP backend       : UMA
+MLIP model         : UMA-S-1.2.1 (OMol)
+MLIP precision     : fp32
+Execution status    : completed
+Scientific status   : success
+Pipeline stop       : post (no_segments)
+Total charge (ML)  : 0
+Multiplicity (2S+1): 1
+
+[1] Global MEP overview
+  Number of MEP images : 0
+  Number of segments   : 0
+
+  MEP energy diagram (ΔE, kcal/mol)
+    (no diagram available)
+
+[2] Segment-level MEP summary (MLIP path)
+  (no segment reports)
+
+[3] Per-segment post-processing (TSOPT / Thermo / DFT)
+  (no post-processing results)
+
+[4] Energy diagrams (overview)
+  (no energy diagrams recorded)
+
+[5] Output directory structure
+  out/
+  └─ summary.json  # Machine-readable results (JSON)
+
+[6] Methods and citations
+Please cite the software and methods used:
+(1) pdb2reaction:
+- Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242
+(2) pysisyphus engine:
+- Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390
+(3) UMA:
+- Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310
+(4) OMol25:
+- Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762
+(5) Growing String Method (GSM):
+- Peters, B.; Heyden, A.; Bell, A. T.; Chakraborty, A. A growing string method for determining transition states: Comparison to the nudged elastic band and string methods. J. Chem. Phys. 120, 7877-7886 (2004). https://doi.org/10.1063/1.1691018
+- Zimmerman, P. M. Reliable Transition State Searches Integrated with the Growing String Method. J. Chem. Theory Comput. 9, 3043-3050 (2013). https://doi.org/10.1021/ct400319w
+(6) Limited-memory BFGS (L-BFGS):
+- Liu, D. C.; Nocedal, J. On the limited memory BFGS method for large scale optimization. Math. Program. 45, 503-528 (1989). https://doi.org/10.1007/BF01589116

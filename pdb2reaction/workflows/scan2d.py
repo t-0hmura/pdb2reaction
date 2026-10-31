@@ -108,7 +108,6 @@ from pdb2reaction.domain.scan_coordinates import (
 from pdb2reaction.cli.decorators import (
     _write_error_json,
     load_merged_yaml_cfg,
-    resolve_yaml_sources,
 )
 from pdb2reaction.cli.common_options import (
     add_solvent_xtb_cmd_option,
@@ -453,15 +452,7 @@ def cli(
 ) -> None:
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, _ = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,

@@ -101,7 +101,7 @@ from pdb2reaction.cli.common_options import (
     add_print_every_option,
     add_dft_calculator_options,
 )
-from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
+from pdb2reaction.cli.decorators import load_merged_yaml_cfg, _write_error_json, render_cli_exception
 from pdb2reaction.io.path_mode_cache import read_reference_mode_candidates
 from pdb2reaction.workflows.freq import (
     _torch_device,
@@ -2115,19 +2115,6 @@ def _build_rsirfo_kwargs(
     return _force_ts_reject_uphill_off(rsirfo_kwargs)
 
 
-def _load_reference_mode(path: Path, expected_size: int) -> np.ndarray:
-    """Load the primary normalized mode through the shared cache reader.
-
-    Direct callers therefore use the same validation as the multi-candidate
-    TS workflow instead of maintaining a second file parser.
-    """
-
-    candidates, _labels, _metadata = read_reference_mode_candidates(
-        Path(path), int(expected_size)
-    )
-    return candidates[0]
-
-
 def _validate_reference_mode_optimizer(
     mode: str,
     reference_mode_path: Optional[Path],
@@ -2401,15 +2388,7 @@ def cli(
             "--dump-hess needs the final Hessian; drop --skip-final-freq.",
             param_hint="--dump-hess",
         )
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -2520,17 +2499,6 @@ def cli(
             else:
                 simple_cfg["flatten_max_iter"] = 0
 
-        apply_yaml_overrides(
-            override_layer_cfg,
-            [
-                (geom_cfg, (("geom",),)),
-                (calc_cfg, (("calc",),)),
-                (opt_cfg, (("opt",),)),
-                (simple_cfg, (("hessian_dimer",),)),
-                (rsirfo_cfg, (("rsirfo",),)),
-                (frequency_cfg, (("freq",),)),
-            ],
-        )
         _unused_yaml = unused_nested_yaml_sections(merged_yaml_cfg)
         if _unused_yaml:
             click.echo(
@@ -2805,7 +2773,6 @@ def cli(
                     "yaml_layers",
                     {
                         "config": None if config_yaml is None else str(config_yaml),
-                        "override_yaml": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
                 force=True)

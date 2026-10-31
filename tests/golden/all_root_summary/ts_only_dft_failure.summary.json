@@ -1,0 +1,391 @@
+{
+  "out_dir": "<TMP>/out/segments/seg_01",
+  "n_images": 3,
+  "n_segments": 1,
+  "endpoint_assignment": {
+    "policy": "higher_energy_endpoint_as_reactant",
+    "chemical_direction_known": false,
+    "left_role": "reactant",
+    "right_role": "product",
+    "left_energy_hartree": -100.0,
+    "right_energy_hartree": -100.01,
+    "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant"
+  },
+  "segments": [
+    {
+      "index": 1,
+      "tag": "seg_01",
+      "kind": "tsopt",
+      "barrier_kcal": 31.375473703143086,
+      "delta_kcal": -6.275094740632184,
+      "bond_changes": "C1-O1 distance change",
+      "endpoint_assignment": {
+        "policy": "higher_energy_endpoint_as_reactant",
+        "chemical_direction_known": false,
+        "left_role": "reactant",
+        "right_role": "product",
+        "left_energy_hartree": -100.0,
+        "right_energy_hartree": -100.01,
+        "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant"
+      }
+    }
+  ],
+  "energy_diagrams": [
+    {
+      "name": "energy_diagram_MLIP",
+      "labels": [
+        "R",
+        "TS",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        31.375473703143086,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "title": "(MLIP, TSOPT + IRC)",
+      "energies_au": [
+        -100.0,
+        -99.95,
+        -100.01
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_MLIP.png",
+      "image_written": true
+    },
+    {
+      "name": "energy_diagram_G_MLIP",
+      "labels": [
+        "R",
+        "TS",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        30.120454755011302,
+        -5.647585266575208
+      ],
+      "ylabel": "ΔG (kcal/mol)",
+      "title": "(MLIP + Thermal Correction)",
+      "energies_au": [
+        -99.99,
+        -99.94200000000001,
+        -99.99900000000001
+      ],
+      "image": "<TMP>/out/segments/seg_01/energy_diagram_G_MLIP.png",
+      "image_written": true
+    }
+  ],
+  "pdb2reaction_version": "<VERSION>",
+  "schema_version": "4.0",
+  "pipeline_mode": "tsopt-only",
+  "execution_status": "completed",
+  "scientific_status": "partial",
+  "expected_item_ids": [
+    "segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1"
+  ],
+  "scientific_status_reasons": [
+    "segment 1: DFT failed (P)",
+    "segment 1: DFT//MLIP thermochemistry result is missing",
+    "DFT failed for one or more TS-only states"
+  ],
+  "mlip_backend": "uma",
+  "mlip_model": "uma-s-1p2p1",
+  "mlip_model_label": "UMA-S-1.2.1 (OMol)",
+  "mlip_task": "omol",
+  "mlip_precision": "fp32",
+  "mlip_precision_post": "fp32",
+  "primary_method": "mlip",
+  "primary_method_label": "MLIP",
+  "charge": 0,
+  "spin": 1,
+  "run_id": "golden-run",
+  "n_segments_reactive": 1,
+  "rate_limiting_step": {
+    "segment": 1,
+    "barrier_kcal": 30.12,
+    "method": "MLIP_Gibbs"
+  },
+  "overall_reaction_energy_kcal": -5.65,
+  "overall_reaction_energy_method": "MLIP_Gibbs",
+  "command": "pdb2reaction all -i <TMP>/input1.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --tsopt --thermo --dft",
+  "config": {
+    "refine_path": false,
+    "flatten": false,
+    "tsopt": true,
+    "thermo": true,
+    "dft": true,
+    "dft_status": "failed",
+    "dft_func_basis": "wb97m-v/def2-svp",
+    "opt_mode": "grad",
+    "opt_mode_post": "hess",
+    "path_opt_mode": null,
+    "post_opt_mode": "hess",
+    "ts_opt_mode": "hess",
+    "endpoint_opt_mode": "hess",
+    "mep_mode": "---",
+    "dmf_correlated": true
+  },
+  "references": [
+    {
+      "method": "pdb2reaction",
+      "citation": "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242",
+      "doi": "10.1021/acsomega.6c08242"
+    },
+    {
+      "method": "pysisyphus engine",
+      "citation": "Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390",
+      "doi": "10.1002/qua.26390"
+    },
+    {
+      "method": "UMA",
+      "citation": "Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310",
+      "doi": "10.52202/085713-4310"
+    },
+    {
+      "method": "OMol25",
+      "citation": "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762",
+      "doi": "10.48550/arXiv.2505.08762"
+    },
+    {
+      "method": "quasi-RRHO thermochemistry",
+      "citation": "Grimme, S. Supramolecular Binding Thermodynamics by Dispersion-Corrected Density Functional Theory. Chem. Eur. J. 18, 9955-9964 (2012). https://doi.org/10.1002/chem.201200497",
+      "doi": "10.1002/chem.201200497"
+    },
+    {
+      "method": "Euler predictor-corrector IRC (EulerPC)",
+      "citation": "Hratchian, H. P.; Frisch, M. J.; Schlegel, H. B. Steepest Descent Reaction Path Integration Using a First-Order Predictor-Corrector Method. J. Chem. Phys. 133, 224101 (2010). https://doi.org/10.1063/1.3514202",
+      "doi": "10.1063/1.3514202"
+    },
+    {
+      "method": "Euler predictor-corrector IRC (EulerPC)",
+      "citation": "Hratchian, H. P.; Schlegel, H. B. Accurate Reaction Paths Using a Hessian-Based Predictor-Corrector Integrator. J. Chem. Phys. 120, 9918-9924 (2004). https://doi.org/10.1063/1.1724823",
+      "doi": "10.1063/1.1724823"
+    },
+    {
+      "method": "RFO / P-RFO",
+      "citation": "Banerjee, A.; Adams, N.; Simons, J.; Shepard, R. Search for stationary points on surfaces. J. Phys. Chem. 89, 52-57 (1985). https://doi.org/10.1021/j100247a015",
+      "doi": "10.1021/j100247a015"
+    },
+    {
+      "method": "RS-P-RFO",
+      "citation": "Besalú, E.; Bofill, J. M. On the automatic restricted-step rational-function-optimization method. Theor. Chem. Acc. 100, 265-274 (1998). https://doi.org/10.1007/s002140050387",
+      "doi": "10.1007/s002140050387"
+    }
+  ],
+  "current_output_paths": [
+    "energy_diagram_G_MLIP_all.png",
+    "energy_diagram_MLIP_all.png",
+    "irc_plot_all.png",
+    "segments/seg_01/energy_diagram_G_MLIP.png",
+    "segments/seg_01/energy_diagram_MLIP.png",
+    "segments/seg_01/irc/finished_irc.pdb",
+    "segments/seg_01/irc/finished_irc_trj.xyz",
+    "segments/seg_01/irc/irc_plot.png",
+    "segments/seg_01/product.pdb",
+    "segments/seg_01/reactant.pdb",
+    "segments/seg_01/ts.pdb",
+    "segments/seg_01/ts/final_geometry.pdb",
+    "segments/seg_01/ts/final_geometry.xyz",
+    "segments/seg_01/ts/result.json",
+    "summary.json",
+    "summary.log"
+  ],
+  "key_output_files": {
+    "energy_diagram_G_MLIP_all.png": "Current-run pipeline output",
+    "energy_diagram_MLIP_all.png": "Current-run pipeline output",
+    "irc_plot_all.png": "Aggregated IRC plot",
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary",
+    "seg_01": {
+      "description": "Per-segment results for seg_01",
+      "files": [
+        "energy_diagram_G_MLIP.png",
+        "energy_diagram_MLIP.png",
+        "irc/finished_irc.pdb",
+        "irc/finished_irc_trj.xyz",
+        "irc/irc_plot.png",
+        "product.pdb",
+        "reactant.pdb",
+        "ts.pdb",
+        "ts/final_geometry.pdb",
+        "ts/final_geometry.xyz",
+        "ts/result.json"
+      ]
+    }
+  },
+  "environment": "<ENVIRONMENT>",
+  "post_segments": [
+    {
+      "index": 1,
+      "tag": "seg_01",
+      "kind": "tsopt",
+      "bond_changes": "C1-O1 distance change",
+      "post_dir": "<TMP>/out/segments/seg_01",
+      "irc_plot": "<TMP>/out/segments/seg_01/irc/irc_plot.png",
+      "irc_traj": "<TMP>/out/segments/seg_01/irc/finished_irc_trj.xyz",
+      "irc": {
+        "traj": "<TMP>/out/segments/seg_01/irc/finished_irc_trj.xyz",
+        "forward_requested": true,
+        "forward_integration_converged": true,
+        "forward_integration_stop_reason": "converged",
+        "n_frames_forward": 1,
+        "backward_requested": true,
+        "backward_integration_converged": true,
+        "backward_integration_stop_reason": "converged",
+        "n_frames_backward": 1
+      },
+      "endpoint_opt": {
+        "reactant_converged": true,
+        "product_converged": true,
+        "reactant": {
+          "optimization_status": "converged",
+          "converged": true,
+          "n_opt_cycles": 4,
+          "max_cycles": 100000
+        },
+        "product": {
+          "optimization_status": "converged",
+          "converged": true,
+          "n_opt_cycles": 5,
+          "max_cycles": 100000
+        }
+      },
+      "endpoint_assignment": {
+        "policy": "higher_energy_endpoint_as_reactant",
+        "chemical_direction_known": false,
+        "left_role": "reactant",
+        "right_role": "product",
+        "left_energy_hartree": -100.0,
+        "right_energy_hartree": -100.01,
+        "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant"
+      },
+      "tsopt": {
+        "continue_irc": true,
+        "reason": "first_order_saddle",
+        "optimization_status": "converged",
+        "saddle_validation": "first_order",
+        "hessian_status": "completed",
+        "hessian_error": null,
+        "n_imaginary_modes": 1,
+        "n_negative_modes": 1,
+        "reaction_mode_index": 0,
+        "reaction_mode_frequency_cm": -500.0,
+        "reaction_mode_overlap": 0.9,
+        "reaction_mode_source": "mep-reference-overlap",
+        "reaction_mode_fallback": false,
+        "reaction_mode_fallback_reason": null,
+        "flatten_enabled": false,
+        "skip_final_freq": false,
+        "energy_hartree": -99.95,
+        "energy_valid": true,
+        "structure_valid": true,
+        "result_json": "<TMP>/out/segments/seg_01/ts/result.json",
+        "final_structure": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz",
+        "imaginary_frequencies_cm": [
+          -500.0
+        ],
+        "frequency_zero_cutoff_cm": 5.0,
+        "imaginary_mode_criterion": "exact_phva",
+        "imaginary_frequency_threshold_cm": 5.0,
+        "n_opt_cycles": 7,
+        "max_cycles": 100000,
+        "stop_reason": "converged",
+        "files": {
+          "final_geometry": "<TMP>/out/segments/seg_01/ts/final_geometry.xyz"
+        }
+      },
+      "ts_imag": {
+        "n_imag": 1,
+        "nu_imag_max_cm": -500.0,
+        "min_abs_imag_cm": 500.0,
+        "min_freq_cm": -500.0,
+        "frequency_zero_cutoff_cm": 5.0,
+        "n_imaginary_modes": 1,
+        "n_negative_modes": 1,
+        "optimization_status": "converged",
+        "saddle_validation": "first_order"
+      },
+      "ts_imag_freq_cm": -500.0,
+      "thermo_symmetry": {
+        "R": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        },
+        "TS": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        },
+        "P": {
+          "symmetry_number": 1,
+          "symmetry_number_source": "fixture",
+          "point_group": "C*v",
+          "point_group_source": "fixture"
+        }
+      },
+      "mlip": {
+        "labels": [
+          "R",
+          "TS",
+          "P"
+        ],
+        "energies_au": [
+          -100.0,
+          -99.95,
+          -100.01
+        ],
+        "energies_kcal": [
+          0.0,
+          31.375473703143086,
+          -6.275094740632184
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_MLIP.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 31.375473703143086,
+        "delta_kcal": -6.275094740632184
+      },
+      "gibbs_mlip": {
+        "labels": [
+          "R",
+          "TS",
+          "P"
+        ],
+        "energies_au": [
+          -99.99,
+          -99.94200000000001,
+          -99.99900000000001
+        ],
+        "energies_kcal": [
+          0.0,
+          30.120454755011302,
+          -5.647585266575208
+        ],
+        "diagram": "<TMP>/out/segments/seg_01/energy_diagram_G_MLIP.png",
+        "structures": {
+          "R": "<TMP>/out/segments/seg_01/structures/reactant.xyz",
+          "TS": "<TMP>/out/segments/seg_01/structures/ts.xyz",
+          "P": "<TMP>/out/segments/seg_01/structures/product.xyz"
+        },
+        "barrier_kcal": 30.120454755011302,
+        "delta_kcal": -5.647585266575208
+      },
+      "dft": {
+        "scientific_status": "failed",
+        "failed_states": [
+          "P"
+        ]
+      }
+    }
+  ]
+}

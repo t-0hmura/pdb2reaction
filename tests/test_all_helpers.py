@@ -48,23 +48,6 @@ def test_ts_status_validates_existing_finite_structure_and_energy(tmp_path: Path
 
 
 @pytest.mark.parametrize(
-    ("names", "expected"),
-    [
-        (("reactant.pdb", "product.pdb"), ".pdb"),
-        (("reactant.cif", "product.cif"), ".cif"),
-        (("reactant.mmcif", "product.mmcif"), ".cif"),
-        (("reactant.pdb", "product.cif"), ".cif"),
-    ],
-)
-def test_public_merged_coordinate_suffix_tracks_original_input_format(
-    names: tuple[str, ...], expected: str
-) -> None:
-    from pdb2reaction.workflows.all import _public_merged_coordinate_suffix
-
-    assert _public_merged_coordinate_suffix(tuple(Path(name) for name in names)) == expected
-
-
-@pytest.mark.parametrize(
     ("kwargs", "message"),
     [
         (
@@ -776,7 +759,6 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
     }
     result = _enrich_summary(
         summary,
-        version="",
         pipeline_mode="path-opt",
         mlip_backend="mace",
         mlip_model="MACE-OMOL-0",
@@ -844,7 +826,6 @@ def test_enrich_summary_labels_primary_dft_compatibility_energy_keys(
                 }
             ],
         },
-        version="",
         pipeline_mode="path-opt",
         mlip_backend="dft",
         mlip_model="hf/sto-3g",
@@ -868,7 +849,6 @@ def test_enrich_summary_only_adds_omol25_for_omol(tmp_path: Path) -> None:
 
     result = _enrich_summary(
         {"segments": [], "energy_diagrams": []},
-        version="",
         pipeline_mode="path-opt",
         mlip_backend="uma",
         mlip_model="uma-s-1p2",
@@ -915,7 +895,6 @@ def test_enrich_summary_labels_overall_reaction_energy_method(tmp_path: Path) ->
                 }
             ],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="orb",
         mlip_model="orb-v3",
@@ -949,7 +928,6 @@ def test_tsonly_reenrichment_uses_local_diagram_and_post_method(
         ],
     }
     common = {
-        "version": "",
         "pipeline_mode": "tsopt-only",
         "mlip_backend": "mace",
         "mlip_model": "MACE-OMOL-0",
@@ -995,7 +973,6 @@ def test_enrich_summary_rate_limiting_uses_highest_complete_method(tmp_path: Pat
                 {"name": "energy_diagram_DFT_all", "energies_kcal": [0, 31, -3]},
             ],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="orb",
         mlip_model="orb-v3",
@@ -1030,7 +1007,6 @@ def test_enrich_summary_does_not_mix_partial_high_level_methods(tmp_path: Path) 
                 {"name": "energy_diagram_MLIP_all", "energies_kcal": [0, 12, -2]},
             ],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="mace",
         mlip_model="MACE-OMOL-0",
@@ -1056,7 +1032,6 @@ def test_enrich_summary_marks_requested_dft_failure_partial(tmp_path: Path) -> N
             "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_MEP"}],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="orb",
         mlip_model="orb-v3",
@@ -1084,7 +1059,6 @@ def test_enrich_summary_keeps_thermochemistry_count_diagnostic(tmp_path: Path) -
             "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_G_MLIP_all"}],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="mace",
         mlip_model="MACE-OMOL-0",
@@ -1113,7 +1087,6 @@ def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Pa
             "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_G_DFT_plus_MLIP_all"}],
         },
-        version="",
         pipeline_mode="path-search",
         mlip_backend="uma",
         mlip_model="uma-s-1p2",
@@ -1196,6 +1169,60 @@ def test_irc_endpoint_topology_tie_uses_rmsd_and_records_provenance(
     assert assignment["method"] == "rmsd_topology_tie"
     assert assignment["rmsd_swapped"] < assignment["rmsd_direct"]
     assert assignment["connectivity_validated"] is True
+
+
+def test_irc_endpoint_bond_check_error_is_recorded_as_the_reason(
+    monkeypatch,
+    tmp_path,
+):
+    """A failed bond-change check stays an error, not a topology mismatch."""
+    from pdb2reaction.workflows import all as workflow
+
+    left, right, mep_left, mep_right = object(), object(), object(), object()
+    generated = iter((mep_left, mep_right))
+    monkeypatch.setattr(
+        workflow,
+        "read_xyz_first_last",
+        lambda _path: (["C"], [[0.0, 0.0, 0.0]], [[1.0, 0.0, 0.0]]),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_geom_from_angstrom",
+        lambda *_args, **_kwargs: next(generated),
+    )
+
+    def failing_check(*_args, **_kwargs):
+        raise RuntimeError("bond table unavailable")
+
+    monkeypatch.setattr(workflow._path_search, "has_bond_change", failing_check)
+    scores = {
+        (left, mep_left): 4.0,
+        (left, mep_right): 1.0,
+        (right, mep_left): 1.0,
+        (right, mep_right): 4.0,
+    }
+    monkeypatch.setattr(
+        workflow._path_search,
+        "_rmsd_between",
+        lambda first, second: scores[(first, second)],
+    )
+
+    oriented_left, oriented_right, *_tags, reversed_irc, assignment = (
+        workflow._orient_irc_endpoints(
+            left,
+            right,
+            endpoint_trajectory=tmp_path / "mep.xyz",
+            freeze_atoms=[],
+            seg_tag="seg_01",
+        )
+    )
+
+    # The RMSD fallback still orients the endpoints.
+    assert (oriented_left, oriented_right) == (right, left)
+    assert reversed_irc is True
+    assert assignment["method"] == "rmsd_topology_unmatched"
+    assert assignment["connectivity_validated"] is False
+    assert assignment["reason"] == "bond_change_check_failed:bond table unavailable"
 
 
 def test_optimized_endpoint_validation_requires_assigned_direct_pair(

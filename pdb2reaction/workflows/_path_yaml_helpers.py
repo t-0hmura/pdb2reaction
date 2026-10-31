@@ -15,38 +15,15 @@ in two of these places is rejected instead of one value silently winning.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Tuple
 
 import click
+
+from pdb2reaction.core.utils import _get_mapping_section as _mapping_section
 
 _SINGLE_OPT_KINDS: Tuple[str, ...] = ("lbfgs", "rfo")
 # The path workflows set these per segment, so differing YAML values are not a conflict.
 _PER_RUN_OPT_KEYS = frozenset({"out_dir", "prefix"})
-
-
-def _mapping_section(
-    layer_cfg: Mapping[str, Any], path: Sequence[str]
-) -> Optional[Dict[str, Any]]:
-    """Return a YAML section; ``None`` when absent or empty, an error when not a mapping."""
-    path = tuple(path)
-    cur: Any = layer_cfg
-    for depth, key in enumerate(path):
-        if not isinstance(cur, Mapping):
-            raise click.BadParameter(
-                f"YAML section '{'.'.join(path[:depth])}' must be a mapping, "
-                f"got {type(cur).__name__}."
-            )
-        if key not in cur:
-            return None
-        cur = cur[key]
-        if cur is None:
-            return None
-    if not isinstance(cur, dict):
-        raise click.BadParameter(
-            f"YAML section '{'.'.join(path)}' must be a mapping, got "
-            f"{type(cur).__name__}."
-        )
-    return cur
 
 
 def _merged_kind_section(
@@ -83,8 +60,7 @@ def apply_single_opt_yaml_layer(
 
     Mutates ``lbfgs_cfg`` and ``rfo_cfg`` in place and removes the nested
     ``lbfgs``/``rfo`` sections that the ``stopt`` route copied into
-    ``stopt_cfg``. ``deep_update`` is taken as a parameter so this module
-    stays free of upward imports from ``pdb2reaction.core.utils``.
+    ``stopt_cfg``.
     """
     if not isinstance(layer_cfg, dict):
         return

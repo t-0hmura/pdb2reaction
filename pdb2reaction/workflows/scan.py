@@ -14,7 +14,7 @@ from __future__ import annotations
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import logging
 import ast
@@ -80,7 +80,6 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.cli.decorators import (
     load_merged_yaml_cfg,
-    resolve_yaml_sources,
     run_cli,
 )
 from pdb2reaction.cli.common_options import (
@@ -192,18 +191,6 @@ def _assemble_bidirectional_trajectory(
 ) -> list[str]:
     """Return start-to-center-to-end frames with one explicit center."""
     return [*reversed(first_pass), center_frame, *second_pass]
-
-
-def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
-    """
-    coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs.
-    """
-    dists: List[float] = []
-    for i, j in pairs:
-        v = coords_ang[i] - coords_ang[j]
-        d = float(np.linalg.norm(v))
-        dists.append(d)
-    return dists
 
 
 def _schedule_for_stage(
@@ -359,15 +346,7 @@ def cli(
     calc_factory: Optional[str],
 ) -> None:
     set_convert_file_enabled(convert_files)
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, _ = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,

@@ -67,7 +67,6 @@ from pdb2reaction.cli.common_options import (
 from pdb2reaction.cli.decorators import (
     _write_error_json,
     load_merged_yaml_cfg,
-    resolve_yaml_sources,
 )
 logger = logging.getLogger(__name__)
 
@@ -179,12 +178,7 @@ def cli(
     calc_factory: Optional[str],
 ) -> None:
     """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
-    config_yaml, _override, _legacy = resolve_yaml_sources(
-        config_yaml=config_yaml, override_yaml=None, args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, _override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml, override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,

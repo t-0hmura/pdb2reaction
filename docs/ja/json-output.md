@@ -175,7 +175,7 @@ cat result_opt/result.json | python -m json.tool
 | `point_group` | string | 自動判定した分子点群 |
 | `point_group_source` | string | `"auto"` または保守的なフォールバックを示す `"auto-fallback"` |
 | `symmetry_number` | int | 外部回転対称数 |
-| `symmetry_number_source` | string | `"auto"` / `"auto-fallback"` / `"config"` / `"override"` |
+| `symmetry_number_source` | string | `"auto"` / `"auto-fallback"` / `"config"` |
 | `electronic_energy_ha` | float | Hartree |
 | `zpe_correction_ha` | float | Hartree |
 | `thermal_correction_energy_ha` | float | Hartree |

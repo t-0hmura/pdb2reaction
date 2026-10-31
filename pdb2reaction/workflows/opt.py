@@ -87,7 +87,7 @@ from pdb2reaction.cli.common_options import (
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_dft_calculator_options,
 )
-from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
+from pdb2reaction.cli.decorators import run_cli, load_merged_yaml_cfg
 from pdb2reaction.workflows.freq import (
     _torch_device,
     _safe_masses_amu,
@@ -608,15 +608,7 @@ def cli(
 ) -> None:
     time_start = time.perf_counter()
 
-    config_yaml, override_yaml, _ = resolve_yaml_sources(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        args_yaml_legacy=None,
-    )
-    merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
-        config_yaml=config_yaml,
-        override_yaml=None,
-    )
+    merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -628,10 +620,6 @@ def cli(
     )
     if cli_param_overridden(ctx, "out_dir"):
         error_opt_cfg["out_dir"] = out_dir
-    apply_yaml_overrides(
-        override_layer_cfg,
-        [(error_opt_cfg, (("opt",),))],
-    )
     error_out_dir = Path(error_opt_cfg["out_dir"]).resolve()
 
     set_convert_file_enabled(convert_files)
@@ -720,17 +708,6 @@ def cli(
             if stop_plateau_window is not None:
                 opt_cfg["energy_plateau_window"] = int(stop_plateau_window)
 
-            apply_yaml_overrides(
-                override_layer_cfg,
-                [
-                    (geom_cfg, (("geom",),)),
-                    (calc_cfg, (("calc",),)),
-                    (opt_cfg, (("opt",),)),
-                    (lbfgs_cfg, (("lbfgs",), ("opt", "lbfgs"))),
-                    (rfo_cfg, (("rfo",), ("opt", "rfo"))),
-                    (frequency_cfg, (("freq",),)),
-                ],
-            )
             frequency_zero_cutoff_cm = normalize_frequency_zero_cutoff_cm(
                 frequency_cfg["zero_cutoff_cm"]
             )
@@ -828,7 +805,6 @@ def cli(
                         "yaml_layers",
                         {
                             "config": None if config_yaml is None else str(config_yaml),
-                            "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
                     force=True)

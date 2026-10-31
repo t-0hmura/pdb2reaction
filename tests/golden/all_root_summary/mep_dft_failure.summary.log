@@ -1,0 +1,182 @@
+========================================================================
+pdb2reaction summary.log
+========================================================================
+Input              : pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --tsopt --thermo --dft
+Root out_dir       : <TMP>/out
+Path module dir    : <TMP>/out/_work/path_opt
+Pipeline mode      : MEP
+refine-path        : False
+TSOPT/IRC          : True
+Thermochemistry    : True
+DFT single-point   : True
+DFT functional/basis: wb97m-v/def2-svp
+TS optimization    : hess (RS-P-RFO)
+IRC endpoint optimization: hess (RFO)
+MEP mode           : gsm
+Code version       : pdb2reaction <VERSION>
+MLIP backend       : UMA
+MLIP model         : UMA-S-1.2.1 (OMol)
+MLIP precision     : fp32
+Execution status    : completed
+Scientific status   : partial
+RESULT WARNING      : Segment 1: DFT failed. Review the DFT output.
+RESULT WARNING      : Segment 1: the DFT//MLIP thermochemistry result is missing. Review the DFT and frequency outputs.
+Total charge (ML)  : 0
+Multiplicity (2S+1): 1
+
+[1] Global MEP overview
+  Number of MEP images : 3
+  Number of segments   : 1
+  MEP trajectory (PDB) : mep_trj.pdb
+  MEP energy plot      : energy_diagram_MEP.png
+
+  MEP energy diagram (ΔE, kcal/mol)
+    Image : _work/path_opt/energy_diagram_mep.png
+    State    ΔE [kcal/mol]
+        R          0.0000
+        TS1       31.3755
+        P         -6.2751
+
+[2] Segment-level MEP summary (MLIP path)
+  - Segment 01 [seg]  tag=seg_001
+      ΔE‡ =   31.38 kcal/mol,  ΔE =   -6.28 kcal/mol  [MEP]
+      Bond changes:
+      C1-O1 distance change
+
+[3] Per-segment post-processing (TSOPT / Thermo / DFT)
+  === Segment 01 (seg) tag=seg_001 ===
+    Post-process dir : segments/seg_01
+    TS imaginary freq:
+      n_imag       : 1
+      zero cutoff  : 5.00 cm^-1
+      ν_imag (max) : -500.0 cm^-1
+      NOTE         : OK (single imaginary mode)
+    Thermo symmetry   : R=1 (fixture), TS=1 (fixture), P=1 (fixture)
+    IRC plot         : segments/seg_01/irc/irc_plot.png
+    IRC trajectory   : segments/seg_01/irc/finished_irc_trj.xyz
+    -- MLIP energies (TSOPT+IRC) --
+       State   Abs [Eh]          Rel [kcal/mol]
+        R          -100.000000            0.0000
+        TS1         -99.950000           31.3755
+        P          -100.010000           -6.2751
+       Diagram  : segments/seg_01/energy_diagram_MLIP.png
+       Structures:
+         R: segments/seg_01/structures/reactant.xyz
+         TS: segments/seg_01/structures/ts.xyz
+         P: segments/seg_01/structures/product.xyz
+    -- MLIP Gibbs (thermo) --
+       State   Abs [Eh]          Rel [kcal/mol]
+        R           -99.990000            0.0000
+        TS1         -99.942000           30.1205
+        P           -99.999000           -5.6476
+       Diagram  : segments/seg_01/energy_diagram_G_MLIP.png
+       Structures:
+         R: segments/seg_01/structures/reactant.xyz
+         TS: segments/seg_01/structures/ts.xyz
+         P: segments/seg_01/structures/product.xyz
+    -- DFT single-point --
+       State   Abs [Eh]          Rel [kcal/mol]
+        R                  n/a               n/a
+        TS                 n/a               n/a
+        P                  n/a               n/a
+
+  Segment overview table
+    Seg                        1(seg_001)
+    MEP ΔE‡ [kcal/mol]              31.38
+    MEP ΔE  [kcal/mol]              -6.28
+    MLIP ΔE‡ [kcal/mol]             31.38
+    MLIP ΔE  [kcal/mol]             -6.28
+    MLIP ΔG‡ [kcal/mol]             30.12
+    MLIP ΔG  [kcal/mol]             -5.65
+    DFT ΔE‡ [kcal/mol]                ---
+    DFT ΔE  [kcal/mol]                ---
+    DFT//MLIP ΔG‡ [kcal/mol]          ---
+    DFT//MLIP ΔG  [kcal/mol]          ---
+
+[4] Energy diagrams (overview)
+  energy_diagram_mep  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.375
+        P        -6.275
+    Image : _work/path_opt/energy_diagram_mep.png
+  energy_diagram_MLIP  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.375
+        P        -6.275
+    Image : segments/seg_01/energy_diagram_MLIP.png
+  energy_diagram_G_MLIP  (ylabel: ΔG (kcal/mol))
+    State   ΔG [kcal/mol]
+        R         0.000
+        TS1      30.120
+        P        -5.648
+    Image : segments/seg_01/energy_diagram_G_MLIP.png
+  energy_diagram_MLIP_all  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.375
+        P        -6.275
+    Image : energy_diagram_MLIP_all.png
+  energy_diagram_G_MLIP_all  (ylabel: ΔG (kcal/mol))
+    State   ΔG [kcal/mol]
+        R         0.000
+        TS1      30.120
+        P        -5.648
+    Image : energy_diagram_G_MLIP_all.png
+
+  Energy diagram overview table
+    State                            R     TS1       P
+    MEP ΔE  [kcal/mol]            0.00   31.38   -6.28
+    MLIP ΔE  [kcal/mol]           0.00   31.38   -6.28
+    MLIP ΔG  [kcal/mol]           0.00   30.12   -5.65
+    DFT//MLIP ΔE  [kcal/mol]       ---     ---     ---
+    DFT//MLIP ΔG  [kcal/mol]       ---     ---     ---
+
+[5] Output directory structure
+  out/
+  ├─ segments/
+  │  └─ seg_01/
+  │     ├─ irc/
+  │     │  ├─ finished_irc_trj.xyz
+  │     │  └─ irc_plot.png
+  │     ├─ ts/
+  │     │  ├─ final_geometry.pdb
+  │     │  ├─ final_geometry.xyz
+  │     │  └─ result.json
+  │     ├─ energy_diagram_G_MLIP.png
+  │     ├─ energy_diagram_MLIP.png
+  │     ├─ product.pdb
+  │     ├─ reactant.pdb
+  │     └─ ts.pdb
+  ├─ energy_diagram_G_MLIP_all.png  # MLIP Gibbs R–TS–P (all segments)
+  ├─ energy_diagram_MEP.png  # Compressed MEP diagram
+  ├─ energy_diagram_MLIP_all.png  # MLIP R–TS–P energies (all segments)
+  ├─ irc_plot_all.png  # Aggregated IRC plot
+  ├─ mep_trj.pdb  # Full MEP as single PDB (all segments)
+  ├─ mep_trj.xyz  # Full MEP as XYZ trajectory
+  ├─ summary.json  # Machine-readable results (JSON)
+  └─ summary.log  # Human-readable results summary
+
+[6] Methods and citations
+Please cite the software and methods used:
+(1) pdb2reaction:
+- Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242
+(2) pysisyphus engine:
+- Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390
+(3) UMA:
+- Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310
+(4) OMol25:
+- Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762
+(5) Growing String Method (GSM):
+- Peters, B.; Heyden, A.; Bell, A. T.; Chakraborty, A. A growing string method for determining transition states: Comparison to the nudged elastic band and string methods. J. Chem. Phys. 120, 7877-7886 (2004). https://doi.org/10.1063/1.1691018
+- Zimmerman, P. M. Reliable Transition State Searches Integrated with the Growing String Method. J. Chem. Theory Comput. 9, 3043-3050 (2013). https://doi.org/10.1021/ct400319w
+(6) quasi-RRHO thermochemistry:
+- Grimme, S. Supramolecular Binding Thermodynamics by Dispersion-Corrected Density Functional Theory. Chem. Eur. J. 18, 9955-9964 (2012). https://doi.org/10.1002/chem.201200497
+(7) Euler predictor-corrector IRC (EulerPC):
+- Hratchian, H. P.; Frisch, M. J.; Schlegel, H. B. Steepest Descent Reaction Path Integration Using a First-Order Predictor-Corrector Method. J. Chem. Phys. 133, 224101 (2010). https://doi.org/10.1063/1.3514202
+- Hratchian, H. P.; Schlegel, H. B. Accurate Reaction Paths Using a Hessian-Based Predictor-Corrector Integrator. J. Chem. Phys. 120, 9918-9924 (2004). https://doi.org/10.1063/1.1724823
+(8) RFO / P-RFO:
+- Banerjee, A.; Adams, N.; Simons, J.; Shepard, R. Search for stationary points on surfaces. J. Phys. Chem. 89, 52-57 (1985). https://doi.org/10.1021/j100247a015
+(9) RS-P-RFO:
+- Besalú, E.; Bofill, J. M. On the automatic restricted-step rational-function-optimization method. Theor. Chem. Acc. 100, 265-274 (1998). https://doi.org/10.1007/s002140050387

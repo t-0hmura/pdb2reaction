@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from typing import Set
 
@@ -13,6 +12,7 @@ from click.testing import CliRunner
 from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.workflows import all as all_workflow
 from pdb2reaction.workflows.path_opt import resolve_dmf_solve_tol
+from test_all_root_summary_golden import pdb_frame, write
 
 MEP_FLAGS = ("--gsm-param", "--thresh-gsm", "--thresh-dmf")
 
@@ -21,43 +21,6 @@ def _declared_flags(cli: click.Command) -> Set[str]:
     flags: Set[str] = set()
     for param in cli.params:
         flags.update(param.opts)
-    return flags
-
-
-def _flags_forwarded_to(var_name: str) -> Set[str]:
-    """Collect literal long options appended to ``var_name`` inside ``all.py``."""
-    tree = ast.parse(Path(all_workflow.__file__).read_text(encoding="utf-8"))
-    flags: Set[str] = set()
-
-    def _literals(node: ast.AST) -> Set[str]:
-        return {
-            child.value.strip()
-            for child in ast.walk(node)
-            if isinstance(child, ast.Constant)
-            and isinstance(child.value, str)
-            and child.value.strip().startswith("--")
-        }
-
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        func = node.func
-        if (
-            isinstance(func, ast.Attribute)
-            and func.attr in {"append", "extend"}
-            and isinstance(func.value, ast.Name)
-            and func.value.id == var_name
-        ):
-            for arg in node.args:
-                flags.update(_literals(arg))
-        if (
-            isinstance(func, ast.Name)
-            and func.id in {"_append_cli_arg", "_append_toggle_arg"}
-            and len(node.args) >= 2
-            and isinstance(node.args[0], ast.Name)
-            and node.args[0].id == var_name
-        ):
-            flags.update(_literals(node.args[1]))
     return flags
 
 
@@ -71,11 +34,38 @@ def test_parent_and_mep_children_declare_the_same_flags() -> None:
         assert flag in _declared_flags(path_search_cli)
 
 
-@pytest.mark.parametrize("var_name", ["po_args", "ps_args"])
-def test_all_forwards_the_mep_flags_to_its_path_children(var_name: str) -> None:
-    forwarded = _flags_forwarded_to(var_name)
-    for flag in MEP_FLAGS:
-        assert flag in forwarded
+class ReachedChild(BaseException):
+    """Escape the parent pipeline at the first child dispatch."""
+
+
+@pytest.mark.parametrize(
+    "child,extra", [("path-opt", []), ("path_search", ["--refine-path"])],
+)
+def test_all_forwards_the_mep_flags_to_its_path_children(
+    tmp_path: Path, monkeypatch, child: str, extra: list,
+) -> None:
+    captured = []
+
+    def first_child(name, _cli, args, **_kwargs):
+        captured.append((name, list(args)))
+        raise ReachedChild
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", first_child)
+    inputs = []
+    for frame in (0, 2):
+        inputs += ["-i", str(write(tmp_path / f"input{frame}.pdb", pdb_frame(frame)))]
+    values = {"--gsm-param": "energy", "--thresh-gsm": "gau", "--thresh-dmf": "0.08"}
+    args = ["all", *inputs, "-q", "0", "-m", "1", "--out-dir", str(tmp_path / "out"),
+            "--no-preopt", "--no-freeze-links", *extra]
+    for flag, value in values.items():
+        args += [flag, value]
+    with pytest.raises(ReachedChild):
+        CliRunner().invoke(root_cli, args, catch_exceptions=False)
+
+    ((name, child_args),) = captured
+    assert name == child
+    for flag, value in values.items():
+        assert child_args[child_args.index(flag) + 1] == value
 
 
 def test_default_keeps_the_historical_tight_tolerance() -> None:

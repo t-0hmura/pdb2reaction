@@ -1,0 +1,93 @@
+{
+ "exit_code": 0,
+ "children": [
+  [
+   "path_search",
+   "-i",
+   "<TMP>/input0.pdb",
+   "-i",
+   "<TMP>/input2.pdb",
+   "-q",
+   "0",
+   "-m",
+   "1",
+   "--no-freeze-links",
+   "--mep-mode",
+   "gsm",
+   "--opt-mode",
+   "grad",
+   "--out-dir",
+   "<TMP>/out/_work/path_search",
+   "--convert-files",
+   "--no-write-hei-mode-cache",
+   "--no-preopt"
+  ]
+ ],
+ "endpoint_calls": [],
+ "dft_calls": [],
+ "files": [
+  "_work/.run.lock",
+  "_work/_run_manifest.json",
+  "_work/path_search/hei_seg_01.pdb",
+  "_work/path_search/hei_seg_01.xyz",
+  "_work/path_search/mep_seg_01_trj.xyz",
+  "_work/path_search/seg_001_mep/final_geometries_trj.xyz",
+  "_work/path_search/summary.json",
+  "_work/path_search/summary.log",
+  "energy_diagram_MEP.png",
+  "mep_trj.xyz",
+  "segments/seg_01/mep_trj.xyz",
+  "summary.json",
+  "summary.log"
+ ],
+ "manifest_produced": [
+  [
+   "path.summary",
+   "<TMP>/out/_work/path_search/summary.json"
+  ],
+  [
+   "path.hei.01",
+   "<TMP>/out/_work/path_search/hei_seg_01.xyz"
+  ],
+  [
+   "path.hei_ref.01",
+   "<TMP>/out/_work/path_search/hei_seg_01.pdb"
+  ],
+  [
+   "path.mep.01.trajectory",
+   "<TMP>/out/_work/path_search/mep_seg_01_trj.xyz"
+  ],
+  [
+   "path.segment.01.endpoint_trajectory",
+   "<TMP>/out/_work/path_search/seg_001_mep/final_geometries_trj.xyz"
+  ],
+  [
+   "path.deliverable.diagram",
+   "<TMP>/out/_work/path_search/energy_diagram_MEP.png"
+  ],
+  [
+   "path.deliverable.mep_trj.xyz",
+   "<TMP>/out/_work/path_search/mep_trj.xyz"
+  ],
+  [
+   "output.public.energy_diagram_MEP.png",
+   "<TMP>/out/energy_diagram_MEP.png"
+  ],
+  [
+   "output.public.mep_trj.xyz",
+   "<TMP>/out/mep_trj.xyz"
+  ],
+  [
+   "output.public.segments/seg_01/mep_trj.xyz",
+   "<TMP>/out/segments/seg_01/mep_trj.xyz"
+  ],
+  [
+   "output.public.summary.json",
+   "<TMP>/out/summary.json"
+  ],
+  [
+   "output.public.summary.log",
+   "<TMP>/out/summary.log"
+  ]
+ ]
+}
