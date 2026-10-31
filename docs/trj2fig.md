@@ -102,6 +102,7 @@ See the [generated CLI reference](reference/commands/trj2fig.md) for every optio
 * **Recomputation**: with only one of `-q` and `-m`, the other is taken as charge 0 or multiplicity 1.
 * **Comments without a readable energy**, such as one that holds only an integer or several numbers, stop the run with an error that names the frame.
 * **Unsupported extensions** stop the run with an error.
+* **PNG needs Chrome**: without Chrome or its operating-system libraries the run stops with `Missing system prerequisite: Chrome for PNG export.`; install them as in {ref}`System prerequisites <system-prerequisites>`.
 * **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 
 ---

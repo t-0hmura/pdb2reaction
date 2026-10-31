@@ -115,8 +115,10 @@ LOCK_FILE="${STATE_DIR}/lock"
 if command -v module >/dev/null && [[ -n "${CUDA_MODULE}" ]]; then
     module load "${CUDA_MODULE}"
 fi
+set +u    # conda's activate scripts read unset variables
 source "${CONDA_SH}"
 conda activate "${P2R_CONDA_ENV}"
+set -u
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # This template requests one or more GPUs per worker node. Fail closed instead

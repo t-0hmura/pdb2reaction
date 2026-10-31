@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 
 import click
 
+from pdb2reaction.core.prerequisites import exit_if_missing_prerequisite
 from pdb2reaction.core.utils import load_yaml_dict
 
 
@@ -106,12 +107,15 @@ def render_cli_exception(
 
     User-input errors (Click UsageError/BadParameter/ClickException, or a
     malformed --config/override YAML) print a clean one-line ``Error:`` and
-    exit with the conventional code (2). Everything else falls through to
-    the full traceback (exit 1) so genuine internal bugs stay visible — no
-    exception masking. Always calls sys.exit (never returns).
+    exit with the conventional code (2). A known missing system prerequisite
+    (a compiler, Chrome's libraries) prints its install guidance (exit 1).
+    Everything else falls through to the full traceback (exit 1) so genuine
+    internal bugs stay visible — no exception masking. Always calls sys.exit
+    (never returns).
     """
     if out_dir is not None and command:
         _write_error_json(Path(out_dir).resolve(), command, e, label, time_start)
+    exit_if_missing_prerequisite(e)
     if isinstance(e, click.ClickException):
         e.show()
         click.echo(
@@ -160,7 +164,8 @@ def run_cli(
     """Standard CLI exception handling with consistent messaging.
 
     Exceptions in ``unrecorded_exc`` skip the error record, e.g. when an output
-    would replace an input.
+    would replace an input. A known missing system prerequisite prints its
+    install guidance instead of a traceback (exit 1).
     """
     try:
         fn()
@@ -170,6 +175,7 @@ def run_cli(
     except Exception as e:
         if out_dir and command and not isinstance(e, unrecorded_exc):
             _write_error_json(out_dir, command, e, label, time_start)
+        exit_if_missing_prerequisite(e)
         if zero_step_exc is not None and isinstance(e, zero_step_exc):
             click.echo(
                 zero_step_msg

@@ -25,10 +25,13 @@ source /etc/profile.d/modules.sh
 module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # change to the installed environment
 module load ompi                             # site module required by this MPI/Ray template
-# Prebuilt PyTorch wheels need no CUDA toolkit module. For a source-built extension only:
-# module load <CUDA_MODULE> <COMPILER_MODULE>
+# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA builds code at run time, so a compiler
+# must be on PATH (gcc; g++ on a CPU). If the compute node has none: module load <COMPILER_MODULE>
+# For a source-built extension, also: module load <CUDA_MODULE>
+set +u                                       # conda's activate scripts read unset variables
 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate "${P2R_CONDA_ENV}"
+set -u
 # -------------------
 
 

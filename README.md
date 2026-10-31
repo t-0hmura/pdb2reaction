@@ -46,7 +46,7 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ## Installation
 
-Requirements: Linux, Python 3.12, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). Details: [docs/installation.md](docs/installation.md).
+Requirements: Linux, Python 3.12, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA also needs a compiler (`gcc`; `g++` on a CPU), and PNG export needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)

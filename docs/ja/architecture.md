@@ -93,6 +93,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │   ├── logging.py -v / --verbose の配線
 │   ├── utils.py PDB / XYZ / plot helpers
 │   ├── output.py / result_commit.py output と result の管理
+│   ├── prerequisites.py コンパイラや Chrome のライブラリが無いときの案内
 │   └── pes_composition.py エネルギー成分の合成
 │
 ├── tests/ smoke / unit
@@ -226,6 +227,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 | PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
 | `-v` / `--verbose LEVEL` logging 配線 | `pdb2reaction/core/logging.py` |
 | output／result ownership helper | `pdb2reaction/core/output.py`、`pdb2reaction/core/result_commit.py` |
+| コンパイラや Chrome のライブラリが無いときの案内 | `pdb2reaction/core/prerequisites.py` |
 | エネルギー成分の合成 | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 repo 内部の同梱 fork

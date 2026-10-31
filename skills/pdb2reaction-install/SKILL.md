@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-install
-description: "Install and environment setup for pdb2reaction: the core package, MLIP backends (UMA, ORB, MACE, AIMNet2), the optional DFT calculator (PySCF, GPU4PySCF), the xTB implicit-solvent correction, CUDA and PyTorch pairing, aarch64 limits, and probing an unknown compute environment (scheduler, GPU, CUDA, conda, modules). SKILL.md gives the install order, backend choice, verification commands, a custom ASE calculator via --calc-file, and a failure-to-fix table; backends.md holds the per-backend steps and the environment probes. TRIGGER on pip or conda install, ImportError, CUDA or driver mismatch, GPU not detected, Hugging Face authentication, MACE dependency conflicts, or when the compute environment is unknown. SKIP when pdb2reaction already imports cleanly and the question is about running subcommands (pdb2reaction-cli) or writing job scripts (pdb2reaction-hpc)."
+description: "Install and environment setup for pdb2reaction: the core package, MLIP backends (UMA, ORB, MACE, AIMNet2), the optional DFT calculator (PySCF, GPU4PySCF), the xTB implicit-solvent correction, CUDA and PyTorch pairing, aarch64 limits, and probing an unknown compute environment (scheduler, GPU, CUDA, conda, modules). SKILL.md gives the install order, backend choice, verification commands, a custom ASE calculator via --calc-file, and a failure-to-fix table; backends.md holds the per-backend steps and the environment probes. TRIGGER on pip or conda install, ImportError, CUDA or driver mismatch, GPU not detected, Hugging Face authentication, MACE dependency conflicts, a `Missing system prerequisite:` message (compiler, Chrome libraries), or when the compute environment is unknown. SKIP when pdb2reaction already imports cleanly and the question is about running subcommands (pdb2reaction-cli) or writing job scripts (pdb2reaction-hpc)."
 ---
 
 # Install pdb2reaction
@@ -63,6 +63,44 @@ conda activate <YOUR_ENV>
 There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need
 different `e3nn` versions. Install `[orb]` in its own env too: `orb-models`
 pins `nvalchemi-toolkit-ops<0.4`, so pip lowers `fairchem-core` there.
+
+## System packages
+
+pip and conda do not install a compiler or the libraries of Chrome, and a bare
+container or cluster node often lacks both. UMA builds code the first time it
+runs: a GPU run needs a C compiler (`gcc`), a CPU run a C++ compiler (`g++`).
+PNG export needs the operating-system libraries of the Chrome that
+`plotly_get_chrome -y` downloads. Check with `gcc --version` (`g++ --version`
+on a CPU), then install:
+
+```bash
+sudo apt-get install -y gcc g++                    # Ubuntu/Debian
+sudo dnf install -y gcc gcc-c++                    # Rocky/RHEL
+```
+
+Without sudo, use `module load gcc` or `conda install -c conda-forge c-compiler cxx-compiler`;
+ask the administrator for Chrome's libraries (`all` and `path-search` then skip
+only the PNG files). The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 and
+Debian 12: `libasound2` instead of `libasound2t64`):
+
+```bash
+sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
+  libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
+  libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
+  libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 wget xdg-utils
+```
+
+and for Rocky/RHEL:
+
+```bash
+sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
+  dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
+  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
+  systemd-libs vulkan-loader wget xdg-utils
+```
+
+A missing one stops the command with `Missing system prerequisite:` and the same
+commands. Docs: [System prerequisites](../../docs/installation.md#system-prerequisites).
 
 ## Choose a backend
 
@@ -132,7 +170,8 @@ installed. An `ImportError` points to that backend's section in
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
-| Plot export fails, or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly | `plotly_get_chrome -y` |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA builds code the first time it runs | Install `gcc` (`g++` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
+| Plot export fails (`Missing system prerequisite: Chrome for PNG export.`), or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly, or an operating-system library it needs is missing | `plotly_get_chrome -y`, then the libraries in [System packages](#system-packages) |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 
 ## When the environment is unknown

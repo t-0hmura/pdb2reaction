@@ -35,13 +35,15 @@
 | `e3nn` / `fairchem-core` のインポートの競合（UMA の環境に MACE を入れた） | MACE 専用の環境を使ってください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | `ORB backend requires orb-models and torch`（AIMNet2 / MACE も同様） | バックエンドの追加パッケージを入れてください：ORB は別の環境に `pip install "pdb2reaction[orb]"`。MACE も別の環境に入れます | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | CUDA / GPU の実行時エラー | GPU、PyTorch のビルド、ドライバをまとめて確かめてください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
-| 図の出力に失敗する | `plotly_get_chrome -y` でヘッドレス Chrome を入れてください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
+| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).` | コンパイラを入れてください。UMA は初回の実行時にコードをビルドします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` |
+| 図の出力に失敗する（`Missing system prerequisite: Chrome for PNG export.`） | `plotly_get_chrome -y` を実行し、続けて Chrome が使うライブラリを入れてください | {ref}`システムの前提パッケージ <ja-system-prerequisites>` |
 
 ## 実行前チェックリスト
 
 長い計算を回す前に、次を確かめてください。
 
 - このマシンで Hugging Face にログインできている（デフォルトの UMA に必要）。
+- `PATH` 上にコンパイラがある（`gcc`。CPU では `g++`）。PNG の図が要るときは Chrome のライブラリも入っている: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
 - 入力の PDB/mmCIF に**水素**と**元素記号**が入っている。
 - 複数の PDB を与える場合、**同じ原子が同じ順序**で並んでいる。
 
@@ -121,7 +123,8 @@
 | 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | `python -m pip check` を実行してください。PyG / `torch_scatter` は、エラーがそれを名指ししたときだけ入れます。今の `orb-models` はこれを必要としません |
 | `torch.cuda.is_available()` が `False`、またはインポート時に CUDA の実行時エラー | PyTorch のビルドが計算ノードの GPU・ドライバに合っていない | `nvidia-smi`、`python -m torch.utils.collect_env`、`python -m pip check` で、割り当てられた GPU、入っている wheel、ドライバを確かめてください。真偽値だけでは原因は分かりません。`nvidia-smi` が示す `CUDA Version` はドライバが扱える最も新しい CUDA です。それ以下の CUDA の wheel（`cu126`、`cu130`、`cu132`）を入れてください。ローカルの CUDA toolkit は要りません |
 | `--mep-mode dmf` が `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` で止まる、または `No module named 'dmf'` | `cyipopt` が無い、または `pydmf` の GPU 用の部分が無い | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください。`pydmf` は `pdb2reaction` と一緒に入ります。デフォルトの GPU 版 DMF でそれでもインポートに失敗するときは、エラーの文が勧めるとおり `pip install 'pydmf[torch]'` を実行してください |
-| 図の出力に失敗する（Plotly / Chrome） | ヘッドレス Chrome が無い | `plotly_get_chrome -y` を一度実行してください |
+| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).`（PyTorch のエラー `Failed to find C compiler`、`No working C++ compiler found`） | `PATH` 上にコンパイラが無い。UMA は初回の実行時にコードをビルドします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり `gcc`（CPU では `g++`）を入れてください。クラスターではジョブスクリプトで `module load gcc` します |
+| 図の出力に失敗する（`Missing system prerequisite: Chrome for PNG export.`） | ヘッドレス Chrome が入っていない、または Chrome が使う OS のライブラリが無い | `plotly_get_chrome -y` を一度実行し、続けて {ref}`システムの前提パッケージ <ja-system-prerequisites>` のライブラリを入れてください |
 
 ### DMF が IPOPT 内で極端に遅い
 

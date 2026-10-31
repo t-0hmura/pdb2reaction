@@ -68,6 +68,7 @@ from pdb2reaction.cli.decorators import (
     _write_error_json,
     load_merged_yaml_cfg,
 )
+from pdb2reaction.core.prerequisites import exit_if_missing_prerequisite
 logger = logging.getLogger(__name__)
 
 
@@ -457,6 +458,7 @@ def cli(
             out_dir_path or Path(sp_cfg.get("out_dir", OUT_DIR_SP)).resolve(),
             "sp", exc, "UnhandledError", time_start,
         )
+        exit_if_missing_prerequisite(exc)
         tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         click.echo(
             "Unhandled error during single-point calculation:\n"

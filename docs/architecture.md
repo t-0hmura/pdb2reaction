@@ -101,6 +101,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │   ├── logging.py -v / --verbose wiring
 │   ├── utils.py PDB / XYZ / plot helpers
 │   ├── output.py / result_commit.py output/result ownership
+│   ├── prerequisites.py guidance for a missing compiler or Chrome library
 │   └── pes_composition.py energy-component composition
 │
 ├── tests/ smoke / unit
@@ -234,6 +235,7 @@ To add a backend, follow recipe 3.2 "Add an MLIP backend" in `CONTRIBUTING.md`.
 | PDB / XYZ / plot helpers | `pdb2reaction/core/utils.py` |
 | `-v` / `--verbose LEVEL` logging wiring | `pdb2reaction/core/logging.py` |
 | Output/result ownership helpers | `pdb2reaction/core/output.py`, `pdb2reaction/core/result_commit.py` |
+| Guidance for a missing compiler or Chrome library | `pdb2reaction/core/prerequisites.py` |
 | Energy-component composition | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 Repo-internal bundled forks

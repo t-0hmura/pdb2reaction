@@ -24,6 +24,8 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
+UMA にはコンパイラが、PNG の出力には Chrome のライブラリが要ります。足りないときは先に入れてください: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
+
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします。無料の HF アカウントと読み取り専用トークンが要り、UMA モデルのページでライセンスへの同意が要ることもあります:
 
 ```bash
@@ -48,6 +50,38 @@ plotly_get_chrome -y
 ```
 
 `nvidia-smi` の `CUDA Version` が 13.0 より小さいときは、`cuda130` を `cuda129` に置き換えてください。ORB・AIMNet2・MACE・DFT の導入は {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 を参照してください。
+
+(ja-system-prerequisites)=
+## システムの前提パッケージ
+
+pip と conda は、コンパイラと Chrome が使うライブラリを入れません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
+
+- **UMA 用のコンパイラ:** UMA は初回の実行時にコードをビルドします。GPU では C コンパイラ（`gcc`）、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
+- **Chrome 用のライブラリ:** PNG の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。Chrome は `plotly_get_chrome -y` でダウンロードし、下の OS のライブラリを読み込みます。
+
+Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
+
+```bash
+sudo apt-get install -y gcc g++
+sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
+  libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
+  libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
+  libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 wget xdg-utils
+```
+
+Rocky/RHEL:
+
+```bash
+sudo dnf install -y gcc gcc-c++
+sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
+  dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
+  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
+  systemd-libs vulkan-loader wget xdg-utils
+```
+
+sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。入っていなくても `all` と `path-search` は最後まで実行され、PNG だけが作られません。
+
+どれかが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて同じコマンドを表示します。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -92,6 +126,8 @@ plotly_get_chrome -y
     pip install pdb2reaction
     plotly_get_chrome -y
     ```
+
+    UMA が使うコンパイラと Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
 
     aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください（`nvalchemi-toolkit-ops` には 1.13.0 以上が必要です）。
 

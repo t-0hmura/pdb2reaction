@@ -88,6 +88,7 @@ from pdb2reaction.workflows._path_yaml_helpers import (
 )
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import load_merged_yaml_cfg, _write_error_json, render_cli_exception
+from pdb2reaction.core.prerequisites import exit_if_missing_prerequisite
 
 logger = logging.getLogger(__name__)
 
@@ -1400,6 +1401,7 @@ def cli(
                         err=True,
                     )
                 else:
+                    exit_if_missing_prerequisite(e)
                     click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
                 sys.exit(1)
 

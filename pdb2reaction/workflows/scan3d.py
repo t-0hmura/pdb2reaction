@@ -102,6 +102,7 @@ from pdb2reaction.cli.decorators import (
     _write_error_json,
     load_merged_yaml_cfg,
 )
+from pdb2reaction.core.prerequisites import exit_if_missing_prerequisite
 from pdb2reaction.cli.common_options import (
     add_solvent_xtb_cmd_option,
     apply_solvent_xtb_cmd_override,
@@ -1374,6 +1375,7 @@ def cli(
         raise
     except Exception as e:
         _write_error_json(Path(out_dir).resolve(), "scan3d", e, "UnhandledError", None)
+        exit_if_missing_prerequisite(e)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
         click.echo("Unhandled exception during 3D scan:\n" + textwrap.indent(tb, "  "), err=True)
         sys.exit(1)

@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - `all --precision-post tf32|fp32|fp64` sets the MLIP precision of TS optimization, IRC, the endpoint optimizations and freq; unset, they use `--precision`. The root `summary.json` records it as `mlip_precision_post`.
+- A run that stops because UMA finds no compiler (C on a GPU, C++ on a CPU) or Chrome cannot start prints `Missing system prerequisite: ...` with the install commands and the docs page, not a PyTorch or Kaleido traceback; the exit status is unchanged. The docs and skills list these prerequisites.
 
 ### Changed
 
@@ -24,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- The job-script templates in the docs and skills run `conda activate` between `set +u` and `set -u`; with `set -euo pipefail` the activate script of conda-forge's `cuda-nvcc` stopped with "NVCC_PREPEND_FLAGS: unbound variable".
 - With `--refine-path`, the root `summary.json` keeps the provisional `partial`/`failed` verdict until post-processing finishes, so a run that stops during TS optimization no longer leaves the path-search `success` there.
 - `all` with a TS-only input: when the endpoint optimization fails, the root `summary.json` records `primary_method` and the full `config` like the other exits. An error while comparing IRC endpoints with the MEP bonds is reported as `bond_change_check_failed:<error>` instead of a bond mismatch.
 - GPU DFT (`-b dft`, `dft`) loads the environment's libcusolver when the system has no CUDA toolkit registered; gpu4pyscf searched only the system library cache, so a node with only the NVIDIA driver stopped with "Unable to load libcusolver".

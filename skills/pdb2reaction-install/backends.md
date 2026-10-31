@@ -70,6 +70,9 @@ nvcc --version
 
 Add a CUDA module to PBS or SLURM jobs only when a locally built extension
 needs it; test prebuilt wheels without a second CUDA runtime from a module.
+UMA also needs a C compiler on `PATH` at run time (`g++` on a CPU); that is a
+system package, separate from the CUDA toolkit
+([System packages](SKILL.md#system-packages)).
 OpenMPI is unrelated to CUDA and is needed only for the site's multi-node Ray
 setup.
 

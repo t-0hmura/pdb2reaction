@@ -102,6 +102,7 @@ summary.json    # result.json と同じ内容（--out-json 指定時）
 * **計算し直し**: `-q` と `-m` の片方だけのときは、もう片方を電荷 0 または多重度 1 とします。
 * **エネルギーを読めないコメント行**は、そのフレームを示すエラーで止まります。整数だけの行や、数値が複数ある行がこれに当たります。
 * **対応しない拡張子**はエラーで止まります。
+* **PNG には Chrome が要ります**: Chrome またはその OS のライブラリが無いと、`Missing system prerequisite: Chrome for PNG export.` で止まります。{ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり入れてください。
 * **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
 
 ---

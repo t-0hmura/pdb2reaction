@@ -30,16 +30,21 @@ set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # Prebuilt PyTorch/backend wheels need a compatible NVIDIA driver, not a local
-# CUDA toolkit module. For a source build only, load the site-specific toolkit
-# and compiler here: module load <CUDA_MODULE> <COMPILER_MODULE>
+# CUDA toolkit module. UMA builds code at run time, so a compiler must be on
+# PATH (gcc; g++ on a CPU). If the compute node has none, load the site's
+# compiler module here: module load <COMPILER_MODULE>
+# Load <CUDA_MODULE> as well only for a source build.
 # - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
 #   single-node jobs.
 # Replace every placeholder used by the selected runtime.
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 
-# Conda env (<YOUR_ENV> from the environment probe in pdb2reaction-install)
+# Conda env (<YOUR_ENV> from the environment probe in pdb2reaction-install).
+# set +u: conda's activate scripts (for example cuda-nvcc) read unset variables.
+set +u
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
+set -u
 
 # Fail-closed GPU preflight before the long job. For an intentionally CPU-only
 # template, remove these two checks together with the GPU resource request.
@@ -84,11 +89,14 @@ Use the same body as above, but replace the Torque resource line with:
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-# Prebuilt wheels need no CUDA/compiler module. For a source build only:
-# module load <CUDA_MODULE> <COMPILER_MODULE>
+# Prebuilt wheels need no CUDA module. UMA builds code at run time, so a
+# compiler must be on PATH (gcc; g++ on a CPU); if the compute node has none:
+# module load <COMPILER_MODULE>   (and <CUDA_MODULE> only for a source build)
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
+set +u    # conda's activate scripts read unset variables
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
+set -u
 
 # Fail-closed GPU preflight. Remove only for an explicitly CPU-only template.
 which pdb2reaction

@@ -24,6 +24,8 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
+UMA needs a compiler, and PNG export needs the libraries of Chrome. Install them first if they are missing: {ref}`System prerequisites <system-prerequisites>`.
+
 Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. This needs a free HF account with a read-only token, and you may need to accept the license on the UMA model page:
 
 ```bash
@@ -48,6 +50,38 @@ plotly_get_chrome -y
 ```
 
 If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cuda129`. ORB, AIMNet2, MACE, and DFT are installed in step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
+
+(system-prerequisites)=
+## System prerequisites
+
+pip and conda do not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
+
+- **A compiler for UMA.** UMA builds code the first time it runs: a GPU run needs a C compiler (`gcc`), and a CPU run needs a C++ compiler (`g++`). The conda environment of the Optional section above gets a C compiler through `cuda-nvcc`.
+- **Libraries for Chrome.** PNG figures (`energy-diagram`, `trj2fig`, and the diagrams of `all`) are drawn by headless Chrome, which `plotly_get_chrome -y` downloads. Chrome loads the operating-system libraries below.
+
+Ubuntu/Debian (on Ubuntu 22.04 and Debian 12, write `libasound2` instead of `libasound2t64`; drop `sudo` if you are root):
+
+```bash
+sudo apt-get install -y gcc g++
+sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
+  libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
+  libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
+  libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 wget xdg-utils
+```
+
+Rocky/RHEL:
+
+```bash
+sudo dnf install -y gcc gcc-c++
+sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
+  dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
+  libcurl libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango \
+  systemd-libs vulkan-loader wget xdg-utils
+```
+
+Without sudo (HPC), run `module load gcc`, or add the compilers to your environment with `conda install -c conda-forge c-compiler cxx-compiler`. Ask the administrator for Chrome's libraries; without them `all` and `path-search` still finish and only skip the PNG files.
+
+If one is missing, the command stops and prints `Missing system prerequisite:` followed by these commands.
 
 (step-by-step-installation)=
 ## Step-by-step installation
@@ -95,6 +129,8 @@ If you prefer to build the environment piece by piece:
     pip install pdb2reaction
     plotly_get_chrome -y
     ```
+
+    The compiler UMA needs and the libraries Chrome needs are system packages: see {ref}`System prerequisites <system-prerequisites>`.
 
     On aarch64, the `warp-lang` 1.18.0 wheel, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0` (`nvalchemi-toolkit-ops` needs 1.13.0 or newer).
 
