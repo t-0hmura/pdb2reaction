@@ -132,6 +132,6 @@ result_dft/
 
 * [MLIP の TS を DFT で確かめる](dft-backend.md) — ワークフローでの `-b dft` と `--dft`、DFT の設定、GPU メモリ
 * [sp](sp.md) — `-b dft` を含む任意のバックエンドでの一点エネルギーと力
-* [all](all.md) — 全工程のワークフロー。`--dft` で R・TS・P に DFT 一点計算を追加
+* [all](all.md) — 一気通貫ワークフロー。`--dft` で R・TS・P に DFT 一点計算を追加
 * [MLIP バックエンド](backends.md) — バックエンドの選び方
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

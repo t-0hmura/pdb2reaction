@@ -17,7 +17,7 @@ Start from `-c` (substrate, cofactors, and metals) and `--selected-resn` (cataly
 | Format | Carries | Use it for | How to set `-q` / `-m` |
 |---|---|---|---|
 | PDB | Atom and residue names, chain, occupancy, B-factor, element | A fresh extraction of a standard-size model | `-l 'RES:Q,...'` for unknown/non-standard ligand charges; standard amino acids and recognized ions use internal tables |
-| mmCIF (`.cif`, `.mmcif`) | PDB fields without the one-character chain, four-digit residue, and five-digit atom-serial limits | PDB Bank mmCIF, multi-character chains, or 10,000 or more residues | Same residue rules as PDB; prefer mmCIF over a PDB with widened columns |
+| mmCIF (`.cif`, `.mmcif`) | PDB fields without the one-character chain, four-digit residue, and five-digit atom-serial limits | Protein Data Bank mmCIF, multi-character chains, or 10,000 or more residues | Same residue rules as PDB; prefer mmCIF over a PDB with widened columns |
 | XYZ | Element and Cartesian coordinates only | Optimized geometries, trajectories, IRC endpoints | `-q` and `-m` explicitly, or `--ref-pdb` to the original PDB so `-l` works |
 | GJF | Element, coordinates, charge, and multiplicity | Gaussian-style inputs | Read from the header; `-q` / `-m` override it |
 
@@ -199,7 +199,7 @@ so it is not a preview.
 
 ## Trim to lower cost
 
-DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chains except between peptide-bonded `-c` residues (`--exclude-backbone`) or waters (`--no-include-h2o`); keep only chosen residues with `-r 0 --selected-resn` (disulfide partners and a proline's N-side neighbor still join); or trim an extracted PDB by hand and run `all` without `-c`, with `-q` or `-l`. Freezing distant atoms with `--freeze-atoms` makes `freq` a PHVA on the movable block, and the UMA finite-difference Hessian displaces only movable atoms.
+DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chains except between peptide-bonded `-c` residues (`--exclude-backbone`) or remove waters (`--no-include-h2o`); keep only chosen residues with `-r 0 --selected-resn` (disulfide partners and a proline's N-side neighbor still join); or trim an extracted PDB by hand and run `all` without `-c`, with `-q` or `-l`. Freezing distant atoms with `--freeze-atoms` makes `freq` a PHVA on the movable block, and the UMA finite-difference Hessian displaces only movable atoms.
 
 Each removal changes the charge. Delete the cap H of removed residues, or the run stops with `isolated LKH/HL`; a model built without `extract` has no cap H, so freeze its boundary with `--freeze-atoms`, and regenerate those indices after re-extraction (`all` with `-c` numbers the original input). If `freq` runs out of CUDA memory, keep the default `--hessian-calc-mode FiniteDifference` or shrink the movable region. DFT cost does not follow atom count; time one structure before a batch.
 

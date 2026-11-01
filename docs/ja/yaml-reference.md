@@ -698,7 +698,7 @@ dft:
 - `workers > 1` の UMA は解析 Hessian を計算できず、`hessian_calc_mode: Analytical` を明示するとエラーで止まります。`workers: 1` にするか `FiniteDifference` を使ってください。詳細は {ref}`workers と解析 Hessian <ja-workers-analytical-error>` を参照してください。
 - `freq` と `irc` は、`calc.return_partial_hessian` の指定によらず部分 Hessian を使います。
 - `all` は実行する各段に同じファイルを渡し、各段はページ冒頭のセクションの表の「使用されるコマンド」の列でそのコマンドが挙がっているセクションを読みます。例えば TS の段は `opt`・`hessian_dimer`・`rsirfo` を含む `tsopt` のセクションを読み、`dft` セクションは `all --dft` のときに効きます。
-- `opt.lbfgs` / `opt.rfo` は `lbfgs` / `rfo`、`freq.thermo` は `thermo` の別の書き方です。同じ設定に 2 か所で異なる値を書くとエラーで止まります。例えば `lbfgs.max_cycles` と `opt.lbfgs.max_cycles`、また L-BFGS を選んでいるときの `opt.max_cycles` と `lbfgs.max_cycles` です。`-o/--out-dir` は `out_dir` キーより優先し、`all` は各段の出力先を自分で決めます。
+- `opt.lbfgs` / `opt.rfo` は `lbfgs` / `rfo`、`freq.thermo` は `thermo` の別の書き方です。同じ設定に 2 か所で異なる値を書くとエラーで止まります。例えば `lbfgs.max_cycles` と `opt.lbfgs.max_cycles`、また L-BFGS を選んでいるときの `opt.max_cycles` と `lbfgs.max_cycles` です。`-o/--out-dir` は `out_dir` キーより優先し、`all` は各段の出力先を自動で決めます。
 
 ## 関連ドキュメント
 

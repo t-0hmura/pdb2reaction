@@ -10,7 +10,7 @@ Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HE
 
 What you pass selects the mode:
 
-* **Path and energy diagram from R and P (Endpoint mode)**: give two or more structures in reaction order (reactant, intermediates, product); `all` finds the MEP between each neighbouring pair and draws the energy diagram.
+* **Path and energy diagram from R and P (Endpoint mode)**: give two or more structures in reaction order (reactant, intermediates, product); `all` finds the MEP between each neighboring pair and draws the energy diagram.
 * **Path from a reactant alone (Scan-list mode)**: give one structure and the bonds to form or break with `-s`; a staged scan makes the intermediates, and the MEP search runs through them.
 * **Check one TS candidate (TS-only mode)**: give one structure with `--tsopt` and no `-s`; `all` optimizes the TS and runs IRC from it. The TS is confirmed when n_imag = 1 and the IRC ends at the intended R and P.
 
@@ -84,7 +84,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 ```
 
 1. **Preparing the input**: for a PDB with alternate locations (altloc), `all` keeps one label per residue, the one with the highest mean occupancy; for a PDB with blank element columns, it fills them in. With `-c`, it cuts out the active-site model around the given residues and caps the cut bonds with hydrogens.
-2. **Building the path**: the input structures are optimized first (`--preopt`). With `-s`, the staged scan makes the intermediates. `path-opt` then finds the MEP between each neighbouring pair by GSM (growing string method) or DMF (direct max flux); with `--refine-path`, the recursive `path-search` refines the path and splits it into steps where bonds change. The HEI of each step is its TS candidate.
+2. **Building the path**: the input structures are optimized first (`--preopt`). With `-s`, the staged scan makes the intermediates. `path-opt` then finds the MEP between each neighboring pair by GSM (growing string method) or DMF (direct max flux); with `--refine-path`, the recursive `path-search` refines the path and splits it into steps where bonds change. The HEI of each step is its TS candidate.
 3. **Optimizing the TS** (`--tsopt`): each HEI is optimized by RS-P-RFO (restricted-step partitioned rational function optimization) by default, and the final Hessian gives n_imag.
 4. **Following the IRC**: from the TS, the IRC is traced in both directions with EulerPC (Euler predictor–corrector), and both ends are optimized to minima. These become the R and P of the segment.
 5. **Thermochemistry and DFT**: `--thermo` runs `freq` on R, TS, and P for the Gibbs energy, and `--dft` adds DFT single points on the same structures. Each adds its own energy diagram.
@@ -94,7 +94,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 | TS result | What `all` does |
 | --- | --- |
 | Converged, n_imag = 1 | Runs IRC and optimizes both IRC ends. |
-| Converged, n_imag ≥ 2 | Runs IRC with a warning along the imaginary mode that best matches the MEP direction (the lowest one when none matches). The result is `partial`. |
+| Converged, n_imag ≥ 2 | Runs IRC, with a warning, along the imaginary mode that best matches the MEP direction (the lowest one when none matches). The result is `partial`. |
 | Converged, n_imag = 0 | Stops before IRC. |
 | Not converged (cycle limit or `--stop-plateau`), or the final Hessian skipped with `--skip-final-freq` | Stops before IRC. |
 | The final Hessian fails with an error | Stops the whole run (`failed`, exit 1); no later segment is processed. |

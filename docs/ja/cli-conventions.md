@@ -224,7 +224,7 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 
 ## CLI ↔ YAML 名称の不一致
 
-一部の CLI フラグは YAML のキーと名前が少し違い、`all` から指定するときに別の名前になるものもあります。主なフラグと YAML キーの対応は {ref}`YAML 設定の一覧の主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特によく聞かれる 2 ケースを以下に示します:
+一部の CLI フラグは YAML のキーと名前が少し違い、`all` から指定するときに別の名前になるものもあります。主なフラグと YAML キーの対応は {ref}`YAML 設定の一覧の主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特に混同しやすい 2 つを次に示します:
 
 (ja-pressure-vs-pressure-atm)=
 - **`--pressure` (CLI) と `pressure_atm` (YAML)** — `freq` のフラグは `--pressure FLOAT`、`all` では `--freq-pressure` です。YAML キーは `thermo.pressure_atm` です。どちらも値は **atm** 単位で、内部で Pa に変換されます。

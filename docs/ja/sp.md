@@ -81,7 +81,7 @@ PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCI
 
 ## 使用上の注意点
 
-* **エネルギーがおかしいとき**: {ref}`電荷と多重度 <ja-charge-spin-problems>`を見直してください。
+* **エネルギーが不自然なとき**: {ref}`電荷と多重度 <ja-charge-spin-problems>`を見直してください。
 * **固定原子**に働く力は 0 になります。
 * **キャップ水素**: `sp` は `extract` が付けたキャップ水素の親原子を自動では固定しません。固定したい場合は `--freeze-atoms` に指定してください。
 * **原子電荷**: `sp -b dft` が出すのは DFT のエネルギーと力だけです。Mulliken・meta-Löwdin・IAO の電荷が必要なときは [`dft`](dft.md) を使ってください。

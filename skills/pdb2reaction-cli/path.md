@@ -16,7 +16,7 @@ a segment is one elementary step.
 
 ## Minimal run
 
-All inputs follow one `-i`.
+Give all inputs after a single `-i`.
 
 ### path-opt
 

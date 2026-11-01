@@ -75,7 +75,7 @@ When `--precision` is not given, each backend takes its own default:
 
 | backend | default | why |
 |---------|---------|-----|
-| `uma` | fp32 | IEEE FP32 with TF32 off, whatever the installed fairchem-core selects by default. |
+| `uma` | fp32 | IEEE FP32 with TF32 off, regardless of the default of the installed fairchem-core. |
 | `orb` | fp64 | `--precision tf32` selects ORB's `float32-high` (TF32) mode. |
 | `mace` | fp64 | MACE ships `default_dtype="float64"` upstream. |
 | `aimnet2` | fp32 | No precision knob. |

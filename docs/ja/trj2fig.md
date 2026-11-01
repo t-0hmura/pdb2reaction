@@ -112,5 +112,5 @@ summary.json    # result.json と同じ内容（--out-json 指定時）
 * [path-search](path-search.md) — 図にする MEP の軌跡
 * [irc](irc.md) — 図にする IRC の軌跡
 * [energy-diagram](energy-diagram.md) — 与えた数値から状態エネルギー図を描く
-* [all](all.md) — 全工程のワークフロー
+* [all](all.md) — 一気通貫ワークフロー
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処。図の書き出しに失敗したときは {ref}`インストール / 環境の問題 <ja-installation-environment-problems>`

@@ -20,7 +20,7 @@
 | **計算 / 収束** | | |
 | `all` が `success` 以外の `Scientific status:` で終わり、`RESULT WARNING:` の行を出す | 各行に、失敗したセグメントと段（TS 最適化・MEP・IRC・端点の最適化）が出ます。その段を下の行で探してください。`summary.json` の `scientific_status_reasons` にも同じ理由が入ります（例：`all:segment_1:tsopt:ts_optimization_not_converged`） | [実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了) |
 | UMA で `--uma-workers` を 2 以上にし、`--hessian-calc-mode Analytical` と併用すると `BackendError` | 解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください | {ref}`パフォーマンス <ja-troubleshooting-performance>`、{ref}`workers と解析 Hessian <ja-workers-analytical-error>` |
-| 実行時に CUDA のメモリ不足（`torch.cuda.OutOfMemoryError`） | デフォルトの `FiniteDifference` Hessian のままにする、`--max-nodes` を減らすか小さい MLIP モデル（`--backend-model`）を使う、VRAM の大きい GPU に移る、の順に試してください。`--radius` を小さくして切り出し直すのは最後の手です | {ref}`GPU メモリ <ja-troubleshooting-gpu-memory>` |
+| 実行時に CUDA のメモリ不足（`torch.cuda.OutOfMemoryError`） | デフォルトの `FiniteDifference` Hessian のままにする、`--max-nodes` を減らすか小さい MLIP モデル（`--backend-model`）を使う、VRAM の大きい GPU に移る、の順に試してください。`--radius` を小さくして切り出し直すのは最後の手段です | {ref}`GPU メモリ <ja-troubleshooting-gpu-memory>` |
 | TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`[tsopt] No imaginary mode detected.`）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
 | TS 最適化が収束しない（`TS optimization did not converge`） | まず TS 候補を確かめ、次にオプティマイザを切り替え（`tsopt --opt-mode` / `all --opt-mode-post`）、それから YAML でステップサイズか信頼半径を小さくしてください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
 | IRC が正常に終了しない | 単独の `irc`：`--step-size` を小さく、`--max-cycles` を大きく。`all`：`--irc-step-size` / `--irc-max-cycles`。先に端点を確かめてください | {ref}`IRC <ja-troubleshooting-irc>` |
@@ -40,7 +40,7 @@
 
 ## 実行前チェックリスト
 
-長い計算を回す前に、次を確かめてください。
+長い計算を実行する前に、次を確かめてください。
 
 - このマシンで Hugging Face にログインできている（デフォルトの UMA に必要）。
 - `PATH` 上にコンパイラがある（`gcc`。CPU では `g++`）。PNG の図が要るときは Chrome のライブラリも入っている: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
@@ -140,16 +140,16 @@ IPOPT/MUMPS が並列版 BLIS を使う環境では、入れ子の並列化で�
 (ja-troubleshooting-max-cycles)=
 ### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
 
-- **症状**：オプティマイザが `max_cycles` まで回り、最後の要約で `max(force)` や `rms(force)` が選んだ閾値をわずかに上回る。一方でエネルギーはもう変わっていない。
+- **症状**：オプティマイザが `max_cycles` に達し、最後の要約で `max(force)` や `rms(force)` が選んだ閾値をわずかに上回る。一方でエネルギーはもう変わっていない。
 - **原因**：MLIP の力のノイズや平坦さで、力の閾値に届かないことがあります。その程度はバックエンド、モデル、精度、系、ハードウェアで変わります。
-- **対処**：final geometry と力を確かめてから、次の手で再実行してください。
+- **対処**：final geometry と力を確かめてから、次の方法で再実行してください。
   - 収束の基準を `--thresh gau_loose` に緩めます。デフォルトは `opt` では `gau`、`tsopt` では [`baker`](tsopt.md#処理の仕組みと計算仕様) です。
-  - `--max-cycles` まで回さずに早く止めたいときは、`--stop-plateau` を付けます。直近 `--stop-plateau-window`（デフォルト 50）ステップのエネルギーの幅が `--stop-plateau-thresh`（デフォルト `1×10⁻⁴ au`）を下回ると、`stalled`（**未収束**）として止まります。
+  - `--max-cycles` まで続けずに早く止めたいときは、`--stop-plateau` を付けます。直近 `--stop-plateau-window`（デフォルト 50）ステップのエネルギーの幅が `--stop-plateau-thresh`（デフォルト `1×10⁻⁴ au`）を下回ると、`stalled`（**未収束**）として止まります。
 
 (ja-troubleshooting-ts)=
 ### TS 最適化が収束しない・虚振動が複数残る
 
-- **症状**：TS 最適化が多くのサイクルを回しても収束しない、または最適化の後に n_imag が 2 以上になる。
+- **症状**：TS 最適化が多くのサイクルを繰り返しても収束しない、または最適化の後に n_imag が 2 以上になる。
 - **報告される内容**：RS-P-RFO・RS-I-RFO・TRIM・Dimer の TS 最適化がサイクル上限に達して未収束のときは Hessian を計算しないので、n_imag は出ません。エネルギーが変わらなくなって止まったときは、必ず Hessian を計算して n_imag を出します。
 - **最適化が収束しないときの対処**：次を順に試してください。
   1. オプティマイザを RS-P-RFO（デフォルト）と Dimer 法の間で切り替える：単独では `tsopt --opt-mode hess` / `dimer`、`all` では `--opt-mode-post hess` / `grad`（Dimer）。
@@ -193,7 +193,7 @@ IRC が収束せずに止まっても、端点の最適化で狙った R と P �
 
 - **workers > 1**：ハードウェアと計算の内容によっては UMA のスループットが上がりますが、並列の推論では解析 Hessian を計算できません。`Analytical` を明示すると、`RuntimeError` のサブクラスの `BackendError` が `Analytical Hessian cannot be combined with UMA workers>1` を出して止まります。解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください。複数のノードでワーカーを動かすときは、[HPC 実行例](hpc-example.md) のジョブスクリプトを使ってください。
 - **大規模系**：化学的に妥当な小さい活性部位モデルを作り、半径と境界の位置で結果がどう変わるかを確かめてください。複数 GPU への対応はバックエンドとワークフローごとに異なり、GPU を増やしてもワーカーあたりのメモリが減るとは限りません。
-- **HPC で DFT を回すとき**：PySCF/GPU4PySCF が選んだ計算で一時ディスクを使う場合は、容量と速度を確かめたファイルシステムを `PYSCF_TMPDIR` に指定してください。ノードの `/tmp`、`$PBS_O_WORKDIR`、ほかの共有ディレクトリのどれが向くかは、計算機ごとに異なります。
+- **HPC で DFT を実行するとき**：PySCF/GPU4PySCF が選んだ計算で一時ディスクを使う場合は、容量と速度を確かめたファイルシステムを `PYSCF_TMPDIR` に指定してください。ノードの `/tmp`、`$PBS_O_WORKDIR`、ほかの共有ディレクトリのどれが向くかは、計算機ごとに異なります。
 
 (ja-troubleshooting-gpu-memory)=
 ## GPU メモリ（VRAM）の目安

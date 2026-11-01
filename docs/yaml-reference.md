@@ -242,7 +242,7 @@ previous cycle, which is stricter than the Baker criterion as stated by Bakken a
 Helgaker (*J. Chem. Phys.* **117**, 9160 (2002)): `max(|force|) <= 3e-4`
 **and** (`|delta E| < 1e-6` **or** `max(|step|) <= 3e-4`). We use the stricter
 form because the published one can accept geometries with a remaining RMS force,
-which on machine-learned surfaces end on higher-order saddle points.
+and on machine-learned surfaces such geometries end up as higher-order saddle points.
 
 ---
 

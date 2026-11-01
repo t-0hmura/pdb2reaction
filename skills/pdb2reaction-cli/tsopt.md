@@ -53,8 +53,8 @@ first-order TS needs all of:
 `optimization_status` is `converged`, `hessian_status` is `completed`,
 `saddle_validation` is `first_order` (`n_imaginary_modes` is 1), and the
 displacement in `vib/imag_*_trj.xyz` follows the reacting atoms.
-`scientific_status` does not look at n_imag. A run that stops without converging
-for another reason than `--max-cycles` writes the cause to `stop_reason` in
+`scientific_status` does not take n_imag into account. A run that stops without converging
+for a reason other than `--max-cycles` writes the cause to `stop_reason` in
 `result.json` (under `safeguards` except with Dimer).
 
 ```python
@@ -81,7 +81,7 @@ Hessian was computed again, it is the lowest imaginary mode and the source is
 
 With `higher_order`, `optimization_status` still reports only the optimizer.
 Watch every `vib/imag_*_trj.xyz` and do not accept the structure as a
-first-order saddle. `all` may continue a warning-labelled diagnostic IRC from
+first-order saddle. `all` may continue a warning-labeled diagnostic IRC from
 it; that is not a first-order TS. Even a first-order TS candidate does not by
 itself establish the intended elementary reaction: confirm it with `irc`.
 

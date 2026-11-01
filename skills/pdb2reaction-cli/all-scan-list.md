@@ -83,7 +83,7 @@ Read the console, `summary.json`, and the endpoints as in
 - **Atom not found or matched twice.** Atom names must match those in the input (case is ignored); editing tools sometimes rename atoms (`CB` to `CB1`). If a three-field selector matches more than one atom, add the chain with `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`; do not guess from the first match.
 - **XYZ or GJF input.** Residue selectors and `-c` extraction are unavailable; use atom numbers and give `-q` (or a valid GJF header).
 - **Several `-i` inputs.** `-s` takes exactly one structure; with two or more, the run stops with an error.
-- **More segments than expected** (`--refine-path` only). Bond-change splitting proposed another candidate intermediate; validate it and the neighbouring TS/IRC. The default `path-opt` adds no segments.
+- **More segments than expected** (`--refine-path` only). Bond-change splitting proposed another candidate intermediate; validate it and the neighboring TS/IRC. The default `path-opt` adds no segments.
 - **Cost.** Each stage adds a restrained optimization before the MEP; time one pilot stage and budget from it.
 
 ## Next step

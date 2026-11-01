@@ -1,6 +1,6 @@
 # `tsopt`（遷移状態の構造最適化）
 
-`tsopt` サブコマンドは、遷移状態（TS）の候補構造を 一次の鞍点へ最適化し、final geometry で Hessian を計算して虚振動の数（n_imag）を数えます。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。
+`tsopt` サブコマンドは、遷移状態（TS）の候補構造を一次の鞍点へ最適化し、final geometry で Hessian を計算して虚振動の数（n_imag）を数えます。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。
 
 ---
 
@@ -87,7 +87,7 @@ n_imag は次のように読みます。
 | --- | --- |
 | 1 | 一次の鞍点。モードが狙った原子を動かしているかを確かめてから、[`irc`](irc.md) を実行してください |
 | 0 | 虚振動なし。構造が極小点の側へ緩和しています |
-| 2 以上 | 高次の鞍点。余分な虚振動が残っています。`all` はそれでも、MEP の方向にいちばん近い虚振動のモードに沿って IRC を実行するので、IRC の端点でそのモードがどこへつながるかを確かめられます |
+| 2 以上 | 高次の鞍点。余分な虚振動が残っています。`all` はそれでも、MEP の方向に最も近い虚振動のモードに沿って IRC を実行するので、IRC の端点でそのモードがどこへつながるかを確かめられます |
 
 n_imag は端末の `[tsopt]` の判定の行か、`--out-json` を付けたときの `result.json` の `n_imaginary_modes` で読みます。
 
@@ -109,7 +109,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
     --precision fp64 --coord-type dlc --flatten --out-dir ./result_tsopt_retry
 ```
 
-ほかの手は {ref}`TS が得られないとき <ja-ts-search-fails>` に、そのほかの失敗は [トラブルシューティング](troubleshooting.md) にあります。
+別の対処は {ref}`TS が得られないとき <ja-ts-search-fails>` に、そのほかの失敗は [トラブルシューティング](troubleshooting.md) にあります。
 
 ---
 

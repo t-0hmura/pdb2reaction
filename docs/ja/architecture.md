@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-pdb2reaction の開発者向けに、パッケージの層、ファイルの置き場、開発するときに守る制約をまとめたページです。変更したあとは、CONTRIBUTING の [gate cycle](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md#11-gate-cycle) の検査を走らせてください。計算を実行するだけなら、[はじめに](getting-started.md)から読んでください。
+pdb2reaction の開発者向けに、パッケージの層、ファイルの置き場、開発するときに守る制約をまとめたページです。変更したあとは、CONTRIBUTING の [gate cycle](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md#11-gate-cycle) の検査を実行してください。計算を実行するだけなら、[はじめに](getting-started.md)から読んでください。
 
 `pdb2reaction` は、活性部位のクラスターモデルで酵素反応の経路を解析する Python の CLI です。構造と経路の段には組み込みの MLIP か自作の ASE calculator を使い、PySCF/GPU4PySCF による DFT の一点計算も追加できます。
 
@@ -16,17 +16,17 @@ pdb2reaction の開発者向けに、パッケージの層、ファイルの置�
 
 | 層 | ディレクトリ | 責務 | 依存してよい先 |
 |---|---|---|---|
-| **L1 Interface** | `pdb2reaction/cli/` | Click root group、共有 option-decorator ファクトリ（`common_options.py`）、`--help-advanced`、bool flag 正規化、サブコマンドリゾルバ | `workflows/`, `core/` |
+| **L1 Interface** | `pdb2reaction/cli/` | Click の root group、共有の option-decorator ファクトリ（`common_options.py`）、`--help-advanced`、ブール値フラグの正規化、サブコマンドのリゾルバ | `workflows/`, `core/` |
 | **L2 Application** | `pdb2reaction/workflows/` | サブコマンドごとのオーケストレーションと、段で共有する helper（`all.py`, `path_search.py`, `tsopt.py`, `extract.py`, `irc.py`, `freq.py`, `dft.py`, …） | `domain/`, `backends/`, `io/`, `core/` |
-| **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
-| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2） | `core/` |
-| **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
+| **L3 Domain** | `pdb2reaction/domain/` | 化学的な意味を持つ補助処理（結合変化の検出、結合の要約、元素情報の伝播） | `core/` |
+| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドのディスパッチャと、バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2） | `core/` |
+| **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、要約、軌跡、PDB の修正、エネルギー図、Hessian キャッシュ | `core/` |
 | **L5 Foundation** | `pdb2reaction/core/` | defaults（共有のデフォルト値の主な出典）、utils（structure / coordinate / plot helper）、logging、output、result の公開 | (none、設計意図) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
 **依存の向き（設計目標）**: `L1 → L2 → {L3, L4} → L5`。表の最後の列がこの決まりです。今はこれを破る import があります: `workflows/* → cli`、`cli/common_options.py → backends`、`core/utils.py → domain`・`io`・`backends`・`cli` と `core/defaults.py → backends`、`domain/add_elem_info.py`・`domain/bond_summary.py` といくつかの `io/` のモジュール → `cli`、`io/charge.py`・`io/structure_formats.py → domain`、`io/trj2fig.py → backends`。同梱の fork は層の外にあり、どの層からも `from pysisyphus.X import Y` の形で import できます。
 
-CI が検査するのはこの向きの一部だけです。どちらのスクリプトもリポジトリの root で `python` で実行し、終了コードが 0 なら合格です。
+CI が検査するのはこの向きの一部だけです。どちらのスクリプトもリポジトリのルートで `python` から実行し、終了コードが 0 なら合格です。
 
 - `.github/scripts/check_import_graph.py` は、`pdb2reaction/*` のモジュール間の import の循環、`core/` と `domain/` から `workflows/*` への import、`pysisyphus/` から `pdb2reaction` への import を禁止します。
 - `.github/scripts/check_engineering_markers.py` は、`# CHEMISTRY-RULE` と `# DOMAIN_PURE` のマーカー（§5.1）と、MLIP の SDK の `fairchem`、`orb_models`、`mace`、`aimnet` を `backends/` の下でだけ import していることを検査します。
@@ -109,13 +109,13 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L2 `workflows/`** には、計算コマンドのモジュールと、`scan_common.py`、`restraints.py`、`align_freeze.py` などの段で共有する helper があります。コマンドのモジュールは通常 `cli` という名前の `@click.command()` を 1 つ公開しますが、utility のコマンドは `io/` と `domain/` にもあるので、「サブコマンドごとに必ず 1 ファイル」「workflow のファイルはすべてコマンド」という決まりはありません。
 
-**L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP の SDK を import しては **いけません**。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
+**L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい、化学的な意味を持つ補助処理の層ですが、MLIP の SDK を import しては **いけません**。この層の処理は、どの L2 の段ランナーからでも再利用できます。
 
-**L4a `backends/`**。MLIP バックエンドディスパッチャと、サポートする各 MLIP につき 1 つのアダプタがあります。ディスパッチャは自作の ASE calculator の受け口も持ちます。
+**L4a `backends/`**。MLIP バックエンドのディスパッチャと、対応する MLIP ごとに 1 つのアダプタがあります。ディスパッチャは自作の ASE calculator の受け口も持ちます。
 
-**L4b `io/`**。出力側の I/O を受け持ちます。段ごとの summary の書き出し、エネルギーダイアグラム、軌跡の描画、PDB の altloc の修正、PDB/mmCIF の変換とテンプレートの identifier の復元、メモリ上の Hessian キャッシュです。出力の形式はここが持ち、段のランナーがそれを使います。foundation 以外への import は §2.1 に挙げています。
+**L4b `io/`**。出力側の I/O を受け持ちます。段ごとの要約の書き出し、エネルギー図、軌跡の描画、PDB の altloc の修正、PDB/mmCIF の変換とテンプレートの識別子の復元、メモリ上の Hessian キャッシュです。出力の形式はここが持ち、段のランナーがそれを使います。L5（foundation）以外への import は §2.1 に挙げています。
 
-**L5 `core/`** は最下層です。`defaults.py` は、共有される数値と CLI のデフォルト値の **主な出典** です。まずここを grep し、そのあと path engine の選択のような、理由のあるコマンド固有のデフォルト値も確かめます。`utils.py` には、設定・構造・座標・plot の共有の helper があります。
+**L5 `core/`** は最下層です。`defaults.py` は、共有される数値と CLI のデフォルト値の **主な出典** です。まずここを grep し、そのあと経路エンジンの選択のような、理由のあるコマンド固有のデフォルト値も確かめます。`utils.py` には、設定・構造・座標・作図の共有ヘルパーがあります。
 
 ### 2.4 遅延 import の仕組み（概念図）
 
@@ -145,8 +145,8 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 |------|---------|------|-----------------|
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落の概要と、1 コマンドでの使い方 |
 | 2 | 5 | このファイル（`docs/ja/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
-| 3 | 5 | [`pdb2reaction/cli/app.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` registry、絶対path解決 |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py)（流し読み） | 1 つのサブコマンドを上から下まで追う。`extract → MEP → tsopt → IRC → freq → dft` をたどる |
+| 3 | 5 | [`pdb2reaction/cli/app.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` registry、絶対パスの解決 |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py)（通読） | 1 つのサブコマンドを上から下まで追う。`extract → MEP → tsopt → IRC → freq → dft` をたどる |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 機能を足す 5 つの手順（サブコマンド、MLIP バックエンド、出力形式、workflow の段、テスト）+ 触ってはいけない箇所の一覧 |
 
 ステップ 5 の後は、§4 のファイル索引で主なファイルを探せます。本パッケージは **各階層内でフラット** です。`pdb2reaction/<layer>/` の下にネストしたパッケージは存在しないため、2 ディレクトリより深く辿る必要は決してありません。
@@ -159,49 +159,49 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 | 関心事 | ファイル |
 |---|---|
-| Click root group + サブコマンドディスパッチ | `pdb2reaction/cli/app.py` |
+| Click の root group とサブコマンドの振り分け | `pdb2reaction/cli/app.py` |
 | サブコマンドリゾルバ（遅延 import） | `pdb2reaction/cli/default_group.py` |
 | `python -m pdb2reaction` エントリ | `pdb2reaction/__main__.py` |
-| YAML ソース解決 + 標準化された例外処理 | `pdb2reaction/cli/decorators.py` |
+| YAML の読み込み元の解決と、共通化した例外処理 | `pdb2reaction/cli/decorators.py` |
 | `--help-advanced` ページャ | `pdb2reaction/cli/help_pages.py` |
-| Bool flag 互換（`--flag` / `--no-flag` + value style） | `pdb2reaction/cli/bool_compat.py` |
+| ブール値フラグの互換処理（`--flag` / `--no-flag` と値付きの形） | `pdb2reaction/cli/bool_compat.py` |
 | 共有 option-decorator ファクトリ（`--print-every`, `--irc-pos-def`, `--precision`, `--coord-type`, `--charge / --ligand-charge / --multiplicity`） | `pdb2reaction/cli/common_options.py` |
 
 ### 4.2 ワークフローステージランナー（L2 `workflows/`）
 
 | 関心事 | ファイル |
 |---|---|
-| 全パイプラインオーケストレータ | `pdb2reaction/workflows/all.py` |
+| 一気通貫ワークフローの統括（オーケストレータ） | `pdb2reaction/workflows/all.py` |
 | 構造最適化（L-BFGS / RFO） | `pdb2reaction/workflows/opt.py` |
 | scan、2D/3D のエネルギー地形の格子と共有の処理 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM / DMF） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
 | TS 最適化（RS-P-RFO / RS-I-RFO / TRIM / Dimer + Bofill） | `pdb2reaction/workflows/tsopt.py` |
-| 振動解析（backend-agnostic PHVA + active block） | `pdb2reaction/workflows/freq.py` |
+| 振動解析（バックエンドに依存しない PHVA と active block） | `pdb2reaction/workflows/freq.py` |
 | IRC 積分 | `pdb2reaction/workflows/irc.py` |
 | 一点 DFT（PySCF / GPU4PySCF、同じプロセス内） | `pdb2reaction/workflows/dft.py` |
 | 活性部位抽出（クラスターキャップ） | `pdb2reaction/workflows/extract.py` |
-| 拘束ヘルパー | `pdb2reaction/workflows/restraints.py` |
-| Kabsch / frozen-subset アラインメント | `pdb2reaction/workflows/align_freeze.py` |
+| 拘束の補助処理 | `pdb2reaction/workflows/restraints.py` |
+| Kabsch 法 / 固定原子の部分集合の重ね合わせ | `pdb2reaction/workflows/align_freeze.py` |
 
 ### 4.3 化学ヘルパー（L3 `domain/`）
 
 | 関心事 | ファイル |
 |---|---|
-| R↔P 結合変化検出 | `pdb2reaction/domain/bond_changes.py` |
-| IRC 後の結合サマリ | `pdb2reaction/domain/bond_summary.py` |
-| PDB 元素欄正規化 | `pdb2reaction/domain/add_elem_info.py` |
-| 残基・イオン電荷テーブル | `pdb2reaction/domain/residue_data.py` |
+| R↔P の結合変化の検出 | `pdb2reaction/domain/bond_changes.py` |
+| IRC 後の結合の要約 | `pdb2reaction/domain/bond_summary.py` |
+| PDB の元素欄の正規化 | `pdb2reaction/domain/add_elem_info.py` |
+| 残基・イオンの電荷の表 | `pdb2reaction/domain/residue_data.py` |
 
 ### 4.4 MLIP バックエンド（L4a `backends/`）
 
 | 関心事 | ファイル |
 |---|---|
-| バックエンドディスパッチ + レジストリ | `pdb2reaction/backends/__init__.py` |
-| `MLIPCalculator` プロトコル + base | `pdb2reaction/backends/base.py` |
-| custom ASE calculator アダプタ | `pdb2reaction/backends/custom.py` |
-| 決定論的 reduction shim | `pdb2reaction/backends/_determinism.py` |
-| オプションの DFT calculator adapter | `pdb2reaction/backends/pyscf_dft.py` |
+| バックエンドの振り分けとレジストリ | `pdb2reaction/backends/__init__.py` |
+| `MLIPCalculator` のプロトコルと基底クラス | `pdb2reaction/backends/base.py` |
+| 自作 ASE calculator のアダプタ | `pdb2reaction/backends/custom.py` |
+| 決定論的な reduction の shim | `pdb2reaction/backends/_determinism.py` |
+| オプションの DFT calculator のアダプタ | `pdb2reaction/backends/pyscf_dft.py` |
 | バックエンドごとのアダプタ | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
 
 バックエンドを追加するときは、`CONTRIBUTING.md` の recipe 3.2「Add an MLIP backend」に従ってください。
@@ -210,23 +210,23 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 | 関心事 | ファイル |
 |---|---|
-| `summary.log` ライタ | `pdb2reaction/io/summary.py` |
-| Plotly エネルギーダイアグラム | `pdb2reaction/io/energy_diagram.py` |
+| `summary.log` の書き出し | `pdb2reaction/io/summary.py` |
+| Plotly によるエネルギー図 | `pdb2reaction/io/energy_diagram.py` |
 | 軌跡 → PNG / JPEG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
-| PDB altloc 解決 | `pdb2reaction/io/pdb_fix.py` |
-| altloc identity と一貫した選択 | `pdb2reaction/io/altloc.py` |
-| 残基を考慮した電荷解決 | `pdb2reaction/io/charge.py` |
-| PDB/mmCIF 変換 + identifier 復元 | `pdb2reaction/io/structure_formats.py` |
-| インメモリ Hessian キャッシュ（実行ごとの TTL） | `pdb2reaction/io/hessian_cache.py` |
+| PDB の altloc の解決 | `pdb2reaction/io/pdb_fix.py` |
+| altloc の識別と一貫した選択 | `pdb2reaction/io/altloc.py` |
+| 残基を考慮した電荷の決定 | `pdb2reaction/io/charge.py` |
+| PDB/mmCIF の変換と識別子の復元 | `pdb2reaction/io/structure_formats.py` |
+| メモリ上の Hessian キャッシュ（実行ごとの TTL） | `pdb2reaction/io/hessian_cache.py` |
 
 ### 4.6 Foundation（L5 `core/`）
 
 | 関心事 | ファイル |
 |---|---|
 | **共有の数値のデフォルト値（主な出典。コマンド固有の例外も確かめる）** | `pdb2reaction/core/defaults.py` |
-| PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
-| `-v` / `--verbose LEVEL` logging 配線 | `pdb2reaction/core/logging.py` |
-| output／result ownership helper | `pdb2reaction/core/output.py`、`pdb2reaction/core/result_commit.py` |
+| PDB / XYZ / 作図の補助関数 | `pdb2reaction/core/utils.py` |
+| `-v` / `--verbose LEVEL` のログ設定 | `pdb2reaction/core/logging.py` |
+| 出力と結果の ownership を扱う補助関数 | `pdb2reaction/core/output.py`、`pdb2reaction/core/result_commit.py` |
 | コンパイラや Chrome のライブラリが無いときの案内 | `pdb2reaction/core/prerequisites.py` |
 | エネルギー成分の合成 | `pdb2reaction/core/pes_composition.py` |
 
@@ -234,7 +234,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 | ディレクトリ | 役割 | 主な分岐ファイル（完全な一覧は各ディレクトリの README を参照） |
 |---|---|---|
-| `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（GPU 常駐の in-place rank-two Bofill 更新と、明示的な `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
+| `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（指定したときだけ有効な `require_pos_def_hessian` の PSD 収束ガード）、`optimizers/hessian_updates.py`（GPU 常駐の in-place rank-two Bofill 更新と、明示的な `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
 | `thermoanalysis/` | thermochemistry（ΔG, ZPE, 分配関数） | `QCData.py`（上流との branding 差分） |
 
 ---
@@ -259,22 +259,22 @@ CI が求めるマーカーは次の 3 つです:
 
 | マーカー | ルール | 実装のファイル |
 |---|---|---|
-| 4 | gpu4pyscf `rks_lowmem` のclosed-shell/GPU/lowmem guard | `pdb2reaction/core/dft_settings.py` |
-| 5 | def2 family auto-ECP injection | `pdb2reaction/workflows/dft.py` |
-| 7 | Dimer の flatten loop での active Hessian block の Bofill 更新（`_bofill_update_active`）。advanced indexing は in-place の `+=` ではなく代入で書く。optimizer 自体の Bofill 更新は `pysisyphus/optimizers/hessian_updates.py` にある | `pdb2reaction/workflows/tsopt.py` |
+| 4 | gpu4pyscf `rks_lowmem` を使う条件（閉殻・GPU・低メモリ）の guard | `pdb2reaction/core/dft_settings.py` |
+| 5 | def2 系の基底への ECP の自動追加（auto-ECP injection） | `pdb2reaction/workflows/dft.py` |
+| 7 | Dimer の flatten ループでの active Hessian ブロックの Bofill 更新（`_bofill_update_active`）。advanced indexing は in-place の `+=` ではなく代入で書く。オプティマイザ自体の Bofill 更新は `pysisyphus/optimizers/hessian_updates.py` にある | `pdb2reaction/workflows/tsopt.py` |
 
 これらのいずれかを編集するには、コミットメッセージの先頭の `[CHEMISTRY-RULE:N]`、メンテナの承認、該当する回帰テスト、記録を残した定期の数値ベンチマークが必要です。`CONTRIBUTING.md` §4.1 と §5 を参照してください。
 
 ### 5.2 VRAM 管理の不変条件（`del` チェーンをリファクタしない）
 
-IRC / TSopt / Freq の各ステージは、CUDA メモリを解放するために、それぞれの段の境界で自分の GPU 常駐の `calc`・`geom`・`hess` と一時オブジェクトを明示的に `del` します。3 つの workflow が同じ `del` の並びを共有しているわけではありません。ステージ境界では `gc.collect()` に加え、CUDA allocation がある場合は `torch.cuda.empty_cache()` も実行し、`all` は子ステージの間でガベージコレクションを行います。**これらの解放処理をリファクタで取り除かないでください**。大きな活性部位モデルを伴う長時間の `all` ジョブは、これらがないと OOM（メモリ不足）で止まります。
+IRC / TSopt / Freq の各ステージは、CUDA メモリを解放するために、それぞれの段の境界で、その段が持つ GPU 常駐の `calc`・`geom`・`hess` と一時オブジェクトを明示的に `del` します。3 つの workflow が同じ `del` の並びを共有しているわけではありません。ステージ境界では `gc.collect()` に加え、CUDA のメモリ確保がある場合は `torch.cuda.empty_cache()` も実行し、`all` は子ステージの間でガベージコレクションを行います。**これらの解放処理をリファクタで取り除かないでください**。大きな活性部位モデルを伴う長時間の `all` ジョブは、これらがないと OOM（メモリ不足）で止まります。
 
 ### 5.3 同梱 fork: 上流を並べてインストールしない
 
-同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。本パッケージと並べて `pip install pysisyphus` や `pip install thermoanalysis` で PyPI 版を入れ直すと、次が気づかないうちに動かなくなります:
+同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。本パッケージと同じ環境に `pip install pysisyphus` や `pip install thermoanalysis` で PyPI 版を追加すると、次が気づかないうちに動かなくなります:
 
-- `pysisyphus/irc/IRC.py` — 初期変位のメモリ管理 + オプトインの `require_pos_def_hessian` kwarg
-- `pysisyphus/optimizers/hessian_updates.py` — GPU 常駐の in-place rank-two Bofill 更新、オプトインの `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック
+- `pysisyphus/irc/IRC.py` — 初期変位のメモリ管理と、指定したときだけ有効な `require_pos_def_hessian` kwarg
+- `pysisyphus/optimizers/hessian_updates.py` — GPU 常駐の in-place rank-two Bofill 更新と、明示的な `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック
 - `pysisyphus/tsoptimizers/TSHessianOptimizer.py` — RSIRFO kwargs
 - `pysisyphus/calculators/{Calculator,Dimer}.py` — GPU 対応バックエンドフック。fork にあるのはこの 2 つだけで、QM の calculator はありません
 - `pysisyphus/_array.py` — `optimizers/hessian_updates.py` やほかのいくつかのホットパスファイルで使われる `get_xp` / `_outer` / `_dot` / `_eigh` shim
@@ -282,11 +282,11 @@ IRC / TSopt / Freq の各ステージは、CUDA メモリを解放するため�
 
 ### 5.4 パッケージ変更には隔離インストール検証が必要
 
-`include` glob の `pdb2reaction*` は新しい層サブパッケージを自動探索するため、通常の内部ファイル追加で package discovery を変える必要はありません。package discovery や runtime dependency を変更する場合は、sdist と wheel を作成し、wheel の内容を検査し、クリーン環境でインストールした後に CLI smoke test を実行してください。これはついでのリファクタではなく、配布物の中身を変える変更として扱ってください。
+`include` glob の `pdb2reaction*` は新しい層のサブパッケージを自動で探索するため、通常の内部ファイル追加でパッケージ探索の設定（package discovery）を変える必要はありません。パッケージ探索や実行時の依存関係（runtime dependency）を変更する場合は、sdist と wheel を作成し、wheel の内容を検査し、クリーン環境でインストールした後に CLI smoke test を実行してください。これはついでのリファクタではなく、配布物の中身を変える変更として扱ってください。
 
 ### 5.5 `_LAZY_SUBCOMMANDS` レジストリは絶対パスを使う必要がある
 
-`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリを相対 dotted import（`".all"` など）に変えると、`default_group.py` が移動した際にサブコマンド探索が気づかないうちに動かなくなります。リゾルバの `__package__` がパッケージルートから乖離するためです。
+`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリをドットで始まる相対 import（`".all"` など）に変えると、`default_group.py` が移動した際にサブコマンド探索が気づかないうちに動かなくなります。リゾルバの `__package__` がパッケージルートからずれるためです。
 
 ---
 
@@ -296,8 +296,8 @@ IRC / TSopt / Freq の各ステージは、CUDA メモリを解放するため�
 
 | ディレクトリ | 上流の PyPI 版か | 用途 | 許される編集の範囲 |
 |---|---|---|---|
-| `pysisyphus/` | NO — fork、`pip install pysisyphus` を並べないこと | optimizer, TS, IRC, COS, calculators | logic edit には再現された不具合または承認済み機能、focused regression test、該当する numerical/GPU benchmark が必要 |
-| `thermoanalysis/` | NO — fork（branding/I/O 差分） | ΔG, ZPE, 分配関数, `QCData` | logic edit には I/O または数値上の必要性と thermochemistry golden test が必要 |
+| `pysisyphus/` | いいえ — fork。`pip install pysisyphus` で同じ環境に追加しないこと | optimizer, TS, IRC, COS, calculators | logic の編集には、再現した不具合か承認済みの機能、対象を絞った回帰テスト、該当する数値 / GPU のベンチマークが必要 |
+| `thermoanalysis/` | いいえ — fork（branding / I/O の差分） | ΔG, ZPE, 分配関数, `QCData` | logic の編集には、I/O または数値上の必要性と、thermochemistry の golden test が必要 |
 
 各ディレクトリは分岐ファイルと変更の方針を列挙した独自の `README.md` を持ちます。
 
@@ -309,9 +309,9 @@ IRC / TSopt / Freq の各ステージは、CUDA メモリを解放するため�
 
 1. `pdb2reaction/core/defaults.py` — 共有のデフォルト値の主な出典（§2.3）。
 2. `pdb2reaction/workflows/extract.py` — 活性部位クラスターキャップ。
-3. `pdb2reaction/backends/__init__.py` + `base.py` — MLIP ディスパッチャとバックエンドごとのアダプタ契約。
+3. `pdb2reaction/backends/__init__.py` + `base.py` — MLIP ディスパッチャと、バックエンドごとのアダプタのインターフェース。
 4. `pdb2reaction/workflows/tsopt.py` — TS 最適化の driver と、Dimer の flatten loop の Bofill 更新（CHEMISTRY-RULE:7）。
 5. `pdb2reaction/workflows/freq.py` — クラスターモデル上での振動解析。
 6. `pdb2reaction/workflows/irc.py` — VRAM 管理 + IRC 積分。
 7. `pdb2reaction/workflows/dft.py` — PySCF / GPU4PySCF による一点 DFT（CHEMISTRY-RULE:5）。
-8. `pdb2reaction/core/utils.py` — 共有 PDB / XYZ / plot ヘルパー。
+8. `pdb2reaction/core/utils.py` — 共有の PDB / XYZ / 作図ヘルパー。

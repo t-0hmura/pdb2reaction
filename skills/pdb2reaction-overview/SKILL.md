@@ -28,7 +28,7 @@ pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
 
 - `-c` cuts the active-site cluster around the named residues; without it, the input is used as the cluster. How to choose the residues, radius, and boundary: [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md).
 - `--tsopt` adds TS optimization, IRC, and endpoint optimization; `--thermo` adds frequencies and Gibbs energies for R, TS, and P; `--dft` adds DFT single points on them. `--thermo` and `--dft` need `--tsopt`.
-- Each neighbouring pair of inputs becomes one segment. Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
+- Each neighboring pair of inputs becomes one segment. Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
 - DFT//MLIP: `--dft` evaluates R, TS, and P with DFT on the MLIP geometries; with `--thermo` it also gives DFT//MLIP Gibbs energies. To run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
 - With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs Scan-list mode. One structure with neither is an error.
 
@@ -39,7 +39,7 @@ Run the stages as separate commands when you want to check each result before sp
 | Stage | Command | Role |
 |---|---|---|
 | Cluster | `extract` | Cuts the active-site cluster, adds cap H, sums the charge |
-| MEP | `path-opt` (default in `all`) or `path-search` (`all --refine-path`) | Path between neighbouring structures; its highest-energy image (HEI) is the TS candidate |
+| MEP | `path-opt` (default in `all`) or `path-search` (`all --refine-path`) | Path between neighboring structures; its highest-energy image (HEI) is the TS candidate |
 | TS | `tsopt` | TS optimization (RS-P-RFO by default, Dimer as an alternative) and n_imag |
 | IRC | `irc`, then `opt` on both ends | Follows the reaction mode both ways; the optimized ends become R and P |
 | Thermo | `freq` | Frequencies and QRRHO Gibbs energies (`all --thermo`) |
@@ -49,7 +49,7 @@ Run the stages as separate commands when you want to check each result before sp
 
 If the chemistry you meant to start from changed, hold the bonds to keep with `opt --distance-restraint '[(i, j)]'` (a pair without a target keeps its current distance); start a scan from that result with `all --no-scan-preopt`, and for an MEP endpoint run an unrestrained `opt` from it and check the bonds again before passing it to `all`. If you continue from the changed R instead, treat it as another chemical state: check cuts, caps, and protonation, and do not rank its barriers with candidates that kept the original state.
 
-**MEP.** In `path-opt` `result.json`, `optimization_status` must be `"converged"`; `"completed"` only means the run returned. Look at `final_geometries_trj.xyz`, its energy profile, and `hei.pdb`, check that both ends have the same atoms in the same order, and run `bond-summary` on the end pair. For R → IM → P, run one `path-opt` per neighbouring pair. With `path-search`, read `summary.json`, check each segment's `bond_changes`, and start each TS from that segment's `hei_seg_NN.pdb`.
+**MEP.** In `path-opt` `result.json`, `optimization_status` must be `"converged"`; `"completed"` only means the run returned. Look at `final_geometries_trj.xyz`, its energy profile, and `hei.pdb`, check that both ends have the same atoms in the same order, and run `bond-summary` on the end pair. For R → IM → P, run one `path-opt` per neighboring pair. With `path-search`, read `summary.json`, check each segment's `bond_changes`, and start each TS from that segment's `hei_seg_NN.pdb`.
 
 **TS.** In `tsopt` `result.json`, `optimization_status` is `"converged"`, `hessian_status` is `"completed"`, `saddle_validation` is `"first_order"` (`n_imaginary_modes` = 1), and the imaginary mode moves the reacting atoms; the console prints `[tsopt] Converged (n_imag=1).` A successful TS optimization gives one imaginary mode along the reaction coordinate. A run that stops at max cycles without converging computes no Hessian, so it reports no n_imag. A run stopped on an energy plateau (`--stop-plateau`) always computes the Hessian and reports n_imag. `freq` on the TS is optional (all modes, thermochemistry).
 

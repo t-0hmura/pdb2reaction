@@ -50,9 +50,9 @@ result_all/
 | `key_output_files`, `current_output_paths` | Index of the files of this run; stale files in a reused directory are excluded |
 | `config`, `environment`, `command`, `pdb2reaction_version` | Effective settings, hardware, the command line, and the version |
 
-- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`; n_imag = 0 stops that segment before IRC; the other segments are still post-processed. How the IRC stopped does not enter the status.
+- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`; n_imag = 0 stops that segment before IRC; the other segments are still post-processed. How the IRC stopped does not affect the status.
 - The `references` set also appears at the end of `summary.log` and of the final console output, immediately before elapsed time.
-- `rate_limiting_step.barrier_kcal` uses the highest method available for every reactive segment: `DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`. Always report it with its `method`. It is the highest local barrier, not a kinetic rate-limiting-step assignment, and it is absent when no segment is reactive.
+- `rate_limiting_step.barrier_kcal` uses the highest-level method available for every reactive segment: `DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`. Always report it with its `method`. It is the highest local barrier, not a kinetic rate-limiting-step assignment, and it is absent when no segment is reactive.
 
 ## Per-segment keys
 
@@ -132,7 +132,7 @@ if rls:
 ```
 
 - "Bond formed" lists bonds present in P but not in R; "Bond broken" lists bonds present in R but not in P. A section with no change is `{"Bond formed": ["None"]}`, without `(k)`.
-- A bond is counted at up to 1.20 × the sum of covalent radii (margin 0.05). `bond-summary` in [utilities.md](../pdb2reaction-cli/utilities.md) uses the same rule.
+- A bond is counted when its length is at most 1.20 × the sum of covalent radii (margin 0.05). `bond-summary` in [utilities.md](../pdb2reaction-cli/utilities.md) uses the same rule.
 - Standalone `irc` writes a flat `{"formed": [...], "broken": [...]}` dict in its `result.json`, with `bond_changes_direction`.
 - An unexpected or long list is not a verdict. Look at the endpoint structures, then check the segment with TS optimization, n_imag, and IRC.
 

@@ -60,7 +60,7 @@ The structures you give `pdb2reaction` need two things:
 
 ### Add hydrogens (required)
 
-Input structures must contain **every hydrogen atom**. When a structure lacks hydrogens (a crystal structure, for example), add them beforehand with a tool such as these:
+Input structures must contain **every hydrogen atom**. When a structure lacks hydrogens (a crystal structure, for example), add them beforehand with one of these tools:
 
 | Recommended tool | Example command | Notes |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ mmCIF (`.cif`, `.mmcif`) and large structures (≥10,000 residues or ≥99,999 a
 An enzyme has thousands to tens of thousands of atoms, too many to compute as a whole with DFT. Instead, only the substrates and cofactors of the reaction and the residues around them are cut out and computed. This is called a **cluster model**.
 
 - Each cut covalent bond is capped with a hydrogen (a cap hydrogen).
-- The atoms that carry the cap hydrogens are frozen, so the model keeps its shape from inside the protein.
+- The atoms that carry the cap hydrogens are frozen, so the model keeps the shape it had inside the protein.
 
 `pdb2reaction` builds this model automatically: it selects the residues with an atom within `-r` (default 2.6 Å) of the substrates given with `-c`. Without `-c`, nothing is cut out and the input structure is used as it is. See [Building the cluster model](model-setup.md) for details.
 
@@ -138,7 +138,7 @@ When the run finishes, the output directory (`-o`, default `./result_all/`) cont
 | `mep_trj.pdb` / `mep_trj.cif` | Animated trajectory of the minimum energy path (MEP) |
 | `segments/seg_NN/` | Detailed results for each reaction segment (optimized R/TS/P structures, IRC trajectories, and more; with `--tsopt`) |
 
-At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. Check yourself that the imaginary mode moves the intended bonds (open the mode file that each quickstart lists) and that the IRC endpoints are the intended R and P (open the endpoint structures that each quickstart lists).
+At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. You still need to check that the imaginary mode moves the intended bonds (open the mode file that each quickstart lists) and that the IRC endpoints are the intended R and P (open the endpoint structures that each quickstart lists).
 
 ---
 

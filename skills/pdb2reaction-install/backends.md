@@ -216,8 +216,9 @@ python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
 
-The default model is `orbmol-v2` (OrbMol-v2): a conservative model, so forces are derived from the energy, trained on
-OMol25 and OPoly26 with learnable charges and a long-range Coulomb term.
+The default model is `orbmol-v2` (OrbMol-v2), a conservative model (forces are
+derived from the energy) trained on OMol25 and OPoly26, with learnable charges
+and a long-range Coulomb term.
 `orb_v3_conservative_omol` selects OrbMol-v1. The names describe the model
 family, not its accuracy for a given reaction. pdb2reaction runs ORB
 in fp64 by default. `--precision fp32` selects IEEE FP32 (`float32-highest`) and
@@ -484,7 +485,7 @@ Reading the report:
   GPU request from the job preamble.
 - With a GPU, note the driver version and VRAM; they bound the wheel and the
   model size.
-- No toolkit found does not block a prebuilt CUDA wheel
+- A missing toolkit does not block a prebuilt CUDA wheel
   ([CUDA and PyTorch](#cuda-and-pytorch)).
 - `pbsnodes -a` and `sinfo` give node capacities, which are upper bounds, not
   requests. Size requests from the measured workload and queue policy; most

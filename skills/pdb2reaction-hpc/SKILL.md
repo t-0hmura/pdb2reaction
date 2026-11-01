@@ -134,7 +134,7 @@ about 18 min, roughly the 2.4–2.6 power of the atom count. Clusters of several
 hundred atoms need a GPU with strong FP64 throughput and 24 GB or more; time
 one structure on the production GPU and extrapolate before a batch. The first
 SCF of each run converges on a coarse grid first (`--scf-stepwise-grid`, on by
-default), which shortened it 1.4–1.9 times from about 60 atoms up; small
+default), which made it 1.4–1.9 times faster from about 60 atoms up; small
 systems can be slightly slower, so `--no-scf-stepwise-grid` turns it off.
 
 Sum the measured stage costs for the expected number of segments, then add
@@ -227,7 +227,7 @@ the bounded dynamic-dispatch recipe below instead of an unbounded submit loop.
 
 When you have many short tasks and want to amortize the queue wait,
 use the flock + pbsdsh pattern documented in `dynamic-dispatch.md`. One
-qsub grabs N nodes, each node runs a worker that pulls tasks from a
+qsub reserves N nodes, each node runs a worker that pulls tasks from a
 shared list with file-lock-protected counter increment.
 
 ## UMA predictor workers
@@ -239,7 +239,7 @@ workers. **Two important caveats:**
 1. The `workers` / `workers_per_node` flags apply only to the UMA backend.
    ORB / MACE / AIMNet2 ignore them and emit a UserWarning when either is not 1.
 2. With UMA, `workers > 1` plus an explicit
-   `hessian_calc_mode=Analytical` request raises `BackendError` before the requested method can be changed; use
+   `hessian_calc_mode=Analytical` request raises `BackendError` rather than changing the requested method; use
    `FiniteDifference` (the default) or drop to `workers = 1`.
    See the [Notes in MLIP Backends](../../docs/backends.md#notes).
 

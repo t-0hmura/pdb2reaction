@@ -88,6 +88,6 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 ## 関連ドキュメント
 
 * [irc](irc.md) — 同じ判定で端点を確かめる IRC
-* [all](all.md) — 各段の結合変化も報告する全工程のワークフロー
+* [all](all.md) — 各段の結合変化も報告する一気通貫ワークフロー
 * [trj2fig](trj2fig.md) — 軌跡のエネルギープロファイルの図
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

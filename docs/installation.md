@@ -80,7 +80,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
   vulkan-loader wget xdg-utils
 ```
 
-Without sudo (HPC), run `module load gcc`, or add the compilers to your environment with `conda install -c conda-forge c-compiler cxx-compiler`. Ask the administrator for Chrome's libraries; without them `all` and `path-search` still finish and only skip the PNG files.
+Without sudo (HPC), run `module load gcc`, or add the compilers to your environment with `conda install -c conda-forge c-compiler cxx-compiler`. Ask the administrator to install Chrome's libraries; without them `all` and `path-search` still finish and only skip the PNG files.
 
 If one is missing, the command stops and prints `Missing system prerequisite:` followed by these commands.
 

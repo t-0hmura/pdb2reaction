@@ -97,6 +97,6 @@ summary.json         # result.json と同じ内容（--out-json 指定時）
 ## 関連ドキュメント
 
 * [trj2fig](trj2fig.md) — 軌跡の各フレームからエネルギープロファイルを作図
-* [all](all.md) — エネルギー図も自動で描く全工程のワークフロー
+* [all](all.md) — エネルギー図も自動で描く一気通貫ワークフロー
 * [JSON 出力の一覧](json-output.md#energy-diagram) — `result.json` の欄
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処。画像の書き出しに失敗したときは {ref}`インストール / 環境の問題 <ja-installation-environment-problems>`

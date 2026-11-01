@@ -536,7 +536,7 @@ jq '.post_segments[] | {index, barrier_kcal: .mlip.barrier_kcal}' result_all/sum
 - A run that fails while the CLI options or the input are being checked (before the output directory is set up) can stop without writing any JSON. Treat a nonzero exit code as a failure, and read stderr or the job log for the message.
 - `all` and `path-search` write `summary.json` only once the run reaches its summary step, so an early input error leaves no file.
 - The per-command sections also have their own `backend` / `model` fields. Scripts that read several commands should use `mlip_backend` / `mlip_model` / `mlip_precision`, which mean the same thing in every command.
-- [How the IRC stopped](irc.md#judging-the-irc) does not enter `scientific_status`: a standalone `irc` reports `success` when the integration finishes, also at `--max-cycles`, and `all` judges the TS and endpoint optimizations.
+- [How the IRC stopped](irc.md#judging-the-irc) does not enter `scientific_status`: a standalone `irc` reports `success` when the integration finishes, even when it ends at `--max-cycles`, and `all` judges the TS and endpoint optimizations.
 
 ## See Also
 

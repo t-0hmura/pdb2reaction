@@ -100,8 +100,8 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
   vulkan-loader wget xdg-utils
 ```
 
-A missing one stops the command with `Missing system prerequisite:` and the same
-commands. Docs: [System prerequisites](../../docs/installation.md#system-prerequisites).
+A missing one stops the command with a `Missing system prerequisite:` message
+that lists the same commands. Docs: [System prerequisites](../../docs/installation.md#system-prerequisites).
 
 ## Choose a backend
 

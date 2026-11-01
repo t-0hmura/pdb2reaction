@@ -86,5 +86,5 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ## 関連ドキュメント
 
 * [extract](extract.md) — 修復した PDB から活性部位モデルを抽出
-* [all](all.md) — 空欄の元素欄を自動で修復する全工程のワークフロー
+* [all](all.md) — 空欄の元素欄を自動で修復する一気通貫ワークフロー
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処
