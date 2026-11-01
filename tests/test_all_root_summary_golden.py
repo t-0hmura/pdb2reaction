@@ -33,6 +33,8 @@ from pdb2reaction.core.result_commit import (
     serialize_json_bytes,
 )
 from pdb2reaction.workflows import all as all_workflow
+from pdb2reaction.workflows import path_search as path_search_workflow
+from pdb2reaction.workflows._outcomes import aggregate_workflow_truth, attach_outcomes
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "all_root_summary"
 UPDATE_GOLDEN = os.environ.get("P2R_UPDATE_GOLDEN") == "1"
@@ -216,6 +218,8 @@ class PipelineStubs:
         return 0
 
     def _path_opt(self, out: Path, args):
+        # The parent reads the child's MEP convergence from this result.json.
+        assert "--out-json" in args
         index = int(out.name.split("_")[1])
         first = 2 * (index - 1)
         write(out / "final_geometries_trj.xyz", "".join(xyz_frame(k) for k in (first, first + 1, first + 2)))
@@ -246,12 +250,26 @@ class PipelineStubs:
         if all_frames:
             write(out / "mep_trj.xyz", "".join(xyz_frame(k) for k in all_frames))
             (out / "energy_diagram_MEP.png").write_bytes(b"PNG")
-        write(out / "summary.json", json.dumps(apply_current_run_id({
+        summary = {
             "out_dir": str(out), "n_images": len(all_frames),
             "n_segments": len(segments), "segments": segments,
-            "execution_status": "completed", "scientific_status": "success",
             "path_optimizers": ["lbfgs"],
-        })))
+        }
+        # The verdict comes from the real path-search outcome helpers, so a run
+        # without a reactive segment is not a success.
+        reports = [
+            path_search_workflow.SegmentReport(
+                tag=segment["tag"], barrier_kcal=segment["barrier_kcal"],
+                delta_kcal=segment["delta_kcal"], summary=segment["bond_changes"],
+                kind=segment["kind"], seg_index=int(segment["index"]),
+                converged=segment["converged"],
+            )
+            for segment in segments
+        ]
+        leaves, expected = path_search_workflow._path_leaves_and_expected(reports)
+        attach_outcomes(summary, truth=aggregate_workflow_truth(leaves, expected),
+                        stage_outcomes=leaves)
+        write(out / "summary.json", json.dumps(apply_current_run_id(summary)))
 
     def _scan(self, out: Path, args):
         stage = out / "stage_01"

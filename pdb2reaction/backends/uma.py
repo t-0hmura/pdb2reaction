@@ -9,6 +9,7 @@ Provides ``UMACalculator`` (PySisyphus-compatible) and ``UMAASECalculator``
 
 from __future__ import annotations
 
+import importlib.util
 import time
 import warnings
 from contextlib import contextmanager
@@ -265,11 +266,11 @@ class UMAcore:
         self._collater = data_list_collater
 
         if self.parallel_predict:
-            if ParallelMLIPPredictUnit is None:
+            # fairchem-core >= 2.23 imports ParallelMLIPPredictUnit without Ray.
+            if ParallelMLIPPredictUnit is None or importlib.util.find_spec("ray") is None:
                 raise ImportError(
-                    "workers>1 requested, but ParallelMLIPPredictUnit could not be imported "
-                    "from fairchem. Ray is required for workers>1: "
-                    'run `pip install "fairchem-core[ray]"`.'
+                    "--uma-workers 2 or more needs fairchem's parallel predictor and Ray; "
+                    'install them with `pip install "fairchem-core[ray]"`.'
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
             atom_refs = _uma_reference_energies(model, "atom_refs")
@@ -815,10 +816,10 @@ class UMAASECalculator(FAIRChemCalculator):
         )
 
         if num_workers > 1:
-            if ParallelMLIPPredictUnit is None:
+            if ParallelMLIPPredictUnit is None or importlib.util.find_spec("ray") is None:
                 raise ImportError(
-                    "workers>1 requested, but ParallelMLIPPredictUnit could not be imported "
-                    "from fairchem."
+                    "--uma-workers 2 or more needs fairchem's parallel predictor and Ray; "
+                    'install them with `pip install "fairchem-core[ray]"`.'
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
             atom_refs = _uma_reference_energies(model, "atom_refs")

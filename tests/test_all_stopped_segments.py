@@ -99,3 +99,37 @@ def test_resume_keeps_only_the_stops_of_the_current_run(tmp_path, monkeypatch):
     assert summary["stopped_before_irc"] is False
     assert "pipeline_stop" not in summary and "stopped_segments" not in summary
     assert (resumed.exit_code, summary["scientific_status"]) == (0, "success")
+
+
+@pytest.mark.parametrize(
+    "resume_segment,stopped_now,expected",
+    [
+        pytest.param(3, (), [1], id="earlier-stop-only"),
+        pytest.param(2, (3,), [1, 3], id="earlier-and-current-stop"),
+    ],
+)
+def test_resume_keeps_the_stops_of_the_segments_before_it(
+    tmp_path, monkeypatch, resume_segment, stopped_now, expected
+):
+    first, summary = run_all(tmp_path, monkeypatch, [1])
+    assert summary["stopped_segments"][0]["segment"] == 1
+
+    monkeypatch.setattr(golden, "PipelineStubs", ThreeSegmentStubs)
+    monkeypatch.setitem(globals(), "STOPPED", stopped_now)
+    resumed = golden.invoke(
+        tmp_path, monkeypatch,
+        golden.Scenario(
+            "resume", (0, 2, 4, 6), ["--resume-segment", str(resume_segment), "--tsopt"]
+        ),
+    )
+    summary = json.loads((resumed.out / "summary.json").read_text(encoding="utf-8"))
+
+    reason = "ts_optimization_not_converged"
+    assert summary["stopped_before_irc"] is True
+    assert summary["pipeline_stop"]["segment"] == 1
+    assert summary["stopped_segments"] == [
+        {"stage": "before_irc", "segment": segment, "reason": reason} for segment in expected]
+    assert (resumed.exit_code, summary["scientific_status"]) == (0, "partial")
+    log = (resumed.out / "summary.log").read_text(encoding="utf-8")
+    stops = "; ".join(f"segment {segment} ({reason})" for segment in expected)
+    assert f"Stopped before IRC  : {stops}" in log

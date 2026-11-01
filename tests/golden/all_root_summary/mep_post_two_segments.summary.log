@@ -26,9 +26,17 @@ Multiplicity (2S+1): 1
   Number of MEP images : 5
   Number of segments   : 2
   MEP trajectory (PDB) : mep_trj.pdb
+  MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    (no diagram available)
+    Image : _work/path_opt/energy_diagram_mep.png
+    State    ΔE [kcal/mol]
+        R          0.0000
+        TS1       31.3755
+        IM1_1     -6.2751
+        IM1_2     -6.2751
+        TS2       28.2379
+        P        -12.5502
 
 [2] Segment-level MEP summary (MLIP path)
   - Segment 01 [seg]  tag=seg_001
@@ -156,6 +164,15 @@ Multiplicity (2S+1): 1
     DFT//MLIP ΔG  [kcal/mol]        -5.65      -5.65
 
 [4] Energy diagrams (overview)
+  energy_diagram_mep  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.375
+        IM1_1    -6.275
+        IM1_2    -6.275
+        TS2      28.238
+        P       -12.550
+    Image : _work/path_opt/energy_diagram_mep.png
   energy_diagram_MLIP  (ylabel: ΔE (kcal/mol))
     State   ΔE [kcal/mol]
         R         0.000
@@ -242,12 +259,12 @@ Multiplicity (2S+1): 1
     Image : energy_diagram_G_DFT_plus_MLIP_all.png
 
   Energy diagram overview table
-    State                            R     TS1       P
-    MEP ΔE  [kcal/mol]             ---     ---     ---
-    MLIP ΔE  [kcal/mol]           0.00   31.38   -6.28
-    MLIP ΔG  [kcal/mol]           0.00   30.12   -5.65
-    DFT//MLIP ΔE  [kcal/mol]      0.00   31.38   -6.28
-    DFT//MLIP ΔG  [kcal/mol]      0.00   30.12   -5.65
+    State                            R     TS1   IM1_1   IM1_2     TS2       P
+    MEP ΔE  [kcal/mol]            0.00   31.38   -6.28   -6.28   28.24  -12.55
+    MLIP ΔE  [kcal/mol]           0.00   31.38     ---     ---     ---   -6.28
+    MLIP ΔG  [kcal/mol]           0.00   30.12     ---     ---     ---   -5.65
+    DFT//MLIP ΔE  [kcal/mol]      0.00   31.38     ---     ---     ---   -6.28
+    DFT//MLIP ΔG  [kcal/mol]      0.00   30.12     ---     ---     ---   -5.65
 
 [5] Output directory structure
   out/
@@ -285,6 +302,7 @@ Multiplicity (2S+1): 1
   ├─ energy_diagram_DFT_all.png  # DFT R–TS–P (all segments)
   ├─ energy_diagram_G_DFT_plus_MLIP_all.png  # DFT//MLIP Gibbs R–TS–P (all segments)
   ├─ energy_diagram_G_MLIP_all.png  # MLIP Gibbs R–TS–P (all segments)
+  ├─ energy_diagram_MEP.png  # Compressed MEP diagram
   ├─ energy_diagram_MLIP_all.png  # MLIP R–TS–P energies (all segments)
   ├─ irc_plot_all.png  # Aggregated IRC plot
   ├─ mep_trj.pdb  # Full MEP as single PDB (all segments)

@@ -1254,6 +1254,45 @@ def test_optimized_endpoint_validation_requires_assigned_direct_pair(
     assert result["connectivity_validated"] is True
 
 
+@pytest.mark.parametrize(
+    "probe_reason,expected",
+    [
+        ("bond_change_check_failed:bond table unavailable",
+         "bond_change_check_failed:bond table unavailable"),
+        ("neither endpoint pairing matched the MEP bond topology",
+         "optimized reactant/product did not match their assigned MEP endpoint bond topologies"),
+    ],
+)
+def test_optimized_endpoint_validation_keeps_a_failed_bond_check_reason(
+    tmp_path, monkeypatch, probe_reason, expected,
+) -> None:
+    from pdb2reaction.workflows import all as workflow
+
+    monkeypatch.setattr(
+        workflow,
+        "_orient_irc_endpoints",
+        lambda *args, **kwargs: (
+            args[0], args[1], "forward", "backward", False,
+            {"method": "rmsd_topology_unmatched", "reason": probe_reason,
+             "match_matrix": {
+                 "left_to_mep_left": False,
+                 "left_to_mep_right": False,
+                 "right_to_mep_left": False,
+                 "right_to_mep_right": False,
+             }},
+        ),
+    )
+    result = workflow._validate_optimized_endpoint_pair(
+        object(),
+        object(),
+        endpoint_trajectory=tmp_path / "mep.xyz",
+        freeze_atoms=[],
+        seg_tag="seg_01",
+    )
+    assert result["connectivity_validated"] is False
+    assert result["reason"] == expected
+
+
 def test_summary_frequency_reader_uses_the_resolved_zero_cutoff(tmp_path) -> None:
     from pdb2reaction.workflows.all import _read_imaginary_frequency
 

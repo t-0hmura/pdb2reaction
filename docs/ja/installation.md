@@ -34,7 +34,7 @@ hf auth login
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-ログインはマシン・環境ごとに 1 回行えば十分です。
+ログインはマシンごとに 1 回行えば十分です。
 
 `pdb2reaction --version` でバージョンが表示されれば、インストールは成功です。
 

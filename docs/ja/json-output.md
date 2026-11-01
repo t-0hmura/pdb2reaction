@@ -420,7 +420,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 |-----------|------|------|
 | `execution_status` / `scientific_status` | string / string | 実行が完了したかと、指定した計算の段がすべて完了したか。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
-| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
+| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop`。ただし経路のセグメントの `before_irc` の停止は `Stopped before IRC`（`stopped_segments` を参照）と表示し、TS-only の停止は `stopped_segments` に入らない |
 | `stopped_segments` | object[] \| なし | IRC の前で止まったすべてのセグメント（`stage`・`segment`・`reason`）。ほかのセグメントは処理を続ける。`summary.log` では `Stopped before IRC` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `scan` | object \| なし | scan を初期経路に使う `all` の、前段の scan の状態・各段階の結果・診断。 |
@@ -447,7 +447,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示します。汎用の `opt_mode*` は実効の CLI の値を記録します。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザで（`preopt` を参照）、MEP の経路アルゴリズムではありません。 |
 | `mlip_precision_post` | string \| null | TS 最適化・IRC・端点の最適化・freq の実効の `tf32` / `fp32` / `fp64` 表記（`--precision-post`）。指定しなければ `mlip_precision` と同じ |
 | `rate_limiting_step` | object | 反応のあるすべてのセグメントで使える最上位の手法（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で求めた局所障壁の最大値。使った手法 `method` と、MEP から求めた障壁 `mep_barrier_kcal` も含みます。微視的速度論による律速段階の判定ではありません。 |
-| `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
+| `overall_reaction_energy_kcal` | float | 全体反応エネルギー。セグメントを作った区間の値で、セグメントを作らなかった区間は含みません |
 | `overall_reaction_energy_method` | string | 全体反応エネルギーを求めた手法（`MEP`、`MLIP`、`MLIP_Gibbs`、`DFT`、`DFT//MLIP_Gibbs`） |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
 | `post_segments[].tsopt.n_imaginary_modes` / `.imaginary_frequencies_cm` | int / float[] | 最適化した TS の n_imag と虚振動数 (cm⁻¹, 負の値) |

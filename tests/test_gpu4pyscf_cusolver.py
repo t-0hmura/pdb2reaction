@@ -7,10 +7,8 @@ CPU-only: ``gpu4pyscf`` is a stub package whose import records what
 from __future__ import annotations
 
 import ctypes.util
-import importlib.util
 import sys
 import types
-from pathlib import Path
 
 import pytest
 
@@ -168,10 +166,28 @@ def test_method_builder_prepares_cusolver_before_the_first_gpu4pyscf_import(
     assert events == (["prepare", "gpu4pyscf"] if prepared else [])
 
 
-def test_dft_command_prepares_cusolver_before_its_first_gpu4pyscf_import() -> None:
-    source = Path(importlib.util.find_spec("pdb2reaction.workflows.dft").origin).read_text()
+def test_dft_command_prepares_cusolver_before_its_first_gpu4pyscf_import(
+    environment, monkeypatch, tmp_path
+) -> None:
+    pytest.importorskip("pyscf")
+    from click.testing import CliRunner
 
-    assert source.count("from gpu4pyscf import dft as gdf") == 1
-    assert source.index("ensure_gpu4pyscf_cusolver()") < source.index(
-        "from gpu4pyscf import dft as gdf"
+    from pdb2reaction.cli import cli as root_cli
+
+    # The stub records the lookup at import, then stops the GPU SCF.
+    (environment.stub.parent / "dft.py").write_text(
+        "class RKS:\n"
+        "    def __init__(self, *args, **kwargs):\n"
+        "        raise RuntimeError('stub gpu4pyscf')\n"
     )
+    _system_lookup(monkeypatch, None)
+    source = tmp_path / "he.xyz"
+    source.write_text("1\nhelium\nHe 0 0 0\n", encoding="utf-8")
+
+    result = CliRunner().invoke(root_cli, [
+        "dft", "-i", str(source), "-q", "0", "-m", "1", "--func-basis", "hf/sto-3g",
+        "--engine", "gpu", "--no-lowmem", "-o", str(tmp_path / "out"),
+    ])
+
+    assert "GPU backend failed: stub gpu4pyscf" in result.output, result.output
+    assert sys.modules["gpu4pyscf"].cusolver_seen == str(environment.lib / "libcusolver.so.12")

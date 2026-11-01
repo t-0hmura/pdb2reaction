@@ -13,10 +13,28 @@
       "bond_changes": "C1-O1 distance change"
     }
   ],
-  "execution_status": "completed",
-  "scientific_status": "success",
   "path_optimizers": [
     "lbfgs"
+  ],
+  "execution_status": "completed",
+  "scientific_status": "success",
+  "expected_item_ids": [
+    "segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1"
+  ],
+  "stage_outcomes": [
+    {
+      "stage": "path",
+      "item_id": "segment_1",
+      "required": true,
+      "executed": true,
+      "converged": true,
+      "usable": true,
+      "reason": "ok",
+      "artifacts": []
+    }
   ],
   "run_id": "golden-run",
   "resume_identity": {
@@ -263,12 +281,6 @@
   "pdb2reaction_version": "<VERSION>",
   "schema_version": "4.0",
   "pipeline_mode": "path-search",
-  "expected_item_ids": [
-    "segment_1"
-  ],
-  "observed_item_ids": [
-    "segment_1"
-  ],
   "mlip_backend": "uma",
   "mlip_model": "uma-s-1p2p1",
   "mlip_model_label": "UMA-S-1.2.1 (OMol)",

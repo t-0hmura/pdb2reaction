@@ -373,6 +373,42 @@ def test_uma_core_is_rebuilt_when_composition_changes(monkeypatch):
     assert built == [["H", "H"], ["N", "N"]]
 
 
+def _ray_installed(monkeypatch, installed):
+    find_spec = importlib.util.find_spec
+
+    def find(name, *args, **kwargs):
+        if name == "ray":
+            return SimpleNamespace(name="ray") if installed else None
+        return find_spec(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "find_spec", find)
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        pytest.param(lambda: UMAcore(["O", "H", "H"], model="uma-s-1p2", charge=0, spin=1,
+                                     device="cpu", workers=2), id="UMAcore"),
+        pytest.param(lambda: uma_module.UMAASECalculator(model="uma-s-1p2", device="cpu",
+                                                         workers=2), id="UMAASECalculator"),
+    ],
+)
+def test_parallel_uma_without_ray_names_the_ray_extra(monkeypatch, build):
+    # fairchem-core >= 2.23 imports ParallelMLIPPredictUnit even without Ray.
+    monkeypatch.setattr(
+        uma_module, "ParallelMLIPPredictUnit",
+        lambda **kwargs: pytest.fail("the parallel predictor was constructed"),
+    )
+    _ray_installed(monkeypatch, False)
+    message = (
+        "--uma-workers 2 or more needs fairchem's parallel predictor and Ray; "
+        'install them with `pip install "fairchem-core[ray]"`.'
+    )
+    with pytest.raises(ImportError) as excinfo:
+        build()
+    assert str(excinfo.value) == message
+
+
 def _lazy_preparation_core(monkeypatch, *, device, precision, workers=1):
     """Model the PR298 preparation order with CPU tensors and logical devices."""
     dtype = torch.float64 if precision == "fp64" else torch.float32
@@ -452,6 +488,7 @@ def _lazy_preparation_core(monkeypatch, *, device, precision, workers=1):
     monkeypatch.setattr(uma_module.pretrained_mlip, "get_reference_energies",
                         lambda *_args, **_kwargs: {}, raising=False)
     monkeypatch.setattr(uma_module, "ParallelMLIPPredictUnit", parallel_factory)
+    _ray_installed(monkeypatch, True)
     core = UMAcore(["O", "H", "H"], model="uma-s-1p2", charge=-1, spin=2,
                    device=device, precision=precision, workers=workers)
     assert events == [("construct", "parallel" if workers > 1 else "serial")]

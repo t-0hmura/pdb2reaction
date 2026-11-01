@@ -89,10 +89,10 @@ Options:
                                   Omit it to use automatic charge derivation.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: with UMA, workers>1 plus an
-                                  explicit Analytical Hessian request is an
-                                  error; use workers=1 or FiniteDifference.
-                                  [default: 1]
+                                  predictor (needs fairchem-core[ray]). NOTE:
+                                  with UMA, workers>1 plus an explicit
+                                  Analytical Hessian request is an error; use
+                                  workers=1 or FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]

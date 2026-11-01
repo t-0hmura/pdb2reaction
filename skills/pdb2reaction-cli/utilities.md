@@ -161,8 +161,10 @@ pdb2reaction bond-summary -i 1.R.pdb -i 3.P.pdb
 pdb2reaction bond-summary -i frame_01.xyz -i frame_05.xyz -i frame_10.xyz
 ```
 
-`--bond-factor` (default 1.20) scales the covalent radii, `--device` defaults
-to `cpu`, and atom labels are 1-based unless `--zero-based`.
+`--bond-factor` (default 1.20) scales the covalent radii,
+`--metal-delta-fraction` (default 0.40) sets the change a pair with a metal
+atom needs, `--device` defaults to `cpu`, and atom labels are 1-based unless
+`--zero-based`.
 
 ### Check the result
 
@@ -205,9 +207,11 @@ when none were.
   for several inputs but does not map atoms; reorder the full structures
   first, then extract them together.
 - The cutoff is geometric only and does not tell covalent, ionic, and
-  hydrogen bonds apart; metal–ligand contacts can sit near it. A larger
-  `--bond-factor` (for example 1.30 for metal coordination) counts longer
-  contacts but can add false bonds; report the value and inspect the pairs.
+  hydrogen bonds apart. A larger `--bond-factor` (for example 1.30) counts
+  longer contacts but can add false bonds; report the value and inspect the
+  pairs. A pair that contains a metal atom counts only when its distance
+  changes by at least `--metal-delta-fraction` × T (default 0.40, about 1.0 Å
+  for Mg–O), whatever `--bond-factor` is; lower it to count a smaller change.
 - The JSON gives counts only; the atom pairs are in the text output and in
   `bond_changes` of `summary.json`
   ([outputs.md](../pdb2reaction-overview/outputs.md#bond-changes)).

@@ -40,7 +40,7 @@ pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 pip install pdb2reaction                           # UMA via fairchem-core
 plotly_get_chrome -y                               # headless Chrome; needs network
 hf auth login                                      # Read token; once per machine (shared by all envs)
-pip install 'pdb2reaction[orb,aimnet,dft]'   # optional extras
+pip install 'pdb2reaction[aimnet,dft]'       # optional extras
 ```
 
 For DMF or `--solvent`, replace the first three lines with the following

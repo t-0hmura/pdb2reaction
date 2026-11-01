@@ -13,10 +13,45 @@
       "bond_changes": ""
     }
   ],
-  "execution_status": "completed",
-  "scientific_status": "success",
   "path_optimizers": [
     "lbfgs"
+  ],
+  "execution_status": "completed",
+  "scientific_status": "partial",
+  "expected_item_ids": [
+    "segment_1",
+    "raw_path",
+    "reactive_segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1",
+    "raw_path"
+  ],
+  "scientific_status_reasons": [
+    "path:raw_path:endpoint_hei",
+    "missing:reactive_segment_1"
+  ],
+  "stage_outcomes": [
+    {
+      "stage": "path",
+      "item_id": "segment_1",
+      "required": true,
+      "executed": true,
+      "converged": true,
+      "usable": true,
+      "reason": "ok",
+      "artifacts": []
+    },
+    {
+      "stage": "path",
+      "item_id": "raw_path",
+      "required": true,
+      "executed": true,
+      "converged": true,
+      "usable": false,
+      "reason": "endpoint_hei",
+      "artifacts": []
+    }
   ],
   "run_id": "golden-run",
   "resume_identity": {

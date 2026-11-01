@@ -18,19 +18,19 @@ Options:
                                   .xyz before use.  [required]
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: with UMA, workers>1 plus an
-                                  explicit Analytical Hessian request is an
-                                  error; use workers=1 or FiniteDifference.
-                                  [default: 1]
+                                  predictor (needs fairchem-core[ray]). NOTE:
+                                  with UMA, workers>1 plus an explicit
+                                  Analytical Hessian request is an error; use
+                                  workers=1 or FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   --distance-restraint, --dist-freeze TEXT
                                   Distance restraints: inline Python literal
                                   (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
-                                  path. Same format as --scan-lists:
-                                  (i,j,target_A) triples. Target may be omitted
-                                  to freeze at the current distance: (i,j).
+                                  path. Format: (i,j,target_A) triples. Target
+                                  may be omitted to freeze at the current
+                                  distance: (i,j).
   --one-based / --zero-based      Interpret --distance-restraint indices as
                                   1-based or 0-based.  [default: one-based]
   --restraint-k, --bias-k FLOAT   Harmonic restraint strength k [eV/Å^2] for

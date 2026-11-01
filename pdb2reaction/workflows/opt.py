@@ -375,7 +375,7 @@ def _seed_rfo_initial_hessian(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -395,7 +395,7 @@ def _seed_rfo_initial_hessian(
     default=(),
     show_default=False,
     help="Distance restraints: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
-         "Same format as --scan-lists: (i,j,target_A) triples. "
+         "Format: (i,j,target_A) triples. "
          "Target may be omitted to freeze at the current distance: (i,j).",
 )
 @click.option(

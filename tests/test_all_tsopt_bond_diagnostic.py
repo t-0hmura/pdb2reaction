@@ -208,3 +208,11 @@ def test_refine_path_root_summary_fails_closed_until_post_processing(tmp_path, m
     assert "resume_identity" in root
     raw = json.loads((out / "_work/path_search/summary.json").read_text())
     assert raw["scientific_status"] == "success"
+
+    # A resumed run that dies in TSOPT again keeps the provisional verdict too.
+    with pytest.raises(ReachedTSDispatch):
+        CliRunner().invoke(root_cli, [*args, "--resume-segment", "1"], catch_exceptions=False)
+    root = json.loads((out / "summary.json").read_text())
+    assert root["resumed_from_segment"] == 1
+    assert root["scientific_status"] != "success"
+    assert root["execution_status"] == "failed"

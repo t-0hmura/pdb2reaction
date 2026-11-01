@@ -3134,14 +3134,23 @@ def _run_dft_for_state(
     import subprocess as _sp
     cmd = [sys.executable, "-m", "pdb2reaction", "dft"] + list(args)
     _echo(f"\n[dft] subprocess: {' '.join(cmd)}")
+    run_log = ddir / "run.log"
+    log_offset = run_log.stat().st_size if run_log.is_file() else 0
     proc = _sp.run(cmd, capture_output=True, text=True)
-    # Parser errors occur before the DFT CLI installs its own run log.
-    # Retain both subprocess streams even on that early exit, and make stderr
-    # visible in the parent at its default verbosity.
-    with (ddir / "run.log").open("a", encoding="utf-8") as handle:
+    # The DFT CLI writes its own run log, but a parser error is printed after
+    # that log closes. Append only the subprocess lines the child's log lacks,
+    # and make stderr visible in the parent at its default verbosity.
+    try:
+        with run_log.open("rb") as handle:
+            handle.seek(log_offset)
+            logged = set(handle.read().decode("utf-8", errors="replace").splitlines())
+    except OSError:
+        logged = set()
+    with run_log.open("a", encoding="utf-8") as handle:
         for stream in (proc.stdout, proc.stderr):
-            if stream:
-                handle.write(stream.rstrip() + "\n")
+            missing = [line for line in (stream or "").rstrip().splitlines() if line not in logged]
+            if missing:
+                handle.write("\n".join(missing) + "\n")
     if proc.stdout:
         _echo(proc.stdout.rstrip())
     if proc.stderr:
@@ -3571,6 +3580,7 @@ def _orient_irc_endpoints(
     endpoint_trajectory: Optional[Path],
     freeze_atoms: Sequence[int],
     seg_tag: Optional[str],
+    bond_cfg: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Any, Any, str, str, bool, Dict[str, Any]]:
     """Orient IRC endpoints against one already-claimed MEP trajectory."""
 
@@ -3612,7 +3622,7 @@ def _orient_irc_endpoints(
         elems, c_first, c_last = read_xyz_first_last(endpoint_trajectory)
         gL_end = _geom_from_angstrom(elems, c_first, freeze_atoms)
         gR_end = _geom_from_angstrom(elems, c_last, freeze_atoms)
-        bond_cfg = dict(_path_search.BOND_KW)
+        bond_cfg = dict(_path_search.BOND_KW if bond_cfg is None else bond_cfg)
         check_errors: List[str] = []
 
         def _matches(x, y) -> bool:
@@ -3708,6 +3718,7 @@ def _validate_optimized_endpoint_pair(
     endpoint_trajectory: Optional[Path],
     freeze_atoms: Sequence[int],
     seg_tag: str,
+    bond_cfg: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Validate optimized R/P topology against the assigned MEP endpoints."""
 
@@ -3718,6 +3729,7 @@ def _validate_optimized_endpoint_pair(
             endpoint_trajectory=endpoint_trajectory,
             freeze_atoms=freeze_atoms,
             seg_tag=seg_tag,
+            bond_cfg=bond_cfg,
         )
     except Exception as exc:
         return {
@@ -3752,8 +3764,12 @@ def _validate_optimized_endpoint_pair(
         "match_matrix": matrix,
     }
     if not direct:
+        probe_reason = str(probe.get("reason") or "") if isinstance(probe, dict) else ""
+        # A failed bond-change check is not a topology mismatch.
         result["reason"] = (
-            "optimized reactant/product did not match their assigned MEP "
+            probe_reason
+            if probe_reason.startswith("bond_change_check_failed:")
+            else "optimized reactant/product did not match their assigned MEP "
             "endpoint bond topologies"
         )
     return result
@@ -3833,6 +3849,7 @@ def _irc_and_match(
     public_root: Optional[Path] = None,
     runtime_overrides: Optional[Dict[str, Any]] = None,
     hessian_calc_mode: Optional[str] = None,
+    bond_cfg: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
@@ -4053,6 +4070,7 @@ def _irc_and_match(
             endpoint_trajectory=endpoint_trajectory,
             freeze_atoms=freeze_atoms,
             seg_tag=seg_tag,
+            bond_cfg=bond_cfg,
         )
         try:
             run_trj2fig(
@@ -4302,7 +4320,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -5166,6 +5184,10 @@ def cli(
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
     _set_yaml_freeze_atoms(merged_yaml_cfg, freeze_atoms_text)
+    # Every bond judgment of the run reads the YAML bond section, as scan and
+    # path-search do.
+    _bond_cfg_shared = dict(_path_search.BOND_KW)
+    apply_yaml_overrides(merged_yaml_cfg, [(_bond_cfg_shared, (("bond",),))])
     _guard_calc_cfg = _build_calc_cfg(
         0,
         1,
@@ -6677,6 +6699,7 @@ def cli(
             public_root=out_dir,
             runtime_overrides=child_runtime_overrides,
             hessian_calc_mode=hessian_calc_mode,
+            bond_cfg=_bond_cfg_shared,
         )
         _persist_run_manifest(manifest, out_dir)
 
@@ -6877,6 +6900,7 @@ def cli(
                 endpoint_trajectory=endpoint_trajectory,
                 freeze_atoms=irc_res.get("freeze_atoms") or [],
                 seg_tag=seg_tag,
+                bond_cfg=_bond_cfg_shared,
             )
             record["endpoint_opt"] = {
                 "reactant_converged": react_conv,
@@ -7426,6 +7450,17 @@ def cli(
                     f"[write] WARNING: failed to write stopped TS summary.log: {exc}",
                     err=True,
                 )
+            # Republish so summary.json also lists the summary.log written above.
+            summary["key_output_files"] = _current_key_output_files(manifest, out_dir)
+            summary["current_output_paths"] = _current_output_paths(manifest, out_dir)
+            _publish_manifest_summary(
+                tsroot / "summary.json",
+                summary,
+                manifest=manifest,
+                key="ts.summary.01",
+                out_dir=out_dir,
+            )
+            _publish_root_summary(summary, warn_on_failure=True)
             _persist_run_manifest(manifest, out_dir)
             _echo(
                 "[all] TS artifacts were finalized, but IRC and every later "
@@ -7499,6 +7534,14 @@ def cli(
                 summary, out_dir=out_dir, tsroot=tsroot, manifest=manifest,
                 citation_payload=_all_method_citation_payload(),
             )
+            # Republish so summary.json also lists the summary.log written above.
+            summary["key_output_files"] = _current_key_output_files(manifest, out_dir)
+            summary["current_output_paths"] = _current_output_paths(manifest, out_dir)
+            _publish_manifest_summary(
+                tsroot / "summary.json", summary, manifest=manifest,
+                key="ts.summary.01", out_dir=out_dir,
+            )
+            _publish_root_summary(summary, warn_on_failure=True)
             _persist_run_manifest(manifest, out_dir)
             _echo("[all] Endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
             _emit_final_summary(out_dir, time_start, manifest, citation_payload=_all_method_citation_payload())
@@ -7524,7 +7567,7 @@ def cli(
         )
 
         # Build summary.json for TSOPT-only runs, mirroring path_search/path_opt outputs
-        bond_cfg = dict(_path_search.BOND_KW)
+        bond_cfg = dict(_bond_cfg_shared)
         bond_summary = ""
         if g_react_opt is not None and g_prod_opt is not None:
             try:
@@ -8478,16 +8521,22 @@ def cli(
             )
 
         try:
-            labels = _build_global_segment_labels(len(path_opt_segments))
+            segment_labels = _build_global_segment_labels(len(path_opt_segments))
+            labels: List[str] = []
             energies_chain: List[float] = []
             for si, seg_info in enumerate(path_opt_segments):
                 Es = [float(x) for x in seg_info.get("energies", [])]
                 if not Es:
-                    continue
-                if si == 0:
-                    energies_chain.append(Es[0])
-                energies_chain.append(max(Es))
-                energies_chain.append(Es[-1])
+                    labels = []
+                    break
+                seg_labels = segment_labels[3 * si : 3 * si + 3]
+                if 1 <= _path_opt._select_hei_index(Es) <= len(Es) - 2:
+                    labels.extend(seg_labels)
+                    energies_chain.extend((Es[0], max(Es), Es[-1]))
+                else:
+                    # An endpoint HEI is not a TS: draw only the ends of this interval.
+                    labels.extend((seg_labels[0], seg_labels[2]))
+                    energies_chain.extend((Es[0], Es[-1]))
             if labels and energies_chain and len(labels) == len(energies_chain):
                 title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
                 diag_payload = _write_segment_energy_diagram(
@@ -8503,7 +8552,7 @@ def cli(
 
         segments_summary: List[Dict[str, Any]] = []
         raw_path_outcomes: List[Dict[str, Any]] = []
-        bond_cfg = dict(_path_search.BOND_KW)
+        bond_cfg = dict(_bond_cfg_shared)
         for seg_idx, info in enumerate(path_opt_segments, start=1):
             Es = [float(x) for x in info.get("energies", [])]
             if not Es:
@@ -9026,8 +9075,47 @@ def cli(
         summary["scan"] = scan_diagnostics
     path_optimizers.update(summary.get("path_optimizers", []))
     summary["path_optimizers"] = sorted(path_optimizers)
+
+    def _publish_provisional_root_summary(
+        post_segments: Sequence[Dict[str, Any]] = (),
+    ) -> None:
+        """Publish ``summary`` at the root with the fail-closed provisional verdict.
+
+        ``post_segments`` are the finished segment records; the root keeps them
+        so that a run that stops later can be resumed with --resume-segment.
+        """
+        root_summary = deepcopy(summary)
+        _enrich_summary(
+            root_summary,
+            pipeline_mode="path-search" if refine_path else "path-opt",
+            out_dir=out_dir,
+            calculator_provenance_data=_shared_provenance,
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_model_label=_mlip_model_label_shared,
+            mlip_task=_mlip_task_shared,
+            mlip_precision=_mlip_precision_shared,
+            mlip_precision_post=_mlip_precision_post,
+            charge=q_int,
+            spin=spin,
+            command=command_str,
+            post_segments=None,
+            config=_summary_config(),
+            freeze_atoms=_freeze_atoms_for_log(),
+            manifest=manifest,
+        )
+        if post_segments:
+            root_summary["post_segments"] = _json_safe(list(post_segments))
+        _publish_root_summary(root_summary)
+
     if resuming:
-        _publish_root_summary(summary)
+        if refine_path:
+            # The saved path-search summary can read as success; as in a new
+            # run, the root keeps a fail-closed provisional verdict until
+            # post-processing re-authors it.
+            _publish_provisional_root_summary()
+        else:
+            _publish_root_summary(summary)
     else:
         _publish_manifest_summary(
             summary_path,
@@ -9218,6 +9306,19 @@ def cli(
     )
     pipeline_stop: Optional[Dict[str, Any]] = None
     stopped_segments: List[Dict[str, Any]] = []
+    # A resumed run keeps the stops of the segments before --resume-segment.
+    for prior in post_segment_logs:
+        stop = prior.get("pipeline_stop")
+        if not isinstance(stop, dict) or stop.get("stage") != "before_irc":
+            continue
+        stopped_segments.append(
+            {"stage": "before_irc", "segment": stop.get("segment"), "reason": stop.get("reason")}
+        )
+        if pipeline_stop is None:
+            pipeline_stop = dict(stop)
+            summary["stopped_before_irc"] = True
+            summary["pipeline_stop"] = dict(pipeline_stop)
+            summary["stopped_segments"] = stopped_segments
 
     def _restore_prior_energy(key: str, target: List[Tuple[float, float, float]]) -> None:
         for prior in post_segment_logs:
@@ -9254,6 +9355,7 @@ def cli(
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
         seg_tag = s.get("tag", f"seg_{seg_idx:02d}")
+        _publish_provisional_root_summary(post_segment_logs)
         _echo_section(f"--- [post] seg_{seg_idx:02d} ({seg_tag}) ---")
 
         seg_root = path_dir  # MEP-engine scratch root (hei_seg_/mep_seg_/endpoints live here, under _work/)
@@ -9385,6 +9487,7 @@ def cli(
         if post["status"] == "endpoint_failed":
             _echo(f"[all] Segment {seg_idx:02d}: endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
             continue
+    _publish_provisional_root_summary(post_segment_logs)
 
     if len(tsopt_seg_energies) == len(all_reactive):
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]

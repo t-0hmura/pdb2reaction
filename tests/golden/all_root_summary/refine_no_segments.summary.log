@@ -15,8 +15,10 @@ MLIP backend       : UMA
 MLIP model         : UMA-S-1.2.1 (OMol)
 MLIP precision     : fp32
 Execution status    : completed
-Scientific status   : success
+Scientific status   : failed
 Pipeline stop       : post (no_segments)
+RESULT WARNING      : The highest-energy image is at an endpoint. No barrier is reported; check the inputs or add an intermediate.
+RESULT WARNING      : Missing:reactive segment 1.
 Total charge (ML)  : 0
 Multiplicity (2S+1): 1
 

@@ -253,6 +253,7 @@
   "energy_diagram_DFT_all.png",
   "energy_diagram_G_DFT_plus_MLIP_all.png",
   "energy_diagram_G_MLIP_all.png",
+  "energy_diagram_MEP.png",
   "energy_diagram_MLIP_all.png",
   "irc_plot_all.png",
   "mep_trj.pdb",
@@ -410,8 +411,16 @@
    "<TMP>/out/_work/path_opt/summary.json"
   ],
   [
+   "path.deliverable.diagram",
+   "<TMP>/out/_work/path_opt/energy_diagram_mep.png"
+  ],
+  [
    "path.deliverable.mep_trj.xyz",
    "<TMP>/out/_work/path_opt/mep_trj.xyz"
+  ],
+  [
+   "output.public.energy_diagram_MEP.png",
+   "<TMP>/out/energy_diagram_MEP.png"
   ],
   [
    "output.public.mep_trj.xyz",

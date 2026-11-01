@@ -234,7 +234,8 @@ shared list with file-lock-protected counter increment.
 
 Most subcommands that touch geometry expose `--uma-workers` and
 `--uma-workers-per-node`, which spin up a Ray cluster of UMA predictor
-workers. **Two important caveats:**
+workers (`--uma-workers` of 2 or more needs `pip install "fairchem-core[ray]"`).
+**Two important caveats:**
 
 1. The `workers` / `workers_per_node` flags apply only to the UMA backend.
    ORB / MACE / AIMNet2 ignore them and emit a UserWarning when either is not 1.

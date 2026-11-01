@@ -42,3 +42,31 @@ def test_parent_dft_argv_and_parser_error_logs(tmp_path, monkeypatch, convert_fi
         assert result["_dft_failed"] is True
     else:
         assert "dry-run" in log.lower()
+
+
+@pytest.mark.parametrize("returncode", [0, 2])
+def test_parent_dft_keeps_the_child_run_log_once(tmp_path, monkeypatch, returncode):
+    geometry = tmp_path / "h2.xyz"
+    geometry.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n")
+    child_stdout = "[mode] dft\nconverged SCF energy = -1.11\n"
+    child_stderr = "warning: soft limit\n"
+    error = "Error: Invalid value for '--max-cycle'.\n" if returncode else ""
+
+    def run(cmd, **kwargs):
+        # The real child tees its output to its own run.log; click prints an
+        # error that ends the command after that log closes.
+        out_dir = cmd[cmd.index("--out-dir") + 1]
+        with open(f"{out_dir}/run.log", "a", encoding="utf-8") as handle:
+            handle.write("[command] pdb2reaction dft\n" + child_stdout + child_stderr)
+        return SimpleNamespace(returncode=returncode, stdout=child_stdout,
+                               stderr=child_stderr + error)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(workflow, "_echo", lambda text, **kw: None)
+    workflow._run_dft_for_state(
+        geometry, 0, 1, tmp_path / "dft", None, func_basis="hf/sto-3g", engine="cpu",
+    )
+    log = (tmp_path / "dft/run.log").read_text()
+    assert log.count("converged SCF energy") == 1
+    assert log.count("warning: soft limit") == 1
+    assert log.count("Error: Invalid value") == (1 if returncode else 0)

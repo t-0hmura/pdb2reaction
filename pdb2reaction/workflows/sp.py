@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--uma-workers", "--workers", "workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node", "--workers-per-node", "workers_per_node",

@@ -238,3 +238,91 @@ def test_metal_pairs_need_a_larger_change():
     changed, _ = has_bond_change(_pair(mgo, 2.1), _pair(mgo, 2.6), dict(BOND_KW, device="cpu"))
     assert changed is False
 
+
+
+def _write_mgo_xyz(path: Path, distance: float) -> Path:
+    path.write_text(f"2\nMgO\nMg 0 0 0\nO {distance} 0 0\n", encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize(
+    "extra,broken",
+    [
+        pytest.param([], False, id="default-0.40"),
+        pytest.param(["--metal-delta-fraction", "0.05"], True, id="metal-delta-0.05"),
+    ],
+)
+def test_bond_summary_metal_delta_fraction_option(tmp_path: Path, extra, broken) -> None:
+    from pdb2reaction.cli import cli as root_cli
+
+    # Mg-O 2.1 -> 2.6 A crosses the bond threshold with a 0.5 A change.
+    first = _write_mgo_xyz(tmp_path / "a.xyz", 2.1)
+    second = _write_mgo_xyz(tmp_path / "b.xyz", 2.6)
+
+    result = CliRunner().invoke(root_cli, ["bond-summary", str(first), str(second), *extra])
+
+    assert result.exit_code == 0, result.output
+    assert ("Mg1-O2" in result.output) is broken
+
+
+@pytest.mark.parametrize(
+    "bond_yaml,broken",
+    [
+        pytest.param(None, [], id="default-0.40"),
+        pytest.param("bond:\n  metal_delta_fraction: 0.05\n", ["Mg1-O2"], id="yaml-0.05"),
+    ],
+)
+def test_irc_endpoint_bond_changes_read_the_yaml_bond_section(
+    tmp_path: Path, monkeypatch, bond_yaml, broken
+) -> None:
+    import json
+
+    import pdb2reaction.io.hessian_cache as hessian_cache
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import irc as irc_workflow
+
+    class EndpointsEulerPC:
+        """Writes Mg-O 2.1 A and 2.6 A as the two IRC endpoints."""
+
+        def __init__(self, geometry, **kwargs):
+            self.out_dir = Path(kwargs["out_dir"])
+            self._act_atoms = [0, 1]
+            self.max_cycles = 50
+            self.never_stop = False
+            self.all_energies = [-1.3, -1.0, -1.3]
+            self.ts_energy = -1.0
+            self.init_hessian_shape = (6, 6)
+            for direction in ("forward", "backward"):
+                setattr(self, direction, True)
+                setattr(self, f"{direction}_energies", [-1.0, -1.1, -1.2, -1.3])
+                setattr(self, f"{direction}_coords", [np.zeros(6)] * 4)
+                setattr(self, f"{direction}_cycle", 3)
+
+        def get_path_for_fn(self, name):
+            return self.out_dir / name
+
+        def run(self):
+            self.out_dir.mkdir(parents=True, exist_ok=True)
+            _write_mgo_xyz(self.out_dir / "finished_first.xyz", 2.1)
+            _write_mgo_xyz(self.out_dir / "finished_last.xyz", 2.6)
+
+    class Calculator:
+        def get_hessian(self, atoms, coords):
+            return {"energy": -1.0, "hessian": np.eye(len(coords))}
+
+    monkeypatch.setattr(irc_workflow, "create_calculator", lambda **_kw: Calculator())
+    monkeypatch.setattr(irc_workflow, "EulerPC", EndpointsEulerPC)
+    monkeypatch.setattr(hessian_cache, "load_matching", lambda *args, **kwargs: None)
+    monkeypatch.setattr(hessian_cache, "identity_from_context", lambda *args, **kwargs: {})
+    args = ["irc", "-i", str(_write_mgo_xyz(tmp_path / "ts.xyz", 2.3)), "-q", "0", "-m", "1",
+            "-o", str(tmp_path / "out"), "--out-json"]
+    if bond_yaml is not None:
+        config = tmp_path / "bond.yaml"
+        config.write_text(bond_yaml, encoding="utf-8")
+        args += ["--config", str(config)]
+
+    result = CliRunner().invoke(root_cli, args)
+
+    assert result.exit_code == 0, result.output
+    data = json.loads((tmp_path / "out" / "result.json").read_text(encoding="utf-8"))
+    assert data["bond_changes"] == {"formed": [], "broken": broken}

@@ -53,7 +53,7 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 2. **結合の判定**:
 2 つの原子の [Cordero et al. (2008)](https://doi.org/10.1039/b801115j) の共有結合半径（H は 0.40 Å）の和に `--bond-factor`（デフォルト `1.20`）を掛けた値を *T* とし、距離が 0.95 *T* 以下なら結合ありとします。
 3. **変化の数え方**:
-前の構造で結合なし（あり）、次の構造で結合あり（なし）で、距離の変化が 0.05 *T* 以上の組だけを、できた（切れた）結合として数えます。閾値をわずかにまたぐだけの変化は数えません。`irc` と `all` が報告する結合変化も同じ判定です。
+前の構造で結合なし（あり）、次の構造で結合あり（なし）で、距離の変化が 0.05 *T* 以上（金属原子を含む組は `--metal-delta-fraction`（デフォルト `0.40`）× *T* 以上。Mg–O で約 1.0 Å）の組だけを、できた（切れた）結合として数えます。閾値をわずかにまたぐだけの変化は数えません。`irc` と `all` が報告する結合変化も同じ判定です。
 
 ---
 
@@ -69,6 +69,7 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 | --- | --- | --- | --- |
 | `-i, --input` | パス | （必須） | 順に並べた 2 つ以上の構造。1 つの `-i` の後に並べる（`-i` を繰り返してもよい） |
 | `--bond-factor` | 浮動小数点数 | `1.20` | 共有結合半径の和に掛ける係数 |
+| `--metal-delta-fraction` | 浮動小数点数 | `0.40` | 金属原子を含む組を、できた（切れた）結合として数えるのに必要な距離の変化（*T* に対する割合） |
 | `--json/--no-json` | フラグ | `False` | テキストの代わりに JSON を標準出力に表示 |
 | `--one-based/--zero-based` | フラグ | `--one-based` | 報告での原子の番号付け |
 
@@ -79,7 +80,7 @@ pdb2reaction bond-summary -i reactant.xyz im1.xyz im2.xyz product.xyz
 ## 使用上の注意点
 
 * **同じ原子が同じ順に並ぶこと**: 違う組では、標準エラーに `ERROR: Atom types and ordering must be identical.` が出ます。{ref}`入力 / 抽出の問題 <ja-input-extraction-problems>`を参照してください。
-* **境目の結合**: 2.0–2.4 Å の金属配位のような長めの接触も数えたいときは、`--bond-factor` を大きくしてください（例: `1.30`）。
+* **境目の結合**: 長めの接触も数えたいときは、`--bond-factor` を大きくしてください（例: `1.30`）。金属配位のように金属原子を含む組は、距離の変化が `--metal-delta-fraction`（デフォルト `0.40`）× *T* 以上のときだけ数えるので、小さな変化も数えたいときはこの値を小さくしてください。
 * **比較できなかった組**: 原子が違う組など比較できない組は飛ばし、ほかの組は報告します。そのとき `execution_status` が `failed` になるので終了コードは 1 で、JSON の `scientific_status` は、比較できた組があれば `partial`、1 組も無ければ `failed` です。
 * **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
 

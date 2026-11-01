@@ -60,6 +60,11 @@ def _load_geom(path: str):
     help="Scaling factor for covalent radii sum.",
 )
 @click.option(
+    "--metal-delta-fraction", default=0.40, show_default=True,
+    help="Change in distance, as a fraction of the scaled covalent radii sum, "
+         "that a pair containing a metal atom needs to count as formed or broken.",
+)
+@click.option(
     "--one-based/--zero-based", default=True, show_default=True,
     help="Use 1-based atom indices in output.",
 )
@@ -70,7 +75,8 @@ def _load_geom(path: str):
     show_default=True,
     help="Emit JSON to stdout (no file written).",
 )
-def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one_based: bool, out_json: bool) -> None:
+def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float,
+        metal_delta_fraction: float, one_based: bool, out_json: bool) -> None:
     """Detect and summarize bond changes between consecutive structure pairs.
 
     \b
@@ -108,7 +114,10 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
             click.echo(f"{'=' * 60}")
 
         try:
-            result = compare_structures(g1, g2, device=device, bond_factor=bond_factor)
+            result = compare_structures(
+                g1, g2, device=device, bond_factor=bond_factor,
+                metal_delta_fraction=metal_delta_fraction,
+            )
             if out_json:
                 comparisons_json.append({
                     "structure_a": name1,

@@ -17,7 +17,7 @@ This page lists, section by section, the keys and default values you can set in 
 | [`thermo`](#thermo) | Thermochemistry settings | freq |
 | [`dft`](#dft-section) | DFT calculation settings of the `dft` command | dft |
 | [`bias`](#bias) | Harmonic bias settings | scan, scan2d, scan3d |
-| [`bond`](#bond) | Bond-change detection settings | scan, path-search |
+| [`bond`](#bond) | Bond-change detection settings | scan, path-search, all, irc |
 | [`search`](#search) | Recursive path search settings | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
 | [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS optimization | tsopt |

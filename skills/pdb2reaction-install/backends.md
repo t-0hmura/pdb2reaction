@@ -17,7 +17,7 @@ Install from source for development:
 ```bash
 git clone https://github.com/t-0hmura/pdb2reaction.git pdb2reaction
 cd pdb2reaction
-pip install -e '.[orb,aimnet,dft]'
+pip install -e '.[aimnet,dft]'
 ```
 
 Upgrade with `pip install --upgrade pdb2reaction` and confirm with
@@ -27,7 +27,7 @@ Upgrade with `pip install --upgrade pdb2reaction` and confirm with
 `pip uninstall pdb2reaction`, or drop the whole env with
 `conda env remove -n <YOUR_ENV>`.
 
-A combined env for UMA, ORB, AIMNet2, DFT, and xTB:
+A combined env for UMA, AIMNet2, DFT, and xTB:
 
 ```yaml
 name: <YOUR_ENV>
@@ -39,11 +39,11 @@ dependencies:
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
       - torch==2.13.0
-      - pdb2reaction[orb,aimnet,dft]
+      - pdb2reaction[aimnet,dft]
 ```
 
 `<cu_index>` is one of `cu126`, `cu130`, `cu132`, and `cpu`; with `cu126`,
-write `pdb2reaction[orb,aimnet,dft-cuda12]`. For MACE, use the
+write `pdb2reaction[aimnet,dft-cuda12]`. For MACE, use the
 same template with plain `pdb2reaction`, then do the swap in
 [MACE](#mace-separate-environment) inside the new env.
 
@@ -174,6 +174,7 @@ calc:
   workers_per_node: 4
 ```
 
+`--uma-workers` of 2 or more needs Ray (`pip install "fairchem-core[ray]"`).
 On one node, the Ray worker pool starts locally and all workers must see the
 same GPUs (for example `CUDA_VISIBLE_DEVICES=0,1,2,3`). pdb2reaction does not
 start a cross-node Ray cluster itself; start it under the scheduler and export
@@ -208,7 +209,7 @@ fairchem (such as `uma-s-1p2p1-ft-d4rev`) no longer load. Give ORB its own env
 and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel.
 
 ```bash
-conda create -n <YOUR_ORB_ENV> python=3.12 -y
+conda create -n <YOUR_ORB_ENV> -c conda-forge --override-channels python=3.12 -y
 conda activate <YOUR_ORB_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 pip install 'pdb2reaction[orb]'
@@ -239,7 +240,7 @@ Pitfalls:
 so MACE needs its own env. UMA does not run there.
 
 ```bash
-conda create -n <YOUR_MACE_ENV> python=3.12 -y
+conda create -n <YOUR_MACE_ENV> -c conda-forge --override-channels python=3.12 -y
 conda activate <YOUR_MACE_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 pip install pdb2reaction                 # pulls fairchem-core

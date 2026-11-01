@@ -43,6 +43,8 @@ def test_path_opt_branch_builds_no_segment_for_an_endpoint_hei(tmp_path, monkeyp
 
     def child(name, _cli, args, **kwargs):
         assert name == "path-opt"
+        # The parent reads the child's MEP convergence from this result.json.
+        assert "--out-json" in args
         child_out = Path(args[args.index("--out-dir") + 1])
         _write(child_out / "final_geometries_trj.xyz", "".join(_frame(i, e) for i, e in enumerate(energies)))
         _write(child_out / "hei.xyz", _frame(hei, energies[hei]))
@@ -82,6 +84,8 @@ def test_path_opt_branch_builds_no_segment_for_an_endpoint_hei(tmp_path, monkeyp
         summary = json.loads((out / "_work/path_opt/summary.json").read_text())
         segment, = summary["segments"]
         assert segment["index"] == 1 and "stage_outcomes" not in summary
+        diagram, = summary["energy_diagrams"]
+        assert diagram["labels"] == ["R", "TS1", "P"]
         return
 
     # The interval is not a reaction step, so the run ends as a failed result.
@@ -96,3 +100,67 @@ def test_path_opt_branch_builds_no_segment_for_an_endpoint_hei(tmp_path, monkeyp
     raw, = [leaf for leaf in summary["stage_outcomes"] if leaf["item_id"] == "raw_seg_001"]
     assert raw["stage"] == "path" and raw["usable"] is False and raw["reason"] == "endpoint_hei"
     assert "rate_limiting_step" not in summary
+    # The MEP diagram draws no TS for an endpoint HEI.
+    diagram, = summary["energy_diagrams"]
+    assert diagram["labels"] == ["R", "P"]
+    assert diagram["energies_au"] == [energies[0], energies[-1]]
+
+
+@pytest.mark.parametrize(
+    "second,labels",
+    [
+        pytest.param((0.02, 0.08, 0.01), ["R", "TS1", "IM1_1", "IM1_2", "TS2", "P"], id="two-interior-heis"),
+        pytest.param((0.02, 0.01, 0.0), ["R", "TS1", "IM1_1", "IM1_2", "P"], id="second-endpoint-hei"),
+    ],
+)
+def test_path_opt_mep_diagram_covers_every_interval(tmp_path, monkeypatch, second, labels):
+    monkeypatch.delenv(RUN_ID_ENV, raising=False)
+    out = tmp_path / "out"
+    inputs = [_write(tmp_path / f"input{i}.pdb", _pdb(i)) for i in (0, 2, 4)]
+    profiles = {"seg_001_mep": (0.0, 0.1, 0.02), "seg_002_mep": second}
+
+    def child(name, _cli, args, **kwargs):
+        assert name == "path-opt"
+        # The parent reads the child's MEP convergence from this result.json.
+        assert "--out-json" in args
+        child_out = Path(args[args.index("--out-dir") + 1])
+        energies = profiles[child_out.name]
+        start = 2 * (int(child_out.name[4:7]) - 1)
+        frames = "".join(_frame(start + i, e) for i, e in enumerate(energies))
+        _write(child_out / "final_geometries_trj.xyz", frames)
+        _write(child_out / "hei.xyz", _frame(start + 1, energies[1]))
+        _write(child_out / "hei.pdb", _pdb(start + 1))
+        payload = {
+            "optimization_status": "converged", "converged": True,
+            "preopt_requested": False, "preopt_converged": None,
+            "path_optimizers": [],
+            "stage_outcomes": [{"stage": "path-opt", "item_id": "gsm_mep",
+                                "executed": True, "converged": True,
+                                "usable": True, "required": True}],
+        }
+        _write(child_out / "result.json", json.dumps(apply_current_run_id(payload)))
+
+    def stop_at_ts(*args, **kwargs):
+        raise ReachedTSDispatch
+
+    def diagram(prefix, *, labels, energies_au, **kwargs):
+        return {"name": prefix.stem, "labels": labels, "energies_au": list(energies_au)}
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", child)
+    monkeypatch.setattr(all_workflow, "run_trj2fig", lambda *args, **kwargs: None)
+    monkeypatch.setattr(all_workflow, "close_matplotlib_figures", lambda: None)
+    monkeypatch.setattr(all_workflow, "_write_segment_energy_diagram", diagram)
+    monkeypatch.setattr(all_workflow._path_search, "has_bond_change", lambda *a, **k: (True, "Bond formed"))
+    monkeypatch.setattr(all_workflow, "_run_tsopt_on_hei", stop_at_ts)
+    args = ["all", *[arg for path in inputs for arg in ("-i", str(path))]]
+    args += ["-q", "0", "-m", "1", "--out-dir", str(out),
+             "--no-preopt", "--convert-files", "true", "--no-freeze-links",
+             "--no-tsopt-from-mep-tan", "--tsopt", "true"]
+
+    with pytest.raises(ReachedTSDispatch):
+        CliRunner().invoke(root_cli, args, catch_exceptions=False)
+    summary = json.loads((out / "_work/path_opt/summary.json").read_text())
+    diagram, = summary["energy_diagrams"]
+    assert diagram["labels"] == labels
+    expected = [0.0, 0.1, 0.02, *(second if len(labels) == 6 else (second[0], second[-1]))]
+    assert diagram["energies_au"] == pytest.approx(expected)

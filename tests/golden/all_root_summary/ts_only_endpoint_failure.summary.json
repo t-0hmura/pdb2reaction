@@ -229,9 +229,13 @@
     "segments/seg_01/irc/irc_plot.png",
     "segments/seg_01/ts/final_geometry.pdb",
     "segments/seg_01/ts/final_geometry.xyz",
-    "segments/seg_01/ts/result.json"
+    "segments/seg_01/ts/result.json",
+    "summary.json",
+    "summary.log"
   ],
   "key_output_files": {
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary",
     "seg_01": {
       "description": "Per-segment results for seg_01",
       "files": [

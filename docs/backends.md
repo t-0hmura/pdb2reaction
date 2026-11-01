@@ -135,9 +135,9 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 ## Workers and Hessian mode
 
-`--uma-workers N` (default 1) runs N parallel UMA predictors, and
-`--uma-workers-per-node` (default 1) sets how many of them run on each node.
-Both flags exist on
+`--uma-workers N` (default 1) runs N parallel UMA predictors (this needs
+`pip install "fairchem-core[ray]"`), and `--uma-workers-per-node` (default 1) sets
+how many of them run on each node. Both flags exist on
 `opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, `scan`,
 `scan2d`, and `scan3d`. ORB, MACE, and AIMNet2 ignore them with a warning. Whether more workers
 shorten a run is covered in [HPC example › Walltime budgeting](hpc-example.md#walltime-budgeting).

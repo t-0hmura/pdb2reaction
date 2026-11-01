@@ -99,7 +99,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 ## ワーカーと Hessian の計算方式
 
-`--uma-workers N`（デフォルト 1）は UMA の予測器を N 個並列に動かし、`--uma-workers-per-node`（デフォルト 1）はそのうち 1 ノードで動かす数を決めます。どちらのフラグも `opt`、`tsopt`、`freq`、`irc`、`sp`、`all`、`path-opt`、`path-search`、`scan`、`scan2d`、`scan3d` にあります。ORB、MACE、AIMNet2 はこれらを警告を出して無視します。ワーカーを増やすと速くなるかは [HPC 実行例 › ウォールタイム見積り](hpc-example.md#ウォールタイム見積り) にあります。
+`--uma-workers N`（デフォルト 1）は UMA の予測器を N 個並列に動かし（`pip install "fairchem-core[ray]"` が要ります）、`--uma-workers-per-node`（デフォルト 1）はそのうち 1 ノードで動かす数を決めます。どちらのフラグも `opt`、`tsopt`、`freq`、`irc`、`sp`、`all`、`path-opt`、`path-search`、`scan`、`scan2d`、`scan3d` にあります。ORB、MACE、AIMNet2 はこれらを警告を出して無視します。ワーカーを増やすと速くなるかは [HPC 実行例 › ウォールタイム見積り](hpc-example.md#ウォールタイム見積り) にあります。
 
 (ja-hessian-evaluation)=
 ### Hessian の計算方式

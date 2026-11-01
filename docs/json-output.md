@@ -449,7 +449,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 |-------|------|-------------|
 | `execution_status` / `scientific_status` | string / string | Execution completeness and completion of requested numerical/calculation stages. |
 | `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
-| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`. |
+| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`, except that a `before_irc` stop of a segment of a path is shown as `Stopped before IRC` (see `stopped_segments`); a TS-only stop is not in `stopped_segments`. |
 | `stopped_segments` | object[] \| absent | Every segment that stopped before IRC (`stage`, `segment`, `reason`); the other segments are still processed. Rendered in `summary.log` as `Stopped before IRC`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed stage identifiers. |
 | `scan` | object \| absent | Preliminary scan status, stage outcomes and diagnostics in scan-seeded `all` runs. |
@@ -476,7 +476,7 @@ The `all` command additionally includes:
 | `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys record the effective CLI values. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `mlip_precision_post` | string \| null | Effective `tf32` / `fp32` / `fp64` token of TS optimization, IRC, the endpoint optimizations and freq (`--precision-post`); the same as `mlip_precision` when it is not given |
 | `rate_limiting_step` | object | Highest local barrier among the reactive segments, taken at the highest-level method available for every segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal`. It is not a microkinetic rate-limiting-step assignment. |
-| `overall_reaction_energy_kcal` | float | Overall reaction energy |
+| `overall_reaction_energy_kcal` | float | Overall reaction energy of the segments that were built; an interval that built no segment is not included |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
 | `post_segments[].tsopt.n_imaginary_modes` / `.imaginary_frequencies_cm` | int / float[] | n_imag of the optimized TS and its imaginary frequencies (cm⁻¹, negative) |

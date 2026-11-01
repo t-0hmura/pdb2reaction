@@ -105,11 +105,11 @@ lists each segment in path order:
   above the higher end, so, as for `path-opt` above, there is no TS candidate:
   `path-search` returns the interval as a raw path with no `segments` entry or
   `hei_seg_NN.xyz`, adds `endpoint_hei` to `scientific_status_reasons`, and
-  `all --refine-path` runs no TS optimization on it. It is not a zero barrier
-  and does not show that no bond changes. Read the energies on the comment
-  lines of that run's `seg_NNN_*/final_geometries_trj.xyz` and its bond changes
-  ([`bond-summary`](utilities.md#bond-summary)); a frame at an interior local
-  maximum can start `tsopt` like an HEI. Other routes:
+  `all` (with or without `--refine-path`) runs no TS optimization on it. It is
+  not a zero barrier and does not show that no bond changes. Read the energies
+  on the comment lines of that run's `seg_NNN_*/final_geometries_trj.xyz` and
+  its bond changes ([`bond-summary`](utilities.md#bond-summary)); a frame at an
+  interior local maximum can start `tsopt` like an HEI. Other routes:
   [ts-strategy](../pdb2reaction-overview/ts-strategy.md#when-the-ts-does-not-come-out).
 
 A successful TS optimization gives one imaginary mode along the reaction

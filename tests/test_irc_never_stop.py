@@ -248,3 +248,52 @@ def test_terminal_hessian_conversion_consumes_numpy_in_place() -> None:
 
     assert result is hessian
     np.testing.assert_allclose(result, masses[:, None] * original * masses[None, :])
+
+
+@pytest.mark.parametrize("child_mode,flag", [(False, "--"), (True, "--irc-")])
+def test_few_frames_warning_names_the_options_of_the_running_command(
+    tmp_path, monkeypatch, child_mode, flag
+) -> None:
+    from click.testing import CliRunner
+
+    import pdb2reaction.core.utils as core_utils
+    import pdb2reaction.io.hessian_cache as hessian_cache
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import irc as irc_workflow
+
+    class FewFramesEulerPC:
+        """Both directions stop after two frames, well before the cycle cap."""
+
+        def __init__(self, geometry, **kwargs):
+            self._act_atoms = [0]
+            self.max_cycles = 50
+            self.never_stop = False
+            for direction in ("forward", "backward"):
+                setattr(self, direction, True)
+                setattr(self, f"{direction}_energies", [-1.0, -1.1])
+                setattr(self, f"{direction}_coords", [np.zeros(3), np.zeros(3)])
+                setattr(self, f"{direction}_cycle", 1)
+
+        def run(self):
+            pass
+
+    class Calculator:
+        def get_hessian(self, atoms, coords):
+            return {"energy": -1.0, "hessian": np.eye(len(coords))}
+
+    source = tmp_path / "input.xyz"
+    source.write_text("1\nhelium\nHe 0 0 0\n", encoding="utf-8")
+    monkeypatch.setattr(irc_workflow, "create_calculator", lambda **_kw: Calculator())
+    monkeypatch.setattr(irc_workflow, "EulerPC", FewFramesEulerPC)
+    monkeypatch.setattr(hessian_cache, "load_matching", lambda *args, **kwargs: None)
+    monkeypatch.setattr(hessian_cache, "identity_from_context", lambda *args, **kwargs: {})
+    # `all` runs irc in-process in child mode.
+    monkeypatch.setattr(core_utils, "_CHILD_MODE", child_mode)
+
+    result = CliRunner().invoke(root_cli, [
+        "irc", "-i", str(source), "-q", "0", "-m", "1", "-o", str(tmp_path / "out"),
+    ])
+
+    assert "[irc] IRC stopped after only a few frames in forward, backward." in result.output
+    assert f"for example {flag}step-size 0.05." in result.output
+    assert f"consider {flag}never-stop; it is opt-in." in result.output

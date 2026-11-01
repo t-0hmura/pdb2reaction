@@ -28,7 +28,7 @@ import torch
 from pysisyphus.helpers import geom_loader
 from pysisyphus.irc.EulerPC import EulerPC
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC, apply_backend_defaults
+from pdb2reaction.core.defaults import BOND_KW, GEOM_KW_DEFAULT, UMA_CALC_KW, IRC_KW, OUT_DIR_IRC, apply_backend_defaults
 from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     pretty_block,
@@ -318,7 +318,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -547,6 +547,7 @@ def cli(
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
             calc_cfg: Dict[str, Any] = dict(UMA_CALC_KW)
             irc_cfg: Dict[str, Any] = dict(IRC_KW)
+            bond_cfg: Dict[str, Any] = dict(BOND_KW)
 
             apply_yaml_overrides(
                 config_layer_cfg,
@@ -554,6 +555,7 @@ def cli(
                     (geom_cfg, (("geom",),)),
                     (calc_cfg, (("calc",),)),
                     (irc_cfg, (("irc",),)),
+                    (bond_cfg, (("bond",),)),
                 ],
             )
 
@@ -1076,7 +1078,13 @@ def cli(
                     if _irc_first.exists() and _irc_last.exists():
                         _g1 = geom_loader(str(_irc_first))
                         _g2 = geom_loader(str(_irc_last))
-                        _bc = compare_structures(_g1, _g2, device="cpu")
+                        _bc = compare_structures(
+                            _g1, _g2, device="cpu",
+                            bond_factor=bond_cfg["bond_factor"],
+                            margin_fraction=bond_cfg["margin_fraction"],
+                            delta_fraction=bond_cfg["delta_fraction"],
+                            metal_delta_fraction=bond_cfg["metal_delta_fraction"],
+                        )
                         _elems = [a.capitalize() for a in _g1.atoms]
                         result_data["bond_changes"] = {
                             "formed": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.formed_covalent)],
