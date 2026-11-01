@@ -1,6 +1,6 @@
 # HPC 実行例: PBS + Open MPI + Ray
 
-PBS と Open MPI の上で Ray のクラスターを立て、UMA のワーカーを複数のノードに広げるジョブスクリプトの例です。1 ノードのジョブには、この Ray の設定は要りません。
+PBS と Open MPI の上で Ray のクラスターを立て、UMA のワーカーを複数のノードに広げるジョブスクリプトの例です。1 ノードのジョブには、この Ray の設定は要りません。`--uma-workers` を 2 以上にするには Ray が必要で、`pip install "fairchem-core[ray]"` で入ります。
 
 ワーカーは次の 2 つで指定します。
 

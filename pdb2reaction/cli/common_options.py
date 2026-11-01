@@ -465,9 +465,10 @@ def add_deterministic_option() -> Callable[[Callable], Callable]:
             expose_value=False,
             callback=_deterministic_callback,
             help=(
-                "Request strict same-stack PyTorch determinism (deterministic "
-                "algorithms + index_reduce_ shim). Slower; raises for detected "
-                "unsupported ops; custom calculators are outside its scope."
+                "Make repeated runs on the same software versions and hardware "
+                "give identical results (PyTorch deterministic algorithms). "
+                "Slower; raises for detected unsupported ops; custom calculators "
+                "are outside its scope."
             ),
         )(func)
     return decorator

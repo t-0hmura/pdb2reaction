@@ -817,8 +817,7 @@ def _optimize_single(
     default=None,
     show_default="gau",
     help=(
-        "Convergence preset for endpoint preoptimization only "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for endpoint preoptimization only."
     ),
 )
 @click.option(
@@ -827,8 +826,7 @@ def _optimize_single(
     default=None,
     show_default="gau_loose",
     help=(
-        "Convergence preset for the GSM string optimizer "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for the GSM string optimizer."
     ),
 )
 @click.option(

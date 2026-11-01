@@ -1,6 +1,6 @@
 # HPC example: PBS + Open MPI + Ray
 
-This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup.
+This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup. `--uma-workers` of 2 or more needs Ray, which `pip install "fairchem-core[ray]"` installs.
 
 Two settings control the workers:
 

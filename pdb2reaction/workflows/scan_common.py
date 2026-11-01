@@ -378,7 +378,7 @@ def add_scan_common_options(
             default=thresh_default,
             # Per-command value, so the rendered default matches the command.
             show_default=(thresh_effective if thresh_effective is not None else False),
-            help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
+            help="Convergence preset.",
         ),
         click.option(
             "--config",

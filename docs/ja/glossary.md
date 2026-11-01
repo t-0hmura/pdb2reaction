@@ -17,7 +17,7 @@
 | **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点 |
 | **COS** | Chain-of-States | イメージの鎖をまとめて最適化する経路の手法。GSM、ストリングオプティマイザ（`stopt`）、DMF など |
 | **セグメント** | — | 2 つの隣接する端点を結ぶ MEP 区間（例: R → I1, I1 → I2, …） |
-| **反応セグメント** | Reactive Segment | TS 候補を持つセグメント。ブリッジと配座変化の区間を除くすべての MEP のセグメント（ふつうは両端で共有結合が変わる区間）と、[TS-only モード](quickstart-tsopt.md)（1 構造に `all --tsopt` を付けた実行）で入力した TS がこれに当たり、`all` は要求した TS 最適化・IRC・熱化学・DFT をこれにだけ行います |
+| **反応セグメント** | Reactive Segment | TS 候補を持つセグメント。ブリッジと配座変化の区間を除くすべての MEP のセグメント（通常は両端で共有結合が変わる区間）と、[TS-only モード](quickstart-tsopt.md)（1 構造に `all --tsopt` を付けた実行）で入力した TS がこれに当たり、`all` は要求した TS 最適化・IRC・熱化学・DFT をこれにだけ行います |
 | **ブリッジセグメント** | Bridge Segment | 隣り合うセグメントの間をつなぐ短い MEP。`path-search` がセグメントを 1 本の経路につなぐとき、前のセグメントの終わりと次のセグメントの始まりが一致せず、その間で結合が変わらなければ、そのすき間をブリッジで埋めます（[path-search の処理の仕組み](path-search.md#処理の仕組みと計算仕様) の 5） |
 | **配座変化の区間（kink）** | Kink | 配座だけが変わる経路の区間（セグメント）。`path-search` が HEI の両側で最適化した 2 つの構造（End1 と End2。[path-search の処理の仕組み](path-search.md#処理の仕組みと計算仕様) の 2）の間で、共有結合が変わらない区間を指します。`path-search` は新しい GSM・DMF の経路の代わりに、線形補間のノードを数個（`search.kink_max_nodes`、デフォルト 3）入れて 1 つずつ最適化します |
 | **PES** | Potential Energy Surface（ポテンシャルエネルギー面） | 原子配置に対するエネルギーの超曲面。MEP は PES 上の最低エネルギー経路 |
@@ -55,7 +55,7 @@
 | **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します |
 | **ASE** | Atomic Simulation Environment | pdb2reaction の MLIP バックエンド全てが利用する Calculator API を提供する Python フレームワーク（Larsen et al., *J. Phys. Condens. Matter* 2017） |
 | **task_name** | — | UMA の推論バッチに記録されるタスクタグ（YAML: `calc.task_name`、デフォルト `omol`）。チェックポイントが学習したタスク/プリセットを選択します |
-| **解析 Hessian** | Analytical Hessian | 選択した MLIP のエネルギーを自動微分で二階微分し、有限変位の打切り誤差を避ける（浮動小数点と自動微分の誤差は残る）。計算時間と GPU などのメモリ使用量は、バックエンド・モデル・系によって変わります。`--hessian-calc-mode Analytical` で選択 |
+| **解析 Hessian** | Analytical Hessian | 選択した MLIP のエネルギーを自動微分で二階微分し、有限変位の打切り誤差を避けます（浮動小数点と自動微分の誤差は残ります）。計算時間と GPU などのメモリ使用量は、バックエンド・モデル・系によって変わります。`--hessian-calc-mode Analytical` で選択 |
 | **有限差分** | Finite Difference | 原子を有限変位させて Hessian を近似する、どの環境でも使えるデフォルト。通常は GPU などのメモリ使用量の最大値が小さくなりますが、計算時間と変位による誤差は設定によって変わります。`--hessian-calc-mode FiniteDifference` で選択 |
 
 ## 量子化学

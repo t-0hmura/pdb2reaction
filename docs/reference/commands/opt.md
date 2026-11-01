@@ -31,9 +31,8 @@ Options:
                                   path. Same format as --scan-lists:
                                   (i,j,target_A) triples. Target may be omitted
                                   to freeze at the current distance: (i,j).
-  --one-based / --zero-based      Interpret --distance-restraint / --scan-lists
-                                  indices as 1-based or 0-based.  [default: one-
-                                  based]
+  --one-based / --zero-based      Interpret --distance-restraint indices as
+                                  1-based or 0-based.  [default: one-based]
   --restraint-k, --bias-k FLOAT   Harmonic restraint strength k [eV/Å^2] for
                                   --distance-restraint.  [default: 300]
   --freeze-links / --no-freeze-links
@@ -56,8 +55,10 @@ Options:
                                   grad]
   --reject-uphill / --no-reject-uphill
                                   Opt in to rejecting uphill RFO trials in hess
-                                  mode (tolerance: 1e-4 Hartree) and final-check
-                                  the retained geometry at the emergency floor.
+                                  mode (tolerance: 1e-4 Hartree) and shrink the
+                                  trust radius; after repeated rejections at the
+                                  smallest radius, keep the lower-energy
+                                  geometry and stop after one convergence check.
                                   Ignored in grad/lbfgs mode.  [default: no-
                                   reject-uphill]
   --stop-plateau / --no-stop-plateau
@@ -77,8 +78,7 @@ Options:
                                   'optimization_trj.xyz'.  [default: no-dump]
   -o, --out-dir TEXT              Output directory.  [default: ./result_opt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
-                                  Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never).  [default: (gau)]
+                                  Convergence preset.  [default: (gau)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -142,11 +142,12 @@ Options:
                                   YAML; otherwise defaults to get_calculator.
                                   [default: (get_calculator)]
   --deterministic / --no-deterministic
-                                  Request strict same-stack PyTorch determinism
-                                  (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises for detected unsupported
-                                  ops; custom calculators are outside its scope.
-                                  [default: no-deterministic]
+                                  Make repeated runs on the same software
+                                  versions and hardware give identical results
+                                  (PyTorch deterministic algorithms). Slower;
+                                  raises for detected unsupported ops; custom
+                                  calculators are outside its scope.  [default:
+                                  no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

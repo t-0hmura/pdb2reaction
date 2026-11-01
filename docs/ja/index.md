@@ -53,7 +53,7 @@ orphan: true
 |------|------|
 | **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
 | **小分子の反応機構を解析する** | [小分子の反応機構解析](small-molecules.md) |
-| **反応機構を調べる・TS が取れない** | [反応機構を調べるコツ](mechanism-tips.md) |
+| **反応機構を調べる・TS が得られない** | [反応機構を調べるコツ](mechanism-tips.md) |
 | **求めた TS 構造を DFT で構造最適化する** | [MLIP の TS を DFT で確かめる](dft-backend.md) |
 | **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
 
@@ -71,7 +71,7 @@ orphan: true
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。任意の `--flatten` で余分な虚振動を除く） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
-| [`scan`](scan.md) | 拘束付き距離スキャン（複数距離の協奏スキャン・多段階スキャンに対応） |
+| [`scan`](scan.md) | 距離・角度・二面角の拘束付きスキャン（協奏スキャン・多段階スキャンに対応） |
 | [`scan2d`](scan2d.md) | 2 次元のエネルギー地形の探索・PES マッピング |
 | [`scan3d`](scan3d.md) | 3 次元のエネルギー地形の探索・PES マッピング |
 | [`freq`](freq.md) | 振動解析と熱化学 |
@@ -107,8 +107,8 @@ orphan: true
 - **VRAM / RAM**: モデル、系の大きさ、Hessian の計算方式で変わります。代表的な計算で最大使用量を測ってください
 
 ### ソフトウェア
-- Python 3.12
-- CPU 版または CUDA 対応の PyTorch。ビルド済みの wheel は CUDA ランタイムを含むので、手元の CUDA toolkit は通常いりません（ソースからビルドするときだけ必要です）
+- Python 3.12 または 3.13
+- CPU 版または CUDA 対応の PyTorch。ビルド済みの wheel は CUDA ランタイムを含むので、手元の CUDA toolkit は通常は不要です（ソースからビルドするときだけ必要です）
 
 セットアップは [インストール](installation.md) を参照してください。
 

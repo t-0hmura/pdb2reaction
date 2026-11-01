@@ -145,7 +145,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 ---
 
-## 3. Fresh-eyes 5-step navigation (≈ 40 min total)
+## 3. 5-step guide for first-time contributors (≈ 40 min total)
 
 For a contributor opening the repo for the first time, follow this path top-to-bottom.
 

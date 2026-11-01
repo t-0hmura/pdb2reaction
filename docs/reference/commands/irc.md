@@ -131,11 +131,12 @@ Options:
                                   YAML; otherwise defaults to get_calculator.
                                   [default: (get_calculator)]
   --deterministic / --no-deterministic
-                                  Request strict same-stack PyTorch determinism
-                                  (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises for detected unsupported
-                                  ops; custom calculators are outside its scope.
-                                  [default: no-deterministic]
+                                  Make repeated runs on the same software
+                                  versions and hardware give identical results
+                                  (PyTorch deterministic algorithms). Slower;
+                                  raises for detected unsupported ops; custom
+                                  calculators are outside its scope.  [default:
+                                  no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

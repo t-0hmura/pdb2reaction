@@ -213,7 +213,7 @@ VRAM depends on the MLIP model, precision, Hessian mode, and frozen atoms, not o
 
 ## How to report an issue
 
-Report problems and feature requests on [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues). Include the exact command, `run.log` (and `summary.log` for `all` / `path-search`), the smallest reproducing inputs, and your env (OS / Python / CUDA / PyTorch).
+Report problems and feature requests on [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues). Include the exact command, `run.log` (and `summary.log` for `all` / `path-search`), the smallest reproducing inputs, and your environment (OS / Python / CUDA / PyTorch).
 
 ## See also
 

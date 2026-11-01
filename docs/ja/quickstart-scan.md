@@ -47,7 +47,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  -s '[("SAM,320,CS1", "GPP,321,C7", 1.60)]' -o ./result_scan
 ```
 
-端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
+端末出力の末尾付近の `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
 ### 3. 2 段のスキャン
 
@@ -93,7 +93,7 @@ result_scan/
     │   │   └── scan.pdb
     │   ├── stage_02/            # スキャンの段 2（2 段の実行）
     │   └── result.json          # 各段のスキャンの結果
-    └── path_opt/                # MEP 探索（MEP を再帰的に詰める --refine-path のときは path_search/）
+    └── path_opt/                # MEP 探索（MEP を再帰的に精密化する --refine-path のときは path_search/）
         └── hei_seg_01.{xyz,pdb} # セグメント 1 の最高エネルギーのイメージ
 ```
 
@@ -104,7 +104,7 @@ result_scan/
 1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
 2. **スキャン**: `_work/scan/stage_01/scan_trj.xyz` をビューアで開き、距離が狙いどおりに変わるかを確かめます。各段の終わりに端末に `[stage 1] Covalent-bond changes (start vs final): Yes` か `No` が出て、`_work/scan/result.json` の `stages[].bond_changes` に記録されます。
 3. **MEP**: `mep_trj.pdb` と、最高エネルギーのイメージ（HEI、TS の候補）`_work/path_opt/hei_seg_01.pdb` を開き、`energy_diagram_MEP.png` にはっきりした障壁があるかを確かめます。
-4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
+4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[Imaginary modes] n=1 (...)` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
 5. **端点（`--tsopt` のとき）**: `segments/seg_01/irc/finished_irc_trj.xyz` と、最適化した端点の `segments/seg_01/reactant.pdb`・`product.pdb` を開き、狙った R と P かを確かめます。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 
 ## 使用上の注意点
@@ -118,7 +118,7 @@ result_scan/
   | `pdb2reaction scan` | `--max-step-size 0.20` Å、`--restraint-k 300` eV/Å² | `--relax-max-cycles 100000` | 前: off（`--preopt/--no-preopt`）、後: off（`--endopt/--no-endopt`） |
 
   拘束の強さは YAML の [`bias.k`](yaml-reference.md#bias) でも指定できます。
-* **結合変化と `--refine-path`**: スキャンの端点は、その段で結合変化が出たかどうかに関係なく、すべて MEP 探索に渡されます。MEP を再帰的に詰める（`path_search/`）かどうかは `--refine-path` だけで決まります。
+* **結合変化と `--refine-path`**: スキャンの端点は、その段で結合変化が出たかどうかに関係なく、すべて MEP 探索に渡されます。MEP を再帰的に精密化する（`path_search/`）かどうかは `--refine-path` だけで決まります。
 * **スキャンの端点**: スキャンが終わって得られるのは拘束した構造です。拘束なしの最適化、または TS 最適化と IRC で確かめるまでは、極小点とも遷移状態とも言えません。
 * **`scan` を単独で使うとき**: 単独の `scan` は YAML・JSON のスペックファイルとスキャンの範囲も受け付けます。`all -s` が受け付けるのは、インラインの目標値のタプルだけです。
 * **`scan --dry-run`**: 入力、電荷とスピンの偶奇、`--scan-lists` の解釈を確かめますが、`all` の切り出しと原子の対応づけは確かめません。それらは `all --dry-run` で確かめます。

@@ -212,7 +212,7 @@ ja/architecture
 | [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-P-RFO; optional `--flatten` removes extra imaginary modes) |
 | [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
 | [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
-| [`scan`](scan.md) | Restrained distance scan supporting concerted multi-distance and multistage scans |
+| [`scan`](scan.md) | Restrained scan of distances, angles, or dihedrals, with concerted and multistage scans |
 | [`scan2d`](scan2d.md) | Two-dimensional energy-landscape exploration and PES mapping |
 | [`scan3d`](scan3d.md) | Three-dimensional energy-landscape exploration and PES mapping |
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
@@ -250,7 +250,7 @@ ja/architecture
 
 ### Software
 
-- Python 3.12.
+- Python 3.12 or 3.13.
 - CPU or CUDA-enabled PyTorch. Prebuilt wheels include their CUDA runtime; a local toolkit is normally needed only for source builds.
 
 See [Installation](installation.md) for setup.

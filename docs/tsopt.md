@@ -79,7 +79,7 @@ How the run ended decides what you get:
 | Stopped on an energy plateau | `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | 1 | Final geometry and n_imag | Stops before IRC |
 | Stopped without converging, usually at `--max-cycles` | `[tsopt] ERROR: Not converged.` | 1 | Final geometry; no Hessian | Stops before IRC |
 | Converged with `--skip-final-freq` | `[tsopt] Converged; terminal PHVA is unavailable.` | 0 | Final geometry; no Hessian | Stops before IRC, because the reaction mode is unchecked |
-| The final Hessian failed | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | Final geometry, with `hessian_status: failed` and the reason | Stops before IRC |
+| The final Hessian failed | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | Final geometry, with `hessian_status: failed` and the reason | Stops the whole run (exit 1) |
 
 Read n_imag as follows:
 

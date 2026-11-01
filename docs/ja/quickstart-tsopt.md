@@ -1,14 +1,14 @@
 # クイックスタート: `pdb2reaction all --tsopt`（TS-only モード）
 
-TS-only モードは、手元の遷移状態（TS）の候補 1 つを、最小エネルギー経路（MEP）の探索を省いて確かめます。`pdb2reaction all --tsopt` は TS を最適化し、固有反応座標（IRC）を両方向に追跡して、両端の構造（反応物 R と生成物 P）を最適化します。`--thermo` で振動解析と熱化学補正を、`--dft` で R・TS・P の DFT 一点計算を追加できます。TS の候補があるなら、このモードに渡して、直に TS の探索を始められます。
+TS-only モードは、手元の遷移状態（TS）の候補 1 つを、最小エネルギー経路（MEP）の探索を省いて確かめます。`pdb2reaction all --tsopt` は TS を最適化し、固有反応座標（IRC）を両方向に追跡して、両端の構造（反応物 R と生成物 P）を最適化します。`--thermo` で振動解析と熱化学補正を、`--dft` で R・TS・P の DFT 一点計算を追加できます。TS の候補があるなら、このモードに渡して、直接 TS の探索を始められます。
 
 ---
 
 ## 主な用途
 
-* **スキャンや MEP の候補を TS に詰める**: スキャンの最高点や、MEP の最高エネルギーのイメージ（HEI）を TS まで最適化
+* **スキャンや MEP の候補から TS を求める**: スキャンの最高点や、MEP の最高エネルギーのイメージ（HEI）を TS まで最適化
 * **別の方法で作った候補を確かめる**: 他のプログラムで得た構造や手で組んだ構造が、狙った R と P を結ぶ TS（n_imag = 1）かを確認
-* **DFT に渡す前に MLIP の TS を確かめる**: 機械学習原子間ポテンシャル（MLIP）で得た TS を、[DFT](dft-backend.md) で詰める前に確認
+* **DFT に渡す前に MLIP の TS を確かめる**: 機械学習原子間ポテンシャル（MLIP）で得た TS を、[DFT](dft-backend.md) で精密化する前に確認
 
 ## 最小コマンド
 
@@ -19,7 +19,7 @@ pdb2reaction all -i result_all/_work/path_opt/hei_seg_01.pdb -l 'SAM:1,GPP:-3' \
     --tsopt --thermo -o ./result_ts_only
 ```
 
-端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
+端末出力の末尾付近の `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
 他のプログラムで得た候補などの XYZ では、モデルの総電荷を `-q` で明示します。`all` のクイックスタートのモデルは 0 です。
 
@@ -73,7 +73,7 @@ result_ts_only/
 ## 結果の確認
 
 1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
-2. **TS のモード**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[0].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
+2. **TS のモード**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[Imaginary modes] n=1 (...)` と出て、`summary.json` の `post_segments[0].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
 3. **端点**: `segments/seg_01/irc/finished_irc_trj.xyz` と R/TS/P の構造 `reactant.pdb`・`ts.pdb`・`product.pdb` を開き、`segments[0].bond_changes` を読みます。端点は狙った R と P のはずです。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 4. **端点の振動数**: `--thermo` のとき、`segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` に符号つきの全振動数が出ます。R と P には −5.00 cm⁻¹ より小さい値（虚振動）が無いはずです。
 
@@ -84,7 +84,7 @@ result_ts_only/
 | `bond_changes` が空、または端点が狙いと違う | TS のモードと IRC を確認します。経路が別の極小点どうしを結んでいる可能性があります。 |
 | R や P に虚振動が残る | 端点の構造とモードを確認します。`--thresh-post gau_tight` で端点の最適化を厳しくするか、`--irc-max-cycles`（デフォルト 125）で IRC を延ばします。 |
 
-それでも TS が取れないときは、{ref}`TS を確かめる <ja-mechanism-check-ts>` と {ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
+それでも TS が得られないときは、{ref}`TS を確かめる <ja-mechanism-check-ts>` と {ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 
 ## 使用上の注意点
 
@@ -99,8 +99,8 @@ result_ts_only/
 
 ## 次のステップ
 
-- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で詰めて確かめる
-- [反応機構を調べるコツ](mechanism-tips.md): TS の確かめ方と、TS が取れないときに試すこと
+- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で精密化して確かめる
+- [反応機構を調べるコツ](mechanism-tips.md): TS の確かめ方と、TS が得られないときに試すこと
 - [`tsopt`](tsopt.md)・[`irc`](irc.md)・[`freq`](freq.md): 各段を単独で実行する
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md): R と P から MEP を作る
 - [クイックスタート: scan](quickstart-scan.md): 1 つの構造から経路を作る

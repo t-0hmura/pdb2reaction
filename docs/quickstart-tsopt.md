@@ -12,7 +12,7 @@ TS-only mode checks one transition-state (TS) candidate without a minimum energy
 
 ## Minimal command
 
-Pass one TS candidate with `--tsopt`. The bundled examples have no TS candidate, so the command below uses the HEI from the [`all` quickstart](quickstart-all.md) run; for your own reaction, pass your own candidate.
+Pass one TS candidate with `-i` and add `--tsopt`. The bundled examples have no TS candidate, so the command below uses the HEI from the [`all` quickstart](quickstart-all.md) run; for your own reaction, pass your own candidate.
 
 ```bash
 pdb2reaction all -i result_all/_work/path_opt/hei_seg_01.pdb -l 'SAM:1,GPP:-3' \
@@ -73,7 +73,7 @@ result_ts_only/
 ## Checking the result
 
 1. **Completion**: `scientific_status` is `success` when every requested stage converged; otherwise it is `partial` or `failed`, with the [reasons](json-output.md#execution-and-requested-stage-completion) in `scientific_status_reasons`. Two checks are left for you: that the imaginary mode moves the bonds that form or break, and that the endpoints are the intended R and P.
-2. **TS mode**: a successful TS optimization gives one imaginary mode along the reaction coordinate. The console then prints `[tsopt] Converged (n_imag=1).`, and `summary.json` records the count in `post_segments[0].tsopt.n_imaginary_modes`. Open `segments/seg_01/ts/vib/imag_*_trj.xyz` in a viewer and check that the mode moves the bonds that form or break.
+2. **TS mode**: a successful TS optimization gives one imaginary mode along the reaction coordinate. The console then prints `[Imaginary modes] n=1 (...)`, and `summary.json` records the count in `post_segments[0].tsopt.n_imaginary_modes`. Open `segments/seg_01/ts/vib/imag_*_trj.xyz` in a viewer and check that the mode moves the bonds that form or break.
 3. **Endpoints**: open `segments/seg_01/irc/finished_irc_trj.xyz` and the R/TS/P structures (`reactant.pdb`, `ts.pdb`, `product.pdb`), and read `segments[0].bond_changes`. The endpoints should be the intended R and P. Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
 4. **Endpoint frequencies**: with `--thermo`, `segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` lists every frequency with its sign. R and P should have no imaginary mode (no value below −5.00 cm⁻¹).
 

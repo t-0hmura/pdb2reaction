@@ -2,7 +2,7 @@
 
 Give two or more structures in reaction order; `all` finds the MEP between each
 neighbouring pair and, with `--tsopt`, optimizes each TS candidate and runs
-IRC. It succeeded when the console prints `[tsopt] Converged (n_imag=1).` for
+IRC. It succeeded when the console prints `[Imaginary modes] n=1 (...)` for
 each TS and `Scientific status: success` under the last
 `====== Pipeline summary ======`.
 

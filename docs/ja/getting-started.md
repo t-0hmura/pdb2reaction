@@ -6,7 +6,7 @@
 :::{container} p2r-intro-text
 `pdb2reaction` は、機械学習原子間ポテンシャル（MLIP）を活用し、**PDB / mmCIF 構造から酵素の反応経路候補を自動探索する** Python 製 CLI ツールキットです。
 
-MLIP は、DFT（密度汎関数法）の計算データを学習したニューラルネットワークです。DFT に近い精度のエネルギーと力を、ずっと少ない計算コストで求められるので、反応経路の探索を速く進められます。
+MLIP は、DFT（密度汎関数法）の計算データを学習したニューラルネットワークです。DFT に近い精度のエネルギーと力を、はるかに少ない計算コストで求められるので、反応経路の探索を速く進められます。
 
 多くのケースでは、次のような **1 コマンド** で反応経路の初期案を得られます。
 
@@ -69,7 +69,7 @@ AlphaFold 3、Boltz-2、OpenFold3 などの構造予測や、各種のドッキ�
 | **PyMOL** | コマンドラインで `h_add` | ビジュアルを確認しながら付加可能 |
 | **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場に基づく精密な付加 |
 
-`all` は空の元素欄（77–78 列）を自分で埋めます。`extract` などのコマンドを単独で使う前には、[`add-elem-info`](add-elem-info.md) で埋めてください。代替位置（altLoc）は、どのコマンドも PDB を読むときに残基ごとに {ref}`平均占有率の最も高いもの <ja-mmcif-input>` を 1 つ選びます。選んだ結果をファイルに残すには [`fix-altloc`](fix-altloc.md) を使います。
+`all` は空の元素欄（77–78 列）を自動で埋めます。`extract` などのコマンドを単独で使う前には、[`add-elem-info`](add-elem-info.md) で埋めてください。代替位置（altLoc）は、どのコマンドも PDB を読むときに残基ごとに {ref}`平均占有率の最も高いもの <ja-mmcif-input>` を 1 つ選びます。選んだ結果をファイルに残すには [`fix-altloc`](fix-altloc.md) を使います。
 
 ### 原子の並び順をそろえる（複数構造のとき）
 
@@ -138,7 +138,7 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 | `mep_trj.pdb` / `mep_trj.cif` | 最小エネルギー経路（MEP）のアニメーション軌跡ファイル |
 | `segments/seg_NN/` | 反応セグメントごとの詳細結果（最適化された R/TS/P 構造、IRC 軌跡など。`--tsopt` のとき） |
 
-端末の出力の最後のほうにある `====== Pipeline summary ======` の下の `Scientific status:` の行は、`summary.json` の `scientific_status` と同じ値です。指定した段がすべて収束すると `success` になり、`--tsopt` のときは TS の n_imag が 1 であることも条件です。そうでなければ `partial` か `failed` になり、理由は `scientific_status_reasons` に出ます。虚振動のモードが狙った結合を動かしているかは各クイックスタートにあるモードのファイルで、IRC の両端が狙った R と P かは各クイックスタートにある端点の構造ファイルで、自分で確かめてください。
+端末の出力の末尾付近にある `====== Pipeline summary ======` の下の `Scientific status:` の行は、`summary.json` の `scientific_status` と同じ値です。指定した段がすべて収束すると `success` になり、`--tsopt` のときは TS の n_imag が 1 であることも条件です。そうでなければ `partial` か `failed` になり、理由は `scientific_status_reasons` に出ます。虚振動のモードが狙った結合を動かしているかは各クイックスタートにあるモードのファイルで、IRC の両端が狙った R と P かは各クイックスタートにある端点の構造ファイルで、自分で確かめてください。
 
 ---
 

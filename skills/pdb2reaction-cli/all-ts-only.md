@@ -3,7 +3,7 @@
 Give one TS candidate with `--tsopt` and no `-s`; `all` optimizes the TS, runs
 IRC, and optimizes both IRC ends (`--thermo` and `--dft` add R/TS/P frequencies
 and DFT). It succeeded when the console prints
-`[tsopt] Converged (n_imag=1).` and `Scientific status: success` under the last
+`[Imaginary modes] n=1 (...)` and `Scientific status: success` under the last
 `====== Pipeline summary ======`; then check that the IRC ends are the intended
 R and P.
 
@@ -77,11 +77,12 @@ For finer control:
 
 ```bash
 TOTAL_CHARGE=-1  # replace with the verified cluster charge
-pdb2reaction tsopt -i ts.xyz -q "$TOTAL_CHARGE" -m 1 -o result_tsopt -b uma --out-json
-pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_irc -b uma --out-json
-pdb2reaction opt   -i result_irc/finished_first.xyz -q "$TOTAL_CHARGE" -m 1 -o result_opt_first -b uma --out-json
-pdb2reaction opt   -i result_irc/finished_last.xyz -q "$TOTAL_CHARGE" -m 1 -o result_opt_last -b uma --out-json
-pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_freq -b uma --out-json
+REF=cluster.pdb  # the cluster PDB of ts.xyz; --ref-pdb keeps its boundary atoms frozen
+pdb2reaction tsopt -i ts.xyz --ref-pdb "$REF" -q "$TOTAL_CHARGE" -m 1 -o result_tsopt -b uma --out-json
+pdb2reaction irc   -i result_tsopt/final_geometry.xyz --ref-pdb "$REF" -q "$TOTAL_CHARGE" -m 1 -o result_irc -b uma --out-json
+pdb2reaction opt   -i result_irc/finished_first.xyz --ref-pdb "$REF" -q "$TOTAL_CHARGE" -m 1 -o result_opt_first -b uma --out-json
+pdb2reaction opt   -i result_irc/finished_last.xyz --ref-pdb "$REF" -q "$TOTAL_CHARGE" -m 1 -o result_opt_last -b uma --out-json
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz --ref-pdb "$REF" -q "$TOTAL_CHARGE" -m 1 -o result_freq -b uma --out-json
 ```
 
 ## Outputs

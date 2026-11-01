@@ -149,7 +149,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
-    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、同じ環境に入れると UMA の `fairchem-core` が古い版に下がります。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
+    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、同じ環境に入れると UMA の `fairchem-core` が古い版に下がります。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。ORB は Python 3.12 でだけ使えます（`orb-models` が固定する `dm-tree==0.1.8` に Python 3.13 用の wheel がないためです）。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
     conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
@@ -209,7 +209,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 
 **GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
 
-**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間前後以上かかり、反応機構解析の全体の時間が長くなります。巨大な系を扱う場合は、代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
+**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間以上かかり、反応機構解析の全体の時間が長くなります。巨大な系を扱う場合は、代表的な計算を 1 つ対象の計算ノードで流し、最大使用量を見てください。
 
 ## 次のステップ
 
@@ -217,7 +217,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md) — R と P から MEP を作る
 - [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md) — 1 つの構造から経路を作る
 - [クイックスタート: TS-only モード](quickstart-tsopt.md) — TS 候補を最適化して確かめる
-- [MLIP の TS を DFT で確かめる](dft-backend.md) — TS を DFT で詰めて確かめる
+- [MLIP の TS を DFT で確かめる](dft-backend.md) — TS を DFT で精密化して確かめる
 - [共通オプションと残基・原子の指定](cli-conventions.md) — 共通のオプションと、残基・原子の指定の書き方
 - [HPC 実行例](hpc-example.md) — UMA のワーカーを複数の GPU ノードに広げるジョブスクリプト
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと試すこと

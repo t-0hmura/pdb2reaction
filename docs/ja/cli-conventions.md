@@ -75,7 +75,7 @@ pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb      # ch
 (ja-charge-specification)=
 ## 電荷の指定
 
-PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子など）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。
+PDB/mmCIF 入力では、`--ligand-charge/-l` で**非標準残基（基質・補因子など）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。
 
 ```bash
 -l 'SAM:1,GPP:-3'        # 残基ごとの指定（推奨）
@@ -182,7 +182,7 @@ PDB を受け付ける計算コマンドは、すべて `.cif` と `.mmcif` も�
 (ja-trajectory-one-frame)=
 ### 軌跡から 1 フレームを取り出す
 
-`_trj.xyz` はふつうの複数フレームの XYZ なので、k 番目（1 から数える）のフレームは次のように取り出せます。
+`_trj.xyz` は通常の複数フレームの XYZ なので、k 番目（1 から数える）のフレームは次のように取り出せます。
 
 ```bash
 N=$(head -1 scan_trj.xyz); k=12
@@ -261,7 +261,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 * **1 つのリストには 1 種類の残基セレクタだけを使ってください**: 表の形は、残基名だけ（`SAM`）、chain＋残基名（番号の有無を問わない。`A:SAM`・`A:TYR:44`）、番号（chain の有無を問わない。`A:123`・`123`）の 3 種類に分かれ、種類の違う形は 1 つのリストに混ぜられません。`A:TYR:44,A:SAM` は通りますが、`A:SAM,SAM`・`A:44,A:SAM`・`SAM,TYR:44` はエラーで止まります。
 * **chain 欄が空の PDB での原子セレクタ**: `'SER:11:HG'` や `'SER 11 HG'` のように 3 項目で書きます。`_` は空の chain の意味にならないので、`'_:SER:11:HG'` はどの原子にも一致せず、エラーで止まります。
 * **mmCIF と大きな構造の制限**: 扱える残基は 619,938 個までです（計算の間に使う内部の PDB の、1 文字の chain ID 62 種 × 残基番号 9,999）。`fix-altloc` と `add-elem-info` は PDB だけを読みます。mmCIF では、読み込みのときに altLoc を選び、元素記号を `_atom_site.type_symbol` から取ります。この値が無い行があるとエラーで止まります。
-* **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。デフォルトで無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、`tsopt` は YAML に書いた `hessian_dimer.flatten_max_iter` の値を使います（`opt` は `--flatten` のとき最大 50 回）。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
+* **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。デフォルトで無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、`tsopt` は YAML に書いた `hessian_dimer.flatten_max_iter` の値を使います。`opt` は `--flatten` を付けると常に最大 50 回です。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
 
 ## 関連ドキュメント
 

@@ -163,6 +163,15 @@ def _trajectory() -> bytes:
     )
 
 
+def _path_trajectory() -> bytes:
+    # The highest image is interior; an endpoint HEI builds no segment.
+    return (
+        b"2\nE=0.0 unit=hartree left\nH 0 0 0\nH 0 0 0.74\n"
+        b"2\nE=0.2 unit=hartree mid\nH 0 0 0\nH 0 0 0.77\n"
+        b"2\nE=0.1 unit=hartree right\nH 0 0 0\nH 0 0 0.80\n"
+    )
+
+
 @pytest.mark.parametrize("bond_analysis_fails", [False, True])
 def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
     tmp_path: Path, monkeypatch, bond_analysis_fails: bool,
@@ -222,7 +231,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
                 ).encode("utf-8"),
             )
         elif name == "path-opt":
-            _replace_bytes(child_out / "final_geometries_trj.xyz", _trajectory())
+            _replace_bytes(child_out / "final_geometries_trj.xyz", _path_trajectory())
             _replace_bytes(
                 child_out / "result.json",
                 json.dumps(

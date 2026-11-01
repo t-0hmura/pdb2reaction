@@ -8,20 +8,20 @@ MLIP で妥当な経路が見つかったら、その TS をそのまま DFT で
 
 ## 主な用途
 
-- **TS を DFT で詰める**：TS 最適化 → IRC → 端点の最適化 → 振動数計算を DFT で実行します（`-b dft`）。
+- **TS を DFT で精密化する**：TS 最適化 → IRC → 端点の最適化 → 振動数計算を DFT で実行します（`-b dft`）。
 - **MLIP の計算に DFT のエネルギーを足す**：MLIP で得た R・TS・P に DFT の一点計算を行います（`--dft`）。
 
 ## 処理の流れ
 
 1. **MLIP で探す**：経路を作り、条件を変えて試し、いちばん有望な TS 候補を選びます。
-2. **DFT で詰める**：その TS を入力にして、`-b dft` 付きの TS-only モードを実行します。コマンドは[基本的な実行例](#基本的な実行例)の例 2 にあります。
+2. **DFT で精密化する**：その TS を入力にして、`-b dft` 付きの TS-only モードを実行します。コマンドは[基本的な実行例](#基本的な実行例)の例 2 にあります。
 3. **確かめる**：MLIP のときと同じく、TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。指定した段がすべて収束すると `====== Pipeline summary ======` の下に `Scientific status: success` と出ます。続けて、モードと IRC の端点を[結果の確認](quickstart-tsopt.md#結果の確認)のとおりに確かめてください。
 
 ## 基本的な実行例
 
 ### 1. 小さなモデルで MLIP の探索を行う
 
-DFT で扱える大きさのモデルで MLIP の探索を行います。出てくる TS の `result_mlip/segments/seg_01/ts.pdb` を例 2 の入力にします。`seg_01` は最初の反応セグメントです。セグメントが複数あるときは、詰めたい段のものを選んでください。
+DFT で扱える大きさのモデルで MLIP の探索を行います。出てくる TS の `result_mlip/segments/seg_01/ts.pdb` を例 2 の入力にします。`seg_01` は最初の反応セグメントです。セグメントが複数あるときは、精密化したい段のものを選んでください。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -30,7 +30,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 `-r 0 --selected-resn` でのモデルの組み方は [モデルを削る](model-setup.md#モデルを削る) にあります。
 
-### 2. TS を DFT で詰める
+### 2. TS を DFT で精密化する
 
 例 1 の TS を 1 つだけ入力にすると、TS-only モードになります。DFT 用の[追加パッケージ](#使用上の注意点)が要ります。
 
@@ -39,9 +39,9 @@ pdb2reaction all -i result_mlip/segments/seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
     --tsopt --thermo -b dft -o ./result_dft
 ```
 
-## モデルは 300 原子くらいまでに
+## モデルは 300 原子程度までに
 
-DFT で最適化できるのは、多くても 300 原子くらいまでです。300 と比べるのはキャップ水素を含む原子数で、[モデルを確かめる](model-setup.md#モデルを確かめる)の端末の行から N + M として求めます。MLIP で探す前にこの大きさのモデルを作っておけば、出てきた TS をそのまま DFT に渡せます。
+DFT で最適化できるのは、多くても 300 原子程度までです。300 と比べるのはキャップ水素を含む原子数で、[モデルを確かめる](model-setup.md#モデルを確かめる)の端末の行から N + M として求めます。MLIP で探す前にこの大きさのモデルを作っておけば、出てきた TS をそのまま DFT に渡せます。
 
 モデルの削り方は [モデルを削る](model-setup.md#モデルを削る)、手で削ったモデルの境界の原子の固定は {ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を見てください。
 
@@ -49,7 +49,7 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 
 | オプション | DFT で計算するもの | 使う場面 |
 |---|---|---|
-| `-b dft` | 計算のすべて（MEP 探索、TS 最適化、IRC、端点の最適化、振動数） | TS 候補を DFT で詰めて確かめる |
+| `-b dft` | 計算のすべて（MEP 探索、TS 最適化、IRC、端点の最適化、振動数） | TS 候補を DFT で精密化して確かめる |
 | `--dft` | MLIP で得た R・TS・P の一点計算（`all` だけ） | MLIP の構造で DFT のエネルギーを得る |
 
 `-b dft` は 11 のコマンドで使えます：`all`、`opt`、`tsopt`、`irc`、`freq`、`scan`、`scan2d`、`scan3d`、`path-opt`、`path-search`、`sp`。
@@ -82,7 +82,7 @@ DFT で最適化できるのは、多くても 300 原子くらいまでです�
 ## 使用上の注意点
 
 - **DFT 用の追加パッケージ**：PyTorch の wheel が `cu130`・`cu132` なら `pip install "pdb2reaction[dft]"`、`cu126` なら `pip install "pdb2reaction[dft-cuda12]"` で入れてください。GPU が無いときは `--dft-engine cpu` を付けてください。
-- **電荷**：残基を除くと全体の電荷が変わります。DFT を流す前に、例 1 の端末の出力の `Total active site model charge` を確かめてください。
+- **電荷**：残基を除くと全体の電荷が変わります。DFT で計算する前に、例 1 の端末の出力の `Total active site model charge` を確かめてください。
 - **キャップ水素**：`ts.pdb` にはモデルのキャップ水素（`LKH`/`HL`）が残っているので、DFT の計算でも MLIP のときと同じく、その親原子が固定されます。
 - **組み合わせ**：`-b dft` と `--dft` は一緒に使えず、実行の始めにエラーで止まります。`-b dft` の計算の後に DFT の一点計算を足すときは、別のジョブで `pdb2reaction sp -b dft` か `pdb2reaction dft` を実行してください。`--dft` と `--thermo` には `--tsopt` が必要です。
 - **図のファイル名とキーの名前**：`-b dft` でも、図のファイル名は `energy_diagram_MLIP.png` と `energy_diagram_G_MLIP.png`（`--thermo` のとき）、`summary.json` のブロックの名前は `mlip` と `gibbs_mlip` のままです。中身は DFT の値で、図の題には DFT と出ます。

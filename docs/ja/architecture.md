@@ -107,7 +107,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L1 `cli/`** は、root group、遅延 import の registry、argv の正規化、段階的な help、共有の option-decorator を受け持ちます。実際の `@click.command()` とコマンド固有のオプションは workflow や utility のモジュールの側にあり、root はそれらを見つけて呼び出します。`_LAZY_SUBCOMMANDS` の各 entry は **絶対モジュールパス**を使います。
 
-**L2 `workflows/`** には、計算コマンドのモジュールと、`scan_common.py`、`restraints.py`、`align_freeze.py` などの段で共有する helper があります。コマンドのモジュールはふつう `cli` という名前の `@click.command()` を 1 つ公開しますが、utility のコマンドは `io/` と `domain/` にもあるので、「サブコマンドごとに必ず 1 ファイル」「workflow のファイルはすべてコマンド」という決まりはありません。
+**L2 `workflows/`** には、計算コマンドのモジュールと、`scan_common.py`、`restraints.py`、`align_freeze.py` などの段で共有する helper があります。コマンドのモジュールは通常 `cli` という名前の `@click.command()` を 1 つ公開しますが、utility のコマンドは `io/` と `domain/` にもあるので、「サブコマンドごとに必ず 1 ファイル」「workflow のファイルはすべてコマンド」という決まりはありません。
 
 **L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP の SDK を import しては **いけません**。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
@@ -143,7 +143,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 | ステップ | 分 | 開くもの | 分かること |
 |------|---------|------|-----------------|
-| 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落のエレベーターピッチ + 単一コマンド使用法 |
+| 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落の概要と、1 コマンドでの使い方 |
 | 2 | 5 | このファイル（`docs/ja/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` registry、絶対path解決 |
 | 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py)（流し読み） | 1 つのサブコマンドを上から下まで追う。`extract → MEP → tsopt → IRC → freq → dft` をたどる |
@@ -243,7 +243,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 
 ### 5.1 化学ルール（grep レシピ）
 
-正確性に直結する下の 3 つのルールは、smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
+正確性に直結する下の 3 つのルールは、smoke テストでは検出 **されません**。これらのルールから気づかないうちに外れると、反応経路の精度が損なわれます。インラインの `# CHEMISTRY-RULE:N` マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
 
 編集前にすべての化学ルールを見つけるには:
 

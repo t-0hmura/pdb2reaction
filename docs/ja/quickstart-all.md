@@ -21,7 +21,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --out-dir ./result_all
 ```
 
-端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
+端末出力の末尾付近の `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
 ### （任意）同一実行で後処理まで行う
 
@@ -47,7 +47,7 @@ result_all/
 ├── mep_trj.pdb                  # 全セグメントの MEP
 ├── energy_diagram_MEP.png       # 全セグメントの MEP のエネルギープロファイル
 └── _work/                       # 途中のファイル（TS 候補の HEI を含む。実行後も残る）
-    └── path_opt/                # MEP 探索（MEP を再帰的に詰める --refine-path のときは path_search/）
+    └── path_opt/                # MEP 探索（MEP を再帰的に精密化する --refine-path のときは path_search/）
         ├── hei_seg_01.{xyz,pdb} # セグメント 1 の最高エネルギーのイメージ
         └── summary.json         # MEP 探索の結果
 ```
@@ -59,7 +59,7 @@ result_all/
 1. **完了状況**: `scientific_status` には、指定した段がすべて収束すると `success`、そうでなければ `partial` か `failed` が入り、[理由](json-output.md#実行の完了と指定した段の完了)は `scientific_status_reasons` に出ます。`--tsopt` のとき、虚振動のモードが、できる結合と切れる結合を動かしているか、端点が狙った R と P か、の 2 点は自分で確かめてください。
 2. **TS の候補**: 最初のセグメントの HEI `_work/path_opt/hei_seg_01.pdb` を開きます。`--tsopt` のときは、最適化した TS の `segments/seg_01/ts.pdb` も開きます。
 3. **エネルギープロファイル**: `energy_diagram_MEP.png` で、R と P の間にはっきりした障壁があるかを確かめます。
-4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[tsopt] Converged (n_imag=1).` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
+4. **TS（`--tsopt` のとき）**: TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき端末に `[Imaginary modes] n=1 (...)` と出て、`summary.json` の `post_segments[].tsopt.n_imaginary_modes` に本数が記録されます。`segments/seg_01/ts/vib/imag_*_trj.xyz` をビューアで開き、できる結合と切れる結合に沿って原子が動くかを確認してください。
 5. **端点（`--tsopt` のとき）**: `segments/seg_01/irc/finished_irc_trj.xyz` と、最適化した端点の `segments/seg_01/reactant.pdb`・`product.pdb` を開き、狙った R と P かを確かめます。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 
 `all` が各段をどう判定するかは [実行結果の判定](all.md#実行結果の判定) を参照してください。
@@ -75,8 +75,8 @@ result_all/
 - [クイックスタート: scan](quickstart-scan.md): 生成物の構造が無いとき、1 つの構造から始める
 - [クイックスタート: TS-only モード](quickstart-tsopt.md): 手元の TS 候補を最適化して確かめる
 - [クラスターモデルの組み方](model-setup.md): モデルを削る、残基が足りないときに広げる
-- [反応機構を調べるコツ](mechanism-tips.md): 計算の計画と、TS が取れないときに試すこと
-- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で詰めて確かめる
+- [反応機構を調べるコツ](mechanism-tips.md): 計算の計画と、TS が得られないときに試すこと
+- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で精密化して確かめる
 - [`all`](all.md): オプションの説明。`pdb2reaction all --help-advanced` でも見られます
 - [JSON 出力の一覧](json-output.md): `summary.json` の欄
 - [トラブルシューティング](troubleshooting.md): エラーメッセージや症状から対処を探す

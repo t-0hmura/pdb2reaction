@@ -8,10 +8,10 @@ pdb2reaction で得られる TS と経路は、仮説として立てた機構の
 | --- | --- | --- |
 | 仮説の機構から計算を始める | 作る結合・切れる結合・移る H を書き出し、入力モードを選ぶ | {ref}`仮説から始める <ja-mechanism-hypothesis>` |
 | 協奏か段階かで計算を組む | `-s` のリテラルをまとめる・分ける | {ref}`反応の分け方を決める <ja-mechanism-split>` |
-| TS が取れたかを見る | n_imag と IRC の端点を確かめる | {ref}`TS を確かめる <ja-mechanism-check-ts>` |
-| n_imag が 2 以上で、余分なモードは反応部位の外 | `--flatten` を付ける | {ref}`TS が取れないとき <ja-ts-search-fails>` |
-| n_imag が 2 以上で、2 つのモードがどちらも反応の結合を動かす | 段に分けて試す | {ref}`TS が取れないとき <ja-ts-search-fails>`、{ref}`反応の分け方を決める <ja-mechanism-split>` |
-| n_imag が 0、または候補が R・P の側へ滑り落ちた | `--refine-path` を付ける、別の初期構造から始める | {ref}`TS が取れないとき <ja-ts-search-fails>` |
+| TS が得られたかを見る | n_imag と IRC の端点を確かめる | {ref}`TS を確かめる <ja-mechanism-check-ts>` |
+| n_imag が 2 以上で、余分なモードは反応部位の外 | `--flatten` を付ける | {ref}`TS が得られないとき <ja-ts-search-fails>` |
+| n_imag が 2 以上で、2 つのモードがどちらも反応の結合を動かす | 段に分けて試す | {ref}`TS が得られないとき <ja-ts-search-fails>`、{ref}`反応の分け方を決める <ja-mechanism-split>` |
+| n_imag が 0、または候補が R・P の側へ滑り落ちた | `--refine-path` を付ける、別の初期構造から始める | {ref}`TS が得られないとき <ja-ts-search-fails>` |
 | 候補の機構を比べる、または IRC の端点が狙った R・P と違う | 段の順を入れ替える、段階と協奏を比べる、モデルの範囲を見直す | {ref}`候補の機構を比べる <ja-mechanism-compare>` |
 | 障壁を読む | その段の直前の極小から数える | {ref}`障壁を読む <ja-mechanism-barrier>` |
 | 最適化が max cycles で止まる | オプティマイザを切り替える（`tsopt --opt-mode` / `all --opt-mode-post`）、ステップを小さくする、別の初期構造から始める | {ref}`トラブルシューティング：TS 最適化 <ja-troubleshooting-ts>` |
@@ -62,21 +62,21 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。得られるのは TS の候補で、IRC の両端が狙った R と P に着くことで確かめます。IRC が収束しなくても、端点の最適化で狙った R と P に着けば、その結果は使えます。
 
-- **終わり方**：`tsopt` は `[tsopt] Converged (n_imag=1).` のような終わりの 1 行を出します。`--out-json` を付けると `result.json` も書きます。`all --tsopt` は TS ごとに同じ行を出し、指定した段がすべて収束すると、最後の `====== Pipeline summary ======` の下に `Scientific status: success` と出ます。`summary.log` の [3] `Per-segment post-processing` には、セグメントごとの n_imag と IRC の出力がまとまります。判定の読み方は [tsopt](tsopt.md) と [all の実行結果の判定](all.md#実行結果の判定) にあります。
+- **終わり方**：`tsopt` は `[tsopt] Converged (n_imag=1).` のような終わりの 1 行を出します。`--out-json` を付けると `result.json` も書きます。`all --tsopt` は TS ごとに `[Imaginary modes] n=1 (...)` を出し、指定した段がすべて収束すると、最後の `====== Pipeline summary ======` の下に `Scientific status: success` と出ます。`summary.log` の [3] `Per-segment post-processing` には、セグメントごとの n_imag と IRC の出力がまとまります。判定の読み方は [tsopt](tsopt.md) と [all の実行結果の判定](all.md#実行結果の判定) にあります。
 - **max cycles とプラトー停止**：RS-P-RFO・RS-I-RFO・TRIM・Dimer の TS 最適化が max cycles に達して未収束のときは Hessian を計算しないので、n_imag は出ません。`--stop-plateau` による {ref}`プラトー停止 <ja-troubleshooting-max-cycles>` では、必ず Hessian を計算して n_imag を出します。
-- **端点**：終了コードが 0 であるだけでは、狙った TS が取れた証拠になりません。端点の最適化の後、IRC の両端で共有結合と移る H の付き先が狙った R と P と同じかを確かめてください。
+- **端点**：終了コードが 0 であるだけでは、狙った TS が得られた証拠になりません。端点の最適化の後、IRC の両端で共有結合と移る H の付き先が狙った R と P と同じかを確かめてください。
 - **診断用の IRC**：n_imag が 2 以上でも、最適化が数値的に収束し（プラトー停止は除く）、最後の PHVA（部分 Hessian 振動解析）が終わっていれば、`all` は IRC を続けます。反応の方向に合う虚振動のモードを使い、選べないときはいちばん低い虚振動のモードを使います。ログには `this is not first-order TS certification` と出ます。
 - **モード**：`vib/imag_*_trj.xyz` をビューアで開き、各モードでどの原子が動くかを見てください。
 
 (ja-ts-search-fails)=
-## TS が取れないとき
+## TS が得られないとき
 
 `all` で問題が出たときは、全体をやり直さずに、問題の出たセグメントごとに個別にやり直してください。
 
 ### 虚振動が 2 つ以上残るとき
 
 - **余分なモードが反応部位の外にある**（側鎖や水の回転など）：`--flatten` を付けてやり直してください。`tsopt`・`all` で使えます。最適化の後に n_imag が 2 以上なら、余分なモードに沿って構造を少しずらして最適化をやり直し、デフォルトでは最大 {ref}`50 回 <ja-flatten-precedence-caveat>` まで繰り返します。`tsopt` の終わりの 1 行もこの手を勧めます。
-- **高次の鞍点で止まった**（n_imag が 2 以上のまま収束した）：その TS 最適化の最後の構造（`tsopt` の `final_geometry.*`、`all` では `segments/seg_NN/ts/` の中）から、`--flatten` を付けた `tsopt` を始めるのも 1 つの手です。
+- **高次の鞍点で止まった**（n_imag が 2 以上のまま収束した）：その TS 最適化の最後の構造（`tsopt` の `final_geometry.*`、`all` では `segments/seg_NN/ts/` の中）から、`--flatten` を付けた `tsopt` を始める方法もあります。
 - **`--flatten` の後**：IRC の両端をもう一度確かめてください。n_imag が 1 になっても、別の反応の TS 候補に移ることがあります。
 - **`--flatten` を使わない方法**：余分なモードのファイル `vib/imag_*_trj.xyz` には 20 のフレームがあり、6 番目と 16 番目が両方向にいちばん大きくずらした構造です。ビューアでこの 2 つをそれぞれ別のファイルに保存し、同じ電荷とスピンで、それぞれを TS-only モードの `all -i <frame>.pdb -l ... --tsopt` か `tsopt` の初期構造にします。PDB の入力では `vib/imag_*.pdb` もあります。
 - **余分なモードも反応の結合を動かしている**：2 つの段が 1 つの候補に重なっているかもしれません。{ref}`別の段 <ja-mechanism-split>` に分けて試してください。
@@ -86,15 +86,15 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 ### 虚振動が無い・候補が滑り落ちたとき
 
 - **HEI（最高エネルギーのイメージ）を見る**：HEI で作る結合と切れる結合がどちらも長い、または HEI が結合の切れた後ろ側にあると、TS 最適化で反応のモードを失いやすくなります。HEI の結合長を確かめてください。
-- **`--refine-path`**：`all` に付けると、1 回の `path-opt` の代わりに再帰的な `path-search` で経路を詰め、HEI を選び直します。デフォルトで無効です。先に粗い MEP を見てから使ってください。`tsopt` の終わりの 1 行もこの手を勧めます。
+- **`--refine-path`**：`all` に付けると、1 回の `path-opt` の代わりに再帰的な `path-search` で経路を精密化し、HEI を選び直します。デフォルトで無効です。先に粗い MEP を見てから使ってください。`tsopt` の終わりの 1 行もこの手を勧めます。
 - **経路の設定**：MEP の点の数 `--max-nodes`（デフォルト 20）、MEP の方法 `--mep-mode dmf`、GSM のノードの置き方を変えると、HEI の位置が変わります。`--gsm-param energy` はエネルギーの高い所にノードを多く置き、デフォルトの `equi` は等間隔に置きます。
 - **別の初期構造**：分割前の MEP の HEI である `path-opt` の `hei.xyz`、段ごとの HEI である `path-search` の `hei_seg_NN.xyz`、scan の最高点の近くのフレームから TS-only モードをやり直してください。`all` では、HEI のファイルは `_work/path_opt/` の下の `hei_seg_NN.xyz` です。`--refine-path` を付けたときは `_work/path_search/` の下です。
 
 (ja-mechanism-compare)=
 ## 候補の機構を比べる
 
-- **段の順**：段の順が、MEP 探索に渡す構造の並び（R → 各段の終わり）になります。順を入れ替えると別の経路になるので、仮説の順とその逆（3 段以上なら考えられる順をすべて）を回し、エネルギー図で比べてください。
-- **段階か協奏か**：段階で回し、拘束を外した最適化 `--scan-endopt` の後も途中の結合の状態が残るかを見ます。残らずに元へ戻るなら、協奏のほうが合います。協奏で回しても、`--refine-path` で 2 つの段に分かれて同じ中間体を経るなら、段階のほうが合います。
+- **段の順**：段の順が、MEP 探索に渡す構造の並び（R → 各段の終わり）になります。順を入れ替えると別の経路になるので、仮説の順とその逆（3 段以上なら考えられる順をすべて）を計算し、エネルギー図で比べてください。
+- **段階か協奏か**：段階的に計算し、拘束を外した最適化 `--scan-endopt` の後も途中の結合の状態が残るかを見ます。残らずに元へ戻るなら、協奏のほうが合います。協奏的に計算しても、`--refine-path` で 2 つの段に分かれて同じ中間体を経るなら、段階のほうが合います。
 - **モデル**：IRC の端点が狙いと違う、または H を受け取る塩基、水、相手の鎖の残基など、反応に関わる残基がモデルに丸ごと入っていないときは、[モデルを広げて](model-setup.md)ください。
 - **DFT**：候補の TS を DFT で確かめるときは、[MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
 

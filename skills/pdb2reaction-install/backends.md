@@ -6,7 +6,7 @@ The install order, verification, and the failure table are in
 
 ## Core package
 
-- Python 3.12.
+- Python 3.12 or 3.13.
 - PyPI install: [Install order](SKILL.md#install-order). PyTorch must be
   installed first ([CUDA and PyTorch](#cuda-and-pytorch)).
 - DMF: create the env with `cyipopt` and PyTorch from conda-forge
@@ -205,7 +205,7 @@ The `[orb]` extra installs orb-models 0.7 or newer. Weights download on first
 use, with no login. orb-models pins `nvalchemi-toolkit-ops<0.4`, so in the
 same env pip lowers `fairchem-core` to 2.22, and UMA models that need a newer
 fairchem (such as `uma-s-1p2p1-ft-d4rev`) no longer load. Give ORB its own env
-and keep UMA in the main one.
+and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel.
 
 ```bash
 conda create -n <YOUR_ORB_ENV> python=3.12 -y

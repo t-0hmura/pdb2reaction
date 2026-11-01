@@ -115,7 +115,7 @@ Each abbreviation, method name, and unit used in the docs is defined here in one
 | Threshold | Role | Source |
 |-----------|------|--------|
 | **ν < −5.00 cm⁻¹** | Default imaginary-mode criterion. | Configurable: `freq.zero_cutoff_cm`. |
-| **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | Fixed (not configurable in pdb2reaction). |
+| **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). The entropy of positive low-frequency vibrations is interpolated between the harmonic-oscillator and free-rotor values in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | Fixed (not configurable in pdb2reaction). |
 
 ## CLI Conventions
 

@@ -5,10 +5,10 @@
 (ja-troubleshooting-quick-table)=
 ## 早見表
 
-| 症状 | 最初にやること | 詳細（節） |
+| 症状 | 最初の対処 | 詳細（節） |
 | --- | --- | --- |
 | **入力 / 抽出** | | |
-| 元素欄が空で `extract` が止まる（`Element symbols are missing in '...'`）。`all` は空の元素欄を自分で埋め、割り当てられない原子が残ると止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
+| 元素欄が空で `extract` が止まる（`Element symbols are missing in '...'`）。`all` は空の元素欄を自動で埋め、割り当てられない原子が残ると止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
 | `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | 同じ前処理ツール・同じ設定で全 PDB を作り直してください。原子の順序を決めた後は並べ替えないでください | {ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
 | ユーティリティのコマンド（`add-elem-info`、`fix-altloc`、`bond-summary`、`energy-diagram`、`trj2fig`）がエラーで止まる、または警告を出す | そのコマンドのページでメッセージを探してください。エラーは「使用上の注意点」に、`add-elem-info` の `[WARN] Could not confidently assign` は「主な出力ファイル」にあります | [add-elem-info](add-elem-info.md#主な出力ファイル)、[fix-altloc](fix-altloc.md#使用上の注意点)、[bond-summary](bond-summary.md#使用上の注意点)、[energy-diagram](energy-diagram.md#使用上の注意点)、[trj2fig](trj2fig.md#使用上の注意点) |
 | `bond-summary` がある組で `ERROR: Atom types and ordering must be identical.` を出す | 同じ原子が同じ順に並ぶ構造どうしを比べてください | [bond-summary](bond-summary.md#使用上の注意点)、{ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
@@ -21,8 +21,8 @@
 | `all` が `success` 以外の `Scientific status:` で終わり、`RESULT WARNING:` の行を出す | 各行に、失敗したセグメントと段（TS 最適化・MEP・IRC・端点の最適化）が出ます。その段を下の行で探してください。`summary.json` の `scientific_status_reasons` にも同じ理由が入ります（例：`all:segment_1:tsopt:ts_optimization_not_converged`） | [実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了) |
 | UMA で `--uma-workers` を 2 以上にし、`--hessian-calc-mode Analytical` と併用すると `BackendError` | 解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください | {ref}`パフォーマンス <ja-troubleshooting-performance>`、{ref}`workers と解析 Hessian <ja-workers-analytical-error>` |
 | 実行時に CUDA のメモリ不足（`torch.cuda.OutOfMemoryError`） | デフォルトの `FiniteDifference` Hessian のままにする、`--max-nodes` を減らすか小さい MLIP モデル（`--backend-model`）を使う、VRAM の大きい GPU に移る、の順に試してください。`--radius` を小さくして切り出し直すのは最後の手です | {ref}`GPU メモリ <ja-troubleshooting-gpu-memory>` |
-| TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`[tsopt] No imaginary mode detected.`）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が取れないとき <ja-ts-search-fails>` |
-| TS 最適化が収束しない（`TS optimization did not converge`） | まず TS 候補を確かめ、次にオプティマイザを切り替え（`tsopt --opt-mode` / `all --opt-mode-post`）、それから YAML でステップサイズか信頼半径を小さくしてください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が取れないとき <ja-ts-search-fails>` |
+| TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`[tsopt] No imaginary mode detected.`）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
+| TS 最適化が収束しない（`TS optimization did not converge`） | まず TS 候補を確かめ、次にオプティマイザを切り替え（`tsopt --opt-mode` / `all --opt-mode-post`）、それから YAML でステップサイズか信頼半径を小さくしてください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
 | IRC が正常に終了しない | 単独の `irc`：`--step-size` を小さく、`--max-cycles` を大きく。`all`：`--irc-step-size` / `--irc-max-cycles`。先に端点を確かめてください | {ref}`IRC <ja-troubleshooting-irc>` |
 | エネルギーが変わらなくなり、opt / TS 最適化が `stalled` で止まる（`TS optimization status is stalled`） | 未収束として扱い、final geometry と力・ステップの条件を確かめてから、別の閾値やオプティマイザの設定で再実行してください | {ref}`max_cycles とプラトー停止 <ja-troubleshooting-max-cycles>` |
 | MEP（最小エネルギー経路）探索（GSM / DMF）が失敗する（`MEP optimization did not converge`） | `--max-nodes` をデフォルトの 20 より増やす、`--preopt` を有効のままにする（`all`・`path-search`・`path-opt` ではデフォルトで有効）、別の `--mep-mode` を試してください | {ref}`MEP 探索 <ja-troubleshooting-mep>` |
@@ -54,7 +54,7 @@
 
 ### `Element symbols are missing in '...'`
 
-- **症状**：`extract` が `Element symbols are missing in '...'. For PDB input, run pdb2reaction add-elem-info -i ... before extract` で止まる。`all` は抽出の前に空の元素欄を自分で埋め、割り当てられない原子が残ると同じメッセージで止まる。
+- **症状**：`extract` が `Element symbols are missing in '...'. For PDB input, run pdb2reaction add-elem-info -i ... before extract` で止まる。`all` は抽出の前に空の元素欄を自動で埋め、割り当てられない原子が残ると同じメッセージで止まる。
 - **原因**：PDB の元素欄（77–78 列）が空のことが多く、`extract` は原子の種類を決めるために元素記号を使います。mmCIF の入力では `_atom_site.type_symbol` が必要です。
 - **対処**：`add-elem-info` で元素欄を埋め、新しいファイルで再実行してください。`[WARN] Could not confidently assign N atoms` の下に並んだ原子は、元素記号を手で 77–78 列に右詰めで書いてください。
 
@@ -135,7 +135,7 @@ IPOPT/MUMPS が並列版 BLIS を使う環境では、入れ子の並列化で�
 (ja-calculation-convergence-problems)=
 ## 計算 / 収束の問題
 
-まず TS 候補を確かめてください。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。ν < −5.00 cm⁻¹ のモードを虚振動として数えます。閾値は YAML の `freq.zero_cutoff_cm` で変えられます。TS 最適化が収束しないときは {ref}`TS 最適化 <ja-troubleshooting-ts>` を、収束したが n_imag が 1 でないときは {ref}`TS が取れないとき <ja-ts-search-fails>` を読んでください。
+まず TS 候補を確かめてください。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。ν < −5.00 cm⁻¹ のモードを虚振動として数えます。閾値は YAML の `freq.zero_cutoff_cm` で変えられます。TS 最適化が収束しないときは {ref}`TS 最適化 <ja-troubleshooting-ts>` を、収束したが n_imag が 1 でないときは {ref}`TS が得られないとき <ja-ts-search-fails>` を読んでください。
 
 (ja-troubleshooting-max-cycles)=
 ### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
@@ -155,7 +155,7 @@ IPOPT/MUMPS が並列版 BLIS を使う環境では、入れ子の並列化で�
   1. オプティマイザを RS-P-RFO（デフォルト）と Dimer 法の間で切り替える：単独では `tsopt --opt-mode hess` / `dimer`、`all` では `--opt-mode-post hess` / `grad`（Dimer）。
   2. YAML でステップサイズを小さくする：RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.trust_radius` / `trust_min` / `trust_max`、Dimer では `hessian_dimer.lbfgs.max_step`。[YAML 設定の一覧](yaml-reference.md#ts-最適化セクション) を参照してください。
   3. 経路のよりよい HEI（最高エネルギーのイメージ）など、別の候補から始める。
-- **n_imag ≥ 2 が残るときの対処**：`--flatten` を付けて最適化し直すか、単独では `tsopt --thresh`、`all` では `--thresh-post` で、収束の基準をデフォルトの `baker` から `gau_tight` か `gau_vtight` に締めてください。`--refine-path`、反応を段に分ける、初期構造を作り直すなどのほかの手は、{ref}`TS が取れないとき <ja-ts-search-fails>` にあります。
+- **n_imag ≥ 2 が残るときの対処**：`--flatten` を付けて最適化し直すか、単独では `tsopt --thresh`、`all` では `--thresh-post` で、収束の基準をデフォルトの `baker` から `gau_tight` か `gau_vtight` に締めてください。`--refine-path`、反応を段に分ける、初期構造を作り直すなどのほかの対処は、{ref}`TS が得られないとき <ja-ts-search-fails>` にあります。
 
 (ja-troubleshooting-irc)=
 ### IRC が正常に終了しない
@@ -207,11 +207,11 @@ VRAM は原子数だけでは決まらず、MLIP モデル、数値精度、Hess
 
 ## 不具合の報告
 
-問題の報告や機能の要望は [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues) へお寄せください。実行したとおりのコマンド、`run.log`（`all`・`path-search` では `summary.log` も）、再現する最小の入力、OS・Python・CUDA・PyTorch の版を添えていただくと助かります。
+問題の報告や機能の要望は [GitHub Issues](https://github.com/t-0hmura/pdb2reaction/issues) へお寄せください。実行したとおりのコマンド、`run.log`（`all`・`path-search` では `summary.log` も）、再現する最小の入力、OS・Python・CUDA・PyTorch の版を添えてください。
 
 ## 関連ドキュメント
 
-- [反応機構を調べるコツ](mechanism-tips.md) — TS が取れないときに試すこと
+- [反応機構を調べるコツ](mechanism-tips.md) — TS が得られないときに試すこと
 - [インストール](installation.md) — 環境の構築とオプションのバックエンド
 - [MLIP バックエンド](backends.md) — バックエンドの選び方
 - [クラスターモデルの組み方](model-setup.md) — 活性部位モデルを確かめる・削る・広げる

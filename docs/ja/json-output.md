@@ -420,12 +420,13 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 |-----------|------|------|
 | `execution_status` / `scientific_status` | string / string | 実行が完了したかと、指定した計算の段がすべて完了したか。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
-| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
+| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
+| `stopped_segments` | object[] \| なし | IRC の前で止まったすべてのセグメント（`stage`・`segment`・`reason`）。ほかのセグメントは処理を続ける。`summary.log` では `Stopped before IRC` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `scan` | object \| なし | scanを初期経路に使う`all`の、前段scanの状態・各段階の結果・診断。 |
 | `n_segments` | int | セグメント数 |
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
-| `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` にも記録 |
+| `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含みます。`path-opt` の `result.json` にも記録 |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` では `preopt_converged` が `scientific_status` の判定に入ります。`--tsopt` で、すべての反応セグメントの TS と両端点の最適化が収束すると、判定から外れます |
 | `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（配座変化の区間では `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
@@ -443,7 +444,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示す。汎用の `opt_mode*` は実効の CLI の値を記録する。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザであり（`preopt` を参照）、MEP の経路アルゴリズムではない。 |
+| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定した後処理のプリセットを示します。汎用の `opt_mode*` は実効の CLI の値を記録します。`path_opt_mode` は端点の事前最適化に使う単一構造オプティマイザで（`preopt` を参照）、MEP の経路アルゴリズムではありません。 |
 | `mlip_precision_post` | string \| null | TS 最適化・IRC・端点の最適化・freq の実効の `tf32` / `fp32` / `fp64` 表記（`--precision-post`）。指定しなければ `mlip_precision` と同じ |
 | `rate_limiting_step` | object | 反応のあるすべてのセグメントで使える最上位の手法（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で求めた局所障壁の最大値。使った手法 `method` と、MEP から求めた障壁 `mep_barrier_kcal` も含みます。微視的速度論による律速段階の判定ではありません。 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
@@ -454,7 +455,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | `energy_valid`：最終の TS のエネルギーが有限の値。`structure_valid`：最終の TS の構造ファイルがあり、座標が有限の値 |
 | `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS 最適化で実行したサイクル数と設定上限。通常の非収束時にも記録します。 |
 | `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `optimization_status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC がどう止まったかと結合変化が合うかは `scientific_status` に入りません。最適化した端点が狙った R と P かは自分で確かめてください。 |
-| `post_segments[].thermo_symmetry` | object | freq が R・TS・P ごとに報告した点群と回転対称数とその出どころ。有効な対称数の出どころを持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な出どころが無い場合だけフィールド全体を省略する。 |
+| `post_segments[].thermo_symmetry` | object | freq が R・TS・P ごとに報告した点群と回転対称数とその出どころ。有効な対称数の出どころを持つ R/TS/P 状態だけを含み、欠けた状態は省略します。どの状態にも有効な出どころが無い場合だけ、フィールド全体を省略します。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 

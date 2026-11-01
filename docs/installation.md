@@ -152,7 +152,7 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would lower UMA's `fairchem-core` to an older release. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. You may rename the environment `orb-env`. Pick the PyTorch wheel as in step 4.
+    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would lower UMA's `fairchem-core` to an older release. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
     conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
@@ -167,7 +167,7 @@ If you prefer to build the environment piece by piece:
     pip install "pdb2reaction[aimnet]"
     ```
 
-    **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may rename the environment `mace-env`. Pick the PyTorch wheel as in step 4.
+    **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may change the environment name `mace-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
     conda create -n mace-env -c conda-forge --override-channels python=3.12 -y

@@ -63,7 +63,7 @@ Pitfalls:
 
 - `-l` reads residue names, so it is rejected on bare `.xyz`/`.gjf`. Give a stage a `.pdb` or `.cif` (stages write one when the input had residues), or pass `-q`, or keep `-l` and add `--ref-pdb` with the cluster PDB.
 - Standalone `irc` does not write `reactant.pdb`/`product.pdb`; use `all` for the `segments/seg_NN/` layout and automatic R/P orientation.
-- In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0, non-convergence, or a failed PHVA stops before IRC, keeps the TS files, and the later segments are not post-processed. A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
+- In `all`, IRC starts only after the TS converged, its final PHVA (partial Hessian vibrational analysis) finished, and a negative mode was chosen. n_imag = 0 or non-convergence stops that segment before IRC and keeps its TS files; the other segments are still post-processed. A failed PHVA ends the whole run (`failed`, exit 1). A converged TS with n_imag ≥ 2 still runs IRC as a diagnostic (the log says `this is not first-order TS certification`); that IRC is not a TS check.
 - After a walltime stop, rerun `all` with the same MEP settings and `--resume-segment N` ([all.md](../pdb2reaction-cli/all.md)), or continue with the stage commands. On any status other than `success`, read `summary.log` and then the stage outputs under `segments/seg_NN/` before retrying.
 - A large dense Hessian can exceed GPU memory. Freezing a justified boundary (PHVA) or keeping the default `--hessian-calc-mode FiniteDifference` (not `Analytical`) lowers the peak, but the Hessian of the moving atoms stays dense.
 - `all` reuses the final tsopt Hessian in IRC and in the TS `freq` through an in-process cache, so separate `tsopt` → `irc` → `freq` commands build the same dense Hessian up to three times. Add `--dump-hess ts_hess.npy` to `tsopt` (not with `--skip-final-freq`) and pass `--read-hess ts_hess.npy` to `irc` (which needs `irc.hessian_init: calc`, the default) and to `freq`, both run on the tsopt `final_geometry.*`.
@@ -119,6 +119,14 @@ Find the installed package with `python -c "import pdb2reaction, os; print(os.pa
 - `pysisyphus/` (optimizers, TS search, IRC) and `thermoanalysis/` (thermochemistry): bundled forks, installed as separate top-level packages. A numerical change there needs a regression test and the matching benchmark.
 
 Imports run `cli` → `workflows` → `domain`/`backends`/`io` → `core`; the import-graph check keeps `core` and `domain` from importing `workflows`. More: [docs/architecture.md](../../docs/architecture.md), [CONTRIBUTING.md](../../CONTRIBUTING.md), [check_engineering_markers.py](../../.github/scripts/check_engineering_markers.py), [check_import_graph.py](../../.github/scripts/check_import_graph.py).
+
+## Report
+
+When you report a mechanism, give:
+
+- R, TS, and P ([paths](outputs.md#rtsp-paths)), the backend, model, and precision, the charge and multiplicity, and the cluster (center residues, `-r`, atom count).
+- n_imag and the imaginary frequency of the TS, and whether the IRC and endpoint optimizations reached the intended R and P (`connectivity_validated`, [per-segment keys](outputs.md#per-segment-keys)).
+- ΔE‡ or ΔG‡ with its method label and the `references` of `summary.json` ([top-level keys](outputs.md#summaryjson-top-level-keys)); for several steps, count from one common R ([multistep paths](ts-strategy.md#multistep-paths)).
 
 ## Where to go next
 

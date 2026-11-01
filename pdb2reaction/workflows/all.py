@@ -4381,8 +4381,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default="10",
     help=(
         "Maximum recursive subdivision levels; requires --refine-path. "
-        "0 disables subdivision. Intervals retained at a positive cap use "
-        "seg_NNN_maxdepth and may contain multiple steps."
+        "0 disables subdivision. With a positive limit, an interval still undivided at the limit "
+        "is named seg_NNN_maxdepth and may contain several steps."
     ),
 )
 @click.option(
@@ -4488,8 +4488,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default="gau",
     help=(
         "Convergence preset for single-structure optimizations and scan "
-        "relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "The MEP stage keeps its own "
+        "relaxations. The MEP stage keeps its own "
         "--thresh-gsm / --dmf-tol."
     ),
 )
@@ -4499,8 +4498,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default="baker",
     show_default=True,
     help=(
-        "Convergence preset for TS and post-IRC endpoint optimizations "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for TS and post-IRC endpoint optimizations."
     ),
 )
 @click.option(
@@ -4509,8 +4507,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="gau_loose",
     help=(
-        "Convergence preset for the GSM string optimizer of the MEP stage "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for the GSM string optimizer of the MEP stage."
     ),
 )
 @click.option(
@@ -4591,9 +4588,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=True,
     show_default=True,
     help=(
-        "Guide Hessian-based TS root identity from MEP tangent candidate(s) at "
-        "the highest-energy image. The CPU/file cache is not created or used "
-        "when disabled. Dimer does not consume this Hessian reference mode."
+        "Use the MEP tangent at the highest-energy image to choose which Hessian "
+        "mode the Hessian-based TS optimizer (RS-P-RFO, RS-I-RFO, TRIM) follows "
+        "as the reaction mode. Not used with Dimer."
     ),
 )
 @click.option(
@@ -4643,8 +4640,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=True,
     help=(
         "Skip terminal PHVA/frequency analysis in tsopt. The TS structure is "
-        "retained with unverified saddle order, and all stops before IRC because "
-        "no imaginary reaction direction can be validated."
+        "retained with unverified saddle order, and all skips IRC and the later "
+        "stages of that segment because no imaginary reaction direction can be "
+        "validated; other segments continue."
     ),
 )
 @click.option(
@@ -8504,10 +8502,26 @@ def cli(
             _echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
 
         segments_summary: List[Dict[str, Any]] = []
+        raw_path_outcomes: List[Dict[str, Any]] = []
         bond_cfg = dict(_path_search.BOND_KW)
         for seg_idx, info in enumerate(path_opt_segments, start=1):
             Es = [float(x) for x in info.get("energies", [])]
             if not Es:
+                continue
+            # An endpoint HEI is not a reaction step and `max(E) - E[0]` is not
+            # a barrier; build no segment for it, as path-search does.
+            hei = _path_opt._select_hei_index(Es)
+            if not (1 <= hei <= len(Es) - 2):
+                _echo(
+                    f"[{info['tag']}] WARNING: HEI is at an endpoint (idx={hei}). "
+                    "Returning the raw path.",
+                    err=True,
+                )
+                raw_path_outcomes.append(
+                    _path_search._raw_path_outcome(
+                        f"raw_{info['tag']}", engine_converged=info.get("converged")
+                    ).to_dict()
+                )
                 continue
             barrier = (max(Es) - Es[0]) * AU2KCALPERMOL
             delta = (Es[-1] - Es[0]) * AU2KCALPERMOL
@@ -8551,6 +8565,8 @@ def cli(
             "segments": segments_summary,
             "path_optimizers": sorted(path_optimizers),
         }
+        if raw_path_outcomes:
+            summary["stage_outcomes"] = raw_path_outcomes
         if preopt:
             from pdb2reaction.workflows._outcomes import combine_step_convergence
 
@@ -9001,6 +9017,7 @@ def cli(
             int(resume_segment),
         )
         summary.pop("pipeline_stop", None)
+        summary.pop("stopped_segments", None)
         summary["stopped_before_irc"] = False
         summary["resumed_from_segment"] = int(resume_segment)
     else:
@@ -9200,6 +9217,7 @@ def cli(
         else []
     )
     pipeline_stop: Optional[Dict[str, Any]] = None
+    stopped_segments: List[Dict[str, Any]] = []
 
     def _restore_prior_energy(key: str, target: List[Tuple[float, float, float]]) -> None:
         for prior in post_segment_logs:
@@ -9340,15 +9358,22 @@ def cli(
             dft_root=dft_seg_root,
         )
         if post["status"] == "stopped_before_irc":
-            pipeline_stop = {
+            stop = {
                 "stage": "before_irc",
                 "segment": seg_idx,
                 "reason": post["tsopt_decision"].get("reason"),
                 "tsopt_result": segment_log["tsopt"],
             }
-            segment_log["pipeline_stop"] = dict(pipeline_stop)
-            summary["stopped_before_irc"] = True
-            summary["pipeline_stop"] = dict(pipeline_stop)
+            segment_log["pipeline_stop"] = dict(stop)
+            stopped_segments.append(
+                {"stage": "before_irc", "segment": seg_idx, "reason": stop["reason"]}
+            )
+            if pipeline_stop is None:
+                # ``pipeline_stop`` stays the first stop; the list holds them all.
+                pipeline_stop = stop
+                summary["stopped_before_irc"] = True
+                summary["pipeline_stop"] = dict(pipeline_stop)
+                summary["stopped_segments"] = stopped_segments
             _echo(
                 "[all] TS artifacts were finalized, but IRC and every later "
                 f"stage were skipped for segment {seg_idx:02d}: "
@@ -9356,7 +9381,7 @@ def cli(
                 err=True,
             )
             _persist_run_manifest(manifest, out_dir)
-            break
+            continue
         if post["status"] == "endpoint_failed":
             _echo(f"[all] Segment {seg_idx:02d}: endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
             continue
@@ -9415,8 +9440,9 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    # Aggregated IRC plot over all reactive segments (single trj + trj2fig)
-    if irc_trj_for_all:
+    # Aggregated IRC plot over all reactive segments (single trj + trj2fig);
+    # a segment without an IRC would leave a gap in the one concatenated curve.
+    if irc_trj_for_all and len(irc_trj_for_all) == len(all_reactive):
         _declare_public(out_dir / "irc_plot_all.png")
         _merge_irc_trajectories_to_single_plot(
             irc_trj_for_all, out_dir / "irc_plot_all.png"
@@ -9428,8 +9454,10 @@ def cli(
     summary["stopped_before_irc"] = pipeline_stop is not None
     if pipeline_stop is not None:
         summary["pipeline_stop"] = dict(pipeline_stop)
+        summary["stopped_segments"] = list(stopped_segments)
     else:
         summary.pop("pipeline_stop", None)
+        summary.pop("stopped_segments", None)
     _enrich_summary(
         summary,
         pipeline_mode="path-search" if refine_path else "path-opt",

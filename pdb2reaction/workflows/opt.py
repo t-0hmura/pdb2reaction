@@ -403,7 +403,7 @@ def _seed_rfo_initial_hessian(
     "one_based",
     default=True,
     show_default=True,
-    help="Interpret --distance-restraint / --scan-lists indices as 1-based or 0-based.",
+    help="Interpret --distance-restraint indices as 1-based or 0-based.",
 )
 @click.option(
     "--restraint-k",
@@ -462,8 +462,9 @@ def _seed_rfo_initial_hessian(
     show_default=True,
     help=(
         "Opt in to rejecting uphill RFO trials in hess mode (tolerance: "
-        "1e-4 Hartree) and final-check the retained geometry at the emergency "
-        "floor. Ignored in grad/lbfgs mode."
+        "1e-4 Hartree) and shrink the trust radius; after repeated rejections "
+        "at the smallest radius, keep the lower-energy geometry and stop after "
+        "one convergence check. Ignored in grad/lbfgs mode."
     ),
 )
 @click.option(
@@ -518,9 +519,7 @@ def _seed_rfo_initial_hessian(
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
     show_default="gau",
-    help=(
-        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never)."
-    ),
+    help="Convergence preset.",
 )
 @click.option(
     "--config",

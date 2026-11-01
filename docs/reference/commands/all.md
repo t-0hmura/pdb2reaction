@@ -134,10 +134,10 @@ Options:
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
   --max-depth INTEGER RANGE       Maximum recursive subdivision levels; requires
-                                  --refine-path. 0 disables subdivision.
-                                  Intervals retained at a positive cap use
-                                  seg_NNN_maxdepth and may contain multiple
-                                  steps.  [default: (10); x>=0]
+                                  --refine-path. 0 disables subdivision. With a
+                                  positive limit, an interval still undivided at
+                                  the limit is named seg_NNN_maxdepth and may
+                                  contain several steps.  [default: (10); x>=0]
   --gsm-param [equi|energy]       GSM node parameterization after string growth.
                                   The energy scheme concentrates nodes in high-
                                   energy regions and may be tried when an
@@ -192,18 +192,15 @@ Options:
                                   merge]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
-                                  optimizations and scan relaxations (gau_loose|
-                                  gau|gau_tight|gau_vtight|baker|never). The MEP
+                                  optimizations and scan relaxations. The MEP
                                   stage keeps its own --thresh-gsm / --dmf-tol.
                                   [default: (gau)]
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for TS and post-IRC
-                                  endpoint optimizations (gau_loose|gau|gau_tigh
-                                  t|gau_vtight|baker|never).  [default: baker]
+                                  endpoint optimizations.  [default: baker]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
-                                  optimizer of the MEP stage (gau_loose|gau|gau_
-                                  tight|gau_vtight|baker|never).  [default:
+                                  optimizer of the MEP stage.  [default:
                                   (gau_loose)]
   --dmf-tol, --thresh-dmf TEXT    IPOPT dual-infeasibility tolerance for the DMF
                                   MEP stage: tight (0.04) | middle (0.10) |
@@ -236,12 +233,12 @@ Options:
                                   TSOPT-only mode for single-structure), and
                                   build energy diagrams.  [default: no-tsopt]
   --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
-                                  Guide Hessian-based TS root identity from MEP
-                                  tangent candidate(s) at the highest-energy
-                                  image. The CPU/file cache is not created or
-                                  used when disabled. Dimer does not consume
-                                  this Hessian reference mode.  [default: tsopt-
-                                  from-mep-tan]
+                                  Use the MEP tangent at the highest-energy
+                                  image to choose which Hessian mode the
+                                  Hessian-based TS optimizer (RS-P-RFO, RS-I-
+                                  RFO, TRIM) follows as the reaction mode. Not
+                                  used with Dimer.  [default: tsopt-from-mep-
+                                  tan]
   --thermo / --no-thermo          Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
                                   energy diagram (MLIP).  [default: no-thermo]
@@ -262,10 +259,11 @@ Options:
   --skip-final-freq / --no-skip-final-freq
                                   Skip terminal PHVA/frequency analysis in
                                   tsopt. The TS structure is retained with
-                                  unverified saddle order, and all stops before
-                                  IRC because no imaginary reaction direction
-                                  can be validated.  [default: no-skip-final-
-                                  freq]
+                                  unverified saddle order, and all skips IRC and
+                                  the later stages of that segment because no
+                                  imaginary reaction direction can be validated;
+                                  other segments continue.  [default: no-skip-
+                                  final-freq]
   --reject-uphill / --no-reject-uphill
                                   Opt in to rejecting uphill RFO trials during
                                   post-IRC endpoint re-optimization only
@@ -403,11 +401,12 @@ Options:
                                   YAML; otherwise defaults to get_calculator.
                                   [default: (get_calculator)]
   --deterministic / --no-deterministic
-                                  Request strict same-stack PyTorch determinism
-                                  (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises for detected unsupported
-                                  ops; custom calculators are outside its scope.
-                                  [default: no-deterministic]
+                                  Make repeated runs on the same software
+                                  versions and hardware give identical results
+                                  (PyTorch deterministic algorithms). Slower;
+                                  raises for detected unsupported ops; custom
+                                  calculators are outside its scope.  [default:
+                                  no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

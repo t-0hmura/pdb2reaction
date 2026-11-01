@@ -1,6 +1,6 @@
 # Reading pdb2reaction outputs
 
-`pdb2reaction all` writes `summary.log` (for people) and `summary.json` (for scripts) at the top of `--out-dir`; the structures to report are `segments/seg_NN/{reactant,ts,product}.*`. The run succeeded when `summary.json["scientific_status"]` is `"success"`: the console prints `Scientific status: success` under the last `====== Pipeline summary ======`, and each TS prints `[tsopt] Converged (n_imag=1).` Whether the endpoints are the intended R and P is still your check.
+`pdb2reaction all` writes `summary.log` (for people) and `summary.json` (for scripts) at the top of `--out-dir`; the structures to report are `segments/seg_NN/{reactant,ts,product}.*`. The run succeeded when `summary.json["scientific_status"]` is `"success"`: the console prints `Scientific status: success` under the last `====== Pipeline summary ======`, and each TS prints `[Imaginary modes] n=1 (...)`. Whether the endpoints are the intended R and P is still your check.
 
 Standalone commands write a smaller `result.json` (with `--out-json`); its keys are on each command page in [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md), not here.
 
@@ -8,7 +8,7 @@ Standalone commands write a smaller `result.json` (with `--out-json`); its keys 
 
 ```text
 result_all/
-├─ summary.log                 # text summary; sections [1]–[5]
+├─ summary.log                 # text summary; sections [1]–[6]
 ├─ summary.json                # machine-readable results (below)
 ├─ mep_trj.xyz, mep_trj.pdb    # MEP over all segments (Endpoint and Scan-list modes)
 ├─ energy_diagram_MEP.png, energy_diagram_*_all.png, irc_plot_all.png
@@ -18,7 +18,7 @@ result_all/
 │     ├─ energy_diagram_*.png
 │     ├─ ts/                   # TS optimization; vib/imag_*_trj.xyz animates the imaginary modes
 │     ├─ irc/                  # IRC trajectories and irc_plot.png
-│     ├─ endpoint_opt/         # endpoint optimizations
+│     ├─ endpoint_opt/         # endpoint optimizations (kept with --dump or when one fails)
 │     ├─ freq/{R,TS,P}/        # --thermo
 │     └─ dft/{R,TS,P}/         # --dft
 └─ _work/                      # intermediate files, including the TS candidates (HEI)
@@ -27,7 +27,7 @@ result_all/
    └─ path_opt/                # MEP and hei_seg_NN.* (path_search/ with --refine-path)
 ```
 
-- `summary.log` sections: [1] MEP overview, [2] MEP barrier, reaction energy, and bond changes per segment, [3] post-processing per segment (n_imag under `TS imaginary freq:`), [4] energy diagrams, [5] output tree.
+- `summary.log` sections: [1] MEP overview, [2] MEP barrier, reaction energy, and bond changes per segment, [3] post-processing per segment (n_imag under `TS imaginary freq:`), [4] energy diagrams, [5] output tree, [6] methods and citations.
 - mmCIF or very large PDB input also gets `.cif` files with the original chain IDs and residue numbers.
 - TS-only mode has no MEP files and no `_work/path_opt/`; R, TS, and P go to `segments/seg_01/`.
 
@@ -50,7 +50,7 @@ result_all/
 | `key_output_files`, `current_output_paths` | Index of the files of this run; stale files in a reused directory are excluded |
 | `config`, `environment`, `command`, `pdb2reaction_version` | Effective settings, hardware, the command line, and the version |
 
-- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`; n_imag = 0 stops that segment before IRC, and the later segments are not post-processed. How the IRC stopped does not enter the status.
+- `success` means every requested stage converged; with `--tsopt`, every TS also has n_imag = 1. n_imag ≥ 2 gives `partial`; n_imag = 0 stops that segment before IRC; the other segments are still post-processed. How the IRC stopped does not enter the status.
 - The `references` set also appears at the end of `summary.log` and of the final console output, immediately before elapsed time.
 - `rate_limiting_step.barrier_kcal` uses the highest method available for every reactive segment: `DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`. Always report it with its `method`. It is the highest local barrier, not a kinetic rate-limiting-step assignment, and it is absent when no segment is reactive.
 
@@ -161,7 +161,7 @@ pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7, 2.2, -18.2]" --label-x "['R','
 
 When `execution_status` is `failed` or `scientific_status` is not `success`:
 
-1. Read `scientific_status_reasons` and `summary.log`; an early stop is shown as `Pipeline stop`.
+1. Read `scientific_status_reasons` and `summary.log`; an early stop is shown as `Pipeline stop`, and segments that stopped before IRC as `Stopped before IRC`.
 2. Look in the stage directories under `segments/seg_NN/`: `ts/` and `irc/` hold a `result.json`, and an endpoint optimization that raised an error writes `endpoint_opt/failure.json`.
 3. Optimizer logs are not written by default; rerun with `--dump` to keep the optimizer trajectories.
 

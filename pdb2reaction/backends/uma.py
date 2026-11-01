@@ -268,8 +268,8 @@ class UMAcore:
             if ParallelMLIPPredictUnit is None:
                 raise ImportError(
                     "workers>1 requested, but ParallelMLIPPredictUnit could not be imported "
-                    "from fairchem. Please ensure your FAIR-Chem installation "
-                    "includes `fairchem-core[extras]`."
+                    "from fairchem. Ray is required for workers>1: "
+                    'run `pip install "fairchem-core[ray]"`.'
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
             atom_refs = _uma_reference_energies(model, "atom_refs")

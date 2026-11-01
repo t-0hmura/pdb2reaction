@@ -10,8 +10,8 @@
 
 与える入力でモードが決まります。
 
-* **R と P から経路とエネルギー図を作る**: 反応順に並べた 2 構造以上（反応物、中間体、生成物）を与えると、隣り合う構造の間の MEP を求め、エネルギー図を描く
-* **反応物 1 つから経路を作る**: 1 構造と、作る結合・切れる結合を `-s` で与えると、段階的スキャンで中間体を作り、それらを通る MEP を求める
+* **R と P から経路とエネルギー図を作る（Endpoint モード）**: 反応順に並べた 2 構造以上（反応物、中間体、生成物）を与えると、隣り合う構造の間の MEP を求め、エネルギー図を描く
+* **反応物 1 つから経路を作る（Scan-list モード）**: 1 構造と、作る結合・切れる結合を `-s` で与えると、段階的スキャンで中間体を作り、それらを通る MEP を求める
 * **TS 候補 1 つを確かめる（TS-only モード）**: 1 構造に `--tsopt` を付け、`-s` を付けずに与えると、TS を最適化し、そこから IRC をたどる（n_imag = 1 で、IRC が狙った R と P に着けば TS と確かめられる）
 
 ---
@@ -29,7 +29,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-端末に各 TS の `[tsopt] Converged (n_imag=1).` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、指定した段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
+端末に各 TS の `[Imaginary modes] n=1 (...)` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、指定した段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
 
 ### 2. 反応物から段階的スキャンで経路を作る
 
@@ -96,9 +96,10 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
 | 収束、n_imag = 1 | IRC を実行し、IRC の両端を最適化します。 |
 | 収束、n_imag ≥ 2 | 警告を出し、MEP の方向に最もよく合う虚振動（合うものが無ければ最も低い虚振動）に沿って IRC を実行します。結果は `partial` です。 |
 | 収束、n_imag = 0 | IRC の前で止まります。 |
-| 未収束（サイクル上限か `--stop-plateau`）、`--skip-final-freq`（最後の Hessian を省く）、Hessian の失敗 | IRC の前で止まります。 |
+| 未収束（サイクル上限か `--stop-plateau`）、`--skip-final-freq`（最後の Hessian を省く） | IRC の前で止まります。 |
+| 最後の Hessian がエラーで失敗 | 実行全体が止まり（`failed`、終了コード 1）、後のセグメントは処理しません。 |
 
-IRC の前で止まった場合、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残り、後のセグメントの後処理は行いません。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
+IRC の前で止まったセグメントは IRC とその後の段を行わず、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残ります。ほかのセグメントは後処理を続けます。`summary.json` は最初の停止を `pipeline_stop` に残し、止まったセグメントすべてを `stopped_segments` に列挙します。`irc_plot_all.png` は全セグメントに IRC があるときだけ描きます。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
 
 片方の端点の最適化が収束しない場合、結果は `partial` になり、`segments/seg_NN/endpoint_opt/` を確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
 
@@ -110,12 +111,12 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 
 結果は次の 3 か所で確かめます。
 
-* **端末**: 各 TS 最適化は、虚振動 1 つで収束すると `[tsopt] Converged (n_imag=1).` で終わります。`====== Pipeline summary ======` の下に `Execution status:` と `Scientific status:` が出ます。結果が `success` でないときは、`RESULT WARNING:` の行に理由が出ます。
+* **端末**: 各 TS 最適化は、虚振動 1 つで収束すると `[Imaginary modes] n=1 (...)` を出します。`====== Pipeline summary ======` の下に `Execution status:` と `Scientific status:` が出ます。結果が `success` でないときは、`RESULT WARNING:` の行に理由が出ます。
 * **`summary.log`**: ヘッダーに `Pipeline mode`（`MEP`、`Scan`、`TS-only`）と 2 つのステータスが出ます。[1] は MEP の概要、[2] は各セグメントの MEP 上の障壁 ΔE‡・反応エネルギー ΔE・結合の変化、[3] は各セグメントの後処理で、`TS imaginary freq:` の下に n_imag が出ます。[4] はエネルギー図の表、[5] は出力のツリーです。
 * **`summary.json`**: `scientific_status` には `success`・`partial`・`failed` のいずれかが、`scientific_status_reasons` にはその[理由](json-output.md#実行の完了と指定した段の完了)が入ります。各 TS の n_imag は `post_segments[].tsopt.n_imaginary_modes` です。
   * **`summary.json` の障壁**: `--tsopt` のとき、各セグメントの障壁は `post_segments[].mlip.barrier_kcal` で、最適化した TS と R の MLIP のエネルギー差です。`--thermo` と `--dft` のときは、同じ `barrier_kcal` が `gibbs_mlip`・`dft`・`gibbs_dft_mlip` の下にもあります。`segments[].barrier_kcal` は TS 最適化の前の MEP 上の障壁で、TS-only モードでは TS − R です。
 
-`success` は、指定した段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
+`success` は、指定した段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 
 ---
 
@@ -248,6 +249,6 @@ pdb2reaction all -i mutant_R.pdb mutant_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' 
 * [freq](freq.md) — 振動解析と熱化学
 * [dft](dft.md) — DFT 一点計算
 * [MLIP の TS を DFT で確かめる](dft-backend.md) — `-b dft` と `--dft`
-* [反応機構を調べるコツ](mechanism-tips.md) — 反応の分け方、TS の確かめ方、TS が取れないときの次の手
+* [反応機構を調べるコツ](mechanism-tips.md) — 反応の分け方、TS の確かめ方、TS が得られないときの次の手
 * [トラブルシューティング](troubleshooting.md) — 計算が失敗したとき
 * [はじめに](getting-started.md) — 最短の実行と次に読むページ

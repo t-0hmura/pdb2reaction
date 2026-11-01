@@ -17,7 +17,7 @@ MLIP model         : UMA-S-1.2.1 (OMol)
 MLIP precision     : fp32
 Execution status    : completed
 Scientific status   : partial
-Pipeline stop       : before_irc (ts_optimization_not_converged)
+Stopped before IRC  : segment 1 (ts_optimization_not_converged)
 RESULT WARNING      : Segment 1: TS optimization did not converge. Review the TS trajectory.
 Total charge (ML)  : 0
 Multiplicity (2S+1): 1

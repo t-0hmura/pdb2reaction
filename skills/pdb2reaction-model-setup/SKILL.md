@@ -5,7 +5,7 @@ description: "Input structures and the active-site cluster for pdb2reaction: PDB
 
 # Structures and the cluster model
 
-PDB or mmCIF keeps residue names, so `-l 'RES:Q'` derives the charge; XYZ needs `-q` (and `--ref-pdb` for residue context); GJF takes charge and spin from its header; set `-m` for open-shell systems.
+PDB or mmCIF keeps residue names, so `-l 'RES:Q'` derives the charge; XYZ needs `-q` (and `--ref-pdb` for residue context); GJF takes charge and spin from its header; set `-m` for open-shell systems. The input must contain every hydrogen: add them to a crystal structure with reduce, Open Babel, PyMOL, or tleap, using the same settings for every structure of a path ([details](../../docs/getting-started.md#add-hydrogens-required)).
 
 All four formats use Å and standard element symbols. Column layouts, cap
 hydrogens, and ligand, ion, and metal tables are in [formats.md](formats.md).
@@ -144,8 +144,10 @@ Look up a ligand's formal charge in the mechanism's primary paper or deposited
 structure documentation first, then PubChem or ChEBI (`Formal Charge`) and the
 RCSB ligand page, for example `https://www.rcsb.org/ligand/SAM`. From SMILES,
 use `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
-Record the source and the modeled protonation and oxidation state. If the
-sources do not settle one state, stop and ask the user; never default a metal
+Then count the H atoms the input has on each group and set the charge from
+them (SAM with two H on its amine N is 0, with three H +1); the table gives
+typical values at pH 7. Record the source and the modeled protonation and
+oxidation state. If the sources do not settle one state, stop and ask the user; never default a metal
 or radical cluster to `-q 0 -m 1` without checking.
 
 | Group at pH 7 | Typical charge |
@@ -207,7 +209,7 @@ Build the DFT-sized model with the trims above from the original complex before 
 
 ## Enlarge when the model is too small
 
-Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole when `-r` is above 0) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. MLIP TS optimization builds a dense Hessian of the movable atoms, so its cost grows quickly with the atom count. Keep the model to about 400–500 atoms when the reaction allows; this finishes fastest even on a large GPU. A large active site may need about 800–1,000 atoms, which works but runs noticeably slower, so plan the walltime for it. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
+Raise `-r`, use `--radius-het2het` for hydrogen-bond and metal partners, and add catalytic or charge-compensating residues to `-c` (whole when `-r` is above 0) or `--selected-resn` (side chain unless a neighbor is in). Keep the main chain. No radius is universally safe: 2.6 Å is a starting value, not a chemically validated cutoff, and a larger model costs more without always being more accurate. MLIP TS optimization builds a dense Hessian of the movable atoms, so its cost grows quickly with the atom count. On a GPU with 16 GB or more, `-r 4.0` (about 670 atoms for COMT) is practical, and for COMT this size or larger gave the same mechanism as the whole system. A large active site may need about 800–1,000 atoms, which works but runs noticeably slower, so plan the walltime for it. When the boundary could change the mechanism, rerun the key step at another size and compare barriers.
 
 ## Same atoms across states and variants
 

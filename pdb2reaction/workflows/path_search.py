@@ -2163,8 +2163,8 @@ def _merge_final_and_write(final_images: List[Any],
     show_default="10",
     help=(
         "Maximum recursive subdivision levels. "
-        "0 disables subdivision. Intervals retained at a positive cap use "
-        "seg_NNN_maxdepth and may contain multiple steps. When omitted, YAML search.max_depth applies."
+        "0 disables subdivision. With a positive limit, an interval still undivided at the limit "
+        "is named seg_NNN_maxdepth and may contain several steps. When omitted, YAML search.max_depth applies."
     ),
 )
 @click.option(
@@ -2232,8 +2232,7 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default="gau",
     help=(
-        "Convergence preset for single-structure optimizations only "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for single-structure optimizations only."
     ),
 )
 @click.option(
@@ -2242,8 +2241,7 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default="gau_loose",
     help=(
-        "Convergence preset for the GSM string optimizer "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+        "Convergence preset for the GSM string optimizer."
     ),
 )
 @click.option(

@@ -2,7 +2,7 @@
 
 `all` runs extraction (with `-c`), the MEP search or a staged scan, and, when
 asked, TS optimization, IRC, frequencies, and DFT in one command. It succeeded
-when the console prints `[tsopt] Converged (n_imag=1).` for each TS and
+when the console prints `[Imaginary modes] n=1 (...)` for each TS and
 `Scientific status: success` under the last `====== Pipeline summary ======`.
 
 ## When to use
@@ -40,7 +40,7 @@ without a calculation. Each mode page has a complete command.
 
 ## Judge success
 
-- **Console**: `[tsopt] Converged (n_imag=1).` per TS, and `Scientific status: success` under the last `====== Pipeline summary ======`. `[time] Elapsed` only marks the end of the run.
+- **Console**: `[Imaginary modes] n=1 (...)` per TS, and `Scientific status: success` under the last `====== Pipeline summary ======`. `[time] Elapsed` only marks the end of the run.
 - **`summary.json`**: `scientific_status` is `success`, `partial`, or `failed`, with `scientific_status_reasons`. `success` means every requested stage converged and, with `--tsopt`, every TS has n_imag = 1. A TS with n_imag ≥ 2 gives `partial`; n_imag = 0 stops before IRC and is never `success`.
 - **TS**: a successful TS optimization gives one imaginary mode along the reaction coordinate. Read `post_segments[].tsopt.n_imaginary_modes` and `.imaginary_frequencies_cm`, and play `segments/seg_NN/ts/vib/imag_*_trj.xyz` to see that the mode moves the bonds that form or break.
 - **Endpoints**: whether they are the intended R and P is for you to check. Compare `segments/seg_NN/reactant.*` and `product.*` with the intended states, and in Endpoint and Scan-list modes read `endpoint_opt.connectivity_validated` ([Per-segment keys](../pdb2reaction-overview/outputs.md#per-segment-keys)). Even if the IRC does not converge, the result is usable when the endpoint optimizations reach the intended R and P.
@@ -79,7 +79,7 @@ the saved inputs and MEP do not match the command.
 - **Cycle limits.** `--max-cycles-gsm` and `--dmf-max-iterations` bound only the MEP stage; scan, TS, IRC, freq, and DFT have their own limits (for example `--tsopt-max-cycles`, `--irc-max-cycles`).
 - **Status is not `success`.** Read `scientific_status_reasons`, then the matching block of `summary.log`. Stage `result.json` files are in `segments/seg_NN/ts/` and `irc/`, and under `_work/` for the scan and `path-opt`; freq and DFT write none.
 - **A segment directory exists but the stage failed.** `segments/seg_NN/` is created when post-processing starts and can be partial; check `summary.json` and the stage `result.json`, not the directory.
-- **TS stops before IRC.** IRC starts only when the TS optimization converged, its final Hessian was computed, and n_imag ≥ 1. With n_imag ≥ 2, IRC runs with a warning along the mode closest to the MEP direction; it is a diagnostic, not a first-order TS. With n_imag = 0, a cycle limit (no final Hessian, so no n_imag), a plateau stop (`--stop-plateau`; the Hessian still gives n_imag), or a skipped or failed final Hessian, the run stops before IRC, keeps the TS files in `segments/seg_NN/ts/`, and does not post-process later segments. Next: [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt) and [When the TS does not come out](../pdb2reaction-overview/ts-strategy.md#when-the-ts-does-not-come-out).
+- **TS stops before IRC.** IRC starts only when the TS optimization converged, its final Hessian was computed, and n_imag ≥ 1. With n_imag ≥ 2, IRC runs with a warning along the mode closest to the MEP direction; it is a diagnostic, not a first-order TS. With n_imag = 0, a cycle limit (no final Hessian, so no n_imag), a plateau stop (`--stop-plateau`; the Hessian still gives n_imag), or a skipped final Hessian, that segment stops before IRC and keeps its TS files in `segments/seg_NN/ts/`; the other segments are still post-processed. A final Hessian that fails with an error ends the whole run (`failed`, exit 1). Next: [Wrong n_imag after tsopt](../pdb2reaction-overview/ts-strategy.md#wrong-n_imag-after-tsopt) and [When the TS does not come out](../pdb2reaction-overview/ts-strategy.md#when-the-ts-does-not-come-out).
 - **`--dft` with `-b dft`.** The run stops at startup. Run `pdb2reaction dft` or `pdb2reaction sp -b dft` as a separate job.
 - **UMA with `--uma-workers` above 1 and an explicit `Analytical` Hessian.** See [Cross-cutting pitfalls](SKILL.md#cross-cutting-pitfalls).
 - **`_work/`.** It holds intermediate files, including the TS candidates (HEI); keep it while you use them.

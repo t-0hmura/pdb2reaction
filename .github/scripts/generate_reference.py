@@ -121,7 +121,7 @@ def _render_commands_index(command_docs: list[CommandDoc]) -> str:
     )
     return (
         "# CLI Command Reference\n\n"
-        "These pages are the generated `--help` reference for each command. For usage "
+        "These pages are the generated `--help-advanced` reference for each command. For usage "
         "guidance and worked examples, see the command's narrative guide in the main "
         "documentation (e.g. [all](../../all.md), [opt](../../opt.md)).\n\n"
         "```{toctree}\n"

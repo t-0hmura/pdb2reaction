@@ -17,7 +17,7 @@ when `pdb2reaction --version` prints the version and the smoke check in
 1. On a new or unknown host, run the probes in
    [backends.md](backends.md#probe-the-compute-environment) first.
 2. Create a conda env with Python 3.12 from conda-forge; pdb2reaction needs
-   Python 3.12. If you will use DMF
+   Python 3.12 or 3.13. If you will use DMF
    (`--mep-mode dmf`) or `--solvent`, create it with `cyipopt`, `xtb`, and
    PyTorch from conda-forge instead (below) and skip step 3; `pydmf` comes with
    pdb2reaction.
@@ -39,7 +39,7 @@ conda activate <YOUR_ENV>
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 pip install pdb2reaction                           # UMA via fairchem-core
 plotly_get_chrome -y                               # headless Chrome; needs network
-hf auth login                                      # Read token; once per machine and env
+hf auth login                                      # Read token; once per machine (shared by all envs)
 pip install 'pdb2reaction[orb,aimnet,dft]'   # optional extras
 ```
 
@@ -154,7 +154,7 @@ python -c "import importlib.metadata as m; print(m.requires('pdb2reaction'))"
 ```
 
 Success is a version string, your Hugging Face user name, `CUDA: True` with the
-GPU name, and a smoke check that returns silently. Repeat the smoke check with
+GPU name, and a smoke check that returns without an error. Repeat the smoke check with
 `backend='orb'`, `'aimnet2'`, or `'mace'` (MACE env only) for each backend you
 installed. An `ImportError` points to that backend's section in
 [backends.md](backends.md); a CUDA error points to

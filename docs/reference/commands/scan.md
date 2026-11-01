@@ -84,8 +84,7 @@ Options:
   -o, --out-dir TEXT              Base output directory.  [default:
                                   ./result_scan/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
-                                  Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never).  [default: (gau)]
+                                  Convergence preset.  [default: (gau)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
@@ -140,11 +139,12 @@ Options:
                                   YAML; otherwise defaults to get_calculator.
                                   [default: (get_calculator)]
   --deterministic / --no-deterministic
-                                  Request strict same-stack PyTorch determinism
-                                  (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises for detected unsupported
-                                  ops; custom calculators are outside its scope.
-                                  [default: no-deterministic]
+                                  Make repeated runs on the same software
+                                  versions and hardware give identical results
+                                  (PyTorch deterministic algorithms). Slower;
+                                  raises for detected unsupported ops; custom
+                                  calculators are outside its scope.  [default:
+                                  no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

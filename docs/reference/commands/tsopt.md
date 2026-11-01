@@ -63,9 +63,8 @@ Options:
                                   Dimer).  [default: no-dump]
   -o, --out-dir TEXT              Output directory.  [default: ./result_tsopt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
-                                  Convergence preset for the active optimizer (g
-                                  au_loose|gau|gau_tight|gau_vtight|baker|never)
-                                  .  [default: (baker)]
+                                  Convergence preset for the active optimizer.
+                                  [default: (baker)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -80,9 +79,10 @@ Options:
                                   it); RS-P-RFO/RS-I-RFO/TRIM also skip
                                   --flatten, which needs it. Standalone tsopt
                                   retains the final structure with unverified
-                                  saddle order; all stops before IRC because no
-                                  imaginary direction can be validated.
-                                  [default: no-skip-final-freq]
+                                  saddle order; all skips IRC and the later
+                                  stages of that segment because no imaginary
+                                  direction can be validated.  [default: no-
+                                  skip-final-freq]
   --read-hess FILE                Start from the Hessian in this .npy file (e.g.
                                   from freq or tsopt --dump-hess) instead of
                                   computing it: the Cartesian Hessian of the
@@ -148,11 +148,12 @@ Options:
                                   YAML; otherwise defaults to get_calculator.
                                   [default: (get_calculator)]
   --deterministic / --no-deterministic
-                                  Request strict same-stack PyTorch determinism
-                                  (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises for detected unsupported
-                                  ops; custom calculators are outside its scope.
-                                  [default: no-deterministic]
+                                  Make repeated runs on the same software
+                                  versions and hardware give identical results
+                                  (PyTorch deterministic algorithms). Slower;
+                                  raises for detected unsupported ops; custom
+                                  calculators are outside its scope.  [default:
+                                  no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

@@ -10,7 +10,7 @@
 pdb2reaction all -i aromatic_claisen/reactant.xyz aromatic_claisen/product.xyz -q 0 --tsopt --thermo
 ```
 
-最小エネルギー経路（MEP）を探索し、遷移状態（TS）の最適化・固有反応座標（IRC）・振動解析と熱化学補正まで進みます。端末の最後のほうの `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
+最小エネルギー経路（MEP）を探索し、遷移状態（TS）の最適化・固有反応座標（IRC）・振動解析と熱化学補正まで進みます。端末出力の末尾付近の `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
 ## 入力のポイント
 

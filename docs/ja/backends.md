@@ -88,7 +88,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 - プロセス全体に効きます。`all` に付ければ `all` が実行する MLIP の段すべてに効くので、段ごとに付ける必要はありません。
 - 計算は遅くなります。決定論的な GPU の演算は処理が遅いので、繰り返しの計算を一致させる必要があるときだけ使ってください。
-- 実行する演算に PyTorch の決定論的な版が無いときは、再現しない結果を黙って出さずに、エラーで止まります。
+- 実行する演算に PyTorch の決定論的な版が無いときは、再現しない結果を出さずに、エラーで止まります。
 
 | バックエンド | `--deterministic` |
 |---|---|
@@ -110,7 +110,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネルギー `E_xTB(solvent) - E_xTB(vacuum)` と、それに対応する力と Hessian の差を MLIP のポテンシャル面に足します。主な用途は小分子の溶液中の計算です。`--solvent-model` で `alpb`（デフォルト）か `cpcmx` を選びます。`--solvent-xtb-cmd` には追加の引数を含めた xTB のコマンドを渡せます。xTB の SCC（自己無撞着電荷）の反復が収束しないときは、`'xtb --etemp 1000'` のように指定してください。xTB は `pdb2reaction` と一緒には入らないので、`conda install -c conda-forge xtb` で導入してください。
 
-補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子くらいが実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は名前の付いたバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
+補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は名前の付いたバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
 
 ## DFT バックエンド
 
@@ -142,7 +142,7 @@ pdb2reaction all    -i R.pdb P.pdb -c 'A:LIG' --calc-file my_calc.py -q 0 -m 1
 ```
 
 - 関数が引数か `**kwargs` で受け取れば、`charge`、`spin`、`device` が渡されるので、総電荷が要るエンジン（xTB など）も設定できます。`spin` は多重度で、`mult`・`multiplicity` の名前でも渡します。関数の名前は `--calc-file-func-name NAME` で変えられ、その名前に Calculator のインスタンスを置いてもかまいません。
-- Hessian は力の有限差分で求めるので、`freq` と `tsopt --opt-mode hess` はどのエンジンでも動きます。`--freeze-links`・`--freeze-atoms` による固定もふつうどおり効きます。
+- Hessian は力の有限差分で求めるので、`freq` と `tsopt --opt-mode hess` はどのエンジンでも動きます。`--freeze-links`・`--freeze-atoms` による固定も通常どおり効きます。
 - `all`、`sp`、`opt`、`tsopt`、`freq`、`irc`、`scan`・`scan2d`・`scan3d`、`path-opt`、`path-search` で使えます。`all` は、calculator を使うすべての段に同じ関数を渡します。独自の `--backend` 名を持つ、インストールできるバックエンドにするときは [開発者向け](#開発者向け) を見てください。
 
 ## Python API
@@ -270,7 +270,7 @@ pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF�
 
 (ja-workers-analytical-error)=
 - UMA で `--uma-workers` を 2 以上にすると、`--hessian-calc-mode Analytical` とは併用できず、エラーで止まります。並列の予測器は autograd のモデルを持たないためです。解析 Hessian には `--uma-workers 1` を、複数のワーカーには `FiniteDifference` を使ってください。
-- モデルの精度と Hessian の精度は別の設定です。エネルギーと力は常に float64 で返り、Hessian もデフォルトでは float64 で組み立てます。`calc.hessian_double: false` にすると、モデル本来の dtype（ふつうは float32）で返します。`--precision fp64` のときは Hessian も常に float64 になり、設定ファイルの `hessian_double: false` は警告を出して上書きされます。
+- モデルの精度と Hessian の精度は別の設定です。エネルギーと力は常に float64 で返り、Hessian もデフォルトでは float64 で組み立てます。`calc.hessian_double: false` にすると、モデル本来の dtype（通常は float32）で返します。`--precision fp64` のときは Hessian も常に float64 になり、設定ファイルの `hessian_double: false` は警告を出して上書きされます。
 - CI のジョブや Python API の `create_calculator` では、環境変数 `PDB2REACTION_STRICT_DETERMINISTIC=1` で `--deterministic` と同じモードになります。
 
 ## 関連ドキュメント

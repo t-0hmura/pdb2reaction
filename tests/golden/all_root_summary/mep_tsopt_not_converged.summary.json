@@ -255,6 +255,13 @@
       "stop_reason": "max_cycles_reached"
     }
   },
+  "stopped_segments": [
+    {
+      "stage": "before_irc",
+      "segment": 1,
+      "reason": "ts_optimization_not_converged"
+    }
+  ],
   "post_segments": [
     {
       "index": 1,

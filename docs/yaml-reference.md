@@ -653,7 +653,7 @@ bias:
  k: 300 # Harmonic bias strength (eV·Å⁻² for distances, eV·rad⁻² for angles)
 ```
 
-**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`) appears in the following places with the same default of `300`:
+**Shared spring constant across subcommands.** The following keys use the same default of `300` (`dmf.k_fix` holds the frozen atoms in place during DMF):
 
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|
@@ -662,7 +662,7 @@ bias:
 
 `opt` also applies `--restraint-k` (same default) to its `--distance-restraint` pairs, but reads it only from the CLI, not from the `bias:` section.
 
-Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default enforces near-rigid pinning.
+Override any of these to tune how stiff the restraint is. For `bias.k`, a smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default enforces near-rigid pinning.
 
 ---
 

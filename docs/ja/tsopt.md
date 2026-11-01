@@ -79,7 +79,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --read-hess ts_cand_hess.npy --out-d
 | エネルギーが変わらなくなって停止 | `[tsopt] ERROR: Not converged (plateau stop, n_imag=N).` | 1 | final geometry と n_imag | IRC の前で止まる |
 | 未収束で停止（多くは `--max-cycles` に達したとき） | `[tsopt] ERROR: Not converged.` | 1 | final geometry（Hessian なし） | IRC の前で止まる |
 | `--skip-final-freq` を付けて収束 | `[tsopt] Converged; terminal PHVA is unavailable.` | 0 | final geometry（Hessian なし） | 反応モードを確かめられないため、IRC の前で止まる |
-| 最後の Hessian の計算に失敗 | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | final geometry と、`hessian_status: failed` とその理由 | IRC の前で止まる |
+| 最後の Hessian の計算に失敗 | `[tsopt] Converged; terminal PHVA is unavailable.` | 1 | final geometry と、`hessian_status: failed` とその理由 | 実行全体が止まる（終了コード 1） |
 
 n_imag は次のように読みます。
 
@@ -87,7 +87,7 @@ n_imag は次のように読みます。
 | --- | --- |
 | 1 | 一次の鞍点。モードが狙った原子を動かしているかを確かめてから、[`irc`](irc.md) を実行してください |
 | 0 | 虚振動なし。構造が極小点の側へ緩和しています |
-| 2 以上 | 高次の鞍点。余分な虚振動が残っています。`all` はそれでも、MEP の方向にいちばん近い虚振動のモードに沿って IRC を流すので、IRC の端点でそのモードがどこへつながるかを確かめられます |
+| 2 以上 | 高次の鞍点。余分な虚振動が残っています。`all` はそれでも、MEP の方向にいちばん近い虚振動のモードに沿って IRC を実行するので、IRC の端点でそのモードがどこへつながるかを確かめられます |
 
 n_imag は端末の `[tsopt]` の判定の行か、`--out-json` を付けたときの `result.json` の `n_imaginary_modes` で読みます。
 
@@ -109,7 +109,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
     --precision fp64 --coord-type dlc --flatten --out-dir ./result_tsopt_retry
 ```
 
-ほかの手は {ref}`TS が取れないとき <ja-ts-search-fails>` に、そのほかの失敗は [トラブルシューティング](troubleshooting.md) にあります。
+ほかの手は {ref}`TS が得られないとき <ja-ts-search-fails>` に、そのほかの失敗は [トラブルシューティング](troubleshooting.md) にあります。
 
 ---
 
@@ -211,7 +211,7 @@ flatten の回数は、Dimer 法でも RS-P-RFO・RS-I-RFO・TRIM でも、YAML 
 * [freq](freq.md) — 完全な振動解析と熱化学補正
 * [path-opt](path-opt.md) / [path-search](path-search.md) / [scan](scan.md) — TS 候補の作成
 * [all](all.md) — 抽出・MEP・TS 最適化・IRC・振動解析を一度に実行するワークフロー
-* [反応機構を調べるコツ](mechanism-tips.md) — TS が取れないときに試すこと
+* [反応機構を調べるコツ](mechanism-tips.md) — TS が得られないときに試すこと
 * [トラブルシューティング](troubleshooting.md) — 実行が失敗したときの切り分け
 * [YAML 設定の一覧](yaml-reference.md) — `rsirfo` と `hessian_dimer` のすべての設定
 * [用語集](glossary.md) — TS、Dimer、Hessian などの用語

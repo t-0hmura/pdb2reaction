@@ -82,7 +82,7 @@ IRC が収束しなくても、端点を `opt` で最適化して狙った R と
 
 `result.json` の `scientific_status` の `success`（終了コード 0）は、各分岐の止まり方によらず、積分がエラーなく終わったことを示します。`irc` は端点を判定しないので、端点が狙った R と P かは自分で確かめてください。
 
-端点が意図した R と P でないときは、{ref}`TS が取れないとき <ja-ts-search-fails>` を参照してください。
+端点が意図した R と P でないときは、{ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 
 ---
 
@@ -157,7 +157,7 @@ result_irc/
   ```
 
 * **固定原子**: `--freeze-links` に加えて、`--freeze-atoms`（1 始まり）でほかの原子も固定できます。除いた剛体運動と最初の Hessian は、`result.json` の `rigid_projection` に記録されます。
-* **大きな系**: `--hess-device cpu` を付けると、最初の Hessian を CPU に置き、IRC の Hessian の演算も CPU で行って、GPU のメモリに収めます。
+* **大きな系**: `--hess-device cpu` を付けると、最初の Hessian を CPU に置き、IRC の Hessian の演算も CPU で行って、GPU のメモリ不足を避けます。
 * **分岐は少なくとも 1 つ**: `--no-forward` と `--no-backward` を両方付けると、エラーで止まります。
 
 ---

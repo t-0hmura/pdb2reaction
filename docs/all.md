@@ -10,8 +10,8 @@ Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HE
 
 What you pass selects the mode:
 
-* **Path and energy diagram from R and P**: give two or more structures in reaction order (reactant, intermediates, product); `all` finds the MEP between each neighbouring pair and draws the energy diagram.
-* **Path from a reactant alone**: give one structure and the bonds to form or break with `-s`; a staged scan makes the intermediates, and the MEP search runs through them.
+* **Path and energy diagram from R and P (Endpoint mode)**: give two or more structures in reaction order (reactant, intermediates, product); `all` finds the MEP between each neighbouring pair and draws the energy diagram.
+* **Path from a reactant alone (Scan-list mode)**: give one structure and the bonds to form or break with `-s`; a staged scan makes the intermediates, and the MEP search runs through them.
 * **Check one TS candidate (TS-only mode)**: give one structure with `--tsopt` and no `-s`; `all` optimizes the TS and runs IRC from it. The TS is confirmed when n_imag = 1 and the IRC ends at the intended R and P.
 
 ---
@@ -29,7 +29,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-Every requested stage finished when the console prints `[tsopt] Converged (n_imag=1).` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
+Every requested stage finished when the console prints `[Imaginary modes] n=1 (...)` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
 
 ### 2. Path from the reactant by a staged scan
 
@@ -96,9 +96,10 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 | Converged, n_imag = 1 | Runs IRC and optimizes both IRC ends. |
 | Converged, n_imag ≥ 2 | Runs IRC with a warning along the imaginary mode that best matches the MEP direction (the lowest one when none matches). The result is `partial`. |
 | Converged, n_imag = 0 | Stops before IRC. |
-| Not converged (cycle limit or `--stop-plateau`), the final Hessian skipped with `--skip-final-freq`, or a failed Hessian | Stops before IRC. |
+| Not converged (cycle limit or `--stop-plateau`), or the final Hessian skipped with `--skip-final-freq` | Stops before IRC. |
+| The final Hessian fails with an error | Stops the whole run (`failed`, exit 1); no later segment is processed. |
 
-When `all` stops before IRC, the result is not `success`; the TS files stay in `segments/seg_NN/ts/`, and the later segments are not post-processed. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
+A segment that stops before IRC gets no IRC or later stage and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
 
 If one endpoint optimization does not converge, the result is `partial` and `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
 
@@ -110,7 +111,7 @@ A successful TS optimization gives one imaginary mode along the reaction coordin
 
 Read the outcome in three places:
 
-* **Console**: each TS optimization ends with `[tsopt] Converged (n_imag=1).` when it converged with one imaginary mode. The `====== Pipeline summary ======` block prints `Execution status:` and `Scientific status:`. When the result is not `success`, `RESULT WARNING:` lines give the reasons.
+* **Console**: each TS optimization prints `[Imaginary modes] n=1 (...)` when it ends with one imaginary mode. The `====== Pipeline summary ======` block prints `Execution status:` and `Scientific status:`. When the result is not `success`, `RESULT WARNING:` lines give the reasons.
 * **`summary.log`**: the header shows `Pipeline mode` (`MEP`, `Scan`, or `TS-only`) and both statuses. Section [1] is the MEP overview; [2] lists the barrier ΔE‡, the reaction energy ΔE, and the bond changes of each segment on the MEP; [3] gives the post-processing of each segment, with n_imag under `TS imaginary freq:`; [4] tabulates the energy diagrams; [5] shows the output tree.
 * **`summary.json`**: `scientific_status` holds `success`, `partial`, or `failed`, and `scientific_status_reasons` holds the [reasons](json-output.md#execution-and-requested-stage-completion). n_imag of each TS is `post_segments[].tsopt.n_imaginary_modes`.
   * **Barriers in `summary.json`**: with `--tsopt`, the barrier of each segment is `post_segments[].mlip.barrier_kcal` (MLIP energy of the optimized TS minus R). With `--thermo` and `--dft`, the same `barrier_kcal` is also under `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. `segments[].barrier_kcal` is the barrier on the MEP before TS optimization, or TS − R in TS-only mode.

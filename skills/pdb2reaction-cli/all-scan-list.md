@@ -4,7 +4,7 @@ Give one reactant and the coordinates to drive with `-s` (`--scan-lists`); `all`
 stages in order, searches the MEP through the stage ends, and, with `--tsopt`,
 optimizes each TS candidate and runs IRC. It succeeded when the console prints
 `Scientific status: success` under the last `====== Pipeline summary ======`
-(and `[tsopt] Converged (n_imag=1).` for each TS).
+(and `[Imaginary modes] n=1 (...)` for each TS).
 
 ## When to use
 
