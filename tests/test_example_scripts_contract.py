@@ -25,7 +25,6 @@ contract = checker.contract  # same module object the checker uses
 def _write_valid_script(path: Path, command: str) -> None:
     path.write_text(
         "#!/usr/bin/env bash\n"
-        "set -euo pipefail\n"
         'SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n'
         f"{command}\n",
         encoding="utf-8",
@@ -33,14 +32,14 @@ def _write_valid_script(path: Path, command: str) -> None:
     path.chmod(0o755)
 
 
-def test_public_shell_examples_exist_with_two_invocations() -> None:
+def test_public_shell_examples_exist_with_three_invocations() -> None:
     scripts = contract.PUBLIC_SHELL_EXAMPLES
     assert scripts, "no advertised example scripts declared"
     total = 0
     for path in scripts:
         assert path.exists(), f"missing advertised script: {path}"
         total += len(contract.extract_shell_commands(path))
-    assert total == 2  # examples/run.sh: MEP + scan invocations
+    assert total == 3  # examples/run.sh: BezA MEP + scan, COMT MEP invocations
 
 
 def test_checker_passes_on_real_repo() -> None:
