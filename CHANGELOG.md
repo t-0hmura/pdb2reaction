@@ -60,7 +60,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `all` without `--refine-path` records `overall_reaction_energy_kcal` and `overall_reaction_energy_method` (`MEP`) in the root `summary.json` when no diagram of a later stage exists, for example without `--tsopt` or after a TS optimization that does not converge; before, both keys were missing.
 - `all` without `--refine-path` titles the MEP energy diagram, and its entry in `summary.json`, with the method that built the path (`GSM` or `DMF`); before, the title always read `GSM`.
 - `all`: the TS labels of the diagrams of all segments (`energy_diagram_MLIP_all` and the like) follow the segment numbers (`TS3` for `seg_03`) when a bridge segment lies between reactive ones; before, the labels were counted from 1 and could name another TS than the segment records.
-- PNG export (energy diagrams, `trj2fig` and other plots): the export turns on the browser's page events before Kaleido opens the plot page, as the upstream fix does (plotly/Kaleido#481); with Kaleido 1.5.0 and older, a page that loaded quickly could leave the export waiting until the 600 s limit.
 
 ## [0.6.0] — 2026-10-24
 
