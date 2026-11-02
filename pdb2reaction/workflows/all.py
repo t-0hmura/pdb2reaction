@@ -9067,17 +9067,9 @@ def cli(
     summary["path_optimizers"] = sorted(path_optimizers)
     _point_mep_diagram_at_root(summary.get("energy_diagrams"), out_dir)
 
-    def _publish_provisional_root_summary(
-        post_segments: Sequence[Dict[str, Any]] = (),
-    ) -> None:
-        """Publish ``summary`` at the root with the fail-closed provisional verdict.
-
-        ``post_segments`` are the finished segment records; the root keeps them
-        so that a run that stops later can be resumed with --resume-segment.
-        """
-        root_summary = deepcopy(summary)
+    def _enrich_root_summary(target: Dict[str, Any]) -> None:
         _enrich_summary(
-            root_summary,
+            target,
             pipeline_mode="path-search" if refine_path else "path-opt",
             out_dir=out_dir,
             calculator_provenance_data=_shared_provenance,
@@ -9095,6 +9087,17 @@ def cli(
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
         )
+
+    def _publish_provisional_root_summary(
+        post_segments: Sequence[Dict[str, Any]] = (),
+    ) -> None:
+        """Publish ``summary`` at the root with the fail-closed provisional verdict.
+
+        ``post_segments`` are the finished segment records; the root keeps them
+        so that a run that stops later can be resumed with --resume-segment.
+        """
+        root_summary = deepcopy(summary)
+        _enrich_root_summary(root_summary)
         root_summary["post_segments"] = _json_safe(list(post_segments))
         _publish_root_summary(root_summary)
 
@@ -9224,6 +9227,9 @@ def cli(
     if not (do_tsopt or do_thermo or do_dft):
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
+        if refine_path:
+            # The path-search child summary has no all options.
+            _enrich_root_summary(summary)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
         _emit_final_summary(
@@ -9242,6 +9248,8 @@ def cli(
     if not segments:
         _echo("[post] No segments found in summary; nothing to do.", narrative=True)
         summary["pipeline_stop"] = {"stage": "post", "reason": "no_segments"}
+        if refine_path:
+            _enrich_root_summary(summary)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
         _emit_final_summary(
@@ -9262,6 +9270,8 @@ def cli(
     if not all_reactive:
         _echo("[post] No TS-capable segments. Skipping TS/thermo/DFT.", narrative=True)
         summary["pipeline_stop"] = {"stage": "post", "reason": "no_reactive_segment"}
+        if refine_path:
+            _enrich_root_summary(summary)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
         _emit_final_summary(

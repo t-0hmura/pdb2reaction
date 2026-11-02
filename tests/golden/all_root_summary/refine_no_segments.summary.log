@@ -17,8 +17,8 @@ MLIP precision     : fp32
 Execution status    : completed
 Scientific status   : failed
 Pipeline stop       : post (no_segments)
+RESULT WARNING      : No usable path result was produced. Review the MEP output.
 RESULT WARNING      : The highest-energy image is at an endpoint. No barrier is reported; check the inputs or add an intermediate.
-RESULT WARNING      : Missing:reactive segment 1.
 Total charge (ML)  : 0
 Multiplicity (2S+1): 1
 

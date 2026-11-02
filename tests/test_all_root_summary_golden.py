@@ -523,6 +523,7 @@ SCENARIOS = [
     Scenario("mep_dft_failure", (0, 2), POST, dft_failed_states=("TS",)),
     Scenario("scan_post", (0,), ["--scan-lists", "[(1,2,1.97)]", "--tsopt", "--thermo"]),
     # MEP via path-search (--refine-path)
+    Scenario("refine_no_post", (0, 2), ["--refine-path"], path_search_segments=[SEGMENT_1]),
     Scenario("refine_post", (0, 2), ["--refine-path", *POST],
              path_search_segments=[SEGMENT_1]),
     Scenario("refine_no_segments", (0, 2), ["--refine-path", "--tsopt"], path_search_segments=[]),

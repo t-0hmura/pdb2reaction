@@ -9,15 +9,14 @@
   "execution_status": "completed",
   "scientific_status": "failed",
   "expected_item_ids": [
-    "raw_path",
-    "reactive_segment_1"
+    "raw_path"
   ],
   "observed_item_ids": [
     "raw_path"
   ],
   "scientific_status_reasons": [
-    "path:raw_path:endpoint_hei",
-    "missing:reactive_segment_1"
+    "no usable path segments or energy diagrams were produced",
+    "path:raw_path:endpoint_hei"
   ],
   "stage_outcomes": [
     {
@@ -98,13 +97,81 @@
     "stage": "post",
     "reason": "no_segments"
   },
-  "key_output_files": {
-    "summary.json": "Machine-readable results summary",
-    "summary.log": "Human-readable results summary"
+  "pdb2reaction_version": "<VERSION>",
+  "schema_version": "4.0",
+  "pipeline_mode": "path-search",
+  "mlip_backend": "uma",
+  "mlip_model": "uma-s-1p2p1",
+  "mlip_model_label": "UMA-S-1.2.1 (OMol)",
+  "mlip_task": "omol",
+  "mlip_precision": "fp32",
+  "mlip_precision_post": "fp32",
+  "primary_method": "mlip",
+  "primary_method_label": "MLIP",
+  "charge": 0,
+  "spin": 1,
+  "n_segments_reactive": 0,
+  "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt",
+  "config": {
+    "refine_path": true,
+    "flatten": false,
+    "tsopt": true,
+    "thermo": false,
+    "dft": false,
+    "opt_mode": "grad",
+    "opt_mode_post": "hess",
+    "preopt": false,
+    "path_opt_mode": "grad",
+    "post_opt_mode": "hess",
+    "ts_opt_mode": "hess",
+    "endpoint_opt_mode": "hess",
+    "mep_mode": "gsm",
+    "dmf_correlated": true
   },
+  "references": [
+    {
+      "method": "pdb2reaction",
+      "citation": "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242",
+      "doi": "10.1021/acsomega.6c08242"
+    },
+    {
+      "method": "pysisyphus engine",
+      "citation": "Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390",
+      "doi": "10.1002/qua.26390"
+    },
+    {
+      "method": "UMA",
+      "citation": "Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310",
+      "doi": "10.52202/085713-4310"
+    },
+    {
+      "method": "OMol25",
+      "citation": "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762",
+      "doi": "10.48550/arXiv.2505.08762"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Peters, B.; Heyden, A.; Bell, A. T.; Chakraborty, A. A growing string method for determining transition states: Comparison to the nudged elastic band and string methods. J. Chem. Phys. 120, 7877-7886 (2004). https://doi.org/10.1063/1.1691018",
+      "doi": "10.1063/1.1691018"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Zimmerman, P. M. Reliable Transition State Searches Integrated with the Growing String Method. J. Chem. Theory Comput. 9, 3043-3050 (2013). https://doi.org/10.1021/ct400319w",
+      "doi": "10.1021/ct400319w"
+    },
+    {
+      "method": "Limited-memory BFGS (L-BFGS)",
+      "citation": "Liu, D. C.; Nocedal, J. On the limited memory BFGS method for large scale optimization. Math. Program. 45, 503-528 (1989). https://doi.org/10.1007/BF01589116",
+      "doi": "10.1007/BF01589116"
+    }
+  ],
   "current_output_paths": [
     "summary.json",
     "summary.log"
   ],
-  "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt"
+  "key_output_files": {
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary"
+  },
+  "environment": "<ENVIRONMENT>"
 }

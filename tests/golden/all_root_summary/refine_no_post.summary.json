@@ -1,0 +1,199 @@
+{
+  "out_dir": "<TMP>/out/_work/path_search",
+  "n_images": 3,
+  "n_segments": 1,
+  "segments": [
+    {
+      "index": 1,
+      "tag": "seg_001",
+      "kind": "seg",
+      "converged": true,
+      "barrier_kcal": 31.38,
+      "delta_kcal": -6.28,
+      "bond_changes": "C1-O1 distance change"
+    }
+  ],
+  "path_optimizers": [
+    "lbfgs"
+  ],
+  "execution_status": "completed",
+  "scientific_status": "partial",
+  "expected_item_ids": [
+    "segment_1"
+  ],
+  "observed_item_ids": [
+    "segment_1"
+  ],
+  "stage_outcomes": [
+    {
+      "stage": "path",
+      "item_id": "segment_1",
+      "required": true,
+      "executed": true,
+      "converged": true,
+      "usable": true,
+      "reason": "ok",
+      "artifacts": []
+    }
+  ],
+  "run_id": "golden-run",
+  "resume_identity": {
+    "schema_version": 1,
+    "pipeline_mode": "path-search",
+    "inputs": [
+      {
+        "path": "<TMP>/input0.pdb",
+        "size": 162,
+        "sha256": "fb8fc3ddafa4c3af9c2c4ee9be4500d09624da6292a2b33292b488bec9122b60"
+      },
+      {
+        "path": "<TMP>/input2.pdb",
+        "size": 162,
+        "sha256": "b5676dc7eb8f1c6d0a45ad20a12e74fa9611cb619def12c576fb98c15f5ea32f"
+      }
+    ],
+    "ref_pdb": null,
+    "path_request": {
+      "add_linkh": true,
+      "center": null,
+      "climb": true,
+      "config_sha256": null,
+      "coord_type": null,
+      "dmf_backend": "gpu",
+      "exclude_backbone": false,
+      "freeze_atoms": [],
+      "freeze_links": false,
+      "gsm_param": null,
+      "include_h2o": true,
+      "ligand_charge": null,
+      "max_cycles_dmf": null,
+      "max_cycles_gsm": null,
+      "max_depth": null,
+      "max_nodes": 20,
+      "mep_mode": "gsm",
+      "modified_residue": "",
+      "opt_mode": "grad",
+      "preopt": false,
+      "radius": 2.6,
+      "radius_het2het": 0.0,
+      "refine_path": true,
+      "scan_bias_k": null,
+      "scan_endopt": null,
+      "scan_lists": [],
+      "scan_max_step_size": null,
+      "scan_one_based": true,
+      "scan_preopt": null,
+      "scan_relax_max_cycles": null,
+      "selected_resn": "",
+      "thresh": null,
+      "thresh_dmf": null,
+      "thresh_gsm": null
+    },
+    "calculator_identity": {
+      "mlip_backend": "uma",
+      "mlip_model": "uma-s-1p2p1",
+      "mlip_precision": "fp32",
+      "mlip_task": "omol",
+      "primary_method": "mlip"
+    },
+    "charge": 0,
+    "spin": 1
+  },
+  "pdb2reaction_version": "<VERSION>",
+  "schema_version": "4.0",
+  "pipeline_mode": "path-search",
+  "scientific_status_reasons": [
+    "no usable energy diagram was produced"
+  ],
+  "mlip_backend": "uma",
+  "mlip_model": "uma-s-1p2p1",
+  "mlip_model_label": "UMA-S-1.2.1 (OMol)",
+  "mlip_task": "omol",
+  "mlip_precision": "fp32",
+  "mlip_precision_post": "fp32",
+  "primary_method": "mlip",
+  "primary_method_label": "MLIP",
+  "charge": 0,
+  "spin": 1,
+  "n_segments_reactive": 1,
+  "rate_limiting_step": {
+    "segment": 1,
+    "barrier_kcal": 31.38,
+    "method": "MEP",
+    "mep_barrier_kcal": 31.38
+  },
+  "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path",
+  "config": {
+    "refine_path": true,
+    "flatten": false,
+    "tsopt": false,
+    "thermo": false,
+    "dft": false,
+    "opt_mode": "grad",
+    "opt_mode_post": null,
+    "preopt": false,
+    "path_opt_mode": "grad",
+    "post_opt_mode": null,
+    "ts_opt_mode": null,
+    "endpoint_opt_mode": null,
+    "mep_mode": "gsm",
+    "dmf_correlated": true
+  },
+  "references": [
+    {
+      "method": "pdb2reaction",
+      "citation": "Ohmura, T.; Sato, H.; Terada, T. pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials. ACS Omega (2026). https://doi.org/10.1021/acsomega.6c08242",
+      "doi": "10.1021/acsomega.6c08242"
+    },
+    {
+      "method": "pysisyphus engine",
+      "citation": "Steinmetzer, J.; Kupfer, S.; Gräfe, S. pysisyphus: Exploring potential energy surfaces in ground and excited states. Int. J. Quantum Chem. 121, e26390 (2021). https://doi.org/10.1002/qua.26390",
+      "doi": "10.1002/qua.26390"
+    },
+    {
+      "method": "UMA",
+      "citation": "Wood, B. M.; Dzamba, M.; Fu, X.; Gao, M.; Shuaibi, M.; Barroso-Luque, L.; Abdelmaqsoud, K.; Gharakhanyan, V.; Kitchin, J. R.; Levine, D. S.; Michel, K.; Sriram, A.; Cohen, T. S.; Das, A.; Sahoo, S. J.; Rizvi, A.; Ulissi, Z. W.; Zitnick, C. L. UMA: A Family of Universal Models for Atoms. Advances in Neural Information Processing Systems 38, 129391-129427 (2025). https://doi.org/10.52202/085713-4310",
+      "doi": "10.52202/085713-4310"
+    },
+    {
+      "method": "OMol25",
+      "citation": "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; Hasyim, M. R.; Michel, K.; Batatia, I.; Csányi, G.; Dzamba, M.; Eastman, P.; Frey, N. C.; Fu, X.; Gharakhanyan, V.; Krishnapriyan, A. S.; Rackers, J. A.; Raja, S.; Rizvi, A.; Rosen, A. S.; Ulissi, Z.; Vargas, S.; Zitnick, C. L.; Blau, S. M.; Wood, B. M. The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv 2025, arXiv:2505.08762. https://doi.org/10.48550/arXiv.2505.08762",
+      "doi": "10.48550/arXiv.2505.08762"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Peters, B.; Heyden, A.; Bell, A. T.; Chakraborty, A. A growing string method for determining transition states: Comparison to the nudged elastic band and string methods. J. Chem. Phys. 120, 7877-7886 (2004). https://doi.org/10.1063/1.1691018",
+      "doi": "10.1063/1.1691018"
+    },
+    {
+      "method": "Growing String Method (GSM)",
+      "citation": "Zimmerman, P. M. Reliable Transition State Searches Integrated with the Growing String Method. J. Chem. Theory Comput. 9, 3043-3050 (2013). https://doi.org/10.1021/ct400319w",
+      "doi": "10.1021/ct400319w"
+    },
+    {
+      "method": "Limited-memory BFGS (L-BFGS)",
+      "citation": "Liu, D. C.; Nocedal, J. On the limited memory BFGS method for large scale optimization. Math. Program. 45, 503-528 (1989). https://doi.org/10.1007/BF01589116",
+      "doi": "10.1007/BF01589116"
+    }
+  ],
+  "current_output_paths": [
+    "energy_diagram_MEP.png",
+    "mep_trj.xyz",
+    "segments/seg_01/mep_trj.xyz",
+    "summary.json",
+    "summary.log"
+  ],
+  "key_output_files": {
+    "energy_diagram_MEP.png": "MEP energy plot",
+    "mep_trj.xyz": "Full MEP trajectory",
+    "summary.json": "Machine-readable results summary",
+    "summary.log": "Human-readable results summary",
+    "seg_01": {
+      "description": "Per-segment results for seg_01",
+      "files": [
+        "mep_trj.xyz"
+      ]
+    }
+  },
+  "environment": "<ENVIRONMENT>"
+}
