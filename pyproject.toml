@@ -34,7 +34,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Intended Audience :: Science/Research",
     "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
 ]
 dependencies = [
     # pdb2reaction core dependencies

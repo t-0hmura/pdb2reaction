@@ -1,4 +1,4 @@
-"""Every bond judgment of ``all`` reads the YAML ``bond`` section (D585).
+"""Every bond judgment of ``all`` reads the YAML ``bond`` section.
 
 The stubs are those of test_all_root_summary_golden.py; the stubbed bond check
 also records the bond configuration each call received.

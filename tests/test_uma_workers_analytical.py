@@ -399,6 +399,7 @@ def test_parallel_uma_without_ray_names_the_ray_extra(monkeypatch, build):
         uma_module, "ParallelMLIPPredictUnit",
         lambda **kwargs: pytest.fail("the parallel predictor was constructed"),
     )
+    monkeypatch.setattr(uma_module, "_UMAInferenceSettings", SimpleNamespace)
     _ray_installed(monkeypatch, False)
     message = (
         "--uma-workers 2 or more needs fairchem's parallel predictor and Ray; "

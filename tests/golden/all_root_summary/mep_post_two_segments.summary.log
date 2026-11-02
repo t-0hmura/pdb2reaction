@@ -29,7 +29,7 @@ Multiplicity (2S+1): 1
   MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    Image : _work/path_opt/energy_diagram_mep.png
+    Image : energy_diagram_MEP.png
     State    ΔE [kcal/mol]
         R          0.0000
         TS1       31.3755
@@ -172,7 +172,7 @@ Multiplicity (2S+1): 1
         IM1_2    -6.275
         TS2      28.238
         P       -12.550
-    Image : _work/path_opt/energy_diagram_mep.png
+    Image : energy_diagram_MEP.png
   energy_diagram_MLIP  (ylabel: ΔE (kcal/mol))
     State   ΔE [kcal/mol]
         R         0.000
@@ -261,10 +261,10 @@ Multiplicity (2S+1): 1
   Energy diagram overview table
     State                            R     TS1   IM1_1   IM1_2     TS2       P
     MEP ΔE  [kcal/mol]            0.00   31.38   -6.28   -6.28   28.24  -12.55
-    MLIP ΔE  [kcal/mol]           0.00   31.38     ---     ---     ---   -6.28
-    MLIP ΔG  [kcal/mol]           0.00   30.12     ---     ---     ---   -5.65
-    DFT//MLIP ΔE  [kcal/mol]      0.00   31.38     ---     ---     ---   -6.28
-    DFT//MLIP ΔG  [kcal/mol]      0.00   30.12     ---     ---     ---   -5.65
+    MLIP ΔE  [kcal/mol]           0.00   31.38   -6.28   -6.28   28.24  -12.55
+    MLIP ΔG  [kcal/mol]           0.00   30.12   -5.65   -5.65   27.61  -11.30
+    DFT//MLIP ΔE  [kcal/mol]      0.00   31.38   -6.28   -6.28   28.24  -12.55
+    DFT//MLIP ΔG  [kcal/mol]      0.00   30.12   -5.65   -5.65   27.61  -11.30
 
 [5] Output directory structure
   out/

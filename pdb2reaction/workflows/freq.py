@@ -49,7 +49,6 @@ from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW, apply_backend_defaults
 from pdb2reaction.core.utils import (
     apply_yaml_overrides,
-    yaml_section_has_key,
     convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
@@ -294,17 +293,6 @@ def _validated_symmetry_number(value: object) -> Optional[int]:
             "thermo.symmetry_number must be an integer greater than or equal to 1."
         )
     return int(value)
-
-
-def _symmetry_number_source(
-    *, config_has_value: bool, resolved_value: object
-) -> str:
-    """Describe which configuration layer supplied the resolved symmetry number."""
-    if resolved_value is None:
-        return "auto"
-    if config_has_value:
-        return "config"
-    return "auto"
 
 
 def _validated_thermo_condition(value: object, *, name: str) -> float:
@@ -674,10 +662,6 @@ def cli(
             (thermo_cfg, thermo_paths),
         ],
     )
-    _config_has_symmetry_number = (
-        yaml_section_has_key(config_layer_cfg, thermo_paths, "symmetry_number")
-        and thermo_cfg.get("symmetry_number") is not None
-    )
 
     if cli_param_overridden(ctx, "workers"):
         calc_cfg["workers"] = int(workers)
@@ -731,10 +715,6 @@ def cli(
     calc_cfg["spin"] = int(spin)
 
     _validate_freq_thermo_config(freq_cfg, thermo_cfg)
-    symmetry_number_source = _symmetry_number_source(
-        config_has_value=_config_has_symmetry_number,
-        resolved_value=thermo_cfg["symmetry_number"],
-    )
     from pysisyphus.tr_projection import normalize_tr_projection_mode
     geom_cfg["tr_projection"] = normalize_tr_projection_mode(
         geom_cfg.get("tr_projection")
@@ -1074,8 +1054,9 @@ def cli(
                 if configured_symmetry_number is None
                 else int(configured_symmetry_number)
             )
-            if configured_symmetry_number is None:
-                symmetry_number_source = point_group_source
+            symmetry_number_source = (
+                point_group_source if configured_symmetry_number is None else "config"
+            )
             qc = QCData(
                 qc_data,
                 point_group=point_group,

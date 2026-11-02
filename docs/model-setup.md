@@ -112,7 +112,7 @@ Freezing keeps an atom in place by setting its force to zero. A restraint pulls 
 
 ### Three ways to freeze atoms
 
-- **`--freeze-links/--no-freeze-links`** (default on) freezes the parent atoms of the cap hydrogens that `extract` added. It works on PDB and mmCIF input. XYZ and GJF input has no `LKH` residue, so pass a PDB with the same atoms with `--ref-pdb` to use it there; the coordinates still come from `-i`. `sp` does not freeze these atoms automatically.
+- **`--freeze-links/--no-freeze-links`** (default on) freezes the parent atoms of the cap hydrogens that `extract` added. It works on PDB and mmCIF input. XYZ and GJF input has no `LKH` residue, so pass a PDB with the same atoms with `--ref-pdb` to use it there; the coordinates still come from `-i`. `path-search` does not use `--ref-pdb` for this, so give it `--freeze-atoms` for XYZ and GJF input. `sp` does not freeze these atoms automatically.
 - **`--freeze-atoms 'i,j,k'`** takes 1-based atom numbers and works with any input format. In `all` with `-c`, number the atoms of the original input; they are mapped onto the extracted model. Other commands use the numbering of the structure you pass.
 - **YAML `geom.freeze_atoms`** (passed with `--config`) suits a long list, or a list you keep with the rest of the settings.
 
@@ -127,7 +127,7 @@ geom:
   freeze_atoms: [12, 15, 28, 29, 42]   # 1-based
 ```
 
-A run freezes the union of the three lists. All three work in `all`, `opt`, `tsopt`, `freq`, `irc`, `path-opt`, `path-search`, `scan`, `scan2d`, and `scan3d`; `sp` takes only `--freeze-atoms` and YAML.
+A run freezes the union of the three lists. All three work in `all`, `opt`, `tsopt`, `freq`, `irc`, `path-opt`, `path-search`, `scan`, `scan2d`, and `scan3d`, except that `--freeze-links` freezes nothing in `path-search` for XYZ and GJF input; `sp` takes only `--freeze-atoms` and YAML.
 
 ### What freezing does
 

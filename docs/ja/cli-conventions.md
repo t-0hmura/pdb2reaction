@@ -217,8 +217,8 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 | `path-search`（HEI±1 と配座変化の区間（kink）のノードを 1 構造ずつ最適化。HEI は最高エネルギーのイメージ） | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d`（格子の各点の緩和） | L-BFGS | RFO | `grad` |
 | `all`（前処理の最適化、`--opt-mode`） | L-BFGS | RFO | `grad` |
-| `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess` |
-| `all`（IRC 後の端点の最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
+| `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess`（コマンドラインに `--opt-mode` を書いたときはその値） |
+| `all`（IRC 後の端点の最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess`（コマンドラインに `--opt-mode` を書いたときはその値） |
 
 同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer 法は Hessian を周期的に計算して Dimer の向きを更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsirfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
 

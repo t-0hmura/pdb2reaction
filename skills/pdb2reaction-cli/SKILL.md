@@ -15,7 +15,7 @@ values with the verified charge (or `-l 'RES:Q,...'` for PDB/mmCIF) and set
 |---|---|---|---|---|
 | `all` | Extraction, MEP or staged scan, then TS/IRC, freq, DFT as requested | `pdb2reaction all -i 1.R.pdb 3.P.pdb -q 0 -m 1 --tsopt --thermo -o out` | `out/summary.json`, `out/segments/seg_NN/{reactant,ts,product}.*` | [all.md](all.md), [Endpoint mode](all-endpoint-mep.md), [Scan-list mode](all-scan-list.md), [TS-only mode](all-ts-only.md) |
 | `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is a file path, not a directory) | [extract.md](extract.md) |
-| `path-opt` | Single-pass MEP between two structures | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz`, `out/hei.xyz` | [path.md](path.md) |
+| `path-opt` | Single-pass MEP between two structures | `pdb2reaction path-opt -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz`, `out/hei.xyz` | [path.md](path.md) |
 | `path-search` | Recursive MEP split at bond changes | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/mep_trj.xyz`, `out/hei_seg_NN.xyz`, `out/summary.json` | [path.md](path.md) |
 | `opt` | Geometry minimization (L-BFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` | [opt.md](opt.md) |
 | `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; confirm with n_imag = 1, the mode, and IRC | [tsopt.md](tsopt.md) |

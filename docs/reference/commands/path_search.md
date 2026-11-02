@@ -142,8 +142,8 @@ Options:
                                   including optional xTB arguments. If xTB SCC
                                   convergence is poor, increasing --etemp may
                                   help (for example: 'xtb --etemp 1000').
-  --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
-                                  [default: (cart)]
+  --coord-type [cart|dlc]         Optimization coordinate system.  [default:
+                                  (cart)]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
                                   fp64. Unset defaults per backend (uma: fp32;
                                   orb, mace: fp64). tf32 uses TF32 matmul for

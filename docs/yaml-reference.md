@@ -50,7 +50,7 @@ max_cycles: 100000
 …
 ```
 
-`--show-config` (not on `scan`, `scan2d`, or `scan3d`) prints the loaded YAML file and its top-level keys.
+`--show-config` (not on `scan`, `scan2d`, or `scan3d`) prints the merged settings (defaults, YAML, and CLI) on `all`, `path-search`, and `sp`; on the other commands it prints the loaded YAML file and its top-level keys.
 
 A misspelled section name prints `[config] WARNING: YAML section(s) … are not recognized and were ignored.` A misspelled key inside a section is handled by section:
 

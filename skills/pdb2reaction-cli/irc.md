@@ -89,10 +89,12 @@ Dimer) and its endpoint optimization (to L-BFGS) from the default `hess`.
 ## Bond changes
 
 `bond_changes` records the change from `finished_first.xyz` to
-`finished_last.xyz` with a 1.20× covalent-radius cutoff and a 0.05 margin, the
-same algorithm as `bond-summary` and `path-search` segmentation. After you
-assign R and P, swap formed and broken if the chemical direction is last →
-first. The key is absent when the endpoint comparison was not available.
+`finished_last.xyz`: a pair is bonded when its distance is at most 0.95 × T
+(T is 1.20 × the summed covalent radii) and counts only if its distance changes
+by at least 0.05 × T. This is the same algorithm as `bond-summary` and
+`path-search` segmentation. After you assign R and P, swap formed and broken if
+the chemical direction is last → first. The key is absent when the endpoint
+comparison was not available.
 
 ```python
 import json
@@ -110,8 +112,10 @@ for b in bc["broken"]: print("BROKEN ", b)
 - **A branch reaches `--max-cycles`.** Inspect its gradient, energy trend, and
   geometry. A smaller `--step-size` stabilizes the integration but may need
   more cycles; no cycle count fits every surface.
-- **Flickering bonds.** The bond-change check is geometric, so metal–ligand
-  bonds near the cutoff may appear and disappear.
+- **Metal–ligand bonds.** A pair that contains a metal atom counts only when
+  its distance changes by at least `bond.metal_delta_fraction` × T (default
+  0.40, about 1.0 Å for Mg–O); a smaller change in coordination is not
+  reported.
 - **Hessian reuse in `all`.** IRC reuses the TS Hessian only when the geometry
   (within 1.1e-3 bohr, for three-decimal PDB round trips), calculator
   settings, and frozen atoms all match; otherwise it computes a new one.

@@ -476,7 +476,7 @@ The `all` command additionally includes:
 | `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys record the effective CLI values. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `mlip_precision_post` | string \| null | Effective `tf32` / `fp32` / `fp64` token of TS optimization, IRC, the endpoint optimizations and freq (`--precision-post`); the same as `mlip_precision` when it is not given |
 | `rate_limiting_step` | object | Highest local barrier among the reactive segments, taken at the highest-level method available for every segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal`. It is not a microkinetic rate-limiting-step assignment. |
-| `overall_reaction_energy_kcal` | float | Overall reaction energy of the segments that were built; an interval that built no segment is not included |
+| `overall_reaction_energy_kcal` | float | Overall reaction energy: the energy of the last state relative to the first in the highest-level energy diagram that covers every reactive segment. The MEP-level diagram includes intervals that built no segment |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
 | `post_segments[].tsopt.n_imaginary_modes` / `.imaginary_frequencies_cm` | int / float[] | n_imag of the optimized TS and its imaginary frequencies (cm⁻¹, negative) |

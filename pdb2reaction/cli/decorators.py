@@ -106,7 +106,7 @@ def render_cli_exception(
     """Shared terminal renderer for a subcommand's top-level exception.
 
     User-input errors (Click UsageError/BadParameter/ClickException, or a
-    malformed --config/override YAML) print a clean one-line ``Error:`` and
+    malformed --config YAML) print a clean one-line ``Error:`` and
     exit with the conventional code (2). A known missing system prerequisite
     (a compiler, Chrome's libraries) prints its install guidance (exit 1).
     Everything else falls through to the full traceback (exit 1) so genuine
@@ -130,7 +130,7 @@ def render_cli_exception(
         _is_yaml_err = False
     if _is_yaml_err:
         click.echo(
-            f"Error: invalid YAML in a configuration/override file: {e}",
+            f"Error: invalid YAML in a configuration file: {e}",
             err=True,
         )
         click.echo(
@@ -204,7 +204,7 @@ def run_cli(
             _is_yaml_err = False
         if _is_yaml_err:
             click.echo(
-                f"Error: invalid YAML in a configuration/override file: {e}",
+                f"Error: invalid YAML in a configuration file: {e}",
                 err=True,
             )
             sys.exit(2)

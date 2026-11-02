@@ -149,7 +149,8 @@ def test_uma_reference_energies_skip_checkpoints_without_them(monkeypatch) -> No
     assert fetched == [("uma-s-1p2p1", "form_elem_refs")]
 
 
-def test_mace_polar_without_graph_longrange_names_the_package(monkeypatch) -> None:
+@pytest.mark.parametrize("has_mace_polar", [False, True])
+def test_mace_polar_without_its_dependencies_names_the_install_command(monkeypatch, has_mace_polar) -> None:
     from pdb2reaction.backends.mace import MACECalculator
 
     def missing(**_kw):
@@ -160,13 +161,14 @@ def test_mace_polar_without_graph_longrange_names_the_package(monkeypatch) -> No
         setattr(calculators, name, lambda **_kw: None)
     foundations = ModuleType("mace.calculators.foundations_models")
     foundations.mace_mp_urls = {}
-    foundations.mace_polar = missing
+    if has_mace_polar:  # else mace-torch is older than MACE-POLAR-1
+        foundations.mace_polar = missing
     monkeypatch.setitem(sys.modules, "mace", ModuleType("mace"))
     monkeypatch.setitem(sys.modules, "mace.calculators", calculators)
     monkeypatch.setitem(sys.modules, "mace.calculators.foundations_models", foundations)
     calc = object.__new__(MACECalculator)
     calc.device_str, calc.default_dtype = "cpu", "float64"
-    with pytest.raises(BackendError, match=r"graph-longrange==0\.4\.0"):
+    with pytest.raises(BackendError, match=r"pip install 'mace-torch\[polar\]>=0\.3\.17'"):
         calc._build_calc("MACE-POLAR-1-M")
 
 

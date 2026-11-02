@@ -10,7 +10,6 @@ from pdb2reaction.core.defaults import THERMO_KW
 from pdb2reaction.workflows.freq import (
     _calc_energy,
     cli,
-    _symmetry_number_source,
     _validated_symmetry_number,
     _validated_thermo_condition,
 )
@@ -56,23 +55,6 @@ def test_yaml_symmetry_number_rejects_non_positive_integers(value) -> None:
 
 def test_yaml_none_selects_automatic_symmetry_detection() -> None:
     assert _validated_symmetry_number(None) is None
-
-
-@pytest.mark.parametrize(
-    ("config_has_value", "resolved_value", "expected"),
-    [
-        (False, None, "auto"),
-        (True, 2, "config"),
-        (True, None, "auto"),
-    ],
-)
-def test_symmetry_number_source_tracks_configuration_precedence(
-    config_has_value, resolved_value, expected
-) -> None:
-    assert _symmetry_number_source(
-        config_has_value=config_has_value,
-        resolved_value=resolved_value,
-    ) == expected
 
 
 @pytest.mark.parametrize(

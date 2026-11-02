@@ -105,8 +105,8 @@ Options:
                                   convergence is poor, increasing --etemp may
                                   help (for example: 'xtb --etemp 1000').
   --coord-type [cart|redund|dlc|tric]
-                                  Optimization coordinate system
-                                  (cart|redund|dlc|tric).  [default: (cart)]
+                                  Optimization coordinate system.  [default:
+                                  (cart)]
   -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
                                   YAML calc.charge, or a .gjf input gives it.
   -l, --ligand-charge TEXT        Total ligand charge or per-resname mapping

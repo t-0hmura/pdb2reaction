@@ -22,7 +22,7 @@
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png --out-json
 ```
 
-端末に `[energy-diagram] Saved -> energy.png` が出て、画像と同じ場所の `result.json` に `n_points: 3` があれば成功です。
+端末に `[energy-diagram] Saved -> …/energy.png`（絶対パス）が出て、画像と同じ場所の `result.json` に `n_points: 3` があれば成功です。
 
 ### 2. 値ごとに `-i` を付ける
 
@@ -89,7 +89,7 @@ summary.json         # result.json と同じ内容（--out-json 指定時）
 * **ラベルの数**: `--label-x` のラベルの数は値の数と同じにしてください。
 * **順序**: 入力の順がそのまま x 軸の順になります。
 * **単位**: 値はそのまま描くので、単位は `--label-y` に書いてください。
-* **PNG には Chrome が要ります**: Chrome またはその OS のライブラリが無いと、`Missing system prerequisite: Chrome for PNG export.` で止まります。{ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり入れてください。
+* **画像の出力には Chrome が要ります**: PNG・JPEG・SVG・PDF のどれもヘッドレス Chrome で描くため、Chrome またはその OS のライブラリが無いと、`Missing system prerequisite: Chrome for PNG export.` で止まります。{ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり入れてください。
 * **終了コード**: {ref}`終了コード <ja-exit-codes>`を参照してください。
 
 ---

@@ -220,8 +220,8 @@ Exit codes do not depend on JSON output. Exit code `0` covers both `success` and
 | `path-search` (single-structure optimization of HEI±1 and kink nodes; HEI = highest-energy image) | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
 | `all` (pre-optimization, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (TS optimization, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` |
-| `all` (endpoint optimization after IRC, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
+| `all` (TS optimization, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` (or the `--opt-mode` value, if given on the command line) |
+| `all` (endpoint optimization after IRC, `--opt-mode-post`) | L-BFGS | RFO | `hess` (or the `--opt-mode` value, if given on the command line) |
 
 The same `--opt-mode` value selects a **different algorithm** on each subcommand, and the defaults differ, so check the table before copying a recipe. Algorithm names are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. On `tsopt`, `--opt-mode grad` is therefore a **Dimer** TS search, not an L-BFGS minimization, and this Dimer periodically computes the Hessian to update its direction. Write `--opt-mode dimer` or `rsirfo` on `tsopt` and `--opt-mode lbfgs` or `rfo` on `opt` to make a recipe unambiguous.
 

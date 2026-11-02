@@ -16,10 +16,10 @@
 
 ## 基本的な実行例
 
-例の `input.pdb` は、同梱の酵素構造から [extract](extract.md) で切り出したクラスターモデルで、電荷は `-l 'SAM:1,GPP:-3'` から求めます。
+例の `input.pdb` は、同梱の酵素構造から [extract](extract.md) で切り出したクラスターモデルで、電荷は `-l 'SAM:1,GPP:-3'` から求めます。コマンドは同梱の `examples/` で実行します。
 
 ```bash
-pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
+pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
 この PDB は chain の欄が空なので、原子は残基名・残基番号・原子名の 3 項目を任意の順序で、カンマか空白で区切って `'SAM,320,CS1'` や `'CS1 SAM 320'` のように書きます。
@@ -194,7 +194,7 @@ PDB・mmCIF 入力では、各 `result.xyz` を `result.pdb`、各 `scan_trj.xyz
 ## 使用上の注意点
 
 * **`--preopt` は呼び出し方で変わる**: `scan` を単独で実行したときは、`--preopt` を付けたときだけ事前最適化をします。`all` の中では `all --preopt`（デフォルトで有効）に従い、`all --scan-preopt/--no-scan-preopt` で上書きできます。
-* **`all -s` のタプル**: {ref}`スキャンリスト仕様 <ja-scan-list-spec>` の `scan` の形で書きます。
+* **`all -s` のタプル**: `all -s` は目標値だけを受け付けます。距離は `(i,j,target)`、角度は `(i,j,k,deg)`、二面角は `(i,j,k,l,deg)` です。`(i,j,low,high)` のような範囲は `scan` だけで使います（{ref}`スキャンリスト仕様 <ja-scan-list-spec>`）。
 * **インラインでは目標値と範囲を混ぜない**: 1 つのインラインリテラルの中でも、1 回の実行のリテラルどうしでも、目標値 `(i,j,target)` と範囲のどちらか一方だけを使います。両方を組み合わせるときは、YAML/JSON スペックの `stages:` に並べてください。
 * **範囲を使うときのステージ番号**: 範囲 1 つは `low` 向きと `high` 向きの 2 つのステージになります。インラインでは、1 つのリテラルの範囲がすべてこの 2 つのステージを共有します。YAML の `stages:` では、目標値だけのステージは 1 つのままで、範囲を含むステージは、目標値 1 つにつき 1 つ、範囲 1 つにつき 2 つのステージに分かれます。
 * **目標の距離は正の値**にしてください。また、1 つのステージに同じ座標を 2 回書くことはできません。

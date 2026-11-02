@@ -160,8 +160,8 @@ Options:
                                   instead; use this only for an intentionally
                                   nonstandard electron count.
   --coord-type [cart|redund|dlc|tric]
-                                  Optimization coordinate system
-                                  (cart|redund|dlc|tric).  [default: (cart)]
+                                  Optimization coordinate system.  [default:
+                                  (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles.
                                   [default: (100); x>=1]
   --func-basis TEXT               DFT method as FUNCTIONAL/BASIS; HF/BASIS is

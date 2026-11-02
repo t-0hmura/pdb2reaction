@@ -718,7 +718,7 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "v0.4.4" not in setup
     assert "Start a fresh runtime first (Runtime \u25b8 Disconnect and delete runtime)" in setup
     assert "Restart the Colab runtime first" not in setup
-    assert "mace-torch==0.3.16" in setup
+    assert "mace-torch>=0.3.16" in setup
     assert "HF_TOKEN" in setup
     assert "installed_version != _requested_version" in setup
     assert "install_dft = True" in setup
@@ -921,26 +921,17 @@ def test_colab_setup_install_xtb_puts_xtb_from_conda_forge_on_path(
         return types.SimpleNamespace(stdout="GPU 0", stderr="", returncode=0)
 
     def fake_which(name, *args, **kwargs):
-        if name in ("mamba", "conda"):
-            return str(prefix / "bin" / name) if (prefix / "bin" / "mamba").is_file() else None
         if name == "xtb":
             return str(prefix / "bin" / "xtb") if "xtb" in installed else None
         return "/usr/bin/" + name
 
-    real_import_module = importlib.import_module
-    platform = types.SimpleNamespace(getName=lambda: "CUDA")
-    fake_openmm = types.SimpleNamespace(Platform=types.SimpleNamespace(
-        getNumPlatforms=lambda: 1, getPlatform=lambda _index: platform))
     real_isdir = os.path.isdir
     monkeypatch.setenv("PATH", os.environ.get("PATH", ""))
-    monkeypatch.delenv("AMBERHOME", raising=False)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(shutil, "which", fake_which)
     monkeypatch.setattr(urllib.request, "urlretrieve", lambda *_args: None)
     monkeypatch.setattr(os.path, "isdir", lambda path: str(path) == "/content" or real_isdir(path))
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(importlib, "import_module",
-                        lambda name: fake_openmm if name == "openmm" else real_import_module(name))
     monkeypatch.setattr(importlib.metadata, "version", lambda name: "1.0.0" if name == "pdb2reaction" else "test")
     namespace: dict = {}
     exec(compile(setup, str(NOTEBOOK), "exec"), namespace)
@@ -985,6 +976,9 @@ def test_colab_setup_operates_orb_and_uma_branches(
     fake_hf.login = lambda **kwargs: logins.append(("token", kwargs))
     fake_hf.notebook_login = lambda: logins.append(("notebook", {}))
     monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
+    monkeypatch.setitem(
+        sys.modules, "huggingface_hub.constants", types.SimpleNamespace(HF_TOKEN_PATH=""),
+    )
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
@@ -1030,6 +1024,9 @@ def test_colab_setup_handles_cancelled_uma_sign_in(monkeypatch, capsys) -> None:
     fake_hf.login = lambda **_kwargs: None
     fake_hf.notebook_login = cancelled_login
     monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
+    monkeypatch.setitem(
+        sys.modules, "huggingface_hub.constants", types.SimpleNamespace(HF_TOKEN_PATH=""),
+    )
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
@@ -2251,6 +2248,26 @@ def test_xtb_options_are_off_until_xtb_is_installed(
         widget = app["_advanced_widget"](sub, param).children[0]
         assert widget.disabled is disabled, param.name
     assert app["_XTB_PARAMS"] == {'solvent', 'solvent_model'}
+
+
+@pytest.mark.parametrize(
+    ("ready", "sub", "kept"),
+    [(False, "opt", False), (True, "opt", True), (False, "dft", True)],
+)
+def test_a_restored_session_drops_xtb_options_until_xtb_is_installed(
+    tmp_path: Path, monkeypatch, ready, sub, kept,
+) -> None:
+    app, _ = _execute_app(monkeypatch, tmp_path)
+    if "dft" not in app["SUBS"]:
+        app["SUBS"].append("dft")
+    app["XTB_READY"] = ready
+    saved = app["_session_dict"]()
+    saved["advanced_overrides"] = {sub: {"solvent": "water", "verbose": 3}}
+
+    assert app["_apply_session"](saved) == []
+    argv = app["_advanced_argv"](sub)
+    assert ("--solvent" in argv) is kept
+    assert "--verbose" in argv
 
 
 def test_colab_manifest_hashes_inplace_input_before_execution(
@@ -4789,8 +4806,10 @@ def test_plotly_documents_use_one_stable_payload(monkeypatch, tmp_path) -> None:
         assert encoded is not None and html.unescape(encoded.group(1)) == document
 
 
-def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
-    """A stored Colab secret signs in without showing the token prompt."""
+@pytest.mark.parametrize("hub_token", [None, "secret-token"])
+def test_colab_uma_login_accepts_a_colab_secret(monkeypatch, tmp_path, hub_token) -> None:
+    """A stored Colab secret signs in without showing the token prompt, also when
+    huggingface_hub's get_token() returns that secret but no token file exists."""
     import importlib.metadata
 
     setup = _notebook()["cells"][1]["source"].replace(
@@ -4800,7 +4819,11 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
     fake_hf = types.ModuleType("huggingface_hub")
     fake_hf.login = lambda **kwargs: logins.append(("token", kwargs))
     fake_hf.notebook_login = lambda: logins.append(("notebook", {}))
-    fake_hf.get_token = lambda: None
+    fake_hf.get_token = lambda: hub_token
+    monkeypatch.setitem(
+        sys.modules, "huggingface_hub.constants",
+        types.SimpleNamespace(HF_TOKEN_PATH=str(tmp_path / "token")),
+    )
     userdata = types.ModuleType("google.colab.userdata")
     userdata.get = lambda name: "secret-token" if name == "HF_TOKEN" else None
     colab = types.ModuleType("google.colab")
@@ -4828,7 +4851,7 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
     assert logins[0][1]["token"] == "secret-token"
 
 
-def test_colab_uma_login_reads_the_runtime_token_before_the_secret(monkeypatch, capsys) -> None:
+def test_colab_uma_login_reads_the_runtime_token_before_the_secret(monkeypatch, capsys, tmp_path) -> None:
     """A token cached in the runtime is reused without reading the Colab secret,
     which opens a blocking access dialog on a local runtime."""
     import importlib.metadata
@@ -4839,7 +4862,11 @@ def test_colab_uma_login_reads_the_runtime_token_before_the_secret(monkeypatch, 
     fake_hf = types.ModuleType("huggingface_hub")
     fake_hf.login = lambda **kwargs: logins.append(("token", kwargs))
     fake_hf.notebook_login = lambda: logins.append(("notebook", {}))
-    fake_hf.get_token = lambda: "cached-token"
+    (tmp_path / "token").write_text("cached-token")
+    monkeypatch.setitem(
+        sys.modules, "huggingface_hub.constants",
+        types.SimpleNamespace(HF_TOKEN_PATH=str(tmp_path / "token")),
+    )
     userdata = types.ModuleType("google.colab.userdata")
     userdata.get = lambda name: secret_reads.append(name) or "secret-token"
     colab = types.ModuleType("google.colab")
@@ -6890,7 +6917,7 @@ def test_mace_install_keeps_torch_and_expects_fairchem_core_missing(monkeypatch,
     _run_backend_install_branch(monkeypatch, "mace", calls=calls)
     assert [call[0] for call in calls] == ["run", "pip", "pip check", "run"]
     assert calls[0][1][-5:] == ["pip", "uninstall", "-y", "-q", "fairchem-core"]
-    assert calls[1] == ("pip", ("mace-torch==0.3.16",), {})
+    assert calls[1] == ("pip", ("mace-torch>=0.3.16",), {})
     assert calls[2] == ("pip check", ("requires fairchem-core, which is not installed",))
     assert "MACE installed" in capsys.readouterr().out
 

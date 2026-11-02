@@ -83,6 +83,7 @@ def test_frequency_cli_retains_soft_modes_and_thermal_input(tmp_path, monkeypatc
         assert summary["num_imag_freq"] == payload["n_imaginary"]
         assert summary["n_negative_modes"] == 2
         assert summary["thermo_policy"] == WORKFLOW_THERMO_POLICY.as_dict()
+        assert payload["thermochemistry"]["symmetry_number_source"] == "config"
         assert payload["rigid_projection"]["effective_rank"] == 0
         np.testing.assert_array_equal(observed[-1][0], raw)
         np.testing.assert_array_equal(observed[-1][1], raw[raw > 0.])

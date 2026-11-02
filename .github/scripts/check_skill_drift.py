@@ -169,7 +169,7 @@ def main() -> int:
             print(w)
         print(
             "\nAddress the items above (or update RENAMED_STRINGS / "
-            "CANONICAL_STATUS in .github/scripts/check_skill_drift.py if a "
+            "STATUS_VALUES in .github/scripts/check_skill_drift.py if a "
             "documented schema change is intentional)."
         )
     else:

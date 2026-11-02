@@ -27,7 +27,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | backend | install | model identifier | `--precision` | analytical Hessian | multiple workers |
 |---------|---------|------------------|------------------|--------------------|------------------|
 | `uma` | included (`fairchem-core` ≥ 2.22 is a core dependency) + [Hugging Face login](installation.md#required) | `uma-s-1p2p1` (default) / `uma-s-1p2p1-ft-d4rev` / `uma-s-1p2` / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | yes (autograd) | yes |
-| `orb` | separate env: `pip install "pdb2reaction[orb]"` (UMA stays in the main env) | `orbmol-v2` (default) / `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `tf32` / `fp32` / `fp64` | yes (autograd) | no |
+| `orb` | separate Python 3.12 env: `pip install "pdb2reaction[orb]"` (UMA stays in the main env) | `orbmol-v2` (default) / `orb_v3_conservative_omol` (conservative models only, which take the forces from the energy gradient) | `tf32` / `fp32` / `fp64` | yes (autograd) | no |
 | `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'` (UMA does not run in this env) | `MACE-OMOL-0` (default) / `MACE-POLAR-1-S` / `-M` / `-L` | `fp32` / `fp64` | yes | no |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` (default) / `aimnet2-2025` / `aimnet2-nse` / `aimnet2-pd` | `fp32` only | yes | no |
 
@@ -45,8 +45,7 @@ Models besides the defaults:
   OPoly26.
 - `MACE-POLAR-1-S` / `-M` / `-L`: trained on OMol25 at ωB97M-V with long-range
   electrostatics from learned charge and spin densities, for any total charge and
-  spin; they need mace-torch >= 0.3.16 and
-  `pip install graph-longrange==0.4.0`.
+  spin; they need `pip install 'mace-torch[polar]>=0.3.17'`.
 - AIMNet2: `aimnet2` (wB97M-D3, the default) and `aimnet2-2025` (improved B97-3c)
   are closed-shell only; `aimnet2-nse` handles open-shell systems with the
   multiplicity from `-m`; `aimnet2-pd` (B97-3c) covers Pd, has CPCM(THF)

@@ -215,6 +215,40 @@ def test_run_log_does_not_wait_for_a_process_that_outlives_the_command(tmp_path:
     assert "python-stdout" in (out / "run.log").read_text(encoding="utf-8")
 
 
+def test_run_log_helper_does_not_import_modules_from_the_working_directory(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+    import textwrap
+
+    work = tmp_path / "work"
+    work.mkdir()
+    marker = tmp_path / "imported"
+    # A user's script named like a standard module that the helper imports.
+    (work / "select.py").write_text(f"open({str(marker)!r}, 'w').close()\n")
+    out = tmp_path / "result"
+    script = textwrap.dedent(
+        """
+        import os, sys
+        from pathlib import Path
+        from pdb2reaction.cli import default_group as dg
+
+        out = Path(sys.argv[1])
+        out.mkdir()
+        os.chdir(sys.argv[2])
+        sink = dg._RunLogSink(out, "[command] pdb2reaction probe\\n")
+        with dg._capture_run_log(sink):
+            os.write(1, b"fd-stdout\\n")
+        """
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(out), str(work)],
+        capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not marker.exists()
+    assert "fd-stdout" in (out / "run.log").read_text(encoding="utf-8")
+
+
 def test_help_does_not_trigger_default_subcommand() -> None:
     cli = _make_group(default="all")
 

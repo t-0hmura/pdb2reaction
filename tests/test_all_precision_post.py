@@ -10,7 +10,6 @@ runs.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -20,40 +19,11 @@ from click.testing import CliRunner
 from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.core.result_commit import RUN_ID_ENV, apply_current_run_id
 from pdb2reaction.workflows import all as all_workflow
+from test_all_tsopt_bond_diagnostic import _frame, _pdb, _write
 
 
 class ReachedChild(BaseException):
     """Escape the parent pipeline at a child dispatch."""
-
-
-def _write(path: Path, text: str) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.next")
-    temporary.write_text(text, encoding="utf-8")
-    os.replace(temporary, path)
-    return path
-
-
-def _coords(index):
-    return [(index * .125, .25, -.5), (1.25 + index * .25, .5, .75)]
-
-
-def _frame(index):
-    atoms = "".join(
-        f"{element} {x:.3f} {y:.3f} {z:.3f}\n"
-        for element, (x, y, z) in zip(("C", "O"), _coords(index))
-    )
-    return f"2\nE={(0., .1, .02)[index]:.3f} unit=hartree frame{index}\n{atoms}"
-
-
-def _pdb(index):
-    return "".join(
-        f"HETATM{serial:5d} {name:<4s} MOL A   1    "
-        f"{x:8.3f}{y:8.3f}{z:8.3f}{1.:6.2f}{0.:6.2f}          {element:>2s}\n"
-        for serial, (name, element, (x, y, z)) in enumerate(
-            zip(("C1", "O1"), ("C", "O"), _coords(index)), 1
-        )
-    ) + "END\n"
 
 
 def _child_precision(args):

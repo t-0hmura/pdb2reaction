@@ -24,7 +24,7 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-UMA にはコンパイラが、PNG の出力には Chrome のライブラリが要ります。足りないときは先に入れてください: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
+UMA と ORB にはコンパイラが、画像（PNG・JPEG・SVG・PDF）の出力には Chrome のライブラリが要ります。足りないときは先に入れてください: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
 
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします。無料の HF アカウントと読み取り専用トークンが要り、UMA モデルのページでライセンスへの同意が要ることもあります:
 
@@ -56,8 +56,8 @@ plotly_get_chrome -y
 
 pip と conda は、コンパイラと Chrome が使うライブラリを入れません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
 
-- **UMA 用のコンパイラ:** UMA は初回の実行時にコードをビルドします。GPU では C コンパイラ（`gcc`）、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
-- **Chrome 用のライブラリ:** PNG の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。Chrome は `plotly_get_chrome -y` でダウンロードし、下の OS のライブラリを読み込みます。
+- **UMA と ORB 用のコンパイラ:** UMA と ORB は実行時に高速化のためコンパイルをします。GPU では C コンパイラ（`gcc`）、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
+- **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。Chrome は `plotly_get_chrome -y` でダウンロードし、下の OS のライブラリを読み込みます。
 
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
 
@@ -80,9 +80,9 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
   vulkan-loader wget xdg-utils
 ```
 
-sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。入っていなくても `all` と `path-search` は最後まで実行され、PNG だけが作られません。
+sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。
 
-どれかが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて同じコマンドを表示します。
+コンパイラが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて同じコマンドを表示します。Chrome のライブラリが足りないときは、`energy-diagram` と `trj2fig` は同じように止まり、`all`・`path-search`・`scan2d` は 1 行で知らせ、PNG の作成だけを省いて続けます。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -128,7 +128,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     plotly_get_chrome -y
     ```
 
-    UMA が使うコンパイラと Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
+    UMA と ORB が使うコンパイラと Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
 
     aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください（`nvalchemi-toolkit-ops` には 1.13.0 以上が必要です）。
 

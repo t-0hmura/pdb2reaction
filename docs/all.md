@@ -29,6 +29,8 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
+`--dft` needs the DFT extra from step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
+
 Every requested stage finished when the console prints `[Imaginary modes] n=1 (...)` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
 
 ### 2. Path from the reactant by a staged scan
@@ -188,7 +190,7 @@ Energies in the diagrams are in kcal/mol relative to the first state (the reacta
 | `-s, --scan-lists` | text | `None` | Staged scan targets for one input, one literal per stage (e.g. `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`; format in {ref}`Scan-list spec <scan-list-spec>`) |
 | `--tsopt/--no-tsopt` | flag | `False` | Optimize the TS of each segment and run IRC |
 | `--thermo/--no-thermo` | flag | `False` | Frequencies and thermochemistry on R, TS, and P (needs `--tsopt`) |
-| `--dft/--no-dft` | flag | `False` | DFT single points on R, TS, and P (needs `--tsopt`) |
+| `--dft/--no-dft` | flag | `False` | DFT single points on R, TS, and P (needs `--tsopt` and the DFT extra) |
 | `--refine-path/--no-refine-path` | flag | `False` | Run the recursive `path-search` instead of one `path-opt` per pair |
 | `--mep-mode` | `gsm` / `dmf` | `gsm` | MEP method: GSM or DMF |
 | `--opt-mode` | `grad` / `hess` | `grad` | Optimizer for the single-structure optimizations and the scan: `grad` = L-BFGS, `hess` = RFO |

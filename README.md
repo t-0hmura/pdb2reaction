@@ -30,6 +30,8 @@ pdb2reaction all -i R.xyz P.xyz -q +1 --tsopt --thermo --dft
 
 **MEP search → TS optimization → IRC → Thermochemistry → DFT single-point**
 
+`--dft` needs the optional DFT extra (`[dft]` in the table under [Installation](#installation)).
+
 Without `-c`, the input structures are used as they are; set the total charge with `-q`.
 
 ## Features
@@ -46,7 +48,7 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ## Installation
 
-Requirements: Linux, Python 3.12 or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA also needs a compiler (`gcc`; `g++` on a CPU), and PNG export needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
+Requirements: Linux, Python 3.12 or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA and ORB also need a compiler (`gcc`; `g++` on a CPU), and PNG export needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
@@ -66,7 +68,7 @@ hf auth login                               # interactive
 
 | Extra | Adds |
 |---|---|
-| `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated; install `[orb]` in a separate env |
+| `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated; install `[orb]` in a separate Python 3.12 env |
 | `[dft]` / `[dft-cuda12]` | DFT calculator and standalone command with native CUDA 13 / CUDA 12 GPU4PySCF |
 
 The MACE backend (`-b mace`) does not install into the same environment as UMA; create a dedicated environment as described in [docs/installation.md](docs/installation.md).

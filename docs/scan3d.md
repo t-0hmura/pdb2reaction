@@ -15,10 +15,10 @@ The default backend is **UMA** (Meta); `-b/--backend` also selects **ORB**, **MA
 
 ## Examples
 
-The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`.
+The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`. Run the commands in the bundled `examples/` directory.
 
 ```bash
-pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
+pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
 Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.

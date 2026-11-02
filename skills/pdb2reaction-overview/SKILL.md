@@ -28,7 +28,7 @@ pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
 
 - `-c` cuts the active-site cluster around the named residues; without it, the input is used as the cluster. How to choose the residues, radius, and boundary: [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md).
 - `--tsopt` adds TS optimization, IRC, and endpoint optimization; `--thermo` adds frequencies and Gibbs energies for R, TS, and P; `--dft` adds DFT single points on them. `--thermo` and `--dft` need `--tsopt`.
-- Each neighboring pair of inputs becomes one segment. Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
+- Each neighboring pair of inputs gives at most one segment (none when the highest image of its MEP is an end image; reason `endpoint_hei`). Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
 - DFT//MLIP: `--dft` evaluates R, TS, and P with DFT on the MLIP geometries; with `--thermo` it also gives DFT//MLIP Gibbs energies. To run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
 - With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs Scan-list mode. One structure with neither is an error.
 
@@ -126,7 +126,7 @@ When you report a mechanism, give:
 
 - R, TS, and P ([paths](outputs.md#rtsp-paths)), the backend, model, and precision, the charge and multiplicity, and the cluster (center residues, `-r`, atom count).
 - n_imag and the imaginary frequency of the TS, and whether the IRC and endpoint optimizations reached the intended R and P (`connectivity_validated`, [per-segment keys](outputs.md#per-segment-keys)).
-- ΔE‡ or ΔG‡ with its method label and the `references` of `summary.json` ([top-level keys](outputs.md#summaryjson-top-level-keys)); for several steps, count from one common R ([multistep paths](ts-strategy.md#multistep-paths)).
+- ΔE‡ or ΔG‡ with its method label and the `references` of `summary.json` ([top-level keys](outputs.md#summaryjson-top-level-keys)); for several steps, report each local barrier and the TS height from one common R ([multistep paths](ts-strategy.md#multistep-paths)).
 
 ## Where to go next
 

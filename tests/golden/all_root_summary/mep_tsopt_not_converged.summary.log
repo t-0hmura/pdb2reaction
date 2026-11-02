@@ -29,7 +29,7 @@ Multiplicity (2S+1): 1
   MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    Image : _work/path_opt/energy_diagram_mep.png
+    Image : energy_diagram_MEP.png
     State    ΔE [kcal/mol]
         R          0.0000
         TS1       31.3755
@@ -64,7 +64,7 @@ Multiplicity (2S+1): 1
         R         0.000
         TS1      31.375
         P        -6.275
-    Image : _work/path_opt/energy_diagram_mep.png
+    Image : energy_diagram_MEP.png
 
   Energy diagram overview table
     State                            R     TS1       P

@@ -21,7 +21,7 @@
 | `all` が `success` 以外の `Scientific status:` で終わり、`RESULT WARNING:` の行を出す | 各行に、失敗したセグメントと段（TS 最適化・MEP・IRC・端点の最適化）が出ます。その段を下の行で探してください。`summary.json` の `scientific_status_reasons` にも同じ理由が入ります（例：`all:segment_1:tsopt:ts_optimization_not_converged`） | [実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了) |
 | UMA で `--uma-workers` を 2 以上にし、`--hessian-calc-mode Analytical` と併用すると `BackendError` | 解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください | {ref}`パフォーマンス <ja-troubleshooting-performance>`、{ref}`workers と解析 Hessian <ja-workers-analytical-error>` |
 | 実行時に CUDA のメモリ不足（`torch.cuda.OutOfMemoryError`） | デフォルトの `FiniteDifference` Hessian のままにする、`--max-nodes` を減らすか小さい MLIP モデル（`--backend-model`）を使う、VRAM の大きい GPU に移る、の順に試してください。`--radius` を小さくして切り出し直すのは最後の手段です | {ref}`GPU メモリ <ja-troubleshooting-gpu-memory>` |
-| TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`[tsopt] No imaginary mode detected.`）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
+| TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`tsopt` は `[tsopt] No imaginary mode detected.` を、`all` は `RESULT WARNING:` の `no imaginary mode was detected.` を出します）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
 | TS 最適化が収束しない（`TS optimization did not converge`） | まず TS 候補を確かめ、次にオプティマイザを切り替え（`tsopt --opt-mode` / `all --opt-mode-post`）、それから YAML でステップサイズか信頼半径を小さくしてください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
 | IRC が正常に終了しない | 単独の `irc`：`--step-size` を小さく、`--max-cycles` を大きく。`all`：`--irc-step-size` / `--irc-max-cycles`。先に端点を確かめてください | {ref}`IRC <ja-troubleshooting-irc>` |
 | エネルギーが変わらなくなり、opt / TS 最適化が `stalled` で止まる（`TS optimization status is stalled`） | 未収束として扱い、final geometry と力・ステップの条件を確かめてから、別の閾値やオプティマイザの設定で再実行してください | {ref}`max_cycles とプラトー停止 <ja-troubleshooting-max-cycles>` |
@@ -35,7 +35,7 @@
 | `e3nn` / `fairchem-core` のインポートの競合（UMA の環境に MACE を入れた） | MACE 専用の環境を使ってください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | `ORB backend requires orb-models and torch`（AIMNet2 / MACE も同様） | バックエンドの追加パッケージを入れてください：ORB は別の環境に `pip install "pdb2reaction[orb]"`。MACE も別の環境に入れます | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
 | CUDA / GPU の実行時エラー | GPU、PyTorch のビルド、ドライバをまとめて確かめてください | {ref}`インストール / 環境の問題 <ja-installation-environment-problems>` |
-| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).` | コンパイラを入れてください。UMA は初回の実行時にコードをビルドします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` |
+| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).` | コンパイラを入れてください。UMA と ORB は実行時に高速化のためコンパイルをします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` |
 | 図の出力に失敗する（`Missing system prerequisite: Chrome for PNG export.`） | `plotly_get_chrome -y` を実行し、続けて Chrome が使うライブラリを入れてください | {ref}`システムの前提パッケージ <ja-system-prerequisites>` |
 
 ## 実行前チェックリスト
@@ -123,7 +123,7 @@
 | 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | `python -m pip check` を実行してください。PyG / `torch_scatter` は、エラーがそれを名指ししたときだけ入れます。今の `orb-models` はこれを必要としません |
 | `torch.cuda.is_available()` が `False`、またはインポート時に CUDA の実行時エラー | PyTorch のビルドが計算ノードの GPU・ドライバに合っていない | `nvidia-smi`、`python -m torch.utils.collect_env`、`python -m pip check` で、割り当てられた GPU、入っている wheel、ドライバを確かめてください。真偽値だけでは原因は分かりません。`nvidia-smi` が示す `CUDA Version` はドライバが扱える最も新しい CUDA です。それ以下の CUDA の wheel（`cu126`、`cu130`、`cu132`）を入れてください。ローカルの CUDA toolkit は要りません |
 | `--mep-mode dmf` が `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` で止まる、または `No module named 'dmf'` | `cyipopt` が無い、または `pydmf` の GPU 用の部分が無い | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください。`pydmf` は `pdb2reaction` と一緒に入ります。デフォルトの GPU 版 DMF でそれでもインポートに失敗するときは、エラーの文が勧めるとおり `pip install 'pydmf[torch]'` を実行してください |
-| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).`（PyTorch のエラー `Failed to find C compiler`、`No working C++ compiler found`） | `PATH` 上にコンパイラが無い。UMA は初回の実行時にコードをビルドします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり `gcc`（CPU では `g++`）を入れてください。クラスターではジョブスクリプトで `module load gcc` します |
+| `Missing system prerequisite: C compiler (gcc).` または `C++ compiler (g++).`（PyTorch のエラー `Failed to find C compiler`、`No working C++ compiler found`） | `PATH` 上にコンパイラが無い。UMA と ORB は実行時に高速化のためコンパイルをします | {ref}`システムの前提パッケージ <ja-system-prerequisites>` のとおり `gcc`（CPU では `g++`）を入れてください。クラスターではジョブスクリプトで `module load gcc` します |
 | 図の出力に失敗する（`Missing system prerequisite: Chrome for PNG export.`） | ヘッドレス Chrome が入っていない、または Chrome が使う OS のライブラリが無い | `plotly_get_chrome -y` を一度実行し、続けて {ref}`システムの前提パッケージ <ja-system-prerequisites>` のライブラリを入れてください |
 
 ### DMF が IPOPT 内で極端に遅い

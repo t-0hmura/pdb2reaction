@@ -249,7 +249,6 @@ def add_coord_type_option(
     ``GEOM_KW_DEFAULT['coord_type']`` (cart) via the standard YAML override
     chain.
     """
-    options_str = "|".join(choices)
     def decorator(func: Callable) -> Callable:
         # NOTE: dest is `cli_coord_type`, NOT `coord_type`, because every
         # downstream cli body already has a local `coord_type` variable
@@ -265,9 +264,7 @@ def add_coord_type_option(
             type=click.Choice(list(choices), case_sensitive=False),
             default=None,
             show_default="cart",
-            help=(
-                f"Optimization coordinate system ({options_str})."
-            ),
+            help="Optimization coordinate system.",
         )(func)
     return decorator
 
@@ -335,8 +332,8 @@ def add_precision_post_option() -> Callable[[Callable], Callable]:
             default=None,
             show_default="inherits --precision",
             help=(
-                "MLIP precision (tf32, fp32 or fp64) for TSOPT, IRC, the "
-                "post-IRC endpoint optimizations and freq. Unset uses --precision."
+                "MLIP precision for TSOPT, IRC, the post-IRC endpoint "
+                "optimizations and freq. Unset uses --precision."
             ),
         )(func)
     return decorator

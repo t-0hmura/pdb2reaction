@@ -114,7 +114,7 @@ pdb2reaction all -i cluster_R.pdb cluster_P.pdb -l 'LIG:+1' --tsopt --thermo
 
 ### 原子を固定する 3 つの方法
 
-- **`--freeze-links/--no-freeze-links`**（デフォルトで有効）：`extract` が付けたキャップ水素の親原子を固定します。PDB と mmCIF の入力で効きます。XYZ と GJF の入力には `LKH` の残基が無いので、同じ原子の PDB を `--ref-pdb` で渡すと効きます。座標は `-i` のものを使います。`sp` はこの原子を自動では固定しません。
+- **`--freeze-links/--no-freeze-links`**（デフォルトで有効）：`extract` が付けたキャップ水素の親原子を固定します。PDB と mmCIF の入力で効きます。XYZ と GJF の入力には `LKH` の残基が無いので、同じ原子の PDB を `--ref-pdb` で渡すと効きます。座標は `-i` のものを使います。`path-search` はこの固定に `--ref-pdb` を使わないので、XYZ と GJF の入力には `--freeze-atoms` を渡してください。`sp` はこの原子を自動では固定しません。
 - **`--freeze-atoms 'i,j,k'`**：1 始まりの原子のインデックスで、どの形式の入力にも使えます。`-c` を付けた `all` では元の入力の番号で書き、切り出したモデルの番号に自動で写されます。ほかのコマンドでは、渡した構造の番号です。
 - **YAML の `geom.freeze_atoms`**（`--config` で渡す）：リストが長いときや、ほかの設定と一緒に残したいときに使います。
 
@@ -129,7 +129,7 @@ geom:
   freeze_atoms: [12, 15, 28, 29, 42]   # 1 始まり
 ```
 
-実行では 3 つの指定の和集合を固定します。3 つとも `all`・`opt`・`tsopt`・`freq`・`irc`・`path-opt`・`path-search`・`scan`・`scan2d`・`scan3d` で使えます。`sp` で使えるのは `--freeze-atoms` と YAML だけです。
+実行では 3 つの指定の和集合を固定します。3 つとも `all`・`opt`・`tsopt`・`freq`・`irc`・`path-opt`・`path-search`・`scan`・`scan2d`・`scan3d` で使えます。ただし `path-search` の XYZ と GJF の入力では、`--freeze-links` は何も固定しません。`sp` で使えるのは `--freeze-atoms` と YAML だけです。
 
 ### 固定の効果
 

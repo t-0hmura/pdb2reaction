@@ -30,9 +30,9 @@ set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # Prebuilt PyTorch/backend wheels need a compatible NVIDIA driver, not a local
-# CUDA toolkit module. UMA builds code at run time, so a compiler must be on
-# PATH (gcc; g++ on a CPU). If the compute node has none, load the site's
-# compiler module here: module load <COMPILER_MODULE>
+# CUDA toolkit module. UMA and ORB compile code at run time for speed, so a
+# compiler must be on PATH (gcc; g++ on a CPU). If the compute node has none,
+# load the site's compiler module here: module load <COMPILER_MODULE>
 # Load <CUDA_MODULE> as well only for a source build.
 # - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
 #   single-node jobs.
@@ -89,8 +89,9 @@ Use the same body as above, but replace the Torque resource line with:
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-# Prebuilt wheels need no CUDA module. UMA builds code at run time, so a
-# compiler must be on PATH (gcc; g++ on a CPU); if the compute node has none:
+# Prebuilt wheels need no CUDA module. UMA and ORB compile code at run time for
+# speed, so a compiler must be on PATH (gcc; g++ on a CPU); if the compute node
+# has none:
 # module load <COMPILER_MODULE>   (and <CUDA_MODULE> only for a source build)
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 set +u    # conda's activate scripts read unset variables
@@ -182,7 +183,7 @@ for this check. Never cancel by a guessed ID or broad name match.
 ## Before and after submitting
 
 - Run one real job of the batch first and read its log; submit the rest only after it passes.
-- Check the resolved settings without computing: `pdb2reaction <command> ... --show-config --dry-run` prints the configuration (backend, DFT engine, charge) and exits.
+- Check the resolved settings without computing: `pdb2reaction all ... --show-config --dry-run` prints the merged configuration (backend, DFT engine, charge) and exits; `path-search` and `sp` print it too.
 - Before `qsub` / `sbatch`, check that no job with the same name is queued; afterwards, confirm that exactly one was created.
 - Judge success from what the job wrote, not from the job leaving the queue. Write the exit code to a file from the job script (`trap 'echo "rc=$?" > "$PBS_O_WORKDIR/$PBS_JOBID.exit"' EXIT`; on SLURM, `$SLURM_SUBMIT_DIR/$SLURM_JOB_ID.exit`) and set no second EXIT trap after it. A walltime kill skips the trap, so with no exit file, read the scheduler history (`qstat -x -f <jobid>` on PBSPro, `sacct -j <jobid>` on SLURM).
 - Keep heavy I/O and per-job environments on node-local scratch (`$TMPDIR`, or `/var/tmp/$PBS_JOBID`). Stop when the job ID is empty, and remove only that job's directory at the end.
@@ -210,7 +211,7 @@ MAX_SUBMIT=${MAX_SUBMIT:-100}
     exit 2
 }
 for ts in "${tasks[@]}"; do
-    if jobid=$(qsub -v TS="$ts" generic_dft.sh); then
+    if jobid=$(qsub -v TS="$ts" "<YOUR_JOB_SCRIPT>"); then
         echo "submitted $ts as $jobid"
     else
         echo "qsub failed for $ts; stopping fan-out." >&2
@@ -220,7 +221,8 @@ done
 ```
 
 Each `qsub` produces an independent PBS job; the scheduler load-balances
-them. For a larger collection, use a site-supported throttled job array or
+them. `<YOUR_JOB_SCRIPT>` is your own job script; it reads the input file from
+`$TS`. For a larger collection, use a site-supported throttled job array or
 the bounded dynamic-dispatch recipe below instead of an unbounded submit loop.
 
 ### Dynamic dispatch (one job, N nodes pull tasks)

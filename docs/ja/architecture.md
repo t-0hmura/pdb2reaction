@@ -146,7 +146,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落の概要と、1 コマンドでの使い方 |
 | 2 | 5 | このファイル（`docs/ja/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` registry、絶対パスの解決 |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py)（通読） | 1 つのサブコマンドを上から下まで追う。`extract → MEP → tsopt → IRC → freq → dft` をたどる |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py)（流し読み） | 1 つのサブコマンドを上から下まで追う。`extract → MEP → tsopt → IRC → freq → dft` をたどる |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 機能を足す 5 つの手順（サブコマンド、MLIP バックエンド、出力形式、workflow の段、テスト）+ 触ってはいけない箇所の一覧 |
 
 ステップ 5 の後は、§4 のファイル索引で主なファイルを探せます。本パッケージは **各階層内でフラット** です。`pdb2reaction/<layer>/` の下にネストしたパッケージは存在しないため、2 ディレクトリより深く辿る必要は決してありません。

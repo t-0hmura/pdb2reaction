@@ -2083,6 +2083,7 @@ def _enrich_summary(
         ("energy_diagram_MLIP_all", primary_method),
         ("energy_diagram_MLIP", primary_method),
         ("energy_diagram_MEP", "MEP"),
+        ("energy_diagram_mep", "MEP"),
         ("MEP", "MEP"),
     ):
         if method_rank[method] > max_overall_rank:
@@ -2484,7 +2485,14 @@ def _write_segment_energy_diagram(
     return payload
 
 
-def _build_global_segment_labels(n_segments: int) -> List[str]:
+def _point_mep_diagram_at_root(diagrams: Any, out_dir: Path) -> None:
+    """Point the MEP diagram at ``energy_diagram_MEP.png``, where ``all`` moves it."""
+    for diagram in diagrams or []:
+        if isinstance(diagram, dict) and str(diagram.get("name", "")).lower().endswith("mep"):
+            diagram["image"] = str(out_dir / "energy_diagram_MEP.png")
+
+
+def _build_global_segment_labels(segment_ids: Sequence[int]) -> List[str]:
     """
     Build GSM-like labels for aggregated R/TS/P diagrams over multiple segments.
 
@@ -2492,20 +2500,23 @@ def _build_global_segment_labels(n_segments: int) -> List[str]:
       - n = 1: ["R", "TS1", "P"]
       - n ≥ 2: R, TS1, IM1_1, IM1_2, TS2, IM2_1, IM2_2, ..., TSN, P
     """
-    if n_segments <= 0:
+    ids = [int(value) for value in segment_ids]
+    if not ids:
         return []
-    if n_segments == 1:
-        return ["R", "TS1", "P"]
+    if len(ids) == 1:
+        return ["R", f"TS{ids[0]}", "P"]
 
     labels: List[str] = []
-    for seg_idx in range(1, n_segments + 1):
-        if seg_idx == 1:
-            labels.extend(["R", "TS1", "IM1_1"])
-        elif seg_idx == n_segments:
-            labels.extend([f"IM{seg_idx - 1}_2", f"TS{seg_idx}", "P"])
+    for position, seg_idx in enumerate(ids):
+        if position == 0:
+            labels.extend(["R", f"TS{seg_idx}", f"IM{seg_idx}_1"])
+        elif position == len(ids) - 1:
+            previous = ids[position - 1]
+            labels.extend([f"IM{previous}_2", f"TS{seg_idx}", "P"])
         else:
+            previous = ids[position - 1]
             labels.extend(
-                [f"IM{seg_idx - 1}_2", f"TS{seg_idx}", f"IM{seg_idx}_1"]
+                [f"IM{previous}_2", f"TS{seg_idx}", f"IM{seg_idx}_1"]
             )
     return labels
 
@@ -3210,8 +3221,7 @@ def _run_dft_sequence(
 
 def _tsopt_reference_mode_is_applicable(opt_mode: Optional[str]) -> bool:
     """Whether the selected TS optimizer consumes a Hessian reference mode."""
-    mode = str(opt_mode or "hess").strip().lower()
-    return mode not in {"grad", "dimer", "lbfgs"}
+    return str(opt_mode or "hess").strip().lower() != "grad"
 
 
 def _tsopt_continuation_decision(
@@ -3390,10 +3400,6 @@ def _run_tsopt_on_hei(
 
         opt_mode = overrides.get("opt_mode", opt_mode_default)
         tsopt_mode = None if opt_mode is None else str(opt_mode).strip().lower()
-        if tsopt_mode in ("grad", "lbfgs", "dimer"):
-            tsopt_mode = "grad"
-        elif tsopt_mode in ("hess", "rfo", "rsprfo"):
-            tsopt_mode = "hess"
 
         ts_args: List[str] = [
             "-i",
@@ -4607,8 +4613,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=True,
     help=(
         "Use the MEP tangent at the highest-energy image to choose which Hessian "
-        "mode the Hessian-based TS optimizer (RS-P-RFO, RS-I-RFO, TRIM) follows "
-        "as the reaction mode. Not used with Dimer."
+        "mode RS-P-RFO (hess) follows as the reaction mode. Not used with Dimer "
+        "(grad)."
     ),
 )
 @click.option(
@@ -5303,16 +5309,8 @@ def cli(
         opt_mode_set = False
         opt_mode_post_set = False
 
-    _mode_alias = {
-        "grad": "grad",
-        "hess": "hess",
-    }
-    opt_mode_norm = _mode_alias.get(str(opt_mode).strip().lower(), "hess")
-    opt_mode_post_norm = (
-        None
-        if opt_mode_post is None
-        else _mode_alias.get(str(opt_mode_post).strip().lower(), "hess")
-    )
+    opt_mode_norm = str(opt_mode).strip().lower()
+    opt_mode_post_norm = None if opt_mode_post is None else str(opt_mode_post).strip().lower()
 
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
@@ -6751,28 +6749,15 @@ def cli(
             endpoint_assignment=endpoint_assignment,
         )
 
-        # Each route keeps its write order, which is also the order in which
-        # the endpoint energies are evaluated.
-        if ts_only:
-            p_react_irc = _save_single_geom_as_pdb_for_tools(
-                g_react_irc, struct_template, struct_dir, "reactant_irc"
-            )
-            p_prod_irc = _save_single_geom_as_pdb_for_tools(
-                g_prod_irc, struct_template, struct_dir, "product_irc"
-            )
-            pT = _save_single_geom_as_pdb_for_tools(
-                gT, struct_template, struct_dir, "ts"
-            )
-        else:
-            p_react_irc = _save_single_geom_as_pdb_for_tools(
-                g_react_irc, struct_template, struct_dir, "reactant_irc"
-            )
-            pT = _save_single_geom_as_pdb_for_tools(
-                gT, struct_template, struct_dir, "ts"
-            )
-            p_prod_irc = _save_single_geom_as_pdb_for_tools(
-                g_prod_irc, struct_template, struct_dir, "product_irc"
-            )
+        p_react_irc = _save_single_geom_as_pdb_for_tools(
+            g_react_irc, struct_template, struct_dir, "reactant_irc"
+        )
+        pT = _save_single_geom_as_pdb_for_tools(
+            gT, struct_template, struct_dir, "ts"
+        )
+        p_prod_irc = _save_single_geom_as_pdb_for_tools(
+            g_prod_irc, struct_template, struct_dir, "product_irc"
+        )
 
         endpoint_opt_dir = seg_dir / "endpoint_opt"
         ensure_dir(endpoint_opt_dir)
@@ -8521,7 +8506,7 @@ def cli(
             )
 
         try:
-            segment_labels = _build_global_segment_labels(len(path_opt_segments))
+            segment_labels = _build_global_segment_labels(range(1, len(path_opt_segments) + 1))
             labels: List[str] = []
             energies_chain: List[float] = []
             for si, seg_info in enumerate(path_opt_segments):
@@ -8538,7 +8523,8 @@ def cli(
                     labels.extend((seg_labels[0], seg_labels[2]))
                     energies_chain.extend((Es[0], Es[-1]))
             if labels and energies_chain and len(labels) == len(energies_chain):
-                title_note = "(GSM; all segments)" if len(path_opt_segments) > 1 else "(GSM)"
+                mep_label = mep_mode_kind.upper()
+                title_note = f"({mep_label}; all segments)" if len(path_opt_segments) > 1 else f"({mep_label})"
                 diag_payload = _write_segment_energy_diagram(
                     path_dir / "energy_diagram_mep",
                     labels=labels,
@@ -8548,7 +8534,10 @@ def cli(
                 if diag_payload:
                     energy_diagrams.append(diag_payload)
         except Exception as e:
-            _echo(f"[diagram] WARNING: Failed to build GSM diagram for path-opt branch: {e}", err=True)
+            _echo(
+                f"[diagram] WARNING: Failed to build {mep_mode_kind.upper()} diagram for path-opt branch: {e}",
+                err=True,
+            )
 
         segments_summary: List[Dict[str, Any]] = []
         raw_path_outcomes: List[Dict[str, Any]] = []
@@ -8678,6 +8667,7 @@ def cli(
                     raise click.ClickException(
                         f"Failed to promote {src} to the pipeline root."
                     )
+            _point_mep_diagram_at_root(energy_diagrams, out_dir)
 
             # Keep the child summary in path_dir for later segment processing,
             # while the root publication records the parent pipeline request
@@ -9075,6 +9065,7 @@ def cli(
         summary["scan"] = scan_diagnostics
     path_optimizers.update(summary.get("path_optimizers", []))
     summary["path_optimizers"] = sorted(path_optimizers)
+    _point_mep_diagram_at_root(summary.get("energy_diagrams"), out_dir)
 
     def _publish_provisional_root_summary(
         post_segments: Sequence[Dict[str, Any]] = (),
@@ -9104,8 +9095,7 @@ def cli(
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
         )
-        if post_segments:
-            root_summary["post_segments"] = _json_safe(list(post_segments))
+        root_summary["post_segments"] = _json_safe(list(post_segments))
         _publish_root_summary(root_summary)
 
     if resuming:
@@ -9227,17 +9217,6 @@ def cli(
             )
         root_summary = dict(summary)
         root_summary["command"] = command_str
-        root_diagrams = []
-        for diagram in root_summary.get("energy_diagrams", []) or []:
-            if not isinstance(diagram, dict):
-                root_diagrams.append(diagram)
-                continue
-            current = dict(diagram)
-            if str(current.get("name", "")).lower().endswith("mep"):
-                current["image"] = str(out_dir / "energy_diagram_MEP.png")
-            root_diagrams.append(current)
-        if root_diagrams:
-            root_summary["energy_diagrams"] = root_diagrams
         _publish_root_summary(root_summary)
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
@@ -9393,9 +9372,6 @@ def cli(
             elif ref_pdb_for_topology is not None:
                 ref_pdb_for_seg = ref_pdb_for_topology
 
-        struct_dir = seg_dir / "structures"
-        ensure_dir(struct_dir)
-
         _seg_tsopt_overrides = dict(tsopt_overrides)
         if (
             len(reactive) > 1
@@ -9491,7 +9467,7 @@ def cli(
 
     if len(tsopt_seg_energies) == len(all_reactive):
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
-        tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
+        tsopt_all_labels = _build_global_segment_labels([int(s["index"]) for s in all_reactive])
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
             diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_MLIP_all",
@@ -9504,7 +9480,7 @@ def cli(
 
     if do_thermo and len(g_mlip_seg_energies) == len(all_reactive):
         g_mlip_all_energies = [e for triple in g_mlip_seg_energies for e in triple]
-        g_mlip_all_labels = _build_global_segment_labels(len(g_mlip_seg_energies))
+        g_mlip_all_labels = _build_global_segment_labels([int(s["index"]) for s in all_reactive])
         if g_mlip_all_labels and len(g_mlip_all_labels) == len(g_mlip_all_energies):
             diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_G_MLIP_all",
@@ -9518,7 +9494,7 @@ def cli(
 
     if do_dft and len(dft_seg_energies) == len(all_reactive):
         dft_all_energies = [e for triple in dft_seg_energies for e in triple]
-        dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
+        dft_all_labels = _build_global_segment_labels([int(s["index"]) for s in all_reactive])
         if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
             diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_DFT_all",
@@ -9531,7 +9507,7 @@ def cli(
 
     if do_dft and do_thermo and len(g_dft_mlip_seg_energies) == len(all_reactive):
         g_dft_mlip_all_energies = [e for triple in g_dft_mlip_seg_energies for e in triple]
-        g_dft_mlip_all_labels = _build_global_segment_labels(len(g_dft_mlip_seg_energies))
+        g_dft_mlip_all_labels = _build_global_segment_labels([int(s["index"]) for s in all_reactive])
         if g_dft_mlip_all_labels and len(g_dft_mlip_all_labels) == len(g_dft_mlip_all_energies):
             diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_G_DFT_plus_MLIP_all",

@@ -70,7 +70,7 @@ nvcc --version
 
 Add a CUDA module to PBS or SLURM jobs only when a locally built extension
 needs it; test prebuilt wheels without a second CUDA runtime from a module.
-UMA also needs a C compiler on `PATH` at run time (`g++` on a CPU); that is a
+UMA and ORB also need a C compiler on `PATH` at run time (`g++` on a CPU); that is a
 system package, separate from the CUDA toolkit
 ([System packages](SKILL.md#system-packages)).
 OpenMPI is unrelated to CUDA and is needed only for the site's multi-node Ray
@@ -109,8 +109,8 @@ mismatch, an unsupported GPU architecture, and mixed libraries from a module or
 Wheels install their CUDA libraries under `site-packages/nvidia/` and preload
 them, but a module or `LD_LIBRARY_PATH` can still put an incompatible
 `libcusolver`, `libcudnn`, `libnvrtc`, or `libnvJitLink` first. The symptoms
-are `OSError: libcusolver.so.11: cannot open shared object file`,
-`Could not load symbol cublasLtCreate`, and
+are `OSError: libcusolver.so.<N>: cannot open shared object file` (N is 11 for
+cu126, 12 for cu130), `Could not load symbol cublasLtCreate`, and
 `undefined symbol: cusparseLoggerSetCallback`. Compare with a clean
 environment:
 
@@ -256,7 +256,7 @@ the uninstall and install and the smoke check afterwards. If UMA and MACE end up
 in one env, imports fail with an `e3nn` version error; remove the env with
 `conda env remove -n <YOUR_MACE_ENV>` and rebuild it.
 
-The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model` and also needs `pip install graph-longrange==0.4.0`. MACE has no multi-GPU sharding, and the first call can include download, model
+The default model is `MACE-OMOL-0`, run in fp64; `MACE-POLAR-1-S`, `-M`, or `-L` (OMol25, long-range electrostatics) is selected with `--backend-model` and also needs `pip install 'mace-torch[polar]>=0.3.17'`. MACE has no multi-GPU sharding, and the first call can include download, model
 loading, and runtime start-up. A model being available does not put a reaction
 inside its reliable domain; validate stationary points with an independent
 frequency calculation and IRC.
@@ -358,7 +358,7 @@ lists the other defaults.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `OSError: libcusolver.so.11 not found` | Missing or mixed CUDA wheel dependency, or a library collision | Clean-environment check in [CUDA and PyTorch](#cuda-and-pytorch); do not hard-code a guessed library path |
+| `OSError: libcusolver.so.<N> not found` (N is 11 for cu126, 12 for cu130) | Missing or mixed CUDA wheel dependency, or a library collision | Clean-environment check in [CUDA and PyTorch](#cuda-and-pytorch); do not hard-code a guessed library path |
 | `cupy.cuda.runtime.CUDARuntimeError: invalid device ordinal` | Device index outside the scheduler-visible set | Keep the scheduler's `CUDA_VISIBLE_DEVICES` and use a local ordinal (usually 0 in a one-GPU job) |
 | `RuntimeError: CUDA out of memory` mid-SCF | Method and system exceed VRAM | Same method with `--dft-engine cpu` or a larger GPU; a smaller basis or grid is a different method and must be labeled and revalidated |
 | SCF stalls or fails near start-up | The message does not identify the dependency | Capture the full log, run `pip check`, compare with GPU4PySCF's official requirements before adding CUDA libraries |

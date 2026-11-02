@@ -234,10 +234,9 @@ Options:
                                   build energy diagrams.  [default: no-tsopt]
   --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
                                   Use the MEP tangent at the highest-energy
-                                  image to choose which Hessian mode the
-                                  Hessian-based TS optimizer (RS-P-RFO, RS-I-
-                                  RFO, TRIM) follows as the reaction mode. Not
-                                  used with Dimer.  [default: tsopt-from-mep-
+                                  image to choose which Hessian mode RS-P-RFO
+                                  (hess) follows as the reaction mode. Not used
+                                  with Dimer (grad).  [default: tsopt-from-mep-
                                   tan]
   --thermo / --no-thermo          Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
@@ -366,8 +365,8 @@ Options:
                                   provides XYZ inputs. Enables topology-aware
                                   PDB/mmCIF output conversion in TSOPT-only,
                                   scan, and path_search pipelines.
-  --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
-                                  [default: (cart)]
+  --coord-type [cart|dlc]         Optimization coordinate system.  [default:
+                                  (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles.
                                   [default: (100); x>=1]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
@@ -379,10 +378,10 @@ Options:
                                   freq.  [default: (per backend: uma fp32; orb,
                                   mace fp64)]
   --precision-post [tf32|fp32|fp64]
-                                  MLIP precision (tf32, fp32 or fp64) for TSOPT,
-                                  IRC, the post-IRC endpoint optimizations and
-                                  freq. Unset uses --precision.  [default:
-                                  (inherits --precision)]
+                                  MLIP precision for TSOPT, IRC, the post-IRC
+                                  endpoint optimizations and freq. Unset uses
+                                  --precision.  [default: (inherits
+                                  --precision)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2p1 / uma-s-1p2p1-ft-d4rev / uma-m-1p1
                                   for uma, orbmol-v2 / orb_v3_conservative_omol

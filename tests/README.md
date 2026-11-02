@@ -30,9 +30,13 @@ pinning a release number. Every CLI case is executed through
 `python -m pdb2reaction` from the same interpreter. Scheduler wrappers and
 environment activation stay out of the repository.
 
-The default strict lane numerically compares UMA and ORB analytical Hessians
-with finite differences. Run the same required checker in the isolated MACE
-and AIMNet2 environments:
+The strict lane numerically compares UMA and ORB analytical Hessians with
+finite differences. ORB cannot share the UMA environment (see
+`docs/installation.md`), so `run.sh` is run in two environments: the UMA
+environment runs it without test53, test53b, and the `orb` argument of
+`run_backend_hessian.sh`; the ORB environment runs test53, test53b, and
+`bash run_backend_hessian.sh orb`.
+Run the same required checker in the isolated MACE and AIMNet2 environments:
 
 ```bash
 bash run_backend_hessian.sh mace

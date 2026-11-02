@@ -13,6 +13,10 @@
 #   cd /path/to/scratch/p2r-smoke
 #   bash run.sh
 #
+# ORB cannot share the UMA environment (docs/installation.md), so the ORB steps
+# (test53, test53b, and `orb` in the last line) run in a separate ORB
+# environment, and the rest runs here without them.
+#
 # If you need an HPC scheduler wrapper, keep that in
 # your own out-of-tree submission script and have it invoke this file as
 # the body.
@@ -33,8 +37,9 @@ export PYTHONHASHSEED=0
 # Reduce CUDA allocator fragmentation across the 40+ stage processes.
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
-# Every capability in this lane is required. Missing prerequisites block the
-# release lane before case 1; they are never converted into a passing skip.
+# Every capability in this lane is required. A missing xtb, a version mismatch,
+# or no CUDA blocks the release lane before case 1; none is converted into a
+# passing skip.
 command -v xtb >/dev/null 2>&1 || {
   echo "[smoke] BLOCKED: xtb is required by the solvent cell" >&2
   exit 2
@@ -494,7 +499,7 @@ python run_limited.py pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' -
 # Regression guard: a single -i with several space-separated paths must NOT drop the 2nd input.
 # A single -o yields one multi-MODEL PDB, so both endpoints must appear (-> exactly 2 MODEL records).
 pdb2reaction extract -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone -o model_multi.pdb > test72_multi_extract.out 2>&1
-n_models=$(grep -c '^MODEL' model_multi.pdb 2>/dev/null)
+n_models=$(grep -c '^MODEL' model_multi.pdb 2>/dev/null || true)
 if [ "${n_models:-0}" -ne 2 ]; then
   echo "[extract-multi] test72: space-separated '-i a b' yielded ${n_models:-0} MODEL records (expected 2); the 2nd input was dropped" >> test72_multi_extract.out
   exit 1

@@ -29,6 +29,8 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
+`--dft` には、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 で入れる DFT 用の追加パッケージが要ります。
+
 端末に各 TS の `[Imaginary modes] n=1 (...)` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、指定した段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
 
 ### 2. 反応物から段階的スキャンで経路を作る
@@ -118,7 +120,7 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 
 `success` は、指定した段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 
-2 つの入力間の MEP で最高エネルギーの画像が端の画像だった場合、`all` はその区間を作らず（障壁も TS 最適化も出しません）、`HEI is at an endpoint` と表示します。結果は理由 `endpoint_hei` の `partial` か `failed` になります。入力を見直すか中間体を加えてください。
+2 つの入力間の MEP で最高エネルギーのイメージ（HEI）が端のイメージだった場合、`all` はその区間を作らず（障壁も TS 最適化も出しません）、`HEI is at an endpoint` と表示します。結果は理由 `endpoint_hei` の `partial` か `failed` になります。入力を見直すか中間体を加えてください。
 
 ---
 
@@ -188,7 +190,7 @@ result_all/
 | `-s, --scan-lists` | 文字列 | `None` | 1 構造の段階的スキャンの目標。1 つのリテラルが 1 ステージ（例: `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`。書き方は {ref}`スキャンリスト仕様 <ja-scan-list-spec>`） |
 | `--tsopt/--no-tsopt` | フラグ | `False` | 各セグメントの TS を最適化し、IRC を実行 |
 | `--thermo/--no-thermo` | フラグ | `False` | R・TS・P の振動数と熱化学（`--tsopt` が必要） |
-| `--dft/--no-dft` | フラグ | `False` | R・TS・P の DFT 一点計算（`--tsopt` が必要） |
+| `--dft/--no-dft` | フラグ | `False` | R・TS・P の DFT 一点計算（`--tsopt` と DFT 用の追加パッケージが必要） |
 | `--refine-path/--no-refine-path` | フラグ | `False` | 隣り合う組ごとの `path-opt` の代わりに、再帰的な `path-search` を実行 |
 | `--mep-mode` | `gsm` / `dmf` | `gsm` | MEP の手法: GSM または DMF |
 | `--opt-mode` | `grad` / `hess` | `grad` | 単一構造の最適化とスキャンのオプティマイザ: `grad` = L-BFGS、`hess` = RFO |

@@ -16,10 +16,10 @@ The default backend is **UMA** (Meta); `-b/--backend` also selects **ORB**, **MA
 
 ## Examples
 
-The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`.
+The examples use `input.pdb`, the cluster model cut from the bundled enzyme structure with [extract](extract.md), and take its charge from `-l 'SAM:1,GPP:-3'`. Run the commands in the bundled `examples/` directory.
 
 ```bash
-pdb2reaction extract -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
+pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
 Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces (`'SAM,320,CS1'` or `'CS1 SAM 320'`).
@@ -189,7 +189,7 @@ See the [generated CLI reference](reference/commands/scan.md) for every option.
 ## Notes
 
 * **`--preopt` depends on the caller**: `scan` alone pre-optimizes only with `--preopt`. Inside `all`, it follows `all --preopt` (on by default), and `all --scan-preopt/--no-scan-preopt` overrides it.
-* **Tuples from `all -s`**: write them in the `scan` form ({ref}`Scan-list spec <scan-list-spec>`).
+* **Tuples from `all -s`**: `all -s` takes targets only: distance `(i,j,target)`, angle `(i,j,k,deg)`, or dihedral `(i,j,k,l,deg)`. Ranges such as `(i,j,low,high)` are for `scan` only ({ref}`Scan-list spec <scan-list-spec>`).
 * **Targets and ranges are not mixed inline**: one inline literal, and all literals of one run, hold either targets `(i,j,target)` or ranges. To combine them, list them under `stages:` in a YAML/JSON spec.
 * **Stage numbers with ranges**: a range becomes two stages, toward `low` and then toward `high`. Inline, all ranges of one literal share these two stages. In a YAML `stages:` list, a stage of targets only stays one stage; a stage that holds a range is split into one stage per target and two per range.
 * **Target distances must be positive**, and one coordinate may appear only once per stage.

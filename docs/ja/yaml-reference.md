@@ -50,7 +50,7 @@ max_cycles: 100000
 …
 ```
 
-`--show-config`（`scan`・`scan2d`・`scan3d` には無い）は、読み込んだ YAML ファイルと最上位のキーを表示します。
+`--show-config`（`scan`・`scan2d`・`scan3d` には無い）は、`all`・`path-search`・`sp` ではデフォルト・YAML・CLI を合わせた後の設定を、そのほかのコマンドでは読み込んだ YAML ファイルと最上位のキーを表示します。
 
 セクション名を書き間違えると `[config] WARNING: YAML section(s) … are not recognized and were ignored.` が出ます。セクションの中のキーの書き間違いの扱いはセクションで決まります。
 

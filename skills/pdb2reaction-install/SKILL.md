@@ -67,8 +67,8 @@ pins `nvalchemi-toolkit-ops<0.4`, so pip lowers `fairchem-core` there.
 ## System packages
 
 pip and conda do not install a compiler or the libraries of Chrome, and a bare
-container or cluster node often lacks both. UMA builds code the first time it
-runs: a GPU run needs a C compiler (`gcc`), a CPU run a C++ compiler (`g++`).
+container or cluster node often lacks both. UMA and ORB compile code at run
+time for speed: a GPU run needs a C compiler (`gcc`), a CPU run a C++ compiler (`g++`).
 PNG export needs the operating-system libraries of the Chrome that
 `plotly_get_chrome -y` downloads. Check with `gcc --version` (`g++ --version`
 on a CPU), then install:
@@ -109,7 +109,7 @@ that lists the same commands. Docs: [System prerequisites](../../docs/installati
 |---|---|---|---|
 | `uma` (default) | `uma-s-1p2p1`; `uma-s-1p2p1-ft-d4rev`, `uma-s-1p2`, `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
 | `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra in a separate env | fp64 by default |
-| `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (mace-torch >= 0.3.16) via `--backend-model` | Separate env | fp64 by default |
+| `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (`mace-torch[polar]` >= 0.3.17) via `--backend-model` | Separate env | fp64 by default |
 | `aimnet2` | `aimnet2`; `aimnet2-2025`, `aimnet2-nse` (open-shell), `aimnet2-pd` via `--backend-model` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
 
 Select the backend with `-b` on any calculation command, for example
@@ -164,14 +164,14 @@ installed. An `ImportError` points to that backend's section in
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `import torch` fails with `libcudart.so.12 not found` | Incomplete or mixed wheel install, or a library-path collision; not by itself evidence against the driver | [CUDA and PyTorch](backends.md#cuda-and-pytorch) diagnostics |
+| `import torch` fails with `libcudart.so.<N> not found` (N is 12 for cu126, 13 for cu130) | Incomplete or mixed wheel install, or a library-path collision; not by itself evidence against the driver | [CUDA and PyTorch](backends.md#cuda-and-pytorch) diagnostics |
 | `torch.cuda.is_available()` is `False` | CPU wheel, hidden GPU, driver and wheel mismatch, or mixed libraries | Run `python -m torch.utils.collect_env` and `python -m pip check` before changing the wheel |
-| `OSError: libcusolver.so.11 not found` | CUDA wheel dependency missing or shadowed by `LD_LIBRARY_PATH` | Compare with a clean environment ([CUDA and PyTorch](backends.md#cuda-and-pytorch)) |
+| `OSError: libcusolver.so.<N> not found` (N is 11 for cu126, 12 for cu130) | CUDA wheel dependency missing or shadowed by `LD_LIBRARY_PATH` | Compare with a clean environment ([CUDA and PyTorch](backends.md#cuda-and-pytorch)) |
 | `e3nn` conflict on `pip install` | UMA and MACE in one env | Separate env for MACE |
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA builds code the first time it runs | Install `gcc` (`g++` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA and ORB compile code at run time for speed | Install `gcc` (`g++` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`), or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly, or an operating-system library it needs is missing | `plotly_get_chrome -y`, then the libraries in [System packages](#system-packages) |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 

@@ -206,12 +206,15 @@ when none were.
   `ERROR: Atom types and ordering must be identical.` `extract` checks this
   for several inputs but does not map atoms; reorder the full structures
   first, then extract them together.
-- The cutoff is geometric only and does not tell covalent, ionic, and
-  hydrogen bonds apart. A larger `--bond-factor` (for example 1.30) counts
-  longer contacts but can add false bonds; report the value and inspect the
-  pairs. A pair that contains a metal atom counts only when its distance
-  changes by at least `--metal-delta-fraction` × T (default 0.40, about 1.0 Å
-  for Mg–O), whatever `--bond-factor` is; lower it to count a smaller change.
+- The test is geometric: a pair is bonded when its distance is at most 0.95 × T,
+  where T is the summed covalent radii times `--bond-factor` (default 1.20), and
+  a change counts only if the distance moves by at least 0.05 × T. It does not
+  tell covalent, ionic, and hydrogen bonds apart. A larger `--bond-factor`
+  (for example 1.30) counts longer contacts but can add false bonds; report
+  the value and inspect the pairs. A pair that contains a metal atom counts
+  only when its distance changes by at least `--metal-delta-fraction` × T
+  (default 0.40, about 1.0 Å for Mg–O at the default `--bond-factor`); lower
+  it to count a smaller change.
 - The JSON gives counts only; the atom pairs are in the text output and in
   `bond_changes` of `summary.json`
   ([outputs.md](../pdb2reaction-overview/outputs.md#bond-changes)).

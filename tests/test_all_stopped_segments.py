@@ -101,6 +101,28 @@ def test_resume_keeps_only_the_stops_of_the_current_run(tmp_path, monkeypatch):
     assert (resumed.exit_code, summary["scientific_status"]) == (0, "success")
 
 
+def test_a_resume_from_segment_1_lists_only_the_segments_it_finished(tmp_path, monkeypatch):
+    """While a resume from segment 1 runs, the root lists none of the previous run's segments."""
+    first, summary = run_all(tmp_path, monkeypatch, [])
+    assert [item["index"] for item in summary["post_segments"]] == [1, 2, 3]
+    seen = []
+
+    class RecordingStubs(ThreeSegmentStubs):
+        def _tsopt(self, out: Path, args):
+            root = json.loads((first.out / "summary.json").read_text(encoding="utf-8"))
+            seen.append([item["index"] for item in root.get("post_segments", [])])
+            super()._tsopt(out, args)
+
+    monkeypatch.setattr(golden, "PipelineStubs", RecordingStubs)
+    resumed = golden.invoke(
+        tmp_path, monkeypatch,
+        golden.Scenario("resume", (0, 2, 4, 6), ["--resume-segment", "1", "--tsopt"]),
+    )
+
+    assert seen == [[], [1], [1, 2]]
+    assert resumed.exit_code == 0
+
+
 @pytest.mark.parametrize(
     "resume_segment,stopped_now,expected",
     [

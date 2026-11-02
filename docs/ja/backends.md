@@ -23,7 +23,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | バックエンド | インストール | モデル名 | `--precision` | 解析 Hessian | 複数ワーカー |
 |---------|---------|------------------|------------------|--------------------|------------------|
 | `uma` | 同梱（`fairchem-core` ≥ 2.22 は本体の依存）＋ [Hugging Face へのログイン](installation.md#必須) | `uma-s-1p2p1`（デフォルト）/ `uma-s-1p2p1-ft-d4rev` / `uma-s-1p2` / `uma-m-1p1` | `tf32` / `fp32` / `fp64` | あり（autograd） | あり |
-| `orb` | 別の環境で `pip install "pdb2reaction[orb]"`（UMA は元の環境で使います） | `orbmol-v2`（デフォルト）/ `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
+| `orb` | 別の Python 3.12 の環境で `pip install "pdb2reaction[orb]"`（UMA は元の環境で使います） | `orbmol-v2`（デフォルト）/ `orb_v3_conservative_omol`（エネルギーの勾配から力を求める conservative モデルのみ） | `tf32` / `fp32` / `fp64` | あり（autograd） | なし |
 | `mace` | 専用の conda 環境に pdb2reaction を入れてから `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.16'`（この環境では UMA は動きません） | `MACE-OMOL-0`（デフォルト）/ `MACE-POLAR-1-S` / `-M` / `-L` | `fp32` / `fp64` | あり | なし |
 | `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2`（デフォルト）/ `aimnet2-2025` / `aimnet2-nse` / `aimnet2-pd` | `fp32` のみ | あり | なし |
 
@@ -33,7 +33,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 - `uma-s-1p2p1-ft-d4rev`：UMA-S-1.2.1 を OMol25 の約 400 万構造で ωB97M-D4rev に fine-tune したモデルです。分散力を含むので、分散補正を足さないでください。タスクは `omol` だけで、孤立原子の参照エネルギーはなく、fairchem-core 2.24 以上が要ります。
 - `orb_v3_conservative_omol`：OrbMol-v1 です。デフォルトの `orbmol-v2` は、原子ごとに学習する電荷と長距離の Coulomb 項を加え、OMol25 と OPoly26 で学習したモデルです。
-- `MACE-POLAR-1-S`・`-M`・`-L`：OMol25（ωB97M-V）で学習し、学習した電荷と spin の密度から長距離の静電を計算するモデルで、どの総電荷と spin でも使えます。mace-torch 0.3.16 以上と `pip install graph-longrange==0.4.0` が要ります。
+- `MACE-POLAR-1-S`・`-M`・`-L`：OMol25（ωB97M-V）で学習し、学習した電荷と spin の密度から長距離の静電を計算するモデルで、どの総電荷と spin でも使えます。`pip install 'mace-torch[polar]>=0.3.17'` が要ります。
 - AIMNet2：`aimnet2`（wB97M-D3、デフォルト）と `aimnet2-2025`（改良した B97-3c）は閉殻だけです。`aimnet2-nse` は開殻の系を `-m` の多重度で扱います。`aimnet2-pd`（B97-3c）は Pd を扱い、CPCM（THF）の溶媒をモデルに含み、閉殻だけです。
 
 実行時には、読み込むバックエンドとモデルが `[backend] Preparing MLIP model (<backend> / <model>)...` の形で表示されます。デフォルトのモデルでは括弧の中が `UMA / UMA-S-1.2.1 (OMol)`、`ORB / OrbMol-v2`、`MACE / MACE-OMOL-0`、`AIMNet2 / aimnet2` になります。
