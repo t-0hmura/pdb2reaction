@@ -35,7 +35,7 @@ The run succeeded when the console prints `[tsopt] Converged (n_imag=1).`
 
 ### 2. Dimer method
 
-Use this when computing the full Hessian again and again is too expensive, or to try a second method on a difficult candidate.
+Use this when computing the full Hessian repeatedly is too expensive, or to try a second method on a difficult candidate.
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode dimer --out-dir ./result_tsopt_dimer

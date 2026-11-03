@@ -55,7 +55,7 @@ Between each pair of adjacent inputs (A → B), GSM or DMF builds a coarse MEP a
 2. **Relaxing around the HEI**:
 `--refine-mode peak` optimizes the images on either side of the HEI (HEI ± 1); `minima` searches outward from the HEI for the nearest local minimum on each side. The result is two nearby minima, End1 and End2. When `--refine-mode` is omitted, GSM uses `peak` and DMF uses `minima`.
 3. **Kink or reactive segment**:
-If no covalent bond changes between End1 and End2, the region is a *kink*: `path-search` inserts a few linear nodes and optimizes each one. Otherwise the region is a *reactive segment*, and a new GSM or DMF path between End1 and End2 sharpens its barrier.
+If no covalent bond changes between End1 and End2, the region is a *kink*: `path-search` inserts a few linearly interpolated nodes and optimizes each one. Otherwise the region is a *reactive segment*, and a new GSM or DMF path between End1 and End2 sharpens its barrier.
 4. **Recursing where bonds still change**:
 The parts A → End1 and End2 → B are checked for bond changes, and only parts that still have them are searched again, down to `--max-depth` levels.
 5. **Stitching**:
@@ -69,7 +69,7 @@ Bond changes are judged with the thresholds in the YAML `bond` section, by the s
 
 | What you see | Meaning | Next step |
 | --- | --- | --- |
-| A segment with bond changes, with its `hei_seg_NN.xyz` | A TS candidate for that step | Optimize it with [`tsopt`](tsopt.md), check for one imaginary mode, then run [`irc`](irc.md) |
+| A segment with bond changes and its `hei_seg_NN.xyz` | A TS candidate for that step | Optimize it with [`tsopt`](tsopt.md), check for one imaginary mode, then run [`irc`](irc.md) |
 | A segment whose `tag` is `seg_NNN_maxdepth` | Splitting stopped there, at the depth limit or after repeated kinks | It may hold more than one step; check it as above, raise `--max-depth`, or give intermediates |
 | Only `kink` segments, or the warning `HEI is at an endpoint` | No bond change was found, or the path has no peak between its ends | Check the inputs, or give intermediates (example 2) |
 
@@ -91,7 +91,7 @@ result_path_search/
 ├─ summary.log               # The same summary as text
 ├─ mep_seg_NN_trj.xyz        # Path of reactive segment NN
 ├─ hei_seg_NN.xyz            # HEI of reactive segment NN (TS candidate)
-├─ hei_mode_seg_NN.*         # Reaction-direction guess at that HEI; all passes it to tsopt --ref-mode (a standalone tsopt does not need it)
+├─ hei_mode_seg_NN.*         # Reaction-direction guess at that HEI; the all command passes it to tsopt --ref-mode (a standalone tsopt does not need it)
 ├─ mep_w_ref*.pdb, hei_w_ref_seg_NN.pdb  # Paths and HEIs placed in the full system (--write-ref-merge)
 ├─ align_refine/             # Alignment and relaxation files of the inputs (--align)
 └─ seg_NNN_*/                # Working files of each GSM/DMF run
@@ -119,7 +119,7 @@ For PDB, mmCIF, or `.gjf` input, the outputs are also written in that format und
 | `--max-depth` | integer | `10` | Maximum levels of recursive subdivision; `0` turns subdivision off |
 | `--max-nodes` | integer | `20` | Movable images per segment; a segment has `max_nodes + 2` images |
 | `--preopt/--no-preopt` | flag | `True` | Pre-optimize each input before the search |
-| `--align/--no-align` | flag | `True` | Align each input to the one before it before the search |
+| `--align/--no-align` | flag | `True` | Align each input to the previous one before the search |
 | `--write-ref-merge/--no-write-ref-merge` | flag | `False` | Place the paths and HEIs in a full-system template (`mep_w_ref*`, `hei_w_ref*`); needs `--align` and `--ref-full-pdb` |
 | `--ref-full-pdb` | path | `None` | Full-system PDB/mmCIF template for `--write-ref-merge`; use the one that matches the first input |
 | `--ref-pdb` | paths | `None` | Cluster-model PDB/mmCIF files for `.xyz` / `.gjf` inputs, one per input in the same order; used to write the PDB outputs and for `--write-ref-merge`, not for `-l` or `--freeze-links` |
@@ -134,7 +134,7 @@ See the [generated CLI reference](reference/commands/path_search.md) for every o
 
 ## Notes
 
-* **Inputs**: give at least two structures, all with the same atoms in the same order; fewer than two stops with an error.
+* **Inputs**: give at least two structures, all with the same atoms in the same order; fewer than two is an error.
 * **`--write-ref-merge` without its partners**: without `--align` or without `--ref-full-pdb`, `path-search` prints a warning and writes no `*_w_ref*` files.
 * **`--ref-pdb` count**: when `--write-ref-merge` is in effect, the number of `--ref-pdb` files must match the number of inputs, or the run stops with an error.
 * **Inputs are protected**: if a fixed output name (`mep_trj.*`, `mep_plot.png`, `energy_diagram_MEP.png`, `summary.json`, `summary.log`) would replace an input file, `path-search` stops before writing anything.

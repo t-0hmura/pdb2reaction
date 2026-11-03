@@ -22,7 +22,7 @@
 - `--dump`：軌跡ファイルの出力
 - `--preopt` / `--endopt`：前処理／後処理の最適化
 - `--climb`：最小エネルギー経路の探索でクライミングイメージを使う
-- `--convert-files`：入力の形式に合わせて、出力の PDB / CIF / GJF の写しも書く
+- `--convert-files`：入力の形式に合わせて、出力を PDB / CIF / GJF でも書き出す
 
 ## 段階的ヘルプ
 
@@ -95,7 +95,7 @@ PDB/mmCIF 入力では、`--ligand-charge/-l` で**非標準残基（基質・�
 導出した電荷は、端末の `Total active site model charge` の行に出ます。`extract` の後に読む行は [モデルを確かめる](model-setup.md#モデルを確かめる) にあります。
 
 ```{tip}
-非標準の残基には必ず `--ligand-charge/-l` を指定し、電荷が正しく伝播するようにしてください。
+非標準の残基には必ず `--ligand-charge/-l` を指定し、全系の電荷が正しく決まるようにしてください。
 ```
 
 ## スピン多重度
@@ -125,7 +125,7 @@ PDB/mmCIF 入力では、`--ligand-charge/-l` で**非標準残基（基質・�
 
 `scan` と `all` の `-s/--scan-lists` は 1 個以上の、`scan2d` / `scan3d` は 1 個だけのインライン Python リテラルを受け付けます。スタンドアロンの `scan` / `scan2d` / `scan3d` はこれに加えて YAML/JSON スペックファイルパスも受け付けます。複数ステージの実行にはファイルが、短い指定にはインラインリテラルが適しています。
 
-**YAML/JSON スペックファイル**（ルートはマッピング。キーは `scan` では `stages`、`scan2d` / `scan3d` では `pairs`）:
+**YAML/JSON スペックファイル**（最上位のキーは `scan` では `stages`、`scan2d` / `scan3d` では `pairs`）:
 
 ```yaml
 one_based: true            # 任意。未指定時はコマンドの --one-based/--zero-based（デフォルトは 1 始まり）に従う
@@ -177,7 +177,7 @@ PDB を受け付ける計算コマンドは、すべて `.cif` と `.mmcif` も�
 
 `pdb2reaction` は最初の座標モデルを読み、altLoc（別位置の配座）は残基ごとに平均占有率の最も高いものを 1 つ残します。計算の間は一時的な chain ID と残基番号を使い、出力の CIF で元の chain ID・残基番号・挿入コードに戻します。大きな PDB や標準の欄に収まらない PDB（残基が 10,000 以上、原子が 99,999 以上、hybrid-36 の番号、桁があふれた欄など）も同じように扱います。
 
-残基と原子のセレクタには、元の chain ID と残基番号を使います。出力の横に書かれる `.cif` については [出力ディレクトリのレイアウト](output-layout.md) を参照してください。
+残基と原子のセレクタには、元の chain ID と残基番号を使います。出力と同じ場所に書かれる `.cif` については [出力ディレクトリのレイアウト](output-layout.md) を参照してください。
 
 (ja-trajectory-one-frame)=
 ### 軌跡から 1 フレームを取り出す
@@ -220,7 +220,7 @@ JSON の有無で終了コードは変わりません。終了コード `0` に�
 | `all`（TS 最適化、`--opt-mode-post`） | Dimer | RS-P-RFO | `hess`（コマンドラインに `--opt-mode` を書いたときはその値） |
 | `all`（IRC 後の端点の最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess`（コマンドラインに `--opt-mode` を書いたときはその値） |
 
-同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer 法は Hessian を周期的に計算して Dimer の向きを更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsirfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
+同じ `--opt-mode` の値でも、サブコマンドによって**選ばれる最適化法が異なり**、デフォルトも異なります。レシピをコピーする前に表を確認してください。アルゴリズム名を受け付けるのは `opt`（`lbfgs` / `rfo`）と `tsopt`（`dimer` / `rsirfo` / `trim` / `rsprfo`）だけで、ほかのサブコマンドは `grad` / `hess` だけを受け付けます。したがって `tsopt` の `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**で、この Dimer 法は Hessian を周期的に計算して Dimer の向きを更新します。曖昧さを避けるには、`tsopt` では `--opt-mode dimer` か `rsprfo`、`opt` では `--opt-mode lbfgs` か `rfo` と書いてください。
 
 ## CLI ↔ YAML 名称の不一致
 
@@ -248,7 +248,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 組み込みデフォルト  <  --config (YAML)  <  CLI オプション
 ```
 
-各オプションの組み込みデフォルトは、`pdb2reaction <subcmd> --help-advanced` と [コマンドの一覧（英語のみ）](../reference/commands/index.md) の `[default: …]` で確かめられます。YAML を上書きするのは*明示的に指定した* CLI の値だけで、CLI のデフォルトのままのオプションは YAML の値を隠しません。この順序は `--config` を受け付けるすべてのコマンドに共通です。全設定は [YAML 設定の一覧](yaml-reference.md) を参照してください。
+各オプションの組み込みデフォルトは、`pdb2reaction <subcmd> --help-advanced` と [コマンドの一覧（英語のみ）](../reference/commands/index.md) の `[default: …]` で確かめられます。YAML を上書きするのは*明示的に指定した* CLI の値だけで、CLI のデフォルトのままのオプションは YAML の値を打ち消しません。この順序は `--config` を受け付けるすべてのコマンドに共通です。全設定は [YAML 設定の一覧](yaml-reference.md) を参照してください。
 
 ## 出力ディレクトリ
 

@@ -76,7 +76,7 @@ summary.json         # result.json と同じ内容（--out-json 指定時）
 | `-o, --output` | パス | `energy_diagram.png` | 出力画像（`.png`, `.jpg`, `.jpeg`, `.svg`, `.pdf`） |
 | `--label-x` | 文字列 | `S1, S2, …` | x 軸の状態ラベル。状態ごとに繰り返すか、リスト形式の文字列 1 つで指定 |
 | `--label-y` | 文字列 | `ΔE (kcal/mol)` | y 軸のラベル |
-| `--out-json/--no-out-json` | フラグ | `False` | 画像の隣に `result.json` と `summary.json` を出力 |
+| `--out-json/--no-out-json` | フラグ | `False` | 画像と同じ場所に `result.json` と `summary.json` を出力 |
 
 全オプションは [自動生成のオプションの一覧（英語のみ）](../reference/commands/energy_diagram.md) を参照してください。
 

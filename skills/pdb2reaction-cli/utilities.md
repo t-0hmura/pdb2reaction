@@ -8,7 +8,7 @@ workflow. Each section gives a minimal run and what to check.
 | Command | When to use | Output |
 |---|---|---|
 | `sp` | One energy and force evaluation, optionally a Hessian, to check a backend, a precision, or a stationary point without an optimizer | Energy on stdout, `forces.npy`; `hessian.npy` with `--hess` |
-| `fix-altloc` | A PDB has alternate locations and a cleaned PDB file is itself needed | PDB with one altLoc per residue |
+| `fix-altloc` | A PDB has alternate locations and you need the cleaned file itself | PDB with one altLoc per residue |
 | `add-elem-info` | The PDB element column (77–78) is blank or wrong, as in many tleap PDBs | PDB with the element column filled |
 | `bond-summary` | Check formed and broken bonds between R and P, or along a series of frames | Text on stdout; JSON with `--json` |
 | `trj2fig` | Plot the energy profile of an XYZ trajectory from IRC, MEP, or scan | PNG, SVG, PDF, JPEG, HTML, or CSV |
@@ -61,11 +61,11 @@ without `--hess`); `sp` writes no `summary.log`.
 `fix-altloc` blanks the altLoc column (column 17) without shifting any other
 field and keeps one altLoc label per residue: the one with the highest mean
 occupancy over that residue's labeled atoms, and on a tie the label that
-appears first. A is not preferred. Atoms with a blank altLoc are kept, and
+appears first. Label A is not preferred. Atoms with a blank altLoc are kept, and
 atoms that belong only to an unselected conformer are dropped, not merged into
 a hybrid residue. `extract` and the geometry commands apply the same selection
-on their own, so run `fix-altloc` only when a cleaned PDB file is itself
-needed, to clean a directory, or to inspect the chosen conformer first.
+on their own, so run `fix-altloc` only when you need the cleaned file
+itself, to clean a directory, or to inspect the chosen conformer first.
 
 ### Minimal run
 
@@ -75,7 +75,7 @@ pdb2reaction fix-altloc -i raw_pdbs/ -o cleaned_pdbs/
 pdb2reaction fix-altloc -i raw.pdb --inplace
 ```
 
-`-i` is a file or a directory, and `-o` is then a file or a directory.
+`-i` is a file or a directory, and `-o` is the same kind.
 Without `-o`, the output is `<input>_clean.pdb` or `<input>_clean/`.
 `--recursive` also cleans subdirectories, and `--inplace` overwrites each
 input after saving `<name>.pdb.bak`.
@@ -175,11 +175,11 @@ Text output on stdout, one block per pair:
   1.R.pdb  →  3.P.pdb
 ============================================================
 Bond formed (2):
+  - O186-H322 : 2.230 Å --> 0.980 Å
   - C320-C321 : 3.170 Å --> 1.680 Å
-  - O186-H321 : 2.230 Å --> 0.980 Å
 Bond broken (2):
-  - S320-C320 : 1.800 Å --> 3.430 Å
-  - C321-H321 : 1.100 Å --> 2.320 Å
+  - S319-C320 : 1.800 Å --> 3.430 Å
+  - C321-H322 : 1.100 Å --> 2.320 Å
 ```
 
 With `--json`, stdout holds one JSON object instead, and no file is written:
@@ -257,7 +257,7 @@ it is `mlip_recomputed` with `-q` or `-m`.
 - Each comment line must give the energy. Trajectories written by
   pdb2reaction are read as they are. Otherwise write `E=<value>` (or
   `Energy:`) with an optional unit (`Ha`, `Eh`, `hartree`, `eV`, `kcal/mol`;
-  hartree without one); a comment that is only one decimal number, such as
+  hartree if omitted); a comment that is only one decimal number, such as
   `-12345.67`, is read as hartree. A comment with no number, only an integer,
   or several bare numbers stops the run with an error that names the frame.
 - `-q` or `-m` makes the MLIP chosen with `-b` recompute every frame instead
@@ -301,7 +301,7 @@ the labels.
 - The values are plotted as given, with no unit conversion; put them all in
   one unit (usually kcal/mol) first.
 - `-i 0 12.5 4.3` and `--label-x R TS P` are rejected, because each option
-  takes one value; repeat the option or quote one list. The number of labels
+  takes one value; repeat the option or quote one list literal. The number of labels
   must equal the number of values, and at least two values are needed.
 - For a profile along a trajectory, use [`trj2fig`](#trj2fig).
 

@@ -46,7 +46,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 
 ### 4. RFO
 
-Switch to RFO, which starts from an exact Hessian, with `--opt-mode hess`.
+Use `--opt-mode hess` to switch to RFO, which starts from an exact Hessian.
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_opt_hess
@@ -57,7 +57,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_opt_h
 ## How it works
 
 1. **Reading the structure and freezing the boundary**: the {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--freeze-links` (on by default), the parent atoms of the {ref}`cap hydrogens <link-hydrogen-and-frozen-atoms>` of a cut-out cluster are frozen; `--freeze-atoms` freezes more atoms.
-2. **Choosing the optimizer** (`--opt-mode`): `grad` (alias `lbfgs`) runs **L-BFGS**, which uses gradients only. `hess` (alias `rfo`) runs **RFO**, which starts from an exact Hessian, updates it with [TS-BFGS](glossary.md#optimization-algorithms) (YAML `rfo.hessian_update`), and recomputes it every 500 cycles. In `tsopt`, the same tokens {ref}`select other methods <opt-mode-semantics>`.
+2. **Choosing the optimizer** (`--opt-mode`): `grad` (alias `lbfgs`) runs **L-BFGS**, which uses gradients only. `hess` (alias `rfo`) runs **RFO**, which starts from an exact Hessian, updates it with [TS-BFGS](glossary.md#optimization-algorithms) (YAML `rfo.hessian_update`), and recomputes it every 500 cycles. In `tsopt`, the same values {ref}`select other methods <opt-mode-semantics>`.
 3. **Adding distance restraints** (`--distance-restraint`): each `(i, j, target)` adds a harmonic term with force constant `--restraint-k` (eV·Å⁻²) that pulls atoms i and j toward `target` in Å; `(i, j)` keeps their starting distance. Indices are 1-based unless `--zero-based` is given.
 4. **Minimizing**: the optimizer moves the structure until the convergence criteria are met or `--max-cycles` is reached. The default `--thresh gau` asks for a max force below 4.5 × 10⁻⁴ and an RMS force below 3.0 × 10⁻⁴ hartree/bohr, and a max step below 1.8 × 10⁻³ and an RMS step below 1.2 × 10⁻³ bohr, the same as Gaussian's default.
 5. **Removing imaginary modes (only with `--flatten`)**: after the optimization, `opt` computes the Hessian, displaces the structure by 0.10 Å along every imaginary mode (ν < −5.00 cm⁻¹), and optimizes again, for up to 50 rounds or until no imaginary mode is left. With `--flatten`, the console prints n_imag in the line `[Imaginary modes] n=…` after each round, and `[flatten] WARNING: Remaining imaginary modes after the flatten loop: N` when modes are left after the last round.
@@ -123,7 +123,7 @@ result_opt/
 | `--freeze-links/--no-freeze-links` | flag | `True` | Freeze the parent atoms of cap hydrogens (PDB/mmCIF input or `--ref-pdb`) |
 | `--freeze-atoms` | text | `None` | Atoms to freeze (1-based, comma-separated, for example `'1,3,5'`) |
 | `--flatten/--no-flatten` | flag | `False` | Remove imaginary modes after the optimization |
-| `--reject-uphill/--no-reject-uphill` | flag | `False` | With `hess`, reject RFO steps that raise the energy by more than 1e-4 hartree and shrink the trust radius |
+| `--reject-uphill/--no-reject-uphill` | flag | `False` | With `hess`, reject RFO steps that raise the energy by more than 1e-4 hartree, and shrink the trust radius |
 | `--stop-plateau/--no-stop-plateau` | flag | `False` | Stop when the energy stops changing (range below 1e-4 hartree over 50 cycles) and report `stalled` |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
 

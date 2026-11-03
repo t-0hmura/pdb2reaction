@@ -28,9 +28,9 @@ spaces, commas, colons, slashes, backticks, or backslashes (`"CS1 SAM 320"`,
 - `(i, j, target)` drives a distance to a target (`scan` only).
 - `(i, j, low, high)`, `(i, j, k, low, high)`, and `(i, j, k, l, low, high)`
   are distance, angle, and dihedral ranges, in Å and degrees. In `scan` a
-  range becomes two stages, toward `low` and then toward `high`. `scan2d` takes
-  exactly two ranges and `scan3d` exactly three, in one literal or under
-  `pairs:` in a YAML/JSON file; each range is one grid axis.
+  range becomes two stages from the same start, toward `low` and then toward
+  `high`. `scan2d` takes exactly two ranges and `scan3d` exactly three, in one
+  literal or under `pairs:` in a YAML/JSON file; each range is one grid axis.
 - `scan` reads a 4-tuple as a distance range; `all -s` reads it as an angle
   target and takes no ranges. Within one `scan` run, use either targets or
   ranges.
@@ -91,8 +91,8 @@ and `scientific_status`, which is `success` only when every stage is usable. A
 point stopped on an energy plateau (YAML `opt.energy_plateau`) is not
 converged. Then check the target, `final_energy_hartree`, and the trajectory.
 Inside `all`, read
-`_work/scan/result.json`; `all` continues past a `partial` scan whose stages'
-last points converged, printing `[all] WARNING: Scan has incomplete
+`_work/scan/result.json`; `all` continues past a `partial` scan if every
+stage's last point converged, printing `[all] WARNING: Scan has incomplete
 intermediate steps; continuing from valid terminal seeds.`, and stops on a
 `failed` one.
 

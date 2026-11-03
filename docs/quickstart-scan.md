@@ -1,6 +1,6 @@
 # Quickstart: `pdb2reaction all --scan-lists`
 
-`pdb2reaction all --scan-lists` (`-s`) builds a reaction path from one structure. It drives the distances you choose to target values under harmonic restraints (a scan) and uses the scan endpoints to search the minimum energy path (MEP). With `--tsopt`, it continues to transition-state (TS) optimization and an intrinsic reaction coordinate (IRC) calculation. You define the reaction coordinate yourself, so the rest of the model changes less and the intended TS is easier to reach. The starting structure can be a reactant, an intermediate, or a product.
+`pdb2reaction all --scan-lists` (`-s`) builds a reaction path from one structure. It drives the distances you choose to target values under harmonic restraints (a scan) and uses the scan endpoints to search for the minimum energy path (MEP). With `--tsopt`, it continues to transition-state (TS) optimization and an intrinsic reaction coordinate (IRC) calculation. You define the reaction coordinate yourself, so the rest of the model changes less and the intended TS is easier to reach. The starting structure can be a reactant, an intermediate, or a product.
 
 The commands below use `1.R.pdb` from the bundled [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples); run them in that directory.
 
@@ -35,7 +35,7 @@ The check has passed when the console shows `[all] --dry-run parity check OK: ..
 
 ### 2. One stage
 
-Drive the distance between SAM CS1 (atom 4360) and GPP C7 (atom 4419; C6 in IUPAC numbering) to 1.60 Å. Give the atoms by number or by name; the two commands are the same scan.
+Drive the distance between SAM CS1 (atom 4360) and GPP C7 (atom 4419; C6 in IUPAC numbering) to 1.60 Å. Give the atoms by number or by name; the two commands run the same scan.
 
 ```bash
 # Atom numbers (1-based by default)
@@ -121,7 +121,7 @@ These commands stop after the MEP search and do not create `segments/`. Add `--t
 * **Bond changes and `--refine-path`**: every scan endpoint goes on to the MEP search, whether or not its stage shows a bond change. `--refine-path` alone decides whether the MEP is refined recursively (`path_search/`).
 * **Scan endpoints**: a finished scan gives restrained structures. They are not minima or transition states until an optimization without restraints, or a TS optimization and IRC, confirms them.
 * **`scan` on its own**: the standalone `scan` also accepts a YAML or JSON spec file and scan ranges; `all -s` takes inline target tuples only.
-* **`scan --dry-run`**: it checks the input, the charge and spin parity, and the parse of `--scan-lists`, but not the extraction or atom mapping of `all`. Use `all --dry-run` for those.
+* **`scan --dry-run`**: it checks the input, the charge and spin parity, and the parsing of `--scan-lists`, but not the extraction or atom mapping of `all`. Use `all --dry-run` for those.
 
 ## Next steps
 

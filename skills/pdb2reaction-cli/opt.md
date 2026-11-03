@@ -67,7 +67,7 @@ Files: `final_geometry.xyz`; with `--convert-files` (on by default), also
   shrinks the trust radius. At the smallest trust radius it runs one final
   convergence check on the retained geometry. L-BFGS ignores it.
 - **Other settings.** Override step limits, trust radius, and the like with
-  `--config` YAML; see `OPT_BASE_KW` and `LBFGS_KW`.
+  `--config` YAML; see `OPT_BASE_KW`, `LBFGS_KW`, and `RFO_KW`.
 - **Frozen atoms.** The removal of rigid motions applies only with `--flatten`
   and does not change L-BFGS or RFO steps. See
   [PHVA treatment](extract.md#phva-treatment).

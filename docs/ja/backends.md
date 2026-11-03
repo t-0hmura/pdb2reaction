@@ -79,7 +79,7 @@ calc:
 
 `--deterministic` を付けると、同じソフトウェアと GPU で、同じ入力から同じ結果が得られます。付けないと、GPU では同じ入力の 2 回の計算でも最後の桁が違うことがあります。
 
-`--deterministic` は、PyTorch の決定論的アルゴリズム（`torch.use_deterministic_algorithms`）を有効にし、GPU で決定論的に動く版の無い PyTorch の演算 1 つを置き換えます。DFT の計算、自作の ASE calculator、PyTorch の外の GPU のコードは制御しません。
+`--deterministic` は、PyTorch の決定論的アルゴリズム（`torch.use_deterministic_algorithms`）を有効にし、GPU で決定論的に動く実装の無い PyTorch の演算 1 つを置き換えます。DFT の計算、自作の ASE calculator、PyTorch の外の GPU のコードは制御しません。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 --deterministic
@@ -88,7 +88,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 - プロセス全体に効きます。`all` に付ければ `all` が実行する MLIP の段すべてに効くので、段ごとに付ける必要はありません。
 - 計算は遅くなります。決定論的な GPU の演算は処理が遅いので、繰り返しの計算を一致させる必要があるときだけ使ってください。
-- 実行する演算に PyTorch の決定論的な版が無いときは、再現しない結果を出さずに、エラーで止まります。
+- 実行する演算に PyTorch の決定論的な実装が無いときは、再現しない結果を出さずに、エラーで止まります。
 
 | バックエンド | `--deterministic` |
 |---|---|
@@ -110,7 +110,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネルギー `E_xTB(solvent) - E_xTB(vacuum)` と、それに対応する力と Hessian の差を MLIP のポテンシャル面に足します。主な用途は小分子の溶液中の計算です。`--solvent-model` で `alpb`（デフォルト）か `cpcmx` を選びます。`--solvent-xtb-cmd` には追加の引数を含めた xTB のコマンドを渡せます。xTB の SCC（自己無撞着電荷）の反復が収束しないときは、`'xtb --etemp 1000'` のように指定してください。xTB は `pdb2reaction` と一緒には入らないので、`conda install -c conda-forge xtb` で導入してください。
 
-補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は名前の付いたバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
+補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は指定したバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
 
 ## DFT バックエンド
 
@@ -141,7 +141,7 @@ pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
 pdb2reaction all    -i R.pdb P.pdb -c 'A:LIG' --calc-file my_calc.py -q 0 -m 1
 ```
 
-- 関数が引数か `**kwargs` で受け取れば、`charge`、`spin`、`device` が渡されるので、総電荷が要るエンジン（xTB など）も設定できます。`spin` は多重度で、`mult`・`multiplicity` の名前でも渡します。関数の名前は `--calc-file-func-name NAME` で変えられ、その名前に Calculator のインスタンスを置いてもかまいません。
+- 関数が引数か `**kwargs` で受け取れば、`charge`、`spin`、`device` が渡されるので、総電荷が要るエンジン（xTB など）も設定できます。`spin` は多重度で、`mult`・`multiplicity` の名前でも渡します。関数の名前は `--calc-file-func-name NAME` で変えられ、その名前に Calculator のインスタンスを代入してもかまいません。
 - Hessian は力の有限差分で求めるので、`freq` と `tsopt --opt-mode hess` はどのエンジンでも動きます。`--freeze-links`・`--freeze-atoms` による固定も通常どおり効きます。
 - `all`、`sp`、`opt`、`tsopt`、`freq`、`irc`、`scan`・`scan2d`・`scan3d`、`path-opt`、`path-search` で使えます。`all` は、calculator を使うすべての段に同じ関数を渡します。独自の `--backend` 名を持つ、インストールできるバックエンドにするときは [開発者向け](#開発者向け) を見てください。
 

@@ -3,13 +3,13 @@
 ## When to use
 
 - `path-opt` optimizes one MEP between two endpoints with GSM (default) or
-  DMF. It does not split the path. Use it when one endpoint pair is the
-  intended candidate unit.
+  DMF. It does not split the path. Use it when the endpoint pair is meant to
+  be one candidate step.
 - `path-search` takes two or more endpoints in reaction order, finds bond
   changes along the path, and splits it recursively into candidate steps, each
   with its own HEI. `all --refine-path` runs it; by default `all` runs one
-  `path-opt` pass. It does not run `tsopt`, `irc`, `freq`, or `dft`; `all`
-  does that under `segments/seg_NN/`.
+  `path-opt` pass. `path-search` does not run `tsopt`, `irc`, `freq`, or
+  `dft`; `all` does that under `segments/seg_NN/`.
 
 Both give a candidate path and HEI; `tsopt`, `freq`, and `irc` decide whether
 a segment is one elementary step.
@@ -99,14 +99,14 @@ lists each segment in path order:
 - A `tag` ending in `_maxdepth` means splitting stopped at the depth limit or
   after repeated kinks; the segment may hold more than one step. Raise
   `--max-depth` (default 10) or give intermediates.
-- Only `kink` segments mean that no bond change was found between the ends;
+- If every segment is a `kink`, no bond change was found between the ends;
   check the inputs or add intermediates.
 - The warning `HEI is at an endpoint` means that in that interval no image lies
   above the higher end, so, as for `path-opt` above, there is no TS candidate:
   `path-search` returns the interval as a raw path with no `segments` entry or
   `hei_seg_NN.xyz`, adds `endpoint_hei` to `scientific_status_reasons`, and
   `all` (with or without `--refine-path`) runs no TS optimization on it. It is
-  not a zero barrier and does not show that no bond changes. Read the energies
+  not a zero barrier, and bonds may still change. Read the energies
   on the comment lines of that run's `seg_NNN_*/final_geometries_trj.xyz` and
   its bond changes ([`bond-summary`](utilities.md#bond-summary)); a frame at an
   interior local maximum can start `tsopt` like an HEI. Other routes:
@@ -120,7 +120,7 @@ it as a step of the mechanism.
 result_path_search/
 ├─ mep_trj.xyz                       # whole stitched MEP
 ├─ mep_trj.pdb                       # PDB/mmCIF input or --ref-pdb
-├─ mep_plot.png, energy_diagram_MEP.png  # the PNG diagram needs Kaleido
+├─ mep_plot.png, energy_diagram_MEP.png  # both PNGs need Kaleido
 ├─ summary.json, summary.log
 ├─ mep_seg_NN_trj.xyz, hei_seg_NN.xyz  # reactive segment NN and its HEI
 ├─ mep_w_ref*.pdb                    # --write-ref-merge with --ref-full-pdb

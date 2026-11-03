@@ -24,7 +24,7 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-UMA on a GPU and `--compile` need a compiler, and image export (PNG, JPEG, SVG, PDF) needs the libraries of Chrome. Install them first if they are missing: {ref}`System prerequisites <system-prerequisites>`.
+UMA on a GPU and `--compile` need a compiler, and image export (PNG, JPEG, SVG, PDF) needs Chrome's libraries. Install them first if they are missing: {ref}`System prerequisites <system-prerequisites>`.
 
 Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. This needs a free HF account with a read-only token, and you may need to accept the license on the UMA model page:
 
@@ -54,7 +54,7 @@ If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cud
 (system-prerequisites)=
 ## System prerequisites
 
-pip and conda do not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
+`pip install pdb2reaction` does not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
 
 - **A compiler for UMA and `--compile`.** On a GPU, UMA compiles code at run time for speed (PyTorch builds GPU kernels with Triton), so it needs a C compiler (`gcc`) even without `--compile`. With `--compile`, UMA and ORB also compile the model: a GPU run needs a C compiler, and a CPU run needs a C++ compiler (`g++`). The conda environment of the Optional section above gets a C compiler through `cuda-nvcc`.
 - **Libraries for Chrome.** PNG, JPEG, SVG and PDF figures (`energy-diagram`, `trj2fig`, and the diagrams of `all`) are drawn by headless Chrome, which `plotly_get_chrome -y` downloads. Chrome loads the operating-system libraries below.
@@ -122,7 +122,7 @@ If you prefer to build the environment piece by piece:
     ```
 
     The official 2.13.0 matrix also provides `cu126`, `cu132`, and `cpu`.
-    Choose the wheel with the `nvidia-smi` rule in the Quick install above, then check GPU access in step 8. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
+    Choose the wheel as described in Quick install above, then check GPU access in step 8. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
@@ -152,7 +152,7 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would lower UMA's `fairchem-core` to an older release. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
+    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would downgrade UMA's `fairchem-core`. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
     conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
@@ -193,7 +193,7 @@ If you prefer to build the environment piece by piece:
     hf auth whoami
     ```
 
-    The first line should display the installed version, and the second your Hugging Face user name (the login that UMA downloads use). To verify GPU access:
+    The first line should display the installed version, and the second your Hugging Face user name (the login used for UMA downloads). To verify GPU access:
 
     ```bash
     python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
@@ -222,6 +222,6 @@ If you prefer to build the environment piece by piece:
 - [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md) — build a path from one structure
 - [Quickstart: TS-only mode](quickstart-tsopt.md) — optimize and check a TS candidate
 - [Refine an MLIP TS with DFT](dft-backend.md) — refine and check the TS with DFT
-- [Common options and selectors](cli-conventions.md) — shared options, and how to give residues and atoms
+- [Common options and selectors](cli-conventions.md) — shared options, and how to specify residues and atoms
 - [HPC example](hpc-example.md) — job script that spreads UMA workers over several GPU nodes
 - [Troubleshooting](troubleshooting.md) — common errors and what to try

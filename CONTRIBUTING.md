@@ -8,21 +8,21 @@ This document is for **contributors and maintainers**. For end-user usage, see [
 
 ## 1. Before you start
 
-`pdb2reaction` follows a **per-step gate cycle** that every change must pass before merge. Internalising this cycle prevents accidentally breaking the behaviour-level guarantees this release line carries.
+`pdb2reaction` follows a **per-step gate cycle** that every change must pass before merge. The cycle keeps changes from accidentally breaking behaviour that the current release guarantees.
 
 ### 1.1 Gate cycle
 
 | stage | what runs | how to invoke locally | failure means |
 |---|---|---|---|
-| 1. Unit tests | `pytest tests/ -q` | `pytest tests/ -q` | logic regression; **never delete or skip the failing test** — root-cause it |
+| 1. Unit tests | `pytest tests/ -q` | `pytest tests/ -q` | logic regression; never delete or skip the failing test — root-cause it |
 | 2. Engineering markers | `# CHEMISTRY-RULE:N` coverage, `# DOMAIN_PURE` coverage, external-library import scope, import-layer direction | `python .github/scripts/check_engineering_markers.py` and `python .github/scripts/check_import_graph.py` | a required marker is missing, an MLIP SDK is imported outside `backends/`, or an import crosses a forbidden layer |
 | 3. Documentation quality | generated command references, EN/JA structure, links, and authored command contracts | `python .github/scripts/run_docs_quality.py` | public guidance or generated CLI documentation has drifted |
 | 4. Help registry drift | CLI `--help` and `--help-advanced` compliance with registry | `python .github/scripts/check_help_registry.py` | CLI option mismatch — re-run after CLI changes |
-| 5. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | copy `tests/smoke/` to scratch, then invoke `bash run.sh` from a site-specific scheduler wrapper | functional regression — root-cause before merge |
+| 5. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | copy `tests/smoke/` to scratch and run `bash run.sh` there, directly or from your job script | functional regression — root-cause before merge |
 
 ### 1.2 Before any patch
 
-1. Read [`docs/architecture.md`](docs/architecture.md) §5 "Hidden constraints" once per session — VRAM `del` invariant, chemistry rules, repo-internal fork policy, packaging-change gates, and the `_LAZY_SUBCOMMANDS` absolute-path rule.
+1. Read [`docs/architecture.md`](docs/architecture.md) §5 "Hidden constraints" — VRAM `del` invariant, chemistry rules, repo-internal fork policy, packaging-change gates, and the `_LAZY_SUBCOMMANDS` absolute-path rule.
 2. Grep [`pdb2reaction/core/defaults.py`](pdb2reaction/core/defaults.py) first for any default you are about to touch; it is the primary source for shared defaults, with a small number of justified command-local exceptions.
 3. Before editing `pysisyphus/` or `thermoanalysis/`, read that directory's `README.md`, identify the local divergence you are changing, and select a focused regression test plus the matching numerical benchmark. Never replace a divergent file wholesale with upstream.
 4. Identify which layer your change belongs to (`cli/`, `workflows/`, `domain/`, `backends/`, `io/`, `core/`). Stay inside one layer per commit when possible; the dependency direction is `L1 → L2 → {L3, L4} → L5` and must not be inverted.
@@ -40,7 +40,7 @@ pdb2reaction all -i R.pdb P.pdb -q 0 -b uma -v 3 --out-dir ./result_all
 pdb2reaction freq -i opt.pdb -q 0 --dump
 ```
 
-Use `--dump` when reproducing a resource-intensive regression or attaching artefacts to a bug report. Use `-v 3` when diagnosing an import-time or stage-bridge issue; the additional log volume is acceptable for short runs.
+Use `--dump` when reproducing a resource-intensive regression or attaching artefacts to a bug report. Use `-v 3` when diagnosing an import-time or stage hand-off issue; the additional log volume is acceptable for short runs.
 
 ### 1.4 Downstream output compatibility
 
@@ -63,8 +63,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the full 6-layer dir tree
 - `pdb2reaction/backends/` — L4a Infra (MLIP dispatcher + per-backend adapter).
 - `pdb2reaction/io/` — L4b Infra (summary, trajectory, diagram, PDB fix, Hessian cache).
 - `pdb2reaction/core/` — L5 Foundation (defaults, utilities, logging, output, and result publication).
-- `pysisyphus/`, `thermoanalysis/` — bundled forks at the repo top; **not** upstream PyPI.
-- `tests/` — golden gates that the per-step cycle checks.
+- `pysisyphus/`, `thermoanalysis/` — bundled forks at the repo top; not upstream PyPI.
+- `tests/` — the tests that the gate cycle runs (stages 1 and 5).
 - `tests/smoke/` — short representative job covering the canonical CLI surface.
 
 ---
@@ -90,7 +90,7 @@ cover common contributor changes.
 stage 4 catches registry/help drift (including boolean registration); stage 5
 must cover the new command when it belongs to the canonical smoke surface.
 
-**Note on absolute paths**: `_LAZY_SUBCOMMANDS` entries MUST use **absolute** module paths (`pdb2reaction.workflows.myaction`). Relative dotted strings (`".myaction"`) silently break subcommand discovery if `default_group.py` ever moves; see `docs/architecture.md` §5.5.
+**Note on absolute paths**: `_LAZY_SUBCOMMANDS` entries must use absolute module paths (`pdb2reaction.workflows.myaction`). Relative dotted strings (`".myaction"`) silently break subcommand discovery if `default_group.py` ever moves; see `docs/architecture.md` §5.5.
 
 ### 3.2 Add an MLIP backend
 
@@ -146,9 +146,9 @@ surface. Any downstream-parser-visible change is governed by §1.4.
 |---|---|---|
 | 1 | Pick the right tier: pure-Python or chemistry-rule logic → `tests/test_<feature>.py`; multi-stage smoke → `tests/smoke/` | as appropriate |
 | 2 | Use `pytest` style: one assertion per logical thing; name the test for the symptom (`test_irc_initial_displacement_does_not_oom`) | new test |
-| 3 | If the test consumes a fixture, prefer the existing `tests/data/` directory; do **not** add large binary fixtures (> 100 KB) — use generators | `tests/data/`, `tests/conftest.py` |
+| 3 | If the test consumes a fixture, do not add large binary fixtures (> 100 KB) — generate them in code | `tests/conftest.py` |
 | 4 | Run `pytest tests/test_<feature>.py -q -x` until green, then `pytest tests/ -q` to confirm no cross-test breakage | local |
-| 5 | If the test depends on a new public Click command or symbol, land Recipe 3.1 / 3.3 first so the golden gate stays green | sequencing |
+| 5 | If the test depends on a new public Click command or symbol, land Recipe 3.1 / 3.3 first so the gates stay green | sequencing |
 
 **Gate that catches mistakes**: `pytest` is gate stage 1; CI blocks a failing merge.
 
@@ -156,7 +156,7 @@ surface. Any downstream-parser-visible change is governed by §1.4.
 
 ## 4. Do not touch list
 
-These are **hard constraints** enforced by the release process. Violating them either breaks correctness (chemistry rules), behaviour-level guarantees (`pyproject.toml` arrays, downstream-parser log lines), or upstream-fork compatibility.
+These are **hard constraints** enforced by the release process. Violating them breaks chemistry correctness, packaging, downstream parsers, or upstream-fork compatibility.
 
 ### 4.1 Chemistry rules
 
@@ -171,7 +171,7 @@ grep -rn '# DOMAIN_PURE' pdb2reaction/
 
 ### 4.2 VRAM-management invariant (`del` chains)
 
-IRC, TSopt, and Freq release their own large calculator, geometry, Hessian, or temporary objects at stage-specific boundaries; `all` also invokes garbage collection between child stages. Preserve those existing release/GC boundaries when changing an owner—there is no single identical `del` sequence shared by all three workflows.
+IRC, TSopt, and Freq release their own large calculator, geometry, Hessian, or temporary objects at stage-specific boundaries; `all` also invokes garbage collection between child stages. Preserve those existing release/GC boundaries when you edit these workflows—there is no single identical `del` sequence shared by all three workflows.
 
 ### 4.3 Divergent files in bundled forks
 
@@ -200,11 +200,11 @@ subpackages below the package, so most internal files need no discovery edit.
 
 ### 4.5 `_LAZY_SUBCOMMANDS` absolute-path rule
 
-Entries in `pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` MUST use absolute module paths (`"pdb2reaction.workflows.all"`, never `".all"`). Relative dotted strings silently break the resolver when `default_group.py` moves; see [`docs/architecture.md`](docs/architecture.md) §5.5.
+Entries in `pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` must use absolute module paths (`"pdb2reaction.workflows.all"`, never `".all"`). Relative dotted strings silently break the resolver when `default_group.py` moves; see [`docs/architecture.md`](docs/architecture.md) §5.5.
 
 ### 4.6 Chemistry default choices
 
-Default basis set (def2-SVP), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit, a documented numerical comparison, and maintainer approval. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
+Default basis set (def2-SVP), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — none of these are open for change without a `[CHEMISTRY-RULE]` commit, a documented numerical comparison, and maintainer approval. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
 
 ### 4.7 Downstream-parser-visible output
 

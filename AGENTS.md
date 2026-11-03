@@ -36,10 +36,10 @@ The checkers require:
 - Frontmatter with exactly `name` and `description`; `name` is hyphen-case and equals the folder name.
 - A `description` of at most 1024 characters, without `<` or `>`, that states TRIGGER and SKIP.
 - A `SKILL.md` of at most 500 lines.
-- Real subcommands and flags in shell code blocks (no language, `bash`, `console`, `sh`, or `shell`) and in inline `pdb2reaction …` (`check_skill_commands.py`). Write placeholders as `<...>`.
+- Real subcommands and flags in shell code blocks (untagged, `bash`, `console`, `sh`, or `shell`) and in inline `pdb2reaction …` (`check_skill_commands.py`). Write placeholders as `<...>`.
 - Every subcommand is assigned to a page in `skills/pdb2reaction-cli/` through `CLI_COMMAND_PAGES` in `check_skill_quality.py`, and every page there is assigned; add a new page to that map. Flags in the first column of a page's tables belong to its assigned commands.
-- One `-s/--scan-lists` per `all` or `scan` command.
-- Real flags in backticks in prose in the folders listed in `PDB2REACTION_CLI_DIRS` (`check_skill_drift.py`). Add a new skill folder that documents the CLI there.
+- At most one `-s/--scan-lists` per `all` or `scan` command.
+- Real flags in backticks in prose in the folders listed in `PDB2REACTION_CLI_DIRS` (`check_skill_drift.py`). Add a new skill folder that documents the CLI to that list.
 - The sentences that `check_skill_quality.py` pins, and none of the phrases it bans. When you move or reword a pinned sentence, update the checker in the same change.
 
 Do not add flag tables to skills; point to `--help-advanced` and `docs/reference/commands/`. Describe current behaviour only.

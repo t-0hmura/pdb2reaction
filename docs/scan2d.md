@@ -21,7 +21,7 @@ The examples use `input.pdb`, the cluster model cut from the bundled enzyme stru
 pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.
+`input.pdb` has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.
 
 ### 1. From a YAML spec
 
@@ -153,7 +153,7 @@ See the [generated CLI reference](reference/commands/scan2d.md) for every option
 * **Restraint strength in YAML**: `bias.k` applies when `--restraint-k` is omitted.
 * **Cap hydrogens**: `--freeze-links` (default on) fixes the parent atoms of the {ref}`cap hydrogens <link-hydrogen-and-frozen-atoms>` of an extracted cluster.
 * **Cycle limit**: `--relax-max-cycles` (default `100000`) limits each relaxation; an explicit value overrides YAML `opt.max_cycles`.
-* **Reference row**: `i = j = -1` and `is_preopt = true` hold the starting structure. The row stays in the table but is never a grid point, a baseline, or a plotted point.
+* **Reference row**: the row with `i = j = -1` and `is_preopt = true` holds the starting structure. It stays in the table but is never a grid point, a baseline, or a plotted point.
 * **Baseline**: `--baseline min` (default) puts zero at the lowest usable point; `--baseline first` puts it at point `(i, j) = (0, 0)`, or at the lowest usable point when `(0, 0)` is not usable.
 * **Too few usable points**: with fewer than three usable points, or with all of them on one line, only the plots are skipped. The run prints `[plot] NOTE: Plots skipped: …` and exits with status 0. With no usable point it prints `[plot] No finite data for plotting.` and exits with status 1.
 * **PNG export**: the PNG is written with Plotly and Kaleido. If the export fails, the run prints `[plot] NOTE: PNG export skipped: …`, still writes the HTML surface, and leaves the PNG out of `result.json`.

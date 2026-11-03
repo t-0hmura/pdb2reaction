@@ -68,7 +68,7 @@ hf auth login                               # interactive
 
 | Extra | Adds |
 |---|---|
-| `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated; install `[orb]` in a separate Python 3.12 env |
+| `[orb]` / `[aimnet]` | ORB / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated; install `[orb]` in a separate Python 3.12 env |
 | `[dft]` / `[dft-cuda12]` | DFT calculator and standalone command with native CUDA 13 / CUDA 12 GPU4PySCF |
 
 The MACE backend (`-b mace`) does not install into the same environment as UMA; create a dedicated environment as described in [docs/installation.md](docs/installation.md).
@@ -80,7 +80,7 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 > **Before you start:**
 >
 > - PDB/mmCIF inputs must already contain hydrogens.
-> - Reaction-ordered structures must share the same atom identities and order (only coordinates differ).
+> - All input structures must have the same atoms in the same order (only coordinates differ).
 > - mmCIF files (including multi-character chains and large residue IDs) and large structures: see [mmCIF and large structures](docs/cli-conventions.md#mmcif-and-large-structures).
 > - Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
@@ -117,14 +117,14 @@ Each stage (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` 
 
 Each calculation command writes to its own directory, `./result_<command>/` by default (for example `./result_opt/`, `./result_tsopt/`, or `./result_path_opt/`); `-o/--out-dir` sets another. `extract` writes `model.pdb` to the current directory.
 
-A non-dry `all` run writes the deliverables reached by its enabled stages to `./result_all/`:
+An `all` run writes the main outputs of the stages it runs to `./result_all/`:
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
 - `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for mmCIF input or very large PDB) — the merged reaction path in MEP/scan-list modes
 - `energy_diagram_MEP.png` — MEP energy diagram
 - `summary.log` / `summary.json`
 
-Pipeline scratch lives under `_work/`; keep it if you might redo the post-processing with `--resume-segment`. Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
+Intermediate files go to `_work/`; keep it if you might redo the post-processing with `--resume-segment`. Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
 
 ## Colab GUI workspace
 
@@ -148,7 +148,7 @@ Pipeline scratch lives under `_work/`; keep it if you might redo the post-proces
 | `freq` | Vibrational analysis + thermochemistry | [freq](docs/freq.md) |
 | `irc` | IRC (EulerPC) | [irc](docs/irc.md) |
 | `dft` | Single-point DFT (GPU4PySCF / PySCF) | [dft](docs/dft.md) |
-| `sp` | Single-point calculator energy / forces / Hessian (MLIP or `-b dft`) | [sp](docs/sp.md) |
+| `sp` | Single-point energy / forces / Hessian (MLIP or `-b dft`) | [sp](docs/sp.md) |
 | `bond-summary` | Compare structures, report bond changes | [bond-summary](docs/bond-summary.md) |
 | `trj2fig` / `energy-diagram` | Energy plot / R→TS→P diagram | [trj2fig](docs/trj2fig.md) · [energy-diagram](docs/energy-diagram.md) |
 

@@ -62,8 +62,8 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --read-hess ts_cand_hess.npy --out-d
 ## 処理の仕組みと計算仕様
 
 1. **構造の読み込みと境界の固定**: {ref}`電荷 <ja-charge-specification>`は `-q` または `-l` から決まります。`--freeze-links`（デフォルト有効）では、切り出したクラスターの{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>`の親原子を固定し、可動原子だけで Hessian を扱います（PHVA: 部分 Hessian 振動解析）。PDB のモデルから得た `.xyz` の候補では、その PDB を `--ref-pdb` で渡すと、`--freeze-links` で{ref}`境界を固定 <ja-freeze-atoms-and-restraints>`できます。
-2. **最適化法の選択**（`--opt-mode`）: `hess`（デフォルト）は完全な Hessian を使う **RS-P-RFO**（restricted-step partitioned rational function optimization）を実行し、`rsirfo` と `trim` はそれぞれ RS-I-RFO（restricted-step image RFO）と TRIM（trust-region image minimization）を選びます。`dimer`（または `grad`）は **Hessian-guided Dimer** 法で、勾配を使って最低固有モードを追い、ときどき厳密な Hessian で方向を更新します。
-3. **反応モードに沿った探索**: 反応モードの方向にはエネルギーを上り、それ以外の方向には下りながら、収束条件（`--thresh`）を満たすまで構造を動かします。RS-P-RFO は Bofill 式で Hessian を更新し、1 ステップを信頼半径 0.1 bohr 以内に収めます。デフォルトの `baker` は、力の最大値 3 × 10⁻⁴ 未満、力の RMS 2 × 10⁻⁴ 未満、ステップの最大値 3 × 10⁻⁴ 未満、ステップの RMS 2 × 10⁻⁴ 未満（原子単位）、エネルギー変化 10⁻⁶ hartree 未満の 5 つをすべて同時に求めます。どれも Gaussian のデフォルト（`gau`）より厳しい条件です。
+2. **最適化法の選択**（`--opt-mode`）: `hess`（デフォルト）は完全な Hessian を使う **RS-P-RFO**（restricted-step partitioned rational function optimization）を実行し、`rsirfo` と `trim` はそれぞれ RS-I-RFO（restricted-step image RFO）と TRIM（trust-region image minimization）を選びます。`dimer`（または `grad`）は **Hessian-guided Dimer** 法で、勾配を使って最低固有モードを追い、定期的に厳密な Hessian で方向を更新します。
+3. **反応モードに沿った探索**: 反応モードの方向にはエネルギーを上げ、それ以外の方向には下げながら、収束条件（`--thresh`）を満たすまで構造を動かします。RS-P-RFO は Bofill 式で Hessian を更新し、1 ステップを信頼半径 0.1 bohr 以内に収めます。デフォルトの `baker` は、力の最大値 3 × 10⁻⁴ 未満、力の RMS 2 × 10⁻⁴ 未満、ステップの最大値 3 × 10⁻⁴ 未満、ステップの RMS 2 × 10⁻⁴ 未満（原子単位）、エネルギー変化 10⁻⁶ hartree 未満の 5 つをすべて同時に求めます。どれも Gaussian のデフォルト（`gau`）より厳しい条件です。
 4. **最後の確認**: 収束すると、final geometry で Hessian を計算して n_imag を数え、各虚振動モードをアニメーションとして書き出します。ν < −5.00 cm⁻¹ のモードを虚振動として数え、−5.00 以上 0 cm⁻¹ 未満の値は数値誤差として扱います。この閾値は YAML の `freq.zero_cutoff_cm` で変えられます。固定原子の扱いは [`freq`](freq.md#固定境界での剛体モード) と同じです。
 5. **余分な虚振動の除去（`--flatten`）**: 虚振動が 2 つ以上残る場合は、余分なモードに沿って構造をずらして最適化し直し、1 つになるか回数の上限に達するまで繰り返します。Dimer 法では、各回でダイマー方向も更新し、短い Dimer + L-BFGS の区間を実行します。
 
@@ -193,11 +193,11 @@ flatten の回数は、Dimer 法でも RS-P-RFO・RS-I-RFO・TRIM でも、YAML 
 
 ### そのほかの注意
 
-* **上り方向のステップは常に許可**: 鞍点探索では反応モードに沿ってエネルギーを上る必要があるため、YAML で指定しても `tsopt` は `reject_uphill: false` を保ちます。`--reject-uphill/--no-reject-uphill` は、`opt` と `all` の端点の最適化で使うフラグです。
+* **上り方向のステップは常に許可**: 鞍点探索では反応モードに沿ってエネルギーを上げる必要があるため、YAML で指定しても `tsopt` は `reject_uphill: false` を保ちます。`--reject-uphill/--no-reject-uphill` は、`opt` と `all` の端点の最適化で使うフラグです。
 * **生成物側から scan した障壁**: この候補を作った scan が生成物から始まった場合、障壁の読み方は {ref}`scan: 障壁の向き <ja-scan-direction-barrier-sign>` を参照してください。
 * **追う固有ベクトル（root）は 1 つ**: 最適化は 1 つの固有ベクトルに沿って上ります（`0` が最小の固有値）。`rsirfo.roots: [0]` のように 1 要素のリストで指定します。Dimer 法では `hessian_dimer.root` を使います。`tsopt` に `--root` フラグはありません。
 * **そのほかの RS-P-RFO の設定**: `trust_norm: max_atom` はステップ全体ではなく原子ごとの変位を制限し（Cartesian 座標だけ）、`hessian_update: ts_bfgs` は Bofill の代わりに TS-BFGS で Hessian を更新します。どちらも信頼半径は変えません。
-* **追加の探索は指定したときだけ**: 収束後は、n_imag が 1 でなくても、自動では追加の探索をしません。`--flatten` を使うか、`rsirfo.saddle_recovery_max_cycles` を `0` より大きくしてください（デフォルト `0`）。後者では、厳密な Hessian に虚振動が無いとき、RS-P-RFO・RS-I-RFO・TRIM がエネルギーを上る向きにステップを進めます。
+* **追加の探索は指定したときだけ**: 収束後は、n_imag が 1 でなくても、自動では追加の探索をしません。`--flatten` を使うか、`rsirfo.saddle_recovery_max_cycles` を `0` より大きくしてください（デフォルト `0`）。後者では、厳密な Hessian に虚振動が無いとき、RS-P-RFO・RS-I-RFO・TRIM がエネルギーの上がる向きにステップを進めます。
 * **併用できない組み合わせ**: `--skip-final-freq` と `--dump-hess`、2 以上の `--uma-workers` と `--hessian-calc-mode Analytical`。
 * **`--skip-final-freq` と `--flatten`**: RS-P-RFO・RS-I-RFO・TRIM では、`--skip-final-freq` を付けると、最後の Hessian を使う `--flatten` も省かれます。
 * **`--read-hess` を RS-P-RFO・RS-I-RFO・TRIM で使う場合**: ファイルの Hessian が最初の厳密な Hessian の代わりになるので、`rsirfo.hessian_init` はデフォルトの `calc` のままにしてください。ほかの値ではエラーで止まります。

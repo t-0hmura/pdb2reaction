@@ -54,7 +54,7 @@ Each step also runs on its own as a subcommand ([`extract`](extract.md), [`tsopt
 
 ## 1. Prepare the complex structure
 
-Build a structure of the enzyme–substrate complex with structure prediction such as AlphaFold 3, Boltz-2, or OpenFold3, or with a docking tool. Run molecular dynamics (MD) on it and take snapshots of various conformations. Rather than drawing a conclusion from one structure, compute several snapshots.
+Build a structure of the enzyme–substrate complex with a structure prediction tool such as AlphaFold 3, Boltz-2, or OpenFold3, or with a docking tool. Run molecular dynamics (MD) on it and take snapshots of various conformations. Rather than drawing a conclusion from one structure, compute several snapshots.
 
 The structures you give `pdb2reaction` need two things:
 
@@ -88,7 +88,7 @@ An enzyme has thousands to tens of thousands of atoms, too many to compute as a 
 
 `pdb2reaction` builds this model automatically: it selects the residues with an atom within `-r` (default 2.6 Å) of the substrates given with `-c`. Without `-c`, nothing is cut out and the input structure is used as it is. See [Building the cluster model](model-setup.md) for details.
 
-**Model size**: a larger model gives more stable results but costs more. For COMT (catechol *O*-methyltransferase), when the QM region of QM/MM was enlarged outward from the substrate, the activation energy leveled off at about 500–600 atoms ([Kulik et al., *J. Phys. Chem. B* 2016, 120, 11381](https://doi.org/10.1021/acs.jpcb.6b07814)). In the `pdb2reaction` paper, cluster models of the same COMT with `-r 4.0` (670 atoms) or larger gave the same reaction mechanism as the whole system (3,420 atoms), with barriers within 4 kcal/mol of the whole system ([Ohmura et al., *ACS Omega* 2026](https://doi.org/10.1021/acsomega.6c08242)). `pdb2reaction` uses `-r 2.6` by default to keep the cost down. With the default finite-difference Hessian, a GPU with 16 GB of VRAM computes `-r 4.0` models comfortably, so `-r 4.0` is also a good choice. In the bundled BezA example, `-r 2.6` gives a 632-atom model and `-r 4.0` an 859-atom model; one frequency calculation, measured on a GPU with 24 GB of VRAM, peaked at about 5 GB and 7 GB of VRAM and took about 24 and 37 minutes.
+**Model size**: a larger model gives more stable results but costs more. For COMT (catechol *O*-methyltransferase), when the QM region of QM/MM was enlarged outward from the substrate, the activation energy leveled off at about 500–600 atoms ([Kulik et al., *J. Phys. Chem. B* 2016, 120, 11381](https://doi.org/10.1021/acs.jpcb.6b07814)). In the `pdb2reaction` paper, cluster models of the same COMT with `-r 4.0` (670 atoms) or larger gave the same reaction mechanism as the whole system (3,420 atoms), with barriers within 4 kcal/mol of the whole system ([Ohmura et al., *ACS Omega* 2026](https://doi.org/10.1021/acsomega.6c08242)). `pdb2reaction` uses `-r 2.6` by default to keep the cost down. With the default finite-difference Hessian, a GPU with 16 GB of VRAM handles `-r 4.0` models comfortably, so `-r 4.0` is also a good choice. In the bundled BezA example, `-r 2.6` gives a 632-atom model and `-r 4.0` an 859-atom model; one frequency calculation, measured on a GPU with 24 GB of VRAM, peaked at about 5 GB and 7 GB of VRAM and took about 24 and 37 minutes.
 
 ---
 
@@ -100,7 +100,7 @@ There are three ways to give the input:
 
 | Mode | Input | What happens |
 | --- | --- | --- |
-| **Endpoint mode** | Two or more PDBs (`-i R.pdb P.pdb`) | Extracts the same cluster model from each structure (with `-c`) and searches the MEP between them |
+| **Endpoint mode** | Two or more PDBs (`-i R.pdb P.pdb`) | Extracts the same cluster model from each structure (with `-c`) and searches for the MEP between them |
 | **Scan-list mode** | One PDB + `--scan-lists` (`-s`) | Changes the chosen bond distances step by step to build the pathway |
 | **TS-only mode** | One PDB + `--tsopt` | Skips the MEP search and goes straight to optimizing the TS candidate and running IRC |
 
@@ -120,7 +120,7 @@ A successful TS optimization gives one imaginary mode along the reaction coordin
 
 ## 5. Check that the TS connects R and P
 
-One imaginary mode does not guarantee that the TS lies between the intended R and P. The IRC (intrinsic reaction coordinate) goes downhill from the TS to both sides; check that it ends at the intended R and P. `pdb2reaction` also optimizes both IRC endpoints, so even if the IRC stops partway, the result is usable when the endpoint optimizations reach the intended R and P.
+One imaginary mode does not guarantee that the TS lies between the intended R and P. The IRC (intrinsic reaction coordinate) goes downhill from the TS in both directions; check that it ends at the intended R and P. `pdb2reaction` also optimizes both IRC endpoints, so even if the IRC stops partway, the result is usable when the endpoint optimizations reach the intended R and P.
 
 ---
 
@@ -138,13 +138,13 @@ When the run finishes, the output directory (`-o`, default `./result_all/`) cont
 | `mep_trj.pdb` / `mep_trj.cif` | Animated trajectory of the minimum energy path (MEP) |
 | `segments/seg_NN/` | Detailed results for each reaction segment (optimized R/TS/P structures, IRC trajectories, and more; with `--tsopt`) |
 
-At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. You still need to check that the imaginary mode moves the intended bonds (open the mode file that each quickstart lists) and that the IRC endpoints are the intended R and P (open the endpoint structures that each quickstart lists).
+At the end of the terminal output, the `Scientific status:` line under `====== Pipeline summary ======` (`scientific_status` in `summary.json`) is `success` when every requested stage converged and, with `--tsopt`, the TS has n_imag = 1. Otherwise it is `partial` or `failed`, with the reasons in `scientific_status_reasons`. You still need to check that the imaginary mode moves the intended bonds and that the IRC endpoints are the intended R and P; each quickstart lists the files to open.
 
 ---
 
 ## 7. Make an overall judgment
 
-One pathway is not enough for a conclusion. Judge whether the mechanism is plausible by looking together at how often reactive arrangements appear in the MD (near-attack conformations, NACs: the reacting atoms are close and oriented to react) and at the minimum and median barriers over several snapshots.
+One pathway is not enough for a conclusion. Judge whether the mechanism is plausible by looking at how often reactive arrangements appear in the MD (near-attack conformations, NACs: the reacting atoms are close and oriented to react) and at the minimum and median barriers over several snapshots.
 
 The results depend strongly on the starting structure and on how the model is built, so trial and error, recomputing with other structures and models, cannot be avoided. `pdb2reaction` automates steps 2–6 and computes them fast with MLIPs, so it suits this trial and error.
 
@@ -156,7 +156,7 @@ The results depend strongly on the starting structure and on how the model is bu
 
 MD of the whole system with an MLIP, or ML/MM MD, also shows the dynamics of the whole enzyme. These MD runs cost more than cluster-model or ML/MM calculations on the potential energy surface, so a good approach is to run them after `pdb2reaction` has confirmed the mechanism.
 
-MLIPs are a fairly new technology, so for a purely computational paper, DFT calculations will probably still be expected for a while. `pdb2reaction` also has a DFT backend, so everything up to QM calculations that check an MLIP TS with DFT stays within one tool (see [Refine an MLIP TS with DFT](dft-backend.md)). Give it a try.
+MLIPs are a fairly new technology, so for a purely computational paper, DFT calculations will probably still be expected for a while. `pdb2reaction` also has a DFT backend, so everything up to checking an MLIP TS with DFT stays within one tool (see [Refine an MLIP TS with DFT](dft-backend.md)). Give it a try.
 
 ---
 

@@ -11,7 +11,7 @@ This page lists the main files that the commands write, the default output direc
 | `result.json` | With `--out-json`: `opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`, `trj2fig`, `energy-diagram` | The JSON result of one command or report, also written when the run ends without converging. `extract`, `trj2fig`, and `energy-diagram` write it next to their first output file. |
 | `run.log` | CLI and Colab runs, once the output directory exists | The command line (quoted for the shell) and the stdout/stderr printed while the command runs, including output from external libraries and the lines that show how the run ended; the command's page lists them (for example [opt → Checking convergence](opt.md#checking-convergence)). It is written as the run proceeds, and a rerun into the same directory adds its log after the earlier one. Help, version, and dry-run calls do not create it, nor do the commands without an output directory (`extract`, `fix-altloc`, `add-elem-info`, `bond-summary`, `trj2fig`, `energy-diagram`). |
 | `summary.log` | `path-search`, `all` | Text summary. The header gives `Scientific status`; the numbered sections give the barrier and bond changes of each segment and the output tree (see [all → Reading the run status](all.md#reading-the-run-status)). |
-| `final_geometry.xyz` / `final_geometry.pdb` | `opt`, `tsopt` | Optimized geometry, the structure to pass to the next command; also written when the optimization does not converge. The `.xyz` is always written; the `.pdb` is for PDB/mmCIF input (`.gjf` for Gaussian input). |
+| `final_geometry.xyz` / `final_geometry.pdb` | `opt`, `tsopt` | Final geometry, the structure to pass to the next command; also written when the optimization does not converge. The `.xyz` is always written; the `.pdb` is for PDB/mmCIF input (`.gjf` for Gaussian input). |
 | `mep_trj.pdb` / `mep_trj.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames. The `.cif` is added for mmCIF or large-PDB input when file conversion is on. |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Reaction path frames (all images) and the highest-energy image, with `.pdb` / `.cif` / `.gjf` copies when the input format allows and file conversion is on. |
 | `mep_plot.png` / `energy_diagram_MEP.png` | `path-search` | Energy profile of the minimum energy path (MEP): `mep_plot.png` along the path, `energy_diagram_MEP.png` as a state-energy diagram. Of the two, `all` places only `energy_diagram_MEP.png` at its root. |
@@ -51,7 +51,7 @@ The tree below shows the main entries; [all → Output files](all.md#output-file
 ```text
 result_all/
 ├─ summary.log · summary.json                 # run summary
-├─ mep_trj.pdb · mep_trj.cif · mep_trj.xyz           # Core MEP coordinates
+├─ mep_trj.pdb · mep_trj.cif · mep_trj.xyz           # MEP coordinates
 ├─ mep_w_ref.{pdb,cif}                               # MEP merged into the full input (--write-ref-merge)
 ├─ energy_diagram_MEP.png · energy_diagram_*_all.png · irc_plot_all.png
 ├─ segments/

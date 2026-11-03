@@ -1,6 +1,6 @@
 # `fix-altloc` (resolve PDB alternate locations)
 
-`fix-altloc` **removes alternate locations (altLoc)** from PDB files. For each residue it keeps one altLoc label, the one with the highest mean occupancy, so each residue is one conformer that was actually deposited. Commands that read a PDB apply the same rule on their own when they read it. Use `fix-altloc` when you need the cleaned file itself.
+`fix-altloc` **removes alternate locations (altLoc)** from PDB files. For each residue it keeps one altLoc label, the one with the highest mean occupancy, so each residue is one conformer that was actually deposited. Other commands apply the same rule on their own when they read a PDB. Use `fix-altloc` when you need the cleaned file itself.
 
 ---
 
@@ -113,8 +113,8 @@ See the [generated CLI reference](reference/commands/fix_altloc.md) for every op
 * **Files without altLoc**: a file whose column 17 is blank everywhere is skipped and nothing is written. `--force` processes it anyway.
 * **`--inplace` and `-o`** cannot be used together. An existing `.bak` file is not replaced, so it keeps the file from before the first in-place run.
 * **Serial numbers** are not renumbered, so gaps can remain where atoms were removed. `CONECT` and other connectivity or annotation records are not updated.
-* **Kept records** keep their coordinates, occupancies, B-factors, charges, insertion codes, and order.
-* **MODEL/ENDMDL blocks** are processed one by one.
+* **Kept records** retain their coordinates, occupancies, B-factors, charges, insertion codes, and order.
+* **MODEL/ENDMDL blocks** are processed independently.
 * **The occupancy rule is a heuristic**: when the active-site conformer must be chosen by chemical contacts or by how the deposited ensemble is interpreted, choose it yourself in a structure editor and check it.
 * **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 

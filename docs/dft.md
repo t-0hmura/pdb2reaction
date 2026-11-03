@@ -46,7 +46,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --dft-engine cpu --out-dir ./result_dft_
 
 ### 4. Total charge from ligand charges
 
-Without `-q`, `-l` gives the formal charges of the ligands, and `dft` adds the charges of the amino-acid residues and ions in the PDB to get the total charge; the console prints the breakdown.
+Without `-q`, give the formal charges of the ligands with `-l`; `dft` adds the charges of the amino-acid residues and ions in the PDB to get the total charge and prints the breakdown.
 
 ```bash
 pdb2reaction dft -i input.pdb -l 'SAM:1,GPP:-3' -m 1 --out-dir ./result_dft_ligand
@@ -57,9 +57,9 @@ pdb2reaction dft -i input.pdb -l 'SAM:1,GPP:-3' -m 1 --out-dir ./result_dft_liga
 ## How it works
 
 1. **Reading the structure**:
-PDB, mmCIF, XYZ, and GJF inputs are read, and the coordinates passed to PySCF are saved as `input_geometry.xyz`. For an XYZ or GJF input, `--ref-pdb` gives the PDB/mmCIF topology that `-l` needs; `dft` writes no PDB, mmCIF, or GJF file.
+PDB, mmCIF, XYZ, and GJF inputs are read, and the coordinates passed to PySCF are saved as `input_geometry.xyz`. For an XYZ or GJF input, `--ref-pdb` gives the PDB/mmCIF topology that `-l` needs. `dft` writes no PDB, mmCIF, or GJF file.
 2. **SCF**:
-`--func-basis` sets the functional and basis, and `--dft-engine` selects GPU4PySCF (`gpu`, the default) or PySCF (`cpu`). A closed shell runs RKS and an open shell UKS. Low-memory mode, on by default, builds J and K directly without density fitting; on the GPU, a closed shell then uses GPU4PySCF's low-memory RKS. `--no-dft-low-memory` uses density fitting instead.
+`--func-basis` sets the functional and basis, and `--dft-engine` selects GPU4PySCF (`gpu`, the default) or PySCF (`cpu`). A closed shell uses RKS and an open shell UKS. Low-memory mode, on by default, builds J and K directly without density fitting; on the GPU, a closed shell then uses GPU4PySCF's low-memory RKS. `--no-dft-low-memory` uses density fitting instead.
 3. **Charges and the result file**:
 After the SCF, `dft` computes Mulliken, meta-Löwdin, and IAO charges and spin densities and writes them with the energy (Hartree and kcal/mol) to `result.yaml`. An analysis that fails gives `null` in its column and a warning.
 
@@ -107,7 +107,7 @@ result_dft/
 
 See the [generated CLI reference](reference/commands/dft.md) for every option.
 
-> **Note:** In YAML (`--config`), the [`dft`](yaml-reference.md#dft-section) section holds the same settings. `dft.pyscf` passes attributes to PySCF objects by name, for example `pyscf: {mf: {level_shift: 0.2}}` for a hard-to-converge SCF. The charge and multiplicity go in `calc.charge` and `calc.spin`, as in the other commands; `calc.spin` is the multiplicity 2S+1, not PySCF's 2S. `-q`, `-l`, and `-m` given on the command line come first, then YAML, then a `.gjf` header.
+> **Note:** In YAML (`--config`), the [`dft`](yaml-reference.md#dft-section) section holds the same settings. `dft.pyscf` passes attributes to PySCF objects by name, for example `pyscf: {mf: {level_shift: 0.2}}` for a hard-to-converge SCF. The charge and multiplicity go in `calc.charge` and `calc.spin`, as in the other commands; `calc.spin` is the multiplicity 2S+1, not PySCF's 2S. `-q`, `-l`, and `-m` on the command line take precedence over YAML, and YAML over a `.gjf` header.
 
 ---
 

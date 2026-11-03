@@ -8,7 +8,7 @@ description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — pre
 ## Purpose
 
 Submit `pdb2reaction` as a PBS / SLURM job with 1 node / 1 GPU.
-Placeholders filled from [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#probe-the-compute-environment).
+Fill the placeholders from [`pdb2reaction-install/backends.md`](../pdb2reaction-install/backends.md#probe-the-compute-environment).
 
 ## PBS preamble templates
 
@@ -127,7 +127,7 @@ dominate. Use the stages below to construct a measured budget:
 | `irc` | Pilot both directions | Each direction has its own cycle cap and may stop differently |
 | `freq` | Time one Hessian with the production mode | Dense matrix memory grows quadratically with active degrees of freedom |
 | `dft` (GPU) | Run one representative single point | Basis, functional, grid, elements, and VRAM dominate |
-| `dft` (CPU) | Benchmark one representative structure | Cost depends on basis, functional, grid, elements, and CPU/GPU hardware |
+| `dft` (CPU) | Benchmark one representative structure | Cost depends on basis, functional, grid, elements, and CPU hardware |
 
 GPU DFT single points grow steeply with size: for `wb97m-v/def2-svp` on a
 16 GB consumer GPU, a 63-atom cluster took about 8 min and an 87-atom cluster
@@ -140,7 +140,7 @@ systems can be slightly slower, so `--no-scf-stepwise-grid` turns it off.
 
 Sum the measured stage costs for the expected number of segments, then add
 recovery/retry headroom. Do not assume UMA walltime falls inversely with
-`workers`: geometry optimization has sequential work and worker overhead.
+`--uma-workers`: geometry optimization has sequential work and worker overhead.
 For many segments, fan out independent work (parallel `seg_NN/` jobs or the
 `dynamic-dispatch.md` recipe) within site policy.
 
@@ -230,8 +230,8 @@ the bounded dynamic-dispatch recipe below instead of an unbounded submit loop.
 
 When you have many short tasks and want to amortize the queue wait,
 use the flock + pbsdsh pattern documented in `dynamic-dispatch.md`. One
-qsub reserves N nodes, each node runs a worker that pulls tasks from a
-shared list with file-lock-protected counter increment.
+qsub reserves N nodes, and each node runs a worker that pulls tasks from a
+shared list through a file-lock-protected counter.
 
 ## UMA predictor workers
 

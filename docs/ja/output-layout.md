@@ -1,6 +1,6 @@
 # 出力ディレクトリのレイアウト
 
-各コマンドが出力ディレクトリに書く主なファイルの名前と、デフォルトの出力ディレクトリ、`all` の中での置き場所を引くページです。各コマンドが書くファイルの一覧は、そのコマンドのページの「主な出力ファイル」にあります。
+各コマンドが出力ディレクトリに書く主なファイルの名前と、デフォルトの出力ディレクトリ、`all` の中での置き場所をまとめたページです。各コマンドが書くファイルの一覧は、そのコマンドのページの「主な出力ファイル」にあります。
 
 ## ファイル名の規約
 
@@ -11,14 +11,14 @@
 | `result.json` | `--out-json` を指定した `opt`、`tsopt`、`freq`、`irc`、`sp`、`scan` / `scan2d` / `scan3d`、`path-opt`、`dft`、`extract`、`trj2fig`、`energy-diagram` | 個別計算・レポートの JSON 結果。収束せずに終わった場合も書き出します。`extract`、`trj2fig`、`energy-diagram` は、最初の出力ファイルと同じ場所に書きます。 |
 | `run.log` | 出力ディレクトリが作られた後の CLI / Colab 実行 | シェルでそのまま使える形の実行コマンドと、コマンド実行中の標準出力・標準エラー（外部ライブラリの出力を含む）。実行中に随時書き込まれ、同じディレクトリで再実行すると前の記録の後に追記されます。実行がどう終わったかを示す行も入り、その行は各コマンドのページにあります（例：[opt の収束の判定](opt.md#収束の判定)）。ヘルプ、バージョン、dry-run の呼び出しと、出力ディレクトリを持たないコマンド（`extract`、`fix-altloc`、`add-elem-info`、`bond-summary`、`trj2fig`、`energy-diagram`）では生成しません。 |
 | `summary.log` | `path-search`、`all` | テキストの要約。ヘッダーに `Scientific status` があり、番号付きの節にセグメントごとの障壁と結合の変化、出力のツリーが入ります（[all の実行結果の判定](all.md#実行結果の判定)）。 |
-| `final_geometry.xyz` / `final_geometry.pdb` | `opt`、`tsopt` | 最適化された構造で、次のコマンドに渡す構造です。最適化が収束しなかった場合も書きます。`.xyz` は常に書き、`.pdb` は PDB/mmCIF 入力のとき（Gaussian 入力では `.gjf`）に書きます。 |
+| `final_geometry.xyz` / `final_geometry.pdb` | `opt`、`tsopt` | 次のコマンドに渡す final geometry です。最適化が収束しなかった場合も書きます。`.xyz` は常に書き、`.pdb` は PDB/mmCIF 入力のとき（Gaussian 入力では `.gjf`）に書きます。 |
 | `mep_trj.pdb` / `mep_trj.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。mmCIF・大きな PDB の入力でファイル変換が有効なときは `.cif` も書き出します。 |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | 反応経路のフレーム（全イメージ）と最高エネルギーイメージ。入力の形式に応じ、ファイル変換が有効なときは `.pdb` / `.cif` / `.gjf` の写しも書き出します。 |
 | `mep_plot.png` / `energy_diagram_MEP.png` | `path-search` | 最小エネルギー経路（MEP）のエネルギー。`mep_plot.png` は経路に沿った図、`energy_diagram_MEP.png` は状態エネルギー図です。この 2 つのうち、`all` はルートに `energy_diagram_MEP.png` だけを置きます。 |
 | `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC（固有反応座標）の軌跡（経路全体と各方向）。参照トポロジーがあれば `.pdb` の写し、mmCIF・大きな PDB の入力では `.cif` の写しも書き出します。 |
 | `finished_first.xyz` / `finished_last.xyz` | `irc` | 2 つの分岐の端で、[`opt`](opt.md) で最適化する端点の候補です。 |
 | `frequencies_cm-1.txt` | `freq` | 振動モードの一覧。 |
-| `*.pdb` / `*.cif` / `*.gjf` | `--convert-files`（デフォルト。`--no-convert-files` で無効）を持つコマンドと `extract` | 入力の形式に応じた出力の写しで、元の出力の横に書き出します。PDB/mmCIF 入力では PDB、mmCIF・大きな PDB の入力ではさらに元の chain ID・残基番号・挿入コードを保つ `.cif`、Gaussian 入力では GJF です。`extract` には変換の切り替えがなく、mmCIF・大きな PDB の入力では常に `.cif` を書き出します。 |
+| `*.pdb` / `*.cif` / `*.gjf` | `--convert-files`（デフォルト。`--no-convert-files` で無効）を持つコマンドと `extract` | 入力の形式に応じた出力の写しで、元の出力と同じ場所に書き出します。PDB/mmCIF 入力では PDB、mmCIF・大きな PDB の入力ではさらに元の chain ID・残基番号・挿入コードを保つ `.cif`、Gaussian 入力では GJF です。`extract` には変換の切り替えがなく、mmCIF・大きな PDB の入力では常に `.cif` を書き出します。 |
 
 ## デフォルトの `--out-dir`
 

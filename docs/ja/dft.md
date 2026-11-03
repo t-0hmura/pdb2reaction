@@ -80,7 +80,7 @@ result_dft/
 * **`energy`**（`result.yaml`）: `hartree`・`kcal_per_mol`・`converged`・`used_gpu`・`used_lowmem`・`engine`。`engine` は `gpu4pyscf(rks_lowmem)`・`gpu4pyscf`・`pyscf(cpu)` のいずれかです。
 * **`charges [index, element, mulliken, lowdin, iao]`**: 1 原子 1 行の表で、`index` は 0 始まりです。端末にも同じ表が出ます。
 * **`spin_densities [index, element, mulliken, lowdin, iao]`**: 同じ形の表です。閉殻でも書き出し（値はすべて 0）、端末には開殻のときだけ表示します。
-* **`result.json`**: 電荷とスピン密度を `mulliken`・`lowdin`・`iao` の配列で持ち、電荷・多重度・汎関数・基底・SCF の設定も記録します。[JSON 出力の一覧](json-output.md#dft) を参照してください。
+* **`result.json`**: 原子電荷とスピン密度を `mulliken`・`lowdin`・`iao` の配列で持ち、総電荷・多重度・汎関数・基底・SCF の設定も記録します。[JSON 出力の一覧](json-output.md#dft) を参照してください。
 
 ---
 
@@ -116,7 +116,7 @@ result_dft/
 * **基底のコスト**: `def2-tzvpd` は `def2-svp` よりはるかに重い計算です。原子数や GPU メモリの決まった上限は無く、コストは基底関数の数・元素・汎関数・グリッド・GPU で決まります。まず代表構造を 1 つ計算し、メモリの最大使用量を確かめてください。足りないときは、基底を小さくするか、メモリの大きい GPU を使ってください。
 * **GPU**: GPU4PySCF が動かないとき、`dft` は `--dft-engine cpu` を勧めるエラーで止まり、自動では CPU に切り替えません。新しい世代の GPU では、メモリ不足や未対応カーネルのエラーがメモリ量ではなく GPU4PySCF と CuPy の版から来ることがあるので、まず版とトレースバックを確かめてください。
 * **CPU**: `--dft-engine cpu` で実用になる系の大きさは手法とマシンで変わるため、代表構造の一点計算で時間を測ってください。
-* **一時ファイル**: PySCF は一時ファイルを `$PYSCF_TMPDIR` に書きます。`/tmp` の小さい計算ノードでは、実行前に空き容量の十分なディスクへ向けてください。
+* **一時ファイル**: PySCF は一時ファイルを `$PYSCF_TMPDIR` に書きます。`/tmp` の小さい計算ノードでは、実行前に空き容量の十分なディスクを指定してください。
 * **x86 以外のマシン**: GPU4PySCF のビルド済みホイールが対応しないことがあります。その場合は GPU4PySCF を[ソース](https://github.com/pyscf/gpu4pyscf)からビルドしてください。
 * **補助基底**: `--no-dft-low-memory` では、選んだ基底に対する PySCF のデフォルトの補助基底を使います。自分で指定する必要はありません。
 * **IAO 解析**は難しい系で失敗することがあります。

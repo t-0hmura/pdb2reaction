@@ -194,7 +194,7 @@ ja/architecture
 |------|------|
 | **Build, trim, or extend the cluster model** | [Building the cluster model](model-setup.md) |
 | **Analyze a small-molecule reaction** | [Small-molecule reactions](small-molecules.md) |
-| **Study a mechanism, or the TS search fails** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
+| **Study a mechanism, or fix a failing TS search** | [Tips for studying reaction mechanisms](mechanism-tips.md) |
 | **Optimize the TS structure with DFT** | [Refine an MLIP TS with DFT](dft-backend.md) |
 | **A run failed** | [Troubleshooting](troubleshooting.md) |
 
@@ -218,7 +218,7 @@ ja/architecture
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
-| [`sp`](sp.md) | Single-point calculator energy + forces / Hessian (MLIP or `-b dft`) |
+| [`sp`](sp.md) | Single-point energy + forces / Hessian (MLIP or `-b dft`) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 | [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
@@ -251,7 +251,7 @@ ja/architecture
 ### Software
 
 - Python 3.12 (recommended) or 3.13.
-- CPU or CUDA-enabled PyTorch. Prebuilt wheels include their CUDA runtime; a local toolkit is normally needed only for source builds.
+- CPU or CUDA-enabled PyTorch. Prebuilt wheels include their CUDA runtime; a local CUDA toolkit is normally needed only for source builds.
 
 See [Installation](installation.md) for setup.
 

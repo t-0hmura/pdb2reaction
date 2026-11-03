@@ -39,7 +39,7 @@ mkdir -p ~/.claude/skills
 cp -r skills/pdb2reaction-* skills/colab-local-gpu-runtime ~/.claude/skills/
 ```
 
-The skills leave exact flags and defaults to the installed CLI (`pdb2reaction <subcommand> --help-advanced`) and the [command reference](reference/commands/index.md).
+For exact flags and defaults, check the installed CLI (`pdb2reaction <subcommand> --help-advanced`) and the [command reference](reference/commands/index.md).
 
 ## See also
 

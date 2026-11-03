@@ -9,7 +9,7 @@
 | Build the default model | Give the substrate, cofactors, and metals to `-c` | [Build the default model](#build-the-default-model) |
 | See the atom count and charge before a long run | Run `extract` on its own, or `all --dry-run` | [Check the model](#check-the-model) |
 | Make the calculation lighter | `--exclude-backbone`, `--no-include-h2o`, `-r 0 --selected-resn`, or trim the model in PyMOL | [Make the model smaller](#make-the-model-smaller) |
-| A residue of the reaction is missing, or only a fragment of it is in | Raise `-r`, or add the residue to `-c` | [Make the model larger](#make-the-model-larger) |
+| A residue involved in the reaction is missing, or only a fragment of it is included | Raise `-r`, or add the residue to `-c` | [Make the model larger](#make-the-model-larger) |
 | Use a model you built yourself | Omit `-c`, and freeze the boundary atoms with `--freeze-atoms` | [Use a model you built yourself](#use-a-model-you-built-yourself) |
 | Decide or check the boundary by hand | Follow the checklist | [Building or auditing a cluster model manually](#building-or-auditing-a-cluster-model-manually) |
 | Follow a reaction path on the whole enzyme | `path-opt` or `path-search` (up to the MEP) | [Compute the whole enzyme without extraction](#compute-the-whole-enzyme-without-extraction) |
@@ -27,7 +27,7 @@ This is the bundled example in [`examples/`](https://github.com/t-0hmura/pdb2rea
 
 The default model is built as follows:
 
-- **Radius**: a residue joins the model when any of its atoms lies within `-r` (default 2.6 Å) of an atom in `-c`; when that atom is a main-chain atom, the residues on both sides join too. Waters are included (`--include-h2o`).
+- **Radius**: a residue joins the model when any of its atoms lies within `-r` (default 2.6 Å) of an atom in `-c`; when one of its main-chain atoms is that close, the residues on both sides join too. Waters are included (`--include-h2o`).
 - **Cuts**: a run of consecutive amino acids keeps its main chain and is cut at CA at both ends; a residue whose neighbors are not in the model is cut at CB and keeps only its side chain. Amino acids in `-c` keep all their atoms, because the residues peptide-bonded to them lie within the radius.
 - **Cap hydrogens**: each bond cut at CA or CB gets a hydrogen 1.09 Å from the carbon (atom `HL` in residue `LKH`).
 - **Several structures**: give the reactant and product in one run, and the union of the residues selected in each structure is used for all of them, so every model has the same boundary. The inputs must list the same atoms in the same order. In the bundled example, `1.R.pdb` alone gives 632 atoms with charge +1, and `1.R.pdb` with `3.P.pdb` gives 669 atoms with charge 0. In `3.P.pdb` a main-chain hydrogen of Cys167 lies within the radius, so Cys167, Val166, and Asp168 (−1) join every model of the run.
@@ -40,13 +40,13 @@ Check the atom count and the charge before a long run. Run `extract` on its own 
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --dry-run
 ```
 
-With `-c`, `--dry-run` extracts the model in a temporary directory and checks the charge and whether the electron count is even or odd; it runs no calculation and writes no output. Read these lines on the console:
+With `-c`, `--dry-run` extracts the model in a temporary directory and checks the charge and whether the electron count is even or odd; it runs no calculation and leaves no files. Read these lines on the console:
 
 - **Atom count**: `Atoms after truncation: N` (one input) or `[extract:multi] Atoms after truncation (model k): N` (several inputs) counts the atoms before the cap hydrogens. Add the number of cap hydrogens from `[extract] Link-H to add: M` (one input) or `[extract:multi] link-H targets common across models: M` (several inputs). For `1.R.pdb` with `3.P.pdb` above, N + M = 669.
 - **Charge**: `Total active site model charge`. With `--dry-run`, `[all] --dry-run extract: model total_charge = …` also appears.
 - **Warnings**: `extract` warns when a bond is cut where no cap hydrogen goes (`all` stops instead), and when a residue looks like an amino acid but has an {ref}`unknown name <extract-modified-residue>`. Look at the boundary, the caps, and the charge.
 
-After a real `all` run with `-c`, the model is kept as `_work/models/model_<input name>.pdb` in the output directory. Open it in a viewer and check that the residues of the reaction are in the model.
+After a real `all` run with `-c`, the model is kept as `_work/models/model_<input name>.pdb` in the output directory. Open it in a viewer and check that the residues involved in the reaction are in the model.
 
 ## Make the model smaller
 
@@ -69,14 +69,14 @@ DFT optimization is practical up to roughly 300 atoms. For `1.R.pdb` alone with 
 
 ## Make the model larger
 
-Make the model larger when a residue of the reaction is missing, or when only a fragment of it is in the model.
+Make the model larger when a residue involved in the reaction is missing, or when only a fragment of it is in the model.
 
 - **Raise `-r`** (default 2.6 Å), for example to 3.5 Å or 4.0 Å.
 - **`--radius-het2het`** (default 0, off) adds a second cutoff measured only between atoms other than C and H, on both the center side and the neighbor side. It picks up close N and O partners without enlarging the whole radius.
 - **Add the residue to `-c`** to keep it whole. Amino acids in `-c` start their own distance search; with `-r` above 0 their peptide-bonded neighbors join, so without `--exclude-backbone` they keep all their atoms, main chain included. A residue added with `--selected-resn` is not a center, so without a neighbor in the model it keeps only its side chain.
 - **Residues of a partner chain** that lie outside the radius: add them to `-c` with their chain, such as `-c 'A:SAM,A:GPP,A:MG,B:MET:38'`.
 
-A larger model costs more, and accuracy does not always improve with size. Check for your system that the barrier does not change when the model grows. To include the whole protein as the environment, use the ML/MM toolkit [mlmm-toolkit](https://github.com/t-0hmura/mlmm_toolkit).
+A larger model costs more, and accuracy does not always improve with size. For your system, check that the barrier does not change when the model grows. To include the whole protein as the environment, use the ML/MM toolkit [mlmm-toolkit](https://github.com/t-0hmura/mlmm_toolkit).
 
 ## Use a model you built yourself
 
@@ -113,7 +113,7 @@ Freezing keeps an atom in place by setting its force to zero. A restraint pulls 
 ### Three ways to freeze atoms
 
 - **`--freeze-links/--no-freeze-links`** (default on) freezes the parent atoms of the cap hydrogens that `extract` added. It works on PDB and mmCIF input. XYZ and GJF input has no `LKH` residue, so pass a PDB with the same atoms with `--ref-pdb` to use it there; the coordinates still come from `-i`. `path-search` does not use `--ref-pdb` for this, so give it `--freeze-atoms` for XYZ and GJF input. `sp` does not freeze these atoms automatically.
-- **`--freeze-atoms 'i,j,k'`** takes 1-based atom numbers and works with any input format. In `all` with `-c`, number the atoms of the original input; they are mapped onto the extracted model. Other commands use the numbering of the structure you pass.
+- **`--freeze-atoms 'i,j,k'`** takes 1-based atom numbers and works with any input format. In `all` with `-c`, use the atom numbers of the original input; they are mapped onto the extracted model. Other commands use the numbering of the structure you pass.
 - **YAML `geom.freeze_atoms`** (passed with `--config`) suits a long list, or a list you keep with the rest of the settings.
 
 ```bash

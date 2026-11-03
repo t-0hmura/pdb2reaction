@@ -35,7 +35,7 @@ Find your symptom in the quick table, then read the fix in the section it points
 | `e3nn` / `fairchem-core` import conflict (MACE in the UMA env) | Use a dedicated environment for MACE | {ref}`Installation / environment <installation-environment-problems>` |
 | `ORB backend requires orb-models and torch` (or the same for AIMNet2 / MACE) | Install the backend extra: `pip install "pdb2reaction[orb]"` in a separate env; MACE also goes in a separate env | {ref}`Installation / environment <installation-environment-problems>` |
 | CUDA / GPU runtime mismatch | Check the GPU, the PyTorch build, and the driver together | {ref}`Installation / environment <installation-environment-problems>` |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).` | Install a compiler: UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | {ref}`System prerequisites <system-prerequisites>` |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).` | Install a compiler: UMA on a GPU compiles code at run time for speed, as do UMA and ORB with `--compile` | {ref}`System prerequisites <system-prerequisites>` |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`) | Run `plotly_get_chrome -y`, then install the libraries Chrome needs | {ref}`System prerequisites <system-prerequisites>` |
 
 ## Preflight checklist
@@ -95,7 +95,7 @@ Before a long run, check that:
 (charge-spin-problems)=
 ## Charge / spin
 
-First check that the total charge and the multiplicity are correct for the target state, and that each residue key in `-l/--ligand-charge` exists in the structure. For important runs, give `-q/--charge` or `-l/--ligand-charge` and `-m` explicitly; the rules are in {ref}`Charge specification <charge-specification>`.
+First check that the total charge and the multiplicity are correct for the target state, and that each residue key in `-l/--ligand-charge` exists in the structure. For production runs, give `-q/--charge` or `-l/--ligand-charge` and `-m` explicitly; the rules are in {ref}`Charge specification <charge-specification>`.
 
 ### `-q/--charge is required` / `Total charge could not be resolved`
 
@@ -123,7 +123,7 @@ First confirm that the optional packages are installed in the active environment
 | ORB import still fails after installing the extra | A package in the environment conflicts with `orb-models` | Run `python -m pip check`. Install PyG / `torch_scatter` only when the error names it; current `orb-models` does not require it |
 | `torch.cuda.is_available()` returns `False`, or a CUDA runtime error at import | The PyTorch build does not match the GPU or driver of the node | Check the assigned GPU, the installed wheel, and the driver with `nvidia-smi`, `python -m torch.utils.collect_env`, and `python -m pip check`; the boolean alone does not reveal the cause. The `CUDA Version` that `nvidia-smi` shows is the newest CUDA the driver supports; install a wheel for that CUDA or an older one (`cu126`, `cu130`, `cu132`). A local CUDA toolkit is not needed |
 | `--mep-mode dmf` fails with `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2`, or `No module named 'dmf'` | `cyipopt` is missing, or `pydmf` lacks its GPU part | Create the environment with cyipopt and PyTorch from conda-forge, as in steps 2–3 of {ref}`Step-by-step installation <step-by-step-installation>`. `pydmf` is installed with `pdb2reaction`; if the import still fails with the default GPU DMF backend, run `pip install 'pydmf[torch]'`, as the error message suggests |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).` (a PyTorch error `Failed to find C compiler` or `No working C++ compiler found`) | No compiler on `PATH`: UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Install `gcc` (`g++` for `--compile` on a CPU) as in {ref}`System prerequisites <system-prerequisites>`; on a cluster, `module load gcc` in the job script |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).` (a PyTorch error `Failed to find C compiler` or `No working C++ compiler found`) | No compiler on `PATH`: UMA on a GPU compiles code at run time for speed, as do UMA and ORB with `--compile` | Install `gcc` (`g++` for `--compile` on a CPU) as in {ref}`System prerequisites <system-prerequisites>`; on a cluster, `module load gcc` in the job script |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`) | Headless Chrome is not installed, or an operating-system library it needs is missing | Run `plotly_get_chrome -y` once, then install the libraries in {ref}`System prerequisites <system-prerequisites>` |
 
 ### DMF is unusually slow inside IPOPT
@@ -161,7 +161,7 @@ First check the TS candidate: a successful TS optimization gives one imaginary m
   1. Switch the optimizer between RS-P-RFO (the default) and the Dimer method: `tsopt --opt-mode hess` / `dimer`, or `all --opt-mode-post hess` / `grad` (Dimer).
   2. Reduce the step size in YAML: `rsirfo.trust_radius` / `trust_min` / `trust_max` for RS-P-RFO, RS-I-RFO, and TRIM, or `hessian_dimer.lbfgs.max_step` for Dimer; see [YAML Reference](yaml-reference.md#ts-optimization-sections).
   3. Start from another candidate, such as a better HEI (highest-energy image) of the path.
-- **Fix when n_imag ≥ 2 remains**: re-optimize with `--flatten`, or tighten the convergence preset from the default `baker` to `gau_tight` or `gau_vtight` (`tsopt --thresh` or `all --thresh-post`). {ref}`When the TS search fails <ts-search-fails>` lists other moves: `--refine-path`, splitting the reaction into stages, a new starting structure.
+- **Fix when n_imag ≥ 2 remains**: re-optimize with `--flatten`, or tighten the convergence preset from the default `baker` to `gau_tight` or `gau_vtight` (`tsopt --thresh` or `all --thresh-post`). {ref}`When the TS search fails <ts-search-fails>` lists other fixes: `--refine-path`, splitting the reaction into stages, a new starting structure.
 
 (troubleshooting-irc)=
 ### IRC does not terminate properly

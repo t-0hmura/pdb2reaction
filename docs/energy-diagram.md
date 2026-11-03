@@ -1,6 +1,6 @@
 # `energy-diagram` (state energy diagram)
 
-`energy-diagram` **draws a state energy diagram** from numbers you give it. It reads no structure files and runs no calculation. It suits energies you already have, for example the {ref}`energy_diagrams <summary-json-path-search-all>` of the `summary.json` written by `all` or `path-search`, or a table in a paper. It saves the diagram as an image file.
+`energy-diagram` **draws a state energy diagram** from numbers you give it. It reads no structure files and runs no calculation. Use it for energies you already have, for example the {ref}`energy_diagrams <summary-json-path-search-all>` of the `summary.json` written by `all` or `path-search`, or a table in a paper. It saves the diagram as an image file.
 
 ---
 
@@ -84,12 +84,12 @@ See the [generated CLI reference](reference/commands/energy_diagram.md) for ever
 
 ## Notes
 
-* **At least two values**: fewer stop the run with `Provide at least two numeric values with -i/--input.`
+* **At least two values**: fewer values stop the run with `Provide at least two numeric values with -i/--input.`
 * **Several values after one `-i`**: `-i 0 12.5 4.3` is rejected. Repeat `-i` or quote the list.
 * **Label count**: the number of `--label-x` labels must equal the number of values.
 * **Order**: the input order is the order on the x-axis.
 * **Units**: the values are drawn unchanged, so state their unit in `--label-y`.
-* **Image files need Chrome**: PNG, JPEG, SVG and PDF are all drawn by headless Chrome, so without Chrome or its operating-system libraries the run stops with `Missing system prerequisite: Chrome for PNG export.`; install them as in {ref}`System prerequisites <system-prerequisites>`.
+* **Image files need Chrome**: PNG, JPEG, SVG and PDF are all drawn by headless Chrome, so without Chrome or its operating-system libraries the run stops with `Missing system prerequisite: Chrome for PNG export.` Install them as in {ref}`System prerequisites <system-prerequisites>`.
 * **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 
 ---

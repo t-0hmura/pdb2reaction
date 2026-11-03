@@ -122,7 +122,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L4a `backends/`**. MLIP backend dispatcher plus one adapter per supported MLIP. The dispatcher also exposes the custom ASE-calculator boundary.
 
-**L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, PDB/mmCIF conversion and template identifier restoration, and in-memory Hessian cache. Output format is owned here and consumed by stage runners; current non-foundation imports are listed in §2.1.
+**L4b `io/`**. I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, PDB/mmCIF conversion and template identifier restoration, and in-memory Hessian cache. Output format is owned here and consumed by stage runners; current non-foundation imports are listed in §2.1.
 
 **L5 `core/`** is the lowest layer. `defaults.py` is the **primary source** for shared numerical and CLI defaults; grep it first, then inspect justified command-local defaults (for example, path-engine choices). `utils.py` contains shared configuration, structure, coordinate, and plotting helpers.
 
@@ -158,7 +158,7 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 | 4 | 20 | [`pdb2reaction/workflows/all.py`](https://github.com/t-0hmura/pdb2reaction/blob/main/pdb2reaction/workflows/all.py) (skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 recipes (add a subcommand, an MLIP backend, an output format, a workflow stage, a test) + the "do not touch" hidden constraints |
 
-After step 5, the file index in §4 lists the main files. The package is **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
+After step 5, the file index in §4 lists the main files. Each layer directory is **flat** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
 
 ---
 
@@ -283,7 +283,7 @@ The IRC / TSopt / Freq stages each explicitly `del` their own GPU-resident objec
 
 ### 5.3 Bundled forks: do NOT install upstream alongside
 
-The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Reinstalling `pip install pysisyphus` or `pip install thermoanalysis` next to this package silently breaks:
+The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Running `pip install pysisyphus` or `pip install thermoanalysis` next to this package silently breaks:
 
 - `pysisyphus/irc/IRC.py` — initial-displacement memory hygiene + opt-in `require_pos_def_hessian` kwarg
 - `pysisyphus/optimizers/hessian_updates.py` — GPU-resident in-place rank-two Bofill update; opt-in `PYSIS_BOFILL_CPU_OFFLOAD=1` fallback

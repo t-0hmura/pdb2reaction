@@ -75,7 +75,7 @@ cat result_opt/result.json | python -m json.tool
 
 最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。オプティマイザの結果には該当する最終の力/ステップやサイクルの欄が入り、DFT と Dimer は持たない欄を出しません。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
 
-オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。停滞は未収束の一種で、`converged` にはなりません。止まった理由は `stop_reason` に記録されます。
+オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定したサイクル数にわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。停滞は未収束の一種で、`converged` にはなりません。止まった理由は `stop_reason` に記録されます。
 
 ## サブコマンド別スキーマ
 
@@ -144,7 +144,7 @@ cat result_opt/result.json | python -m json.tool
 | `safeguards` | object | 厳密な鞍点の確認、最後に追ったモードの番号と重なり、止まった理由と、指定したときだけ働くモードの消失・回復の処理の記録。これらの回復の処理はデフォルトでは無効 |
 | `rigid_projection` | object | 剛体モードと厳密な Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
-`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ TS の欄を持ちますが、サイクルごとの力/ステップの詳細と `safeguards` はありません。
+`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ TS の欄を持ちますが、最終の力/ステップの欄と `safeguards` はありません。
 
 ### `freq`
 
@@ -286,7 +286,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `optimization_status` | string | `"converged"` / `"not_converged"` / `"completed"` |
-| `converged` | bool \| null | 収束判定: エンジン自身の収束シグナルによる `true` / `false`。読み取れない場合は `null`（`optimization_status` は `"completed"` となり、収束を主張しない） |
+| `converged` | bool \| null | 収束判定: エンジン自身の収束シグナルによる `true` / `false`。読み取れない場合は `null`（`optimization_status` は `"completed"` となり、収束を意味しない） |
 | `mep_mode` | string | `"dmf"` / `"gsm"` |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
@@ -398,7 +398,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `treatment` | string | 固定の剛体モード処理: `"constrained"` |
+| `treatment` | string | 剛体モードの処理。常に `"constrained"` |
 | `algorithm` | string | 射影の方法の名前 |
 | `effective_rank` | int | 動ける原子の Hessian から除いた剛体方向の数 |
 | `full_rigid_rank` | int | 固定原子を考える前の、系全体の剛体運動のランク |

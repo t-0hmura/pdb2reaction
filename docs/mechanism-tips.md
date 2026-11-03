@@ -13,7 +13,7 @@ The TS and the path that pdb2reaction finds are candidates for the mechanism you
 | n_imag ≥ 2, and two modes both move the reacting bonds | Try the reaction as separate stages | {ref}`When the TS search fails <ts-search-fails>`, {ref}`Decide how to split the reaction <mechanism-split>` |
 | n_imag = 0, or the candidate slid toward R or P | Add `--refine-path`, or start from another structure | {ref}`When the TS search fails <ts-search-fails>` |
 | Compare candidate mechanisms, or the IRC endpoints are not the intended R and P | Swap the stage order, compare stepwise and concerted runs, revisit the model | {ref}`Compare candidate mechanisms <mechanism-compare>` |
-| Read the barrier | Count it from the minimum just before that stage | {ref}`Read the barrier <mechanism-barrier>` |
+| Read the barrier | Measure it from the minimum just before that stage | {ref}`Read the barrier <mechanism-barrier>` |
 | The optimization stops at max cycles | Switch the optimizer (`tsopt --opt-mode` / `all --opt-mode-post`), reduce the step size, or start from another structure | {ref}`Troubleshooting: TS optimization <troubleshooting-ts>` |
 
 (mechanism-hypothesis)=
@@ -54,7 +54,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 The bundled `1.R.pdb` has an empty chain column, so its selectors use the residue name, the residue number, and the atom name (`"SAM,320,CS1"`); with chain IDs, write `"A:SAM:320:CS1"`. All accepted forms are in {ref}`Scan-list spec <scan-list-spec>`.
 
 - **Write `-s` once**: list every literal after a single `-s`. This form works in both `all` and `scan`; `all` rejects a repeated `-s`.
-- **Put every moving coordinate in its stage**: include the bond that breaks and each H that moves, not only the bond that forms. Do not drive two coordinates and expect the rest to follow.
+- **Put every moving coordinate in its stage**: include the bond that breaks and each H that moves, not only the bond that forms. Do not drive only some coordinates and expect the rest to follow.
 - **Without a scan**: when you can prepare R and P (and intermediates, if any), list them in `-i` for an MEP search. Each neighboring pair gives at most one segment (none when the highest image of its MEP is an end image; reason `endpoint_hei`). With `--refine-path`, the path is split into segments where bonds change.
 
 (mechanism-check-ts)=
@@ -94,7 +94,7 @@ The other remedies (precision, coordinate type) are in [`tsopt` → Wrong imagin
 ## Compare candidate mechanisms
 
 - **Stage order**: the stages set the order of the structures passed to the MEP search (R → end of stage 1 → end of stage 2 …). Another order gives another path, so run the proposed order and its reverse, or every plausible order for three or more stages, and compare the energy diagrams.
-- **Stepwise or concerted**: run it stepwise and check whether the intermediate bond state survives an unbiased optimization once the restraints are released (`--scan-endopt`). If it relaxes back, the concerted path fits better. If a concerted run splits into two segments with `--refine-path` and passes the same intermediate, the stepwise path fits better.
+- **Stepwise or concerted**: run it stepwise and check whether the intermediate bond state survives an unbiased optimization once the restraints are released (`--scan-endopt`). If it relaxes back, the concerted path fits better. If a concerted run splits into two segments with `--refine-path` and passes through the same intermediate, the stepwise path fits better.
 - **Model**: when the IRC endpoints are not the intended ones, or a residue that takes part (H acceptor, water, partner chain) is not wholly in the model, [enlarge the model](model-setup.md).
 - **DFT**: to check a candidate TS with DFT, see [Refine an MLIP TS with DFT](dft-backend.md).
 
@@ -102,15 +102,15 @@ The other remedies (precision, coordinate type) are in [`tsopt` → Wrong imagin
 ## Read the barrier
 
 - The top of a scan is a TS candidate. Read the barrier from the energy after the TS optimization.
-- Count the barrier from the minimum just before that stage: `all` reports each segment's barrier as E(TS) − E(R) of that segment. In TS-only mode, R is the higher-energy end of the IRC. When you compare candidate mechanisms, use the same reference R for all of them.
+- Measure the barrier from the minimum just before that stage: `all` reports each segment's barrier as E(TS) − E(R) of that segment. In TS-only mode, R is the higher-energy end of the IRC. When you compare candidate mechanisms, use the same reference R for all of them.
 - After `--tsopt`, each segment's barrier from the optimized TS is in section [3] (`Per-segment post-processing`) of `summary.log` and in `post_segments[].mlip.barrier_kcal` of `summary.json`. In an MEP search, section [2] (`Segment-level MEP summary`) gives the MEP barrier before the TS optimization. Section [4] (`Energy diagrams`) tabulates the energy diagrams. See [all → Reading the run status](all.md#reading-the-run-status).
 
 ## Notes
 
 - The diagnostic IRC is a clue to where a mode leads, not a TS check.
 - `--flatten` removes extra imaginary modes; it cannot create a reaction mode that is missing.
-- On a coarse path, `--refine-path` can split the reaction into unneeded stages, each with its own MEP, TS optimization, IRC, and frequency calculation.
-- Changing the cutoff that counts n_imag does not bring a structure closer to a TS; how n_imag is counted is in [tsopt](tsopt.md).
+- On a coarse path, `--refine-path` can split the reaction into unneeded segments, each with its own MEP, TS optimization, IRC, and frequency calculation.
+- Changing the cutoff that counts n_imag does not bring a structure closer to a TS; see [tsopt](tsopt.md) for how n_imag is counted.
 
 ## See also
 

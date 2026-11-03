@@ -48,7 +48,7 @@ The `[tsopt]` verdict line tells how the run ended:
 A mode counts as imaginary below −5 cm⁻¹, the tsopt cutoff (YAML
 `freq.zero_cutoff_cm`). The warning `[tsopt] WARNING: the leading imaginary
 mode is … cm^-1, below 50 cm^-1` changes neither the verdict nor n_imag; judge
-such a TS by its mode and IRC ends like any other. With `--out-json`, a
+such a TS like any other, by its mode and IRC ends. With `--out-json`, a
 first-order TS needs all of:
 `optimization_status` is `converged`, `hessian_status` is `completed`,
 `saddle_validation` is `first_order` (`n_imaginary_modes` is 1), and the
@@ -79,7 +79,7 @@ Hessian was computed again, it is the lowest imaginary mode and the source is
 `--ref-mode`. Neither value shows that the mode is the reaction: check the
 `vib/imag_*_trj.xyz` of that frequency as above.
 
-With `higher_order`, `optimization_status` still reports only the optimizer.
+With `higher_order`, `optimization_status` still reports only the optimizer's convergence.
 Watch every `vib/imag_*_trj.xyz` and do not accept the structure as a
 first-order saddle. `all` may continue a warning-labeled diagnostic IRC from
 it; that is not a first-order TS. Even a first-order TS candidate does not by

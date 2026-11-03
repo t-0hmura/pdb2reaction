@@ -11,14 +11,14 @@
 | 元素欄が空で `extract` が止まる（`Element symbols are missing in '...'`）。`all` は空の元素欄を自動で埋め、割り当てられない原子が残ると止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
 | `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | 同じ前処理ツール・同じ設定で全 PDB を作り直してください。原子の順序を決めた後は並べ替えないでください | {ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
 | ユーティリティのコマンド（`add-elem-info`、`fix-altloc`、`bond-summary`、`energy-diagram`、`trj2fig`）がエラーで止まる、または警告を出す | そのコマンドのページでメッセージを探してください。エラーは「使用上の注意点」に、`add-elem-info` の `[WARN] Could not confidently assign` は「主な出力ファイル」にあります | [add-elem-info](add-elem-info.md#主な出力ファイル)、[fix-altloc](fix-altloc.md#使用上の注意点)、[bond-summary](bond-summary.md#使用上の注意点)、[energy-diagram](energy-diagram.md#使用上の注意点)、[trj2fig](trj2fig.md#使用上の注意点) |
-| `bond-summary` がある組で `ERROR: Atom types and ordering must be identical.` を出す | 同じ原子が同じ順に並ぶ構造どうしを比べてください | [bond-summary](bond-summary.md#使用上の注意点)、{ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
+| `bond-summary` が特定の組で `ERROR: Atom types and ordering must be identical.` を出す | 同じ原子が同じ順に並ぶ構造どうしを比べてください | [bond-summary](bond-summary.md#使用上の注意点)、{ref}`入力 / 抽出の問題 <ja-input-extraction-problems>` |
 | `fix-altloc` が `Output exists: <path> (use --overwrite to overwrite)` で止まる | `--overwrite` を付けるか、`-o` で別の出力先を指定してください | [fix-altloc](fix-altloc.md#主な-cli-オプション) |
 | **電荷 / スピン** | | |
 | `-q/--charge is required` / `Total charge could not be resolved` | `-q/--charge` または `-l/--ligand-charge` を明示してください | {ref}`電荷 / スピンの問題 <ja-charge-spin-problems>` |
 | `Cluster electron count inconsistent`（`all --dry-run` では `--dry-run parity check failed`） | 電荷と多重度が電子数と合いません。`-q`・`-l` を直すか、`-m` を設定してください（電子数が奇数なら `-m 2` など） | {ref}`電荷 / スピンの問題 <ja-charge-spin-problems>` |
 | 計算は通るが状態やエネルギーが不自然 | 渡した電荷と多重度を見直してください | {ref}`電荷 / スピンの問題 <ja-charge-spin-problems>` |
 | **計算 / 収束** | | |
-| `all` が `success` 以外の `Scientific status:` で終わり、`RESULT WARNING:` の行を出す | 各行に、失敗したセグメントと段（TS 最適化・MEP・IRC・端点の最適化）が出ます。その段を下の行で探してください。`summary.json` の `scientific_status_reasons` にも同じ理由が入ります（例：`all:segment_1:tsopt:ts_optimization_not_converged`） | [実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了) |
+| `all` が `success` 以外の `Scientific status:` で終わり、`RESULT WARNING:` の行を出す | 各行に、失敗したセグメントと段（TS 最適化・MEP・IRC・端点の最適化）が出ます。この表でその段の行を探してください。`summary.json` の `scientific_status_reasons` にも同じ理由が入ります（例：`all:segment_1:tsopt:ts_optimization_not_converged`） | [実行の完了と指定した段の完了](json-output.md#実行の完了と指定した段の完了) |
 | UMA で `--uma-workers` を 2 以上にし、`--hessian-calc-mode Analytical` と併用すると `BackendError` | 解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください | {ref}`パフォーマンス <ja-troubleshooting-performance>`、{ref}`workers と解析 Hessian <ja-workers-analytical-error>` |
 | 実行時に CUDA のメモリ不足（`torch.cuda.OutOfMemoryError`） | デフォルトの `FiniteDifference` Hessian のままにする、`--max-nodes` を減らすか小さい MLIP モデル（`--backend-model`）を使う、VRAM の大きい GPU に移る、の順に試してください。`--radius` を小さくして切り出し直すのは最後の手段です | {ref}`GPU メモリ <ja-troubleshooting-gpu-memory>` |
 | TS 最適化は収束したが n_imag が 1 でない | n_imag ≥ 2（`TS imaginary-mode validation found n_imag=…`）：`--flatten` を付けてください（`tsopt`・`all` で使えます）。n_imag = 0（`tsopt` は `[tsopt] No imaginary mode detected.` を、`all` は `RESULT WARNING:` の `no imaginary mode was detected.` を出します）：別の候補から始めるか、`all` で `--refine-path` を使ってください | {ref}`TS 最適化 <ja-troubleshooting-ts>`、{ref}`TS が得られないとき <ja-ts-search-fails>` |
@@ -95,7 +95,7 @@
 (ja-charge-spin-problems)=
 ## 電荷 / スピンの問題
 
-まず、総電荷と多重度が対象の状態に合っているか、`-l/--ligand-charge` の各残基名が構造にあるかを確かめてください。重要な実行では `-q/--charge` か `-l/--ligand-charge` と `-m` を明示します。決まりは {ref}`電荷の指定 <ja-charge-specification>` にあります。
+まず、総電荷と多重度が対象の状態に合っているか、`-l/--ligand-charge` の各残基名が構造にあるかを確かめてください。本番の計算では `-q/--charge` か `-l/--ligand-charge` と `-m` を明示します。決まりは {ref}`電荷の指定 <ja-charge-specification>` にあります。
 
 ### `-q/--charge is required` / `Total charge could not be resolved`
 
@@ -155,7 +155,7 @@ IPOPT/MUMPS が並列版 BLIS を使う環境では、入れ子の並列化で�
   1. オプティマイザを RS-P-RFO（デフォルト）と Dimer 法の間で切り替える：単独では `tsopt --opt-mode hess` / `dimer`、`all` では `--opt-mode-post hess` / `grad`（Dimer）。
   2. YAML でステップサイズを小さくする：RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.trust_radius` / `trust_min` / `trust_max`、Dimer では `hessian_dimer.lbfgs.max_step`。[YAML 設定の一覧](yaml-reference.md#ts-最適化セクション) を参照してください。
   3. 経路のよりよい HEI（最高エネルギーのイメージ）など、別の候補から始める。
-- **n_imag ≥ 2 が残るときの対処**：`--flatten` を付けて最適化し直すか、単独では `tsopt --thresh`、`all` では `--thresh-post` で、収束の基準をデフォルトの `baker` から `gau_tight` か `gau_vtight` に締めてください。`--refine-path`、反応を段に分ける、初期構造を作り直すなどのほかの対処は、{ref}`TS が得られないとき <ja-ts-search-fails>` にあります。
+- **n_imag ≥ 2 が残るときの対処**：`--flatten` を付けて最適化し直すか、単独では `tsopt --thresh`、`all` では `--thresh-post` で、収束の基準をデフォルトの `baker` から `gau_tight` か `gau_vtight` に厳しくしてください。`--refine-path`、反応を段に分ける、初期構造を作り直すなどのほかの対処は、{ref}`TS が得られないとき <ja-ts-search-fails>` にあります。
 
 (ja-troubleshooting-irc)=
 ### IRC が正常に終了しない
@@ -193,7 +193,7 @@ IRC が収束せずに止まっても、端点の最適化で狙った R と P �
 
 - **workers > 1**：ハードウェアと計算の内容によっては UMA のスループットが上がりますが、並列の推論では解析 Hessian を計算できません。`Analytical` を明示すると、`RuntimeError` のサブクラスの `BackendError` が `Analytical Hessian cannot be combined with UMA workers>1` を出して止まります。解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください。複数のノードでワーカーを動かすときは、[HPC 実行例](hpc-example.md) のジョブスクリプトを使ってください。
 - **大規模系**：化学的に妥当な小さい活性部位モデルを作り、半径と境界の位置で結果がどう変わるかを確かめてください。複数 GPU への対応はバックエンドとワークフローごとに異なり、GPU を増やしてもワーカーあたりのメモリが減るとは限りません。
-- **HPC で DFT を実行するとき**：PySCF/GPU4PySCF が選んだ計算で一時ディスクを使う場合は、容量と速度を確かめたファイルシステムを `PYSCF_TMPDIR` に指定してください。ノードの `/tmp`、`$PBS_O_WORKDIR`、ほかの共有ディレクトリのどれが向くかは、計算機ごとに異なります。
+- **HPC で DFT を実行するとき**：選んだ計算で PySCF/GPU4PySCF が一時ディスクを使う場合は、容量と速度を確かめたファイルシステムを `PYSCF_TMPDIR` に指定してください。ノードの `/tmp`、`$PBS_O_WORKDIR`、ほかの共有ディレクトリのどれが向くかは、計算機ごとに異なります。
 
 (ja-troubleshooting-gpu-memory)=
 ## GPU メモリ（VRAM）の目安

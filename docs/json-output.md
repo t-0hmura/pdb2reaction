@@ -38,7 +38,7 @@ when the command has the corresponding data:
 | `mlip_model` | string \| null | Optional exact model/checkpoint identifier, kept separate from the backend |
 | `mlip_model_label` | string \| null | Optional publication-facing model label derived from the exact identifier |
 | `mlip_task` | string \| null | Optional backend task used by a multi-domain model; `mlip_model` remains the exact identifier |
-| `mlip_precision` | string \| null | Effective public precision token (`tf32`, `fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
+| `mlip_precision` | string \| null | Effective precision token (`tf32`, `fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
 | `mlip_compiled` | bool \| null | Whether the UMA or ORB model ran through torch.compile (`--compile`); false for other backends and for the analytical Hessian; null when a plot-only command did not evaluate a calculator |
 
 **`environment`**:
@@ -167,7 +167,7 @@ The final PHVA runs after the optimizer converges or stops on an energy plateau
 `saddle_validation: "higher_order"`; it is not a first-order TS. For when `all`
 goes on to IRC, see [tsopt › Reading the TS result](tsopt.md#reading-the-ts-result).
 Dimer results have the same TS
-fields but no per-cycle force/step details and no `safeguards` object.
+fields but no final force/step fields and no `safeguards` object.
 
 ### `freq`
 
@@ -237,7 +237,7 @@ IRC reports `execution_status` and `scientific_status` and keeps the stop reason
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `model` | string | Model identifier |
-| `never_stop` | bool | Whether opt-in physical endpoint-stop bypass mode was enabled |
+| `never_stop` | bool | Whether `--never-stop` was enabled |
 | `never_stop_energy_bypasses` | int | Number of energy-rise or one-step energy-change stop events actually bypassed |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
@@ -399,7 +399,7 @@ are listed in [`summary.json` (`path-search` / `all`)](#summary-json-path-search
 | `mlip_compiled` | bool \| null | Whether the recomputation compiled the model (`--compile`); null in trajectory-comment mode |
 | `energy_provenance` | string[] | Per-frame energy source provenance |
 | `energy_unit` | string | Stored energy unit (`hartree`) |
-| `backend` | string \| null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
+| `backend` | string \| null | MLIP backend only when frame energies were recomputed; null in trajectory-comment mode |
 | `charge` / `multiplicity` | int \| null | Charge and multiplicity used when energies were recomputed, otherwise null |
 | `solvent` / `solvent_model` | string \| null | Recomputed-calculator solvent settings, otherwise null |
 | `output_files` | string[] | Canonical ordered paths for every output; preserves files with the same basename in different directories |
@@ -427,7 +427,7 @@ With `--json`, `bond-summary` prints JSON to **stdout** and, unlike the subcomma
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `treatment` | string | Fixed rigid-mode treatment: `"constrained"` |
+| `treatment` | string | Rigid-mode treatment; always `"constrained"` |
 | `algorithm` | string | Name of the projection method |
 | `effective_rank` | int | Number of rigid directions removed from the Hessian of the movable atoms |
 | `full_rigid_rank` | int | Rank of the rigid motions of the whole system before the frozen atoms are taken into account |
@@ -485,8 +485,8 @@ The `all` command additionally includes:
 | `post_segments[].tsopt.n_imaginary_modes` / `.imaginary_frequencies_cm` | int / float[] | n_imag of the optimized TS and its imaginary frequencies (cm⁻¹, negative) |
 | `post_segments[].mlip` / `.gibbs_mlip` / `.dft` / `.gibbs_dft_mlip` | object | R, TS, and P energies at one level, with `barrier_kcal`, `delta_kcal`, and `energies_kcal`: MLIP electronic energies (`--tsopt`), MLIP Gibbs energies (`--thermo`), DFT energies (`--dft`), and DFT//MLIP Gibbs energies (`--thermo` with `--dft`) |
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | `energy_valid`: the final TS energy is a finite number. `structure_valid`: the final TS structure file exists and its coordinates are finite |
-| `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS optimization cycles executed and configured limit. These are reported for both converged and normally non-converged runs. |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | IRC stop diagnostics, endpoint orientation, and endpoint-OPT convergence, respectively. `endpoint_opt.reactant` and `.product` report `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`. How the IRC stopped and whether the bond changes match do not enter `scientific_status`; whether the optimized endpoints are the intended R and P is for you to check. |
+| `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS optimization cycles executed and configured limit. These are reported for both converged and non-converged runs. |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | IRC stop diagnostics, endpoint orientation, and endpoint-OPT convergence, respectively. `endpoint_opt.reactant` and `.product` report `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`. How the IRC stopped and whether the bond changes match do not affect `scientific_status`; whether the optimized endpoints are the intended R and P is for you to check. |
 | `post_segments[].thermo_symmetry` | object | Point-group and rotational-symmetry provenance reported by `freq` for each of R, TS, and P. Only R/TS/P states with valid symmetry-number provenance are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |
@@ -539,7 +539,7 @@ jq '.post_segments[] | {index, barrier_kcal: .mlip.barrier_kcal}' result_all/sum
 - A run that fails while the CLI options or the input are being checked (before the output directory is set up) can stop without writing any JSON. Treat a nonzero exit code as a failure, and read stderr or the job log for the message.
 - `all` and `path-search` write `summary.json` only once the run reaches its summary step, so an early input error leaves no file.
 - The per-command sections also have their own `backend` / `model` fields. Scripts that read several commands should use `mlip_backend` / `mlip_model` / `mlip_precision`, which mean the same thing in every command.
-- [How the IRC stopped](irc.md#judging-the-irc) does not enter `scientific_status`: a standalone `irc` reports `success` when the integration finishes, even when it ends at `--max-cycles`, and `all` judges the TS and endpoint optimizations.
+- [How the IRC stopped](irc.md#judging-the-irc) does not affect `scientific_status`: a standalone `irc` reports `success` when the integration finishes, even when it ends at `--max-cycles`, and `all` judges the TS and endpoint optimizations.
 
 ## See Also
 

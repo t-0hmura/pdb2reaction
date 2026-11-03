@@ -52,7 +52,7 @@ The backend is called once at the input geometry. `sp` prints the energy and the
 | File | Contents | Written |
 | --- | --- | --- |
 | `forces.npy` | Forces as an `(N, 3)` array in Hartree/bohr | Always |
-| `hessian.npy` | Cartesian Hessian without mass weighting (Hartree/bohr²): `(3N, 3N)`, or `(3M, 3M)` for the M moving atoms in input order when atoms are frozen | With `--hess` |
+| `hessian.npy` | Cartesian Hessian without mass weighting (Hartree/bohr²): `(3N, 3N)`, or `(3M, 3M)` for the M movable atoms in input order when atoms are frozen | With `--hess` |
 | `result.json` | Energy (`energy_au`), backend, model, charge, multiplicity, atom count, paths to the `.npy` files, elapsed time | With `--out-json` |
 | `summary.json` | Same content as `result.json` | With `--out-json` |
 

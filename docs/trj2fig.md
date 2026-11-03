@@ -53,7 +53,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ## How it works
 
 1. **Reading the energies**:
-Each frame's comment line gives its energy. Trajectories written by pdb2reaction, such as `optimization_trj.xyz` (`opt --dump`), `scan_trj.xyz`, `mep_trj.xyz`, and `finished_irc_trj.xyz`, are read as they are. In other files, write `E=<value>` with an optional unit (`Ha`, `Eh`, `hartree`, `eV`, `kcal/mol`); without a unit it is hartree, except that `energy=` in a comment with `Properties=` or `Lattice=` (extended XYZ) is eV. With `-q` or `-m`, the MLIP backend recomputes every frame instead.
+Each frame's comment line gives its energy. Trajectories written by pdb2reaction, such as `optimization_trj.xyz` (`opt --dump`), `scan_trj.xyz`, `mep_trj.xyz`, and `finished_irc_trj.xyz`, are read directly. In other files, write `E=<value>` with an optional unit (`Ha`, `Eh`, `hartree`, `eV`, `kcal/mol`); without a unit it is hartree, except that `energy=` in a comment with `Properties=` or `Lattice=` (extended XYZ) is eV. With `-q` or `-m`, the MLIP backend recomputes every frame instead.
 2. **Choosing the reference**:
 `-r init` is the frame at the left end: the first frame, or the last with `--reverse-x`; an integer is a 0-based frame index; `none` plots absolute energies.
 3. **Converting the unit**:

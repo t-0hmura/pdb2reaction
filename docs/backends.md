@@ -161,11 +161,11 @@ self-consistent charge (SCC) iterations do not converge.
 xTB is not installed with `pdb2reaction`; install it with `conda install -c conda-forge xtb`.
 
 Each correction runs xTB twice (in solvent and in vacuum), so about 200–300
-atoms is a practical upper size rather than a hard limit; benchmark the actual
+atoms is a practical maximum rather than a hard limit; benchmark the actual
 system and hardware. The option models a named bulk solvent, so on an enzyme
-cluster use it only when that environment is justified, and keep the reacting
-species, charge, multiplicity, backend and model, and energy references the same
-when you compare a solution barrier with a cluster barrier.
+cluster use it only when that environment is justified. When you compare a
+solution barrier with a cluster barrier, keep the reacting species, charge,
+multiplicity, backend and model, and energy references the same.
 
 ## DFT backend
 
@@ -304,7 +304,7 @@ solvent keys, are listed in [YAML Reference › calc](yaml-reference.md#calc).
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge; used only when written in YAML, and `-q`/`-l` override it. | none |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | Model of the selected backend (`--backend-model`). Left at the UMA default, ORB / MACE / AIMNet2 use `orbmol-v2` / `MACE-OMOL-0` / `aimnet2`. | `"uma-s-1p2p1"` |
+| `model` | Model of the selected backend (`--backend-model`). If left at the UMA default, ORB / MACE / AIMNet2 use `orbmol-v2` / `MACE-OMOL-0` / `aimnet2`. | `"uma-s-1p2p1"` |
 | `precision` | MLIP numerical precision (`"tf32"`, `"fp32"` or `"fp64"`); `"auto"` gives fp32 for UMA/AIMNet2 and fp64 for ORB/MACE. | `"auto"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |

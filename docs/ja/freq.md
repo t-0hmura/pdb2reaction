@@ -50,7 +50,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 2. **Hessian 評価モード**:
 `--hessian-calc-mode` で `FiniteDifference`（有限差分、デフォルト）または `Analytical`（解析的）を選択します。
 3. **熱化学（QRRHO）**:
-振動数に、低振動数のエントロピーを補正する QRRHO 法をローター閾値 100 cm⁻¹ で適用し、ギブズ自由エネルギー補正 `G_corr` を求めます。ギブズエネルギー G は E + `G_corr`（E は電子エネルギー）で、正の振動数による振動の項のほか、構造全体の並進と回転の項を常に含めます。端末の熱化学の要約の `Gibbs Free Energy Correction (G_corr)` と `Gibbs Free Energy (G = E + G_corr)` の行に、`G_corr` と G が Hartree 単位で出ます。`--dump` では `thermoanalysis.yaml` に、`--out-json` では `result.json` の `thermochemistry` にも書き出し、G の欄は `sum_EE_and_thermal_free_energy_ha` です。点群と回転対称数は構造から自動で判定し、回転対称数は YAML の `thermo.symmetry_number` で上書きできます。
+振動数に、低振動数のエントロピーを補正する QRRHO 法をローター閾値 100 cm⁻¹ で適用し、ギブズ自由エネルギー補正 `G_corr` を求めます。ギブズエネルギー G は E + `G_corr`（E は電子エネルギー）で、正の振動数による振動の項のほか、構造全体の並進と回転の項を常に含めます。端末の熱化学の要約では、`Gibbs Free Energy Correction (G_corr)` と `Gibbs Free Energy (G = E + G_corr)` の行に、`G_corr` と G が Hartree 単位で出ます。`--dump` では `thermoanalysis.yaml` に、`--out-json` では `result.json` の `thermochemistry` にも書き出し、G の欄は `sum_EE_and_thermal_free_energy_ha` です。点群と回転対称数は構造から自動で判定し、回転対称数は YAML の `thermo.symmetry_number` で上書きできます。
 4. **振動モードの書き出し**:
 虚振動側または低振動数側から順に、`--max-write` の本数まで原子振動アニメーションを出力します。
 
@@ -89,7 +89,7 @@ result_freq/
 └─ result.json                   # 結果の要約（--out-json）
 ```
 
-* **極小か TS か**: 端末の熱化学の要約の `Number of Imaginary Freq = N` の行に n_imag が出ます。`freq` はこの値を判定しないので、`result.json` の `scientific_status` は n_imag によらず `success` です。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。`frequencies_cm-1.txt` の先頭に明確な負の値が**1 つだけ**あり、2 番目以降が正の値か許容誤差内であれば TS で、次は [`irc`](irc.md) に進みます。極小のはずの構造に虚振動が出たら [`opt`](opt.md) の `--flatten` で最適化し直し、TS に虚振動が無いか 2 つ以上あるときは {ref}`TS が得られないとき <ja-ts-search-fails>` を見てください。
+* **極小か TS か**: 端末の熱化学の要約では、`Number of Imaginary Freq = N` の行に n_imag が出ます。`freq` はこの値で構造を判定しないので、`result.json` の `scientific_status` は n_imag によらず `success` です。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。`frequencies_cm-1.txt` の先頭に明確な負の値が**1 つだけ**あり、2 番目以降が正の値か許容誤差内であれば TS で、次は [`irc`](irc.md) に進みます。極小のはずの構造に虚振動が出たら [`opt`](opt.md) の `--flatten` で最適化し直し、TS に虚振動が無いか 2 つ以上あるときは {ref}`TS が得られないとき <ja-ts-search-fails>` を見てください。
 * **可視化**: 生成された `mode_*_trj.xyz` や `.pdb` を PyMOL や VMD、OVITO などの分子ビューアで開くと、原子が振動するアニメーションを確認できます。
 
 ---

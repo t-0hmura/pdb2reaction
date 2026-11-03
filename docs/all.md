@@ -1,6 +1,6 @@
 # `all` (end-to-end workflow)
 
-`all` runs the whole workflow in one command: it extracts the active-site model and builds the minimum energy path (MEP). When asked, it also optimizes the transition state (TS) of each reaction step and runs the intrinsic reaction coordinate (IRC), frequency, and DFT calculations on it.
+`all` runs the whole workflow in one command: it extracts the active-site model and builds the minimum energy path (MEP). When asked, it also optimizes the transition state (TS) of each reaction step and runs the intrinsic reaction coordinate (IRC), frequency, and DFT calculations.
 
 Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
 
@@ -18,7 +18,7 @@ What you pass selects the mode:
 
 ## Examples
 
-The examples use the GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)); the full scripts are in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). `1.R.pdb` (reactant), `2.IM.pdb` (intermediate), and `3.P.pdb` (product) are full structures with every hydrogen; your own structures need hydrogens too. Examples 1–3 are walked through, with how to check the results, in [Quickstart: `all`](quickstart-all.md), [Quickstart: `--scan-lists`](quickstart-scan.md), and [Quickstart: TS-only mode](quickstart-tsopt.md).
+The examples use the GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)); the full scripts are in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). `1.R.pdb` (reactant), `2.IM.pdb` (intermediate), and `3.P.pdb` (product) are full structures with every hydrogen; your own structures need hydrogens too. For walkthroughs of Examples 1–3 and how to check the results, see [Quickstart: `all`](quickstart-all.md), [Quickstart: `--scan-lists`](quickstart-scan.md), and [Quickstart: TS-only mode](quickstart-tsopt.md).
 
 ### 1. MEP with TS optimization, thermochemistry, and DFT
 
@@ -31,7 +31,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 `--dft` needs the DFT extra from step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
 
-Every requested stage finished when the console prints `[Imaginary modes] n=1 (...)` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
+Every requested stage has finished when the console prints `[Imaginary modes] n=1 (...)` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
 
 ### 2. Path from the reactant by a staged scan
 
@@ -101,7 +101,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 | Not converged (cycle limit or `--stop-plateau`), or the final Hessian skipped with `--skip-final-freq` | Stops before IRC. |
 | The final Hessian fails with an error | Stops the whole run (`execution_status` `failed`, exit 1); no later segment is processed. |
 
-A segment that stops before IRC gets no IRC or later stage and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
+A segment that stops before IRC skips IRC and the later stages, and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
 
 If one endpoint optimization does not converge, the result is `partial` and `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
 
@@ -156,7 +156,7 @@ result_all/
    └─ path_opt/                 # MEP search and hei_seg_NN.* (path_search/ with --refine-path)
 ```
 
-* **Structures to report**: cite `segments/seg_NN/reactant.*`, `ts.*`, and `product.*`. The subdirectories of `seg_NN/` hold the files of each stage.
+* **Structures to report**: use `segments/seg_NN/reactant.*`, `ts.*`, and `product.*`. The subdirectories of `seg_NN/` hold the files of each stage.
 * **TS-only mode**: there is no MEP search, so the MEP files and `_work/path_opt/` are absent; R, TS, and P go to `segments/seg_01/`.
 
 The energy diagrams are named by method:

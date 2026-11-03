@@ -62,11 +62,11 @@ conda activate <YOUR_ENV>
 
 There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need
 different `e3nn` versions. Install `[orb]` in its own env too: `orb-models`
-pins `nvalchemi-toolkit-ops<0.4`, so pip lowers `fairchem-core` there.
+pins `nvalchemi-toolkit-ops<0.4`, so pip downgrades `fairchem-core` there.
 
 ## System packages
 
-pip and conda do not install a compiler or the libraries of Chrome, and a bare
+`pip install pdb2reaction` does not install a compiler or the libraries of Chrome, and a bare
 container or cluster node often lacks both. On a GPU, UMA compiles code at run
 time for speed and needs a C compiler (`gcc`) even without `--compile`; with
 `--compile`, UMA and ORB need a C compiler on a GPU and a C++ compiler (`g++`) on a CPU.
@@ -80,7 +80,7 @@ sudo dnf install -y gcc gcc-c++                            # Rocky/RHEL
 ```
 
 Without sudo, use `module load gcc` or `conda install -c conda-forge c-compiler cxx-compiler`;
-ask the administrator for Chrome's libraries (`all` and `path-search` then skip
+ask the administrator for Chrome's libraries (without them, `all` and `path-search` skip
 only the PNG files). The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 and
 Debian 12: `libasound2` instead of `libasound2t64`):
 
@@ -101,7 +101,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
   vulkan-loader wget xdg-utils
 ```
 
-A missing one stops the command with a `Missing system prerequisite:` message
+A missing package stops the command with a `Missing system prerequisite:` message
 that lists the same commands. Docs: [System prerequisites](../../docs/installation.md#system-prerequisites).
 
 ## Choose a backend
@@ -137,7 +137,7 @@ pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
 
 `--calc-file` works on `sp`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`,
 `scan3d`, `path-opt`, `path-search`, and `all`, which passes it to every stage.
-Rename the factory with `--calc-file-func-name NAME`. Energies and forces follow
+Use a different factory name with `--calc-file-func-name NAME`. Energies and forces follow
 the ASE contract (eV, eV/Å). Hessians always use finite differences, and frozen
 atoms (`--freeze-links`, `--freeze-atoms`) are honored. The full guide is the
 "Custom backend" section of [MLIP Backends](../../docs/backends.md).
@@ -165,7 +165,7 @@ installed. An `ImportError` points to that backend's section in
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `import torch` fails with `libcudart.so.<N> not found` (N is 12 for cu126, 13 for cu130) | Incomplete or mixed wheel install, or a library-path collision; not by itself evidence against the driver | [CUDA and PyTorch](backends.md#cuda-and-pytorch) diagnostics |
+| `import torch` fails with `libcudart.so.<N> not found` (N is 12 for cu126, 13 for cu130) | Incomplete or mixed wheel install, or a library-path collision; not necessarily a driver problem | [CUDA and PyTorch](backends.md#cuda-and-pytorch) diagnostics |
 | `torch.cuda.is_available()` is `False` | CPU wheel, hidden GPU, driver and wheel mismatch, or mixed libraries | Run `python -m torch.utils.collect_env` and `python -m pip check` before changing the wheel |
 | `OSError: libcusolver.so.<N> not found` (N is 11 for cu126, 12 for cu130) | CUDA wheel dependency missing or shadowed by `LD_LIBRARY_PATH` | Compare with a clean environment ([CUDA and PyTorch](backends.md#cuda-and-pytorch)) |
 | `e3nn` conflict on `pip install` | UMA and MACE in one env | Separate env for MACE |

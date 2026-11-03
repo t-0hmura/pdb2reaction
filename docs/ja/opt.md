@@ -57,8 +57,8 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_opt_h
 ## 処理の仕組みと計算仕様
 
 1. **構造の読み込みと境界の固定**: {ref}`電荷 <ja-charge-specification>`は `-q` または `-l` から決まります。`--freeze-links`（デフォルト有効）では、切り出したクラスターの{ref}`キャップ水素 <ja-link-hydrogen-and-frozen-atoms>`の親原子を固定します。`--freeze-atoms` でほかの原子も固定できます。
-2. **最適化法の選択**（`--opt-mode`）: `grad`（別名 `lbfgs`）は勾配だけを使う **L-BFGS** を実行します。`hess`（別名 `rfo`）は **RFO** を実行し、厳密な Hessian から始めて [TS-BFGS](glossary.md#最適化アルゴリズム) 式で更新し、500 サイクルごとに計算し直します。更新式は YAML の `rfo.hessian_update` で変えられます。`tsopt` では同じ指定が{ref}`別の方法を選びます <ja-opt-mode-semantics>`。
-3. **距離拘束の追加**: `--distance-restraint` の `(i, j, target)` のそれぞれが、力の定数 `--restraint-k`（eV·Å⁻²）の調和項を加え、原子 i と j の距離を `target`（Å）へ引き寄せます。`(i, j)` は最初の距離を保ちます。番号は 1 始まりで、`--zero-based` を付けると 0 始まりになります。
+2. **最適化法の選択**（`--opt-mode`）: `grad`（別名 `lbfgs`）は勾配だけを使う **L-BFGS** を実行します。`hess`（別名 `rfo`）は **RFO** を実行し、厳密な Hessian から始めて [TS-BFGS](glossary.md#最適化アルゴリズム) 式で更新し、500 サイクルごとに計算し直します。更新式は YAML の `rfo.hessian_update` で変えられます。`tsopt` では同じ指定で{ref}`別の方法が選ばれます <ja-opt-mode-semantics>`。
+3. **距離拘束の追加**: `--distance-restraint` の `(i, j, target)` ごとに、力の定数 `--restraint-k`（eV·Å⁻²）の調和項を加え、原子 i と j の距離を `target`（Å）へ近づけます。`(i, j)` は最初の距離を保ちます。番号は 1 始まりで、`--zero-based` を付けると 0 始まりになります。
 4. **最小化**: 収束条件を満たすか `--max-cycles` に達するまで構造を動かします。デフォルトの `--thresh gau` は、力の最大値 4.5 × 10⁻⁴ 未満、力の RMS 3.0 × 10⁻⁴ hartree/bohr 未満、ステップの最大値 1.8 × 10⁻³ 未満、ステップの RMS 1.2 × 10⁻³ bohr 未満を求めます。Gaussian のデフォルトと同じ条件です。
 5. **虚振動の除去（`--flatten`）**: 最適化の後に Hessian を計算し、すべての虚振動モード（ν < −5.00 cm⁻¹）に沿って構造を 0.10 Å ずらして最適化し直します。虚振動が無くなるか 50 回に達するまで繰り返します。`--flatten` では、各回の後に端末の `[Imaginary modes] n=…` の行に n_imag が出て、最後の回の後にも虚振動が残ると `[flatten] WARNING: Remaining imaginary modes after the flatten loop: N` が出ます。
 
@@ -138,7 +138,7 @@ result_opt/
 * **プラトーでの停止**: `--stop-plateau` は、力のノイズで力の収束条件に届かないときにサイクルを節約できますが、エネルギーが平坦であることは停留点の証拠になりません。実質的な上限は `--max-cycles` です。エネルギーの幅とサイクル数は `--stop-plateau-thresh` と `--stop-plateau-window` で指定できます。
 * **固定原子があるときの剛体運動**: `--flatten` は、剛体運動を [`freq`](freq.md#固定境界での剛体モード) と同じように扱います。
 * **固定原子と拘束の全体**: クラスターモデルで固定する原子や拘束の選び方は、{ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` を参照してください。
-* **オプティマイザの状態の書き出し**: `--dump` を付け、YAML の `opt.dump_restart` に正の整数 N を指定すると、N サイクルごとに `restart_NNN.yaml` を書きます。pdb2reaction はこのファイルを読み戻さないので、止まった計算は final geometry から `opt` をやり直してください。
+* **オプティマイザの状態の書き出し**: `--dump` を付け、YAML の `opt.dump_restart` に正の整数 N を指定すると、N サイクルごとに `restart_NNN.yaml` を書きます。pdb2reaction はこのファイルを読み込まないので、止まった計算は final geometry から `opt` をやり直してください。
 * **モデルと精度**: `--backend-model` でバックエンドのモデルを、`--precision` で精度（`tf32`・`fp32`・`fp64`）を選べます。`--compile` を付けると UMA・ORB のモデルを torch.compile します（デフォルトではしません）。詳しくは自動生成のオプションの一覧（英語のみ）を参照してください。
 
 ---

@@ -47,7 +47,7 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 2. **Keeping valid symbols**:
 An element field that already holds a valid symbol (or `EP` for a water virtual site) is kept. Blank or unrecognized fields are repaired; `--overwrite-elem` re-infers every field.
 3. **Inferring the element**:
-The element comes from the four-character atom name (columns 13–16) and the residue name. Ion residues give the element of the ion; amino acids, nucleic acids, and water follow the usual naming. Other ligands use the column where the atom name starts: `NA` from column 14 is N, and from column 13 is Na. This also covers LEaP halogens such as `CL1` from column 14 and hydrogen names such as `HG11`.
+The element comes from the four-character atom name (columns 13–16) and the residue name. Ion residues give the element of the ion; amino acids, nucleic acids, and water follow the usual naming. Other ligands use the column where the atom name starts: `NA` from column 14 is N, and from column 13 is Na. The exceptions are LEaP halogens such as `CL1` from column 14 and hydrogen names such as `HG11`.
 4. **Writing and the summary**:
 Only columns 77–78 of the repaired records change, and the console prints a summary.
 
@@ -75,7 +75,7 @@ See the [generated CLI reference](reference/commands/add_elem_info.md) for every
 
 ## Notes
 
-* **What changes**: only columns 77–78 of the ATOM and HETATM records being repaired. Every other line, including HEADER, REMARK, CONECT, ANISOU, and the charge columns (79–80), is written unchanged.
+* **What changes**: only columns 77–78 of the ATOM and HETATM records being repaired. The charge columns (79–80) and every other line, including HEADER, REMARK, CONECT, and ANISOU, are written unchanged.
 * **Special names**: deuterium labels become H, selenium (`SE*`) is recognized as Se, and halogens are recognized automatically.
 * **Two different flags**: `--overwrite-elem` decides which element columns are re-inferred; `--overwrite` decides only where the file is written.
 * **Writing to the input path**: when `-o` names the input file, including through a symbolic link, `--overwrite` is required; without it the run stops with an error.

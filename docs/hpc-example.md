@@ -1,6 +1,6 @@
 # HPC example: PBS + Open MPI + Ray
 
-This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup. `--uma-workers` of 2 or more needs Ray, which `pip install "fairchem-core[ray]"` installs.
+This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup. Setting `--uma-workers` to 2 or more requires Ray (`pip install "fairchem-core[ray]"`).
 
 Two settings control the workers:
 
@@ -191,13 +191,13 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 \
  --uma-workers "${TOTAL_WORKERS}" --uma-workers-per-node "${GPUS_PER_NODE}"
 ```
 
-The job succeeded when its log shows `[opt] Converged!` and the job exits with code 0. The final geometry is `result_opt/final_geometry.xyz`.
+The job succeeded if its log shows `[opt] Converged!` and its exit code is 0. The final geometry is `result_opt/final_geometry.xyz`.
 
 ## Walltime budgeting
 
 The 24 h limit in the script is an example ceiling, not a measured value. Set the budget from short trial runs on the target system:
 
-- **Cluster-model `opt` / `tsopt`**: time the chosen backend and model, Hessian mode, precision, and convergence settings on a representative structure.
+- **Cluster-model `opt` / `tsopt`**: time a run on a representative structure with the chosen backend and model, Hessian mode, precision, and convergence settings.
 - **`pdb2reaction all` end-to-end** (extract → MEP → TS → IRC → freq → DFT): time one representative segment. The DFT stage is not a multi-GPU SCF driver, so requesting more GPUs does not make it faster.
 - **MEP (`path-search` / `path-opt`)**: cost grows with `--max-nodes`, optimizer iterations, and the number of recursive segments; time one segment before budgeting the full mechanism.
 

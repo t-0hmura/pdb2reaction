@@ -53,7 +53,7 @@ The files are read in the order given; XYZ, PDB, mmCIF, and GJF are recognized b
 2. **Bond criterion**:
 A pair is bonded when its distance is at most 0.95 *T*, where *T* is `--bond-factor` (default `1.20`) times the sum of the two covalent radii of [Cordero et al. (2008)](https://doi.org/10.1039/b801115j), with 0.40 Å for H.
 3. **Counting a change**:
-A pair counts as formed (broken) when it is unbonded (bonded) in the first structure, bonded (unbonded) in the next, and its distance changes by at least 0.05 *T* (`--metal-delta-fraction` × *T*, default `0.40`, for a pair that contains a metal atom; about 1.0 Å for Mg–O), so a small move across the threshold is not counted. `irc` and `all` use the same criterion for the bond changes they report.
+A pair that switches between unbonded and bonded from one structure to the next counts as formed or broken only if its distance changes by at least 0.05 *T*, so a small move across the threshold is not counted. A pair that contains a metal atom needs a change of at least `--metal-delta-fraction` × *T* (default `0.40`; about 1.0 Å for Mg–O). `irc` and `all` use the same criterion for the bond changes they report.
 
 ---
 
@@ -79,8 +79,8 @@ See the [generated CLI reference](reference/commands/bond_summary.md) for every 
 
 ## Notes
 
-* **Same atoms in the same order**: a pair that differs prints `ERROR: Atom types and ordering must be identical.` to stderr; see {ref}`Input / extraction <input-extraction-problems>`.
-* **Borderline bonds**: to count longer contacts, raise `--bond-factor` (for example `1.30`). A pair that contains a metal atom, such as metal coordination, needs a change of `--metal-delta-fraction` × *T* (default `0.40`); lower it to count a smaller change.
+* **Same atoms in the same order**: if the atoms differ, `bond-summary` prints `ERROR: Atom types and ordering must be identical.` to stderr; see {ref}`Input / extraction <input-extraction-problems>`.
+* **Borderline bonds**: to count longer contacts, raise `--bond-factor` (for example `1.30`). A pair that contains a metal atom, as in metal coordination, needs a change of `--metal-delta-fraction` × *T* (default `0.40`); lower it to count a smaller change.
 * **Failed pairs**: a pair that cannot be compared, such as one whose atoms differ, is skipped, and the other pairs are still reported. The run then exits with code 1 because `execution_status` is `failed`; the JSON `scientific_status` is `partial` when some pairs were compared and `failed` when none were.
 * **Exit codes**: see {ref}`Exit codes <exit-codes>`.
 

@@ -1,6 +1,6 @@
 # Reading pdb2reaction outputs
 
-`pdb2reaction all` writes `summary.log` (for people) and `summary.json` (for scripts) at the top of `--out-dir`; the structures to report are `segments/seg_NN/{reactant,ts,product}.*`. The run succeeded when `summary.json["scientific_status"]` is `"success"`: the console prints `Scientific status: success` under the last `====== Pipeline summary ======`, and each TS prints `[Imaginary modes] n=1 (...)`. Whether the endpoints are the intended R and P is still your check.
+`pdb2reaction all` writes `summary.log` (for people) and `summary.json` (for scripts) at the top of `--out-dir`; the structures to report are `segments/seg_NN/{reactant,ts,product}.*`. The run succeeded when `summary.json["scientific_status"]` is `"success"`: the console prints `Scientific status: success` under the last `====== Pipeline summary ======`, and each TS prints `[Imaginary modes] n=1 (...)`. You must still check that the endpoints are the intended R and P.
 
 Standalone commands write a smaller `result.json` (with `--out-json`); its keys are on each command page in [pdb2reaction-cli](../pdb2reaction-cli/SKILL.md), not here.
 
@@ -60,7 +60,7 @@ result_all/
 
 - `index` (1-based) and `tag` (a label whose number can differ from `index`).
 - `kind`: `"seg"` for a reactive segment, `"kink"` for a segment with no covalent bond change, `"bridge"` for a short connecting path (its `tag` ends in `_bridge`), `"tsopt"` in TS-only mode. Reactive segments are those with `kind` `"seg"` or `"tsopt"`.
-- `barrier_kcal` and `delta_kcal`: barrier and reaction energy on the MEP before TS optimization (`null` for a kink); in TS-only mode, TS − R.
+- `barrier_kcal` and `delta_kcal`: barrier and reaction energy on the MEP before TS optimization (`null` for a kink); in TS-only mode, TS − R and P − R.
 - `bond_changes`: see [Bond changes](#bond-changes).
 
 `post_segments[]` appears with `--tsopt`. Match it to `segments` by `index`, not by list position.

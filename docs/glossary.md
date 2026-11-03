@@ -64,7 +64,7 @@ Each abbreviation, method name, and unit used in the docs is defined here in one
 |------|-----------|-------------|
 | **QM** | Quantum Mechanics | First-principles electronic structure calculations (DFT, HF, post-HF, etc.). |
 | **DFT** | Density Functional Theory | A quantum-mechanical method that models electronic structure via electron density functionals. |
-| **DFT//MLIP** | — | Composite-method notation: DFT single-point energies evaluated at MLIP-optimized geometries. Combines MLIP geometry/dynamics with a higher-level DFT energy evaluation. The `//` separator follows the standard quantum-chemistry convention "energy-level // geometry-level". |
+| **DFT//MLIP** | — | Composite-method notation: DFT single-point energies evaluated at MLIP-optimized geometries. Combines MLIP geometries with a higher-level DFT energy evaluation. The `//` separator follows the standard quantum-chemistry convention "energy-level // geometry-level". |
 | **MLIP_Gibbs**, **DFT//MLIP_Gibbs** | — | Method labels in `summary.json`, next to `MEP`, `MLIP`, and `DFT`: `MLIP_Gibbs` is the MLIP Gibbs energy, and `DFT//MLIP_Gibbs` is the DFT energy plus the MLIP thermal correction (with `-b dft`, `MLIP` and `MLIP_Gibbs` become `DFT` and `DFT_Gibbs`). |
 | **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for a higher-level energy evaluation. |

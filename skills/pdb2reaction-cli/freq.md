@@ -86,7 +86,7 @@ When atoms are frozen, `freq` builds and diagonalizes only the block of the
 movable atoms. This shrinks the dense matrix; the actual time and memory
 saving depends on the number of movable atoms and the backend. Only rigid
 motions that keep every frozen atom in place are removed, so a normal cluster
-boundary with three or more frozen atoms off one line loses no mode. `tsopt`
+boundary with three or more frozen atoms not on one line loses no mode. `tsopt`
 and `irc` use the same treatment; the [JSON record](../../docs/json-output.md#rigid-projection-provenance)
 shows what was removed.
 
@@ -104,11 +104,11 @@ hydrogens written by `extract`. See
 - **All atoms frozen.** No vibration is left, and `freq` raises an error.
 - **Signed modes.** `freq` retains every signed physical mode; imaginary modes
   are not flipped, and positive modes between 0 and 5 cm⁻¹ stay in
-  thermochemistry. Raw negative counts are diagnostic and do not add a pipeline
-  failure gate. Inspect all of `frequencies_cm`, `n_negative_modes`, and the
+  thermochemistry. Raw negative counts are diagnostic and do not stop the
+  pipeline. Inspect all of `frequencies_cm`, `n_negative_modes`, and the
   displacements.
 - **Small imaginary frequency.** It may be numerical noise or a real shallow
-  mode. Inspect its displacement and repeat the Hessian at a suitable
+  mode. Inspect its displacement and recompute the Hessian at a suitable
   precision. The 100 cm⁻¹ QRRHO cutoff does not turn an imaginary mode real or
   validate a stationary point.
 - **Hessian mode.** `--hessian-calc-mode FiniteDifference` usually lowers peak

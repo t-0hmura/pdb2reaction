@@ -7,15 +7,14 @@ recover, and how to read the outputs.
 - `pdb2reaction-overview` (start here): what `pdb2reaction` is, picking one of the three
   `all` modes (Endpoint mode, Scan-list mode, TS-only mode), step-by-step runs, a code map,
   TS strategy (`ts-strategy.md`), and reading outputs (`outputs.md`).
-- `pdb2reaction-cli`: the 18 subcommands in 14 files (heavy commands one each,
-  the rest grouped): when to use each, how to judge success, and pitfalls.
-  Exact flags are left to `--help-advanced` and the command reference.
+- `pdb2reaction-cli`: when to use each of the 18 subcommands, how to judge
+  success, and pitfalls.
 - `pdb2reaction-model-setup`: PDB / mmCIF / XYZ / GJF formats, the charge /
   multiplicity decision, and building the cluster model: which residues
   `extract` keeps, cutting and capping the boundary, trimming or enlarging it,
   and keeping the same atoms across states and variants
   ([full guide](../docs/model-setup.md)).
-- `pdb2reaction-install`: install `pdb2reaction` itself, MLIP
+- `pdb2reaction-install`: installing `pdb2reaction` itself, MLIP
   backends (UMA / ORB / MACE / AIMNet2), DFT (PySCF / GPU4PySCF), and xtb
   (ALPB implicit-solvent correction, not an MLIP backend); CUDA + PyTorch
   pairing; probing the scheduler, GPU, CUDA, and conda env when the

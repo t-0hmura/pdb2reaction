@@ -41,7 +41,7 @@ pdb2reaction all -i result_mlip/segments/seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
 
 ## Keep the model under about 300 atoms
 
-DFT optimization is practical up to roughly 300 atoms. Compare 300 with the atom count including the cap hydrogens, N + M from the console lines in [Check the model](model-setup.md#check-the-model). If you build a model of that size before the MLIP search, the TS it gives can go to DFT as is.
+DFT optimization is practical up to roughly 300 atoms. The atom count includes the cap hydrogens: N + M from the console lines in [Check the model](model-setup.md#check-the-model). If you build a model of that size before the MLIP search, the TS it gives can go to DFT as is.
 
 For ways to trim the model, see [Make the model smaller](model-setup.md#make-the-model-smaller); to fix the boundary atoms of a model you trimmed by hand, see {ref}`Freeze atoms and restrain distances <freeze-atoms-and-restraints>`.
 
@@ -88,7 +88,7 @@ The other DFT options are listed in the [`all` reference](reference/commands/all
 - **File and key names**: with `-b dft`, the diagrams keep the file names `energy_diagram_MLIP.png` and `energy_diagram_G_MLIP.png` (with `--thermo`), and the `summary.json` blocks keep the names `mlip` and `gibbs_mlip`. Both hold the DFT values, and the plot title shows DFT.
 - **Memory and threads**: `-b dft` and `--dft` use the same low-memory mode, `--dft-nprocs`, and `--dft-memory` as [`pdb2reaction dft`](dft.md#main-options). If GPU memory runs out, trim the model; if `--dft` runs out of memory, drop `--dft` and run `pdb2reaction dft` separately.
 - **SCF not converged**: an SCF that does not converge even from a fresh guess stops the run with `PySCF SCF did not converge with either the reused density or a fresh guess.`. Density fitting (`--no-dft-low-memory`), when memory allows, or a [YAML level shift](#main-options) can help it converge.
-- **Stepwise grid**: `--scf-stepwise-grid` (on by default) first converges the first SCF of a run on grid level 1 with a tolerance of 1e-6, then on the requested grid and tolerance from that density; later SCFs start from the previous density as usual. The gain depends on the system; small systems can get slightly slower, and `--no-scf-stepwise-grid` turns it off. It is skipped when the requested grid level is 1 or lower, or when `pyscf.grids.atom_grid` sets the grid directly. If the coarse stage does not converge, the normal SCF runs.
+- **Stepwise grid**: `--scf-stepwise-grid` (on by default) converges the first SCF of a run on grid level 1 with a tolerance of 1e-6, then on the requested grid and tolerance from that density; later SCFs start from the previous density as usual. The gain depends on the system; small systems can get slightly slower, and `--no-scf-stepwise-grid` turns it off. It is skipped when the requested grid level is 1 or lower, or when `pyscf.grids.atom_grid` sets the grid directly. If the coarse stage does not converge, the normal SCF runs.
 - **SCF checkpoints**: they are off by default because the files can be very large. `--save-scf-checkpoint` saves them, and `--scf-checkpoint PATH` chooses the file. Without a path, commands other than `all` write `<out-dir>/_work/dft_scf/state.chk`, and `all` saves one file per state. A checkpoint is used only when its method, atom order, and coordinates match the current structure.
 
 ## See also

@@ -30,7 +30,7 @@ mmCIF; with XYZ or GJF, omit `-c`. `fix-altloc` and `add-elem-info` read PDB
 only, `trj2fig` reads a trajectory XYZ, and `energy-diagram` takes no
 structure.
 
-mmCIF input, and a PDB too large for its fixed columns, is converted to a
+mmCIF input, and a PDB too large for its fixed columns, are converted to a
 `.pdb` with temporary chain IDs and residue numbers for the calculation. With
 `--convert-files` enabled (the default), each coordinate output also gets a
 `.cif` with the original chain IDs, residue numbers, insertion codes, residue
@@ -169,7 +169,7 @@ for the system you model.
 pdb2reaction extract -i complex.pdb -c 'A:SAM:321,A:GPP:322,A:MG:323' -l 'SAM:1,GPP:-3' -o model.pdb --out-json
 ```
 
-Give `-c` the substrate, cofactors, and metals as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole when `-r` is above 0. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Putting the catalytic residues in `-c` is reasonable, but every `-c` residue also seeds the radius, so the model tends to grow; fix the residue choice with `--selected-resn` instead. `--selected-resn` keeps only the side chain unless a peptide neighbor is also in, so also select the neighbor of a residue whose main chain takes part. Extract R, IM, and P in one run ([Same atoms across states and variants](#same-atoms-across-states-and-variants)). `all` without `-c` uses the input as the cluster.
+Give `-c` the substrate, cofactors, and metals as chain:name:number. A residue joins when any atom lies within `-r` of a `-c` atom; waters and main chains stay by default, and amino acids in `-c` stay whole when `-r` is above 0. `--radius-het2het` adds a second cutoff between atoms other than C and H; `--selected-resn` adds residues without a distance search. Putting the catalytic residues in `-c` is reasonable, but every `-c` residue also seeds the radius, so the model tends to grow; list them in `--selected-resn` instead. `--selected-resn` keeps only the side chain unless a peptide neighbor is also in, so also select the neighbor of a residue whose main chain takes part. Extract R, IM, and P in one run ([Same atoms across states and variants](#same-atoms-across-states-and-variants)). `all` without `-c` uses the input as the cluster.
 
 A structure taken from MD carries neutralizing ions such as Na⁺ and Cl⁻. `extract` has no ion filter, so such an ion within the radius joins the model, adds its table charge, and can differ between snapshots. Remove these ions from the full structure before `extract` unless the mechanism needs one, then recheck the charge.
 

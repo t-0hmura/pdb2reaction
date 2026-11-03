@@ -44,8 +44,8 @@ dependencies:
 
 `<cu_index>` is one of `cu126`, `cu130`, `cu132`, and `cpu`; with `cu126`,
 write `pdb2reaction[aimnet,dft-cuda12]`. For MACE, use the
-same template with plain `pdb2reaction`, then do the swap in
-[MACE](#mace-separate-environment) inside the new env.
+same template with plain `pdb2reaction`, then swap `fairchem-core` for
+`mace-torch` inside the new env ([MACE](#mace-separate-environment)).
 
 ## CUDA and PyTorch
 
@@ -69,7 +69,7 @@ nvcc --version
 ```
 
 Add a CUDA module to PBS or SLURM jobs only when a locally built extension
-needs it; test prebuilt wheels without a second CUDA runtime from a module.
+needs it; with prebuilt wheels, a module adds a second CUDA runtime.
 UMA on a GPU also needs a C compiler on `PATH` at run time, as does `--compile` (`g++` on a CPU); that is a
 system package, separate from the CUDA toolkit
 ([System packages](SKILL.md#system-packages)).
@@ -204,7 +204,7 @@ Pitfalls:
 
 The `[orb]` extra installs orb-models 0.7 or newer. Weights download on first
 use, with no login. orb-models pins `nvalchemi-toolkit-ops<0.4`, so in the
-same env pip lowers `fairchem-core` to 2.22, and UMA models that need a newer
+same env pip downgrades `fairchem-core` to 2.22, and UMA models that need a newer
 fairchem (such as `uma-s-1p2p1-ft-d4rev`) no longer load. Give ORB its own env
 and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel.
 
@@ -223,7 +223,7 @@ and a long-range Coulomb term.
 `orb_v3_conservative_omol` selects OrbMol-v1. The names describe the model
 family, not its accuracy for a given reaction. pdb2reaction runs ORB
 in fp64 by default. `--precision fp32` selects IEEE FP32 (`float32-highest`) and
-`--precision tf32` ORB's `float32-high` mode, which lowers CUDA matmul precision;
+`--precision tf32` selects ORB's `float32-high` mode, which lowers CUDA matmul precision;
 compare either with fp64 on the target system.
 
 Pitfalls:
@@ -252,7 +252,7 @@ python -c "from pdb2reaction.backends import create_calculator; create_calculato
 
 `pip check` then reports `fairchem-core` as missing; that is expected, so do not
 reinstall it here. `pip install --upgrade pdb2reaction` can pull it back; repeat
-the uninstall and install and the smoke check afterwards. If UMA and MACE end up
+the uninstall, install, and smoke check afterwards. If UMA and MACE end up
 in one env, imports fail with an `e3nn` version error; remove the env with
 `conda env remove -n <YOUR_MACE_ENV>` and rebuild it.
 

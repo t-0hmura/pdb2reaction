@@ -1,6 +1,6 @@
 # Small-molecule reactions
 
-`pdb2reaction` also analyzes reaction paths of small molecules, not only enzyme cluster models. Give the reactant (R) and product (P) as XYZ/GJF/PDB/CIF structures and run `all` without `-c`; with no `-c`, the cluster-model extraction is skipped and the input structures are analyzed as they are.
+`pdb2reaction` analyzes reaction paths of small molecules as well as enzyme cluster models. Give the reactant (R) and product (P) as XYZ/GJF/PDB/CIF structures and run `all` without `-c`; the cluster-model extraction is then skipped and the input structures are analyzed as they are.
 
 ## First example
 
@@ -10,11 +10,11 @@
 pdb2reaction all -i aromatic_claisen/reactant.xyz aromatic_claisen/product.xyz -q 0 --tsopt --thermo
 ```
 
-The run searches the minimum energy path (MEP) and continues to transition-state (TS) optimization, the intrinsic reaction coordinate (IRC), and vibrational analysis with thermochemistry. `Scientific status: success` under `====== Pipeline summary ======` near the end of the terminal output means success; `scientific_status` in `summary.json` has the same value.
+The run searches for the minimum energy path (MEP) and continues to transition-state (TS) optimization, the intrinsic reaction coordinate (IRC), and vibrational analysis with thermochemistry. `Scientific status: success` under `====== Pipeline summary ======` near the end of the terminal output means success; `scientific_status` in `summary.json` has the same value.
 
 ## Input notes
 
-* **Formats**: XYZ, GJF, PDB, and CIF are accepted. Several structures must have the same atoms in the same order.
+* **Formats**: XYZ, GJF, PDB, and CIF are accepted. All input structures must have the same atoms in the same order.
 * **Charge and spin**: set the charge with `-q` and the spin multiplicity with `-m` (default 1).
 * **Other input modes**: the [Scan-list mode](quickstart-scan.md), which builds the path from one structure by a scan, and the [TS-only mode](quickstart-tsopt.md), which starts from a TS candidate, also work without `-c`.
 * **Reactions in solution**: `--solvent` adds the xTB solvation correction ([xTB solvent correction](backends.md#xtb-solvent-correction)).

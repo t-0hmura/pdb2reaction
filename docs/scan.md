@@ -22,7 +22,7 @@ The examples use `input.pdb`, the cluster model cut from the bundled enzyme stru
 pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces (`'SAM,320,CS1'` or `'CS1 SAM 320'`).
+`input.pdb` has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces (`'SAM,320,CS1'` or `'CS1 SAM 320'`).
 
 ### 1. From a YAML spec
 
@@ -153,7 +153,7 @@ result_scan/
 └─ result.json                      # Summary (--out-json); summary.json has the same content
 ```
 
-For PDB/mmCIF input, each `result.xyz` is also written as `result.pdb` and each `scan_trj.xyz` as `scan.pdb`, in the same directory; for Gaussian input, the structures also as `result.gjf`. {ref}`mmCIF input <mmcif-input>`, and PDB input too large for the PDB columns, also get `.cif` files that keep the original identifiers.
+For PDB/mmCIF input, each `result.xyz` is also written as `result.pdb` and each `scan_trj.xyz` as `scan.pdb`, in the same directory; for Gaussian input, the structures are also written as `result.gjf`. {ref}`mmCIF input <mmcif-input>`, and PDB input too large for the PDB columns, also get `.cif` files that keep the original identifiers.
 
 * **Stage results**: `stage_NN/result.*` is the structure at the end of stage NN. For [`path-search`](path-search.md), give the starting structure (`preopt/result.*` with `--preopt`) followed by the `stage_NN/result.*` files in stage order, as `all` does.
 * **Energy profile**: the comment line of each frame in `scan_trj.xyz` holds the energy without restraints (Hartree); plot it with [`trj2fig`](trj2fig.md).

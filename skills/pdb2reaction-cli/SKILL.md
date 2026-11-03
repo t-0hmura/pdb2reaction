@@ -55,7 +55,7 @@ The frozen set combines the cap parents found by `--freeze-links`, the atoms giv
 
 ## Cross-cutting pitfalls
 
-- **`--scan-lists` syntax error.** Each value is a Python literal. Wrap it in single quotes and use double quotes inside; do not confuse a backtick (`` ` ``) with a backslash (`\`).
+- **`-s/--scan-lists` syntax error.** Each value is a Python literal. Wrap it in single quotes and use double quotes inside; do not confuse a backtick (`` ` ``) with a backslash (`\`).
 - **Wrong charge with no error.** Settle protonation and oxidation states and read the per-residue charge breakdown. `--dry-run` prints the charge and checks electron parity, but it cannot prove the chemistry is right.
 - **Backend left to the default.** Pass `-b` explicitly in production scripts so a change of default cannot reroute the run.
 - **YAML value seems ignored.** The order is built-in defaults, then `--config`, then explicit CLI flags; a value also given on the command line overrides the YAML, except for the conflict below.

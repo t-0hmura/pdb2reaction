@@ -1,6 +1,6 @@
 # 用語集
 
-ドキュメントに出てくる略語・手法名・単位を、分野ごとに 1 行で引くページです。オプション、出力の欄、ステータスの値は、各コマンドのページと [JSON 出力の一覧](json-output.md) にあります。
+ドキュメントに出てくる略語・手法名・単位を、分野ごとに 1 行で説明するページです。オプション、出力の欄、ステータスの値は、各コマンドのページと [JSON 出力の一覧](json-output.md) にあります。
 
 ## 反応経路・最適化
 
@@ -9,7 +9,7 @@
 | **MEP** | Minimum Energy Path | 反応物から生成物へ至る最小エネルギー経路（ポテンシャルエネルギー面上の最も低い経路） |
 | **TS** | Transition State | ポテンシャルエネルギー面上の一次の鞍点（first-order saddle point）。反応座標方向にのみ負の曲率（虚振動数）を 1 つ持つ停留点 |
 | **n_imag** | Number of imaginary modes（虚振動の数） | 虚振動の分類基準（デフォルトでは ν < −5.00 cm⁻¹）より下の振動モードの数。TS では n_imag = 1 で、`result.json` には `tsopt` では `n_imaginary_modes`、`freq` では `n_imaginary` として記録されます |
-| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | 古典的には TS から反応物側・生成物側へ向かう**質量重み付き**最急降下経路として定義され、TS が意図した端点を接続することの検証に使用します。pdb2reaction の EulerPC 積分も質量重み付き座標を進めます。`--step-size` は質量加重しないデカルト座標で測る長さ（Bohr）です |
+| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | 古典的には TS から反応物側・生成物側へ向かう**質量重み付き**最急降下経路として定義され、TS が意図した端点を接続することの検証に使用します。pdb2reaction の EulerPC 積分も質量重み付き座標で進めます。`--step-size` は質量重み付けしないデカルト座標で測る長さ（Bohr）です |
 | **GSM** | Growing String Method | 端点からストリング（イメージ列）を伸長・最適化して MEP を近似する手法 |
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します |
 | **FB-ENM** | Flat-Bottom Elastic Network Model | DMF の初期経路を作るモデル（Koda & Saito, *J. Chem. Theory Comput.* 2024）。CFB-ENM はその相関を入れた変種です |
@@ -64,7 +64,7 @@
 |------|----------|------|
 | **QM** | Quantum Mechanics | DFT、HF、post-HF などの第一原理電子状態計算 |
 | **DFT** | Density Functional Theory | 電子密度汎関数に基づく電子状態計算法 |
-| **DFT//MLIP** | — | 複合計算法の表記: MLIP で最適化した構造の上で DFT による一点エネルギーを評価する手法。MLIP の構造最適化・分子動力学と、より高い理論レベルでの DFT エネルギー評価を組み合わせます。`//` 区切りは量子化学の標準慣習「エネルギー計算レベル // 構造最適化レベル」に従います |
+| **DFT//MLIP** | — | 複合計算法の表記: MLIP で最適化した構造の上で DFT による一点エネルギーを評価する手法。MLIP の構造最適化と、より高い理論レベルでの DFT エネルギー評価を組み合わせます。`//` 区切りは量子化学の標準慣習「エネルギー計算レベル // 構造最適化レベル」に従います |
 | **MLIP_Gibbs**、**DFT//MLIP_Gibbs** | — | `summary.json` の手法の名前で、`MEP`・`MLIP`・`DFT` と並びます。`MLIP_Gibbs` は MLIP のギブズ自由エネルギー、`DFT//MLIP_Gibbs` は DFT のエネルギーに MLIP の熱補正を足した値です（`-b dft` のときは、`MLIP` と `MLIP_Gibbs` の代わりに `DFT` と `DFT_Gibbs` になります） |
 | **Hessian（Hessian 行列）** | — | 原子座標に関するエネルギーの二階微分行列。固有値から振動数、固有ベクトルから振動モード（変位ベクトル）が得られます。振動解析や TS 最適化に使用します |
 | **SP** | Single Point | 固定構造での計算（最適化なし）。より高い理論レベルでのエネルギー評価によく使用 |
@@ -82,7 +82,7 @@
 | **GJF** | Gaussian Job File | Gaussian の入力形式。pdb2reaction は電荷/多重度と座標の読み取りに利用します |
 | **活性部位モデル** | Active Site Model（バインディングポケット） | `-c/--center` と `-r/--radius` で選ぶ基質周辺の領域。このドキュメントでは、活性部位モデルとクラスターモデルはどちらも、`extract` が書き出す、切断した結合にキャップ水素を付けたモデルを指します |
 | **クラスターモデル** | Cluster Model | 抽出した領域の切断された共有結合をキャップ水素でキャップし、QM/MLIP 計算入力として整えた部分系 |
-| **キャップ水素** | Cap Hydrogen | 活性部位モデル抽出時に切断された結合をキャップするために付加する水素原子。link 水素とも呼ぶ（`--add-linkh`、`--freeze-links`、`n_link_hydrogens`） |
+| **キャップ水素** | Cap Hydrogen | 活性部位モデル抽出時に切断された結合をキャップするために付加する水素原子。link 水素とも呼びます（`--add-linkh`、`--freeze-links`、`n_link_hydrogens`） |
 | **主鎖** | Backbone | タンパク質の主骨格（N–Cα–C–O 原子）。活性部位モデル抽出時に `--exclude-backbone` で除外可能 |
 
 ## 熱化学

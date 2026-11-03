@@ -1,6 +1,6 @@
 # クイックスタート: `pdb2reaction all --tsopt`（TS-only モード）
 
-TS-only モードは、手元の遷移状態（TS）の候補 1 つを、最小エネルギー経路（MEP）の探索を省いて確かめます。`pdb2reaction all --tsopt` は TS を最適化し、固有反応座標（IRC）を両方向に追跡して、両端の構造（反応物 R と生成物 P）を最適化します。`--thermo` で振動解析と熱化学補正を、`--dft` で R・TS・P の DFT 一点計算を追加できます。TS の候補があるなら、このモードに渡して、直接 TS の探索を始められます。
+TS-only モードは、手元の遷移状態（TS）の候補 1 つを、最小エネルギー経路（MEP）の探索を省いて確かめます。`pdb2reaction all --tsopt` は TS を最適化し、固有反応座標（IRC）を両方向に追跡して、両端の構造（反応物 R と生成物 P）を最適化します。`--thermo` で振動解析と熱化学補正を、`--dft` で R・TS・P の DFT 一点計算を追加できます。TS の候補があるなら、このモードで直接 TS の探索を始められます。
 
 ---
 
@@ -21,7 +21,7 @@ pdb2reaction all -i result_all/_work/path_opt/hei_seg_01.pdb -l 'SAM:1,GPP:-3' \
 
 端末出力の末尾付近の `====== Pipeline summary ======` の下に `Scientific status: success` と出れば成功で、`summary.json` の `scientific_status` にも同じ値が入ります。
 
-他のプログラムで得た候補などの XYZ では、モデルの総電荷を `-q` で明示します。`all` のクイックスタートのモデルは 0 です。
+他のプログラムで得た候補などの XYZ では、モデルの総電荷を `-q` で明示します。`all` のクイックスタートのモデルでは 0 です。
 
 ```bash
 pdb2reaction all -i ts_candidate.xyz -q 0 \

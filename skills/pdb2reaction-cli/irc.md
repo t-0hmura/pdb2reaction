@@ -5,7 +5,7 @@
 `irc` traces the intrinsic reaction coordinate from an optimized TS in both
 directions with EulerPC, the only integrator, and writes the path and its two
 raw end structures. Optimize those ends with `opt` to see which R and P the TS
-connects. For optimized `reactant` / `product` files, run `pdb2reaction all`,
+connects. To get optimized `reactant` / `product` files, run `pdb2reaction all`,
 which calls `irc` and optimizes the ends for you.
 
 ## Minimal run
@@ -68,7 +68,7 @@ print(d["never_stop"], d["never_stop_energy_bypasses"])
 ```
 
 For `execution_status`, `completed` is not an IRC convergence verdict; it
-means the runner returned.
+means the run finished.
 IRC has no independent scientific success verdict, and `scientific_status` is
 `success` whenever the integration ran without an error. Each requested
 direction records its frame count and `*_integration_stop_reason`.

@@ -121,11 +121,11 @@ max_cycles: 100000
 ```yaml
 geom:
  coord_type: cart # "cart"（デカルト座標）、"redund"（冗長内部座標）、"dlc"（非局在化内部座標）、"tric"（並進・回転を含む内部座標）。opt・tsopt・scan・scan2d・scan3d は 4 つとも、all・path-opt・path-search は cart と dlc のみ
- freeze_atoms: [] # 1 始まりの固定原子のインデックス。--freeze-links が有効なとき（PDB/mmCIF 入力、または --ref-pdb つきの XYZ/GJF）、自動検出した cap 水素の親原子の番号を合わせる
+ freeze_atoms: [] # 1 始まりの固定原子のインデックス。--freeze-links が有効なとき（PDB/mmCIF 入力、または --ref-pdb つきの XYZ/GJF）、自動検出した cap 水素の親原子の番号も加える
 ```
 
 **注記:**
-- 固定原子の力はゼロ化されます。デフォルトの `return_partial_hessian: true` では、動かせる原子の部分の Hessian だけを返します。false にすると、固定原子の行・列をゼロにした全体の行列を返します。
+- 固定原子の力はゼロ化されます。デフォルトの `calc.return_partial_hessian: true` では、動かせる原子の部分の Hessian だけを返します。false にすると、固定原子の行・列をゼロにした全体の行列を返します。
 - デカルト座標の PHVA（部分 Hessian 振動解析）では、固定原子を動かさない全系の剛体運動だけを除きます。詳細は [freq](freq.md#固定境界での剛体モード) を参照してください。
 - `irc` では、YAML や CLI の指定によらず `geom.coord_type` は `cart` です。
 
@@ -184,7 +184,7 @@ calc:
    with_solvent: {}
 ```
 
-`backend: dft` は、上の `calc.dft` ブロックの設定で、エネルギー・力・Hessian をすべて DFT（PySCF または GPU4PySCF）で計算します。詳しくは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。後述の最上位の [`dft` セクション](#ja-dft-section) は、別の `dft` コマンド（`all --dft` も実行する）の設定です。どちらも同じ SCF のキー（`conv_tol`・`max_cycle`・`grid_level` など）を受け付け、`save_scf_checkpoint` と `checkpoint_path` は `calc.dft` だけにあります。`hessian_calc_mode: Analytical` は有限変位の誤差を避けられますが、計算時間とメモリはバックエンドと系によって変わるので、先に自分の系で試してください。`charge` と `spin` が CLI や `.gjf` テンプレートとどう組み合わさるかは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
+`backend: dft` は、上の `calc.dft` ブロックの設定で、エネルギー・力・Hessian をすべて DFT（PySCF または GPU4PySCF）で計算します。詳しくは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。後述の最上位の [`dft` セクション](#ja-dft-section) は、別の `dft` コマンド（`all --dft` でも実行される）の設定です。どちらも同じ SCF のキー（`conv_tol`・`max_cycle`・`grid_level` など）を受け付け、`save_scf_checkpoint` と `checkpoint_path` は `calc.dft` だけにあります。`hessian_calc_mode: Analytical` は有限変位の誤差を避けられますが、計算時間とメモリはバックエンドと系によって変わるので、先に自分の系で試してください。`charge` と `spin` が CLI や `.gjf` テンプレートとどう組み合わさるかは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
 
 ---
 
@@ -216,7 +216,7 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**平坦なエネルギー地形による停止（デフォルト無効）:** `opt` / `tsopt` / `all` の `--stop-plateau` で `energy_plateau` を有効にし、`--stop-plateau-thresh` / `--stop-plateau-window` で下記の 2 つの値を設定します。有効にすると、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が `energy_plateau_thresh` を下回ったとき、オプティマイザは収束扱いにせず `stalled` として停止します。エネルギーが平坦になっても MLIP の力のノイズで力が `baker` の閾値を下回らないときに使ってください。`tsopt` がプラトーで止まったときも Hessian を計算して n_imag を出します。TS 最適化が収束しないまま `max_cycles` に達したときは Hessian を計算しません。GSM と DMF の経路最適化はこの停止を使いません。
+**平坦なエネルギー地形による停止（デフォルト無効）:** `opt` / `tsopt` / `all` の `--stop-plateau` で `energy_plateau` を有効にし、`--stop-plateau-thresh` / `--stop-plateau-window` で `energy_plateau_thresh` / `energy_plateau_window` を設定します。有効にすると、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が `energy_plateau_thresh` を下回ったとき、オプティマイザは収束扱いにせず `stalled` として停止します。エネルギーが平坦になっても MLIP の力のノイズで力が `baker` の閾値を下回らないときに使ってください。`tsopt` がプラトーで止まったときも Hessian を計算して n_imag を出します。TS 最適化が収束しないまま `max_cycles` に達したときは Hessian を計算しません。GSM と DMF の経路最適化はこの停止を使いません。
 
 **収束プリセット**（デカルト座標では力は Hartree/Bohr、ステップは Bohr。角度は Hartree/rad と rad）:
 
@@ -228,7 +228,7 @@ opt:
 | `gau_vtight` | 2.0e-6 | 1.0e-6 | 6.0e-6 | 4.0e-6 |
 | `baker` | 3.0e-4 | 2.0e-4 | 3.0e-4 | 2.0e-4 |
 
-`baker` は 4 列すべてに加えて前サイクルとの `|delta E| < 1e-6` hartree を要求し、Bakken and Helgaker（*J. Chem. Phys.* **117**, 9160 (2002)）が示した Baker 基準（`max(|force|) <= 3e-4` **かつ**（`|delta E| < 1e-6` **または** `max(|step|) <= 3e-4`））より厳しい設定です。文献の形は力の RMS が残った構造も収束と判定しうるため、機械学習ポテンシャル上では高次の鞍点で止まることがあり、厳しい形を使っています。
+`baker` は 4 列すべてに加えて前サイクルとの `|delta E| < 1e-6` hartree を要求し、Bakken and Helgaker（*J. Chem. Phys.* **117**, 9160 (2002)）が示した Baker 基準（`max(|force|) <= 3e-4` **かつ**（`|delta E| < 1e-6` **または** `max(|step|) <= 3e-4`））より厳しい設定です。文献の基準は力の RMS が残った構造も収束と判定しうるため、機械学習ポテンシャル上では高次の鞍点で止まることがあり、厳しい基準を使っています。
 
 ---
 
@@ -248,7 +248,7 @@ lbfgs:
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
  reject_uphill: false # 許容値を超えるエネルギーの上昇を拒否する（指定したときだけ有効）
- uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
+ uphill_tolerance: 0.0001 # エネルギー上昇の許容値（Hartree）
  rejection_step_floor: 1.0e-07 # やり直すときのステップの下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
 ```
@@ -267,8 +267,8 @@ rfo:
  trust_min: 0.0001 # Minimum trust radius
  trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
- reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
- uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
+ reject_uphill: false # 許容値を超えるエネルギー上昇の拒否を明示的に有効化
+ uphill_tolerance: 0.0001 # エネルギー上昇の許容値（Hartree）
  rejection_trust_floor: 1.0e-07 # やり直すときの trust radius の下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
  hessian_update: ts_bfgs # Hessian update scheme: ts_bfgs, bfgs, bofill, etc.
@@ -627,7 +627,7 @@ bias:
 
 `opt` も `--distance-restraint` の組に同じデフォルト値の `--restraint-k` を使いますが、CLI フラグからだけ読み、`bias:` セクションは読みません。
 
-調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。`bias.k` は、値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルト値はほぼ剛体的に固定する値です。
+調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。`bias.k` を小さく（例: `20.0`）すると拘束が柔らかい誘導項になり、ジオメトリが緩和しやすくなります。デフォルト値はほぼ剛体的に固定する値です。
 
 ---
 

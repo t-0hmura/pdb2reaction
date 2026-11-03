@@ -24,7 +24,7 @@ and the charge rules are in [SKILL.md](SKILL.md).
 | `CRYST1` | Not used and omitted from cluster PDBs |
 
 `ANISOU`, `LINK`, `SSBOND`, and other connectivity records are not used. Keep
-the original file; if a parser needs a cleanup, write a separate derived PDB
+the original file; if a parser needs cleaner input, write a separate derived PDB
 and check atom identity and order afterwards.
 
 Columns are 1-based and inclusive:
@@ -154,7 +154,7 @@ How the input is read:
 
 1. Only the first `_atom_site.pdbx_PDB_model_num` model is used.
 2. Each residue keeps one altLoc, the one with the highest mean occupancy, and
-   blank or shared atoms are kept.
+   atoms with a blank altLoc are kept.
 3. Atoms get temporary one-character chain IDs and residue numbers 1–9999,
    over as many chains as needed. This covers up to 619,938 residues
    (62 × 9,999).
@@ -176,7 +176,7 @@ pdb2reaction extract -i complex.cif -c 'LONG_CHAIN:10001' -o model.pdb
 ```
 
 For scan atoms, `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`, such as
-`LONG_CHAIN:SAM:10001:C1` or `A:SAM:12B:C1`, separates repeated numbering.
+`LONG_CHAIN:SAM:10001:C1` or `A:SAM:12B:C1`, distinguishes repeated residue numbers.
 Chain IDs are case-sensitive; `A` and `a` can be different chains.
 
 A geometry command on `complex.cif` writes both files:
@@ -248,7 +248,7 @@ write("ts.xyz", trj[5])          # one frame, index 5
 write("ts.pdb", read("ts.xyz"))  # every atom gets residue 'MOL'; fix names if needed
 ```
 
-Without Python, frame k (counted from 1) is
+Without Python, print frame k (counted from 1) with
 `N=$(head -1 scan_trj.xyz); sed -n "$(( (k-1)*(N+2)+1 )),$(( k*(N+2) ))p" scan_trj.xyz`.
 To keep the PDB topology for the next command, pass the original PDB to
 `--ref-pdb`. `cat reactant.xyz ts.xyz product.xyz > rts.xyz` makes a valid
@@ -274,15 +274,15 @@ or comment line.
 | Block | Required | Use in pdb2reaction |
 |---|---|---|
 | Link0 (`%nproc`, `%mem`, `%chk`) | Optional | Ignored |
-| Route line (`# method basis keywords`) | Yes, for Gaussian | Ignored; the backend or `--func-basis` sets the method |
-| Title | Yes, for Gaussian | Ignored |
+| Route line (`# method basis keywords`) | Yes | Ignored; the backend or `--func-basis` sets the method |
+| Title | Yes | Ignored |
 | `<charge> <multiplicity>` | Yes | Total charge and multiplicity; `-q` / `-m` override |
 | Coordinates (`<element> x y z`), ending with a blank line | Yes | Geometry |
 | Frozen flag (`-1` in column 2) | Optional | Kept in written files but not used for freezing; use `--freeze-atoms`, `--freeze-links`, or `geom.freeze_atoms` |
 | Connectivity, ECP, or custom basis after the coordinates | Optional | Not used, but copied unchanged into every `.gjf` written with `--convert-files` |
 
 Because that trailing block is copied from the input, its connectivity
-describes the input bonding. Remove it from the template when outputs such as
+describes the input bonding. Remove it from the input when outputs such as
 TS or IRC frames bond differently, so a later Gaussian job does not read
 connectivity that contradicts its coordinates.
 
@@ -297,7 +297,7 @@ enabled, geometry commands write `.gjf` outputs from the input header. A
 single-frame output is a normal Gaussian input. A multi-frame output has one
 header and blank-separated coordinate blocks; it is a coordinate archive, not
 an executable QST or Link1 job, so take one frame out first. Without a
-template, write the header by hand once and reuse it; the functional and basis
+`.gjf` input, write the header by hand once and reuse it; the functional and basis
 depend on the downstream calculation.
 
 ## Ligand, ion, and metal charges

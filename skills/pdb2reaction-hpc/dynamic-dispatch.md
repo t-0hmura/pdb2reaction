@@ -25,8 +25,8 @@ directory and records task IDs under `inflight/`, `completed/`, `failed/`, and
 marker**, not merely from commands that returned nonzero. This also recovers a
 claim abandoned by node loss, a signal, or walltime termination.
 
-If PBS stops the whole allocation before the parent epilogue runs, execute the
-preserved `recover.sh` manually with that run directory. Do not resume only
+If PBS stops the whole allocation before `dispatcher.sh` finishes, manually
+execute the `recover.sh` in that run directory. Do not resume only
 from `next_task`; that counter records claims, not completions.
 
 ## `dispatcher.sh`

@@ -21,7 +21,7 @@ The examples use `input.pdb`, the cluster model cut from the bundled enzyme stru
 pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -o input.pdb
 ```
 
-Its PDB has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.
+`input.pdb` has an empty chain column, so an atom is written as residue name, residue number, and atom name, in any order, separated by commas or spaces.
 
 ### 1. From a YAML spec
 
@@ -73,7 +73,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./
 ## How it works
 
 1. **Starting structure and grid**:
-The {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--preopt`, the input is first optimized without restraints; if that does not converge, the input geometry is used. Each axis gets ceil(|high − low| / h) + 1 evenly spaced values, both ends included, where h is `--max-step-size` (Å) for a distance and `--max-angle-step-size` or `--max-dihedral-step-size` (degrees) for an angle or dihedral. The values are visited from the one closest to the starting structure.
+The {ref}`charge <charge-specification>` comes from `-q` or `-l`. With `--preopt`, the input is first optimized without restraints; if that does not converge, the input geometry is used. Each axis gets ceil(|high − low| / h) + 1 evenly spaced values, both ends included, where h is `--max-step-size` (Å) for a distance and `--max-angle-step-size` or `--max-dihedral-step-size` (degrees) for an angle or dihedral. Values closer to the starting structure are visited first.
 2. **Three nested loops**:
 For each d₁ value, the structure is relaxed with only the d₁ restraint; for each d₂ value, with the d₁ and d₂ restraints; the inner loop then scans d₃ with all three restraints. Each relaxation starts from the nearest structure that has already converged in the same loop; until one has, it starts from the structure the enclosing loop produced (the starting structure for d₁).
 3. **Relaxation at each point**:
@@ -163,10 +163,10 @@ See the [generated CLI reference](reference/commands/scan3d.md) for every option
 * **Cap hydrogens**: `--freeze-links` (default on) fixes the parent atoms of the {ref}`cap hydrogens <link-hydrogen-and-frozen-atoms>` of an extracted cluster.
 * **Check the spec without computing**: `--dry-run` reads the input, the charge and spin, and `-s`, prints the plan, and exits without any optimization. With `--csv`, it checks only the options.
 * **Cycle limit**: `--relax-max-cycles` (default `100000`) limits each relaxation; an explicit value overrides YAML `opt.max_cycles`.
-* **Reference row**: `i = j = k = -1` and `is_preopt = true` hold the starting structure. The row stays in the table but is never a grid point, a baseline, or a plotted point.
+* **Reference row**: `i = j = k = -1` and `is_preopt = true` mark the starting structure. The row stays in the table but is never a grid point, a baseline, or a plotted point.
 * **Re-plotting a table (`--csv`)**: the table needs `d1_A`, `d2_A`, `d3_A`, and `energy_hartree` or `energy_kcal`. The reference row and rows with `bias_converged = false` or a non-finite energy are left out.
 * **Too few usable points**: with fewer than four usable points, or with all of them in one plane, only the figure is skipped. The run prints `[plot] NOTE: Volume plot skipped: …` and exits with status 0. With no usable point it prints `[plot] No finite data for plotting.` and exits with status 1.
-* **Running again into the same `--out-dir`**: whether it is a full scan or a `--csv` redraw, a run without `--out-json` removes `result.json` and `summary.json` from `--out-dir`, and a run with it overwrites them; every run replaces `scan3d_density.html`.
+* **Rerunning in the same `--out-dir`**: whether it is a full scan or a `--csv` redraw, a run without `--out-json` removes `result.json` and `summary.json` from `--out-dir`, and a run with it overwrites them; every run replaces `scan3d_density.html`.
 
 ---
 

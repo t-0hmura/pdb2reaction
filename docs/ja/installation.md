@@ -54,10 +54,10 @@ plotly_get_chrome -y
 (ja-system-prerequisites)=
 ## システムの前提パッケージ
 
-pip と conda は、コンパイラと Chrome が使うライブラリを入れません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
+`pip install pdb2reaction` では、コンパイラと Chrome が使うライブラリは入りません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
 
 - **UMA と `--compile` 用のコンパイラ:** GPU では、UMA は実行時に高速化のためコンパイルをします（PyTorch が Triton で GPU のカーネルを作ります）。そのため `--compile` を付けなくても C コンパイラ（`gcc`）が要ります。`--compile` を付けると UMA と ORB はモデルもコンパイルするので、GPU では C コンパイラ、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
-- **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。Chrome は `plotly_get_chrome -y` でダウンロードし、下の OS のライブラリを読み込みます。
+- **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。`plotly_get_chrome -y` でダウンロードした Chrome は、下の OS のライブラリを読み込みます。
 
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
 
@@ -82,7 +82,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。
 
-コンパイラが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて同じコマンドを表示します。Chrome のライブラリが足りないときは、`energy-diagram` と `trj2fig` は同じように止まり、`all`・`path-search`・`scan2d` は 1 行で知らせ、PNG の作成だけを省いて続けます。
+コンパイラが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて上のコマンドを表示します。Chrome のライブラリが足りないときは、`energy-diagram` と `trj2fig` は同じように止まり、`all`・`path-search`・`scan2d` は 1 行で知らせ、PNG の作成だけを省いて続けます。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -105,7 +105,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     ```
 
 3. **cyipopt・xTB・PyTorch を conda-forge からインストール**
-    `--mep-mode dmf`（DMF 法）で MEP を探索するときと、xTB の溶媒補正（`--solvent`）を使うときに必要です。この手順で PyTorch も入るので、手順 4 は飛ばします。GSM のみを使い `--solvent` も使わない場合はスキップできます。それでも `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
+    `--mep-mode dmf`（DMF 法）で MEP を探索するときと、xTB の溶媒補正（`--solvent`）を使うときに必要です。この手順で PyTorch も入るので、手順 4 は飛ばします。GSM のみを使い `--solvent` も使わない場合はスキップできます。この手順の後も `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
 
     ```bash
     conda install -c conda-forge --override-channels cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y   # nvidia-smi の CUDA が 13.0 より小さいなら cuda129
@@ -196,7 +196,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
     ```
 
-    `CUDA: False` の場合、バージョンを変える前に、インストールした wheel、スケジューラがジョブに GPU を見せているか、ドライバー、環境のライブラリを確認してください:
+    `CUDA: False` の場合、バージョンを変える前に、インストールした wheel、スケジューラがジョブに GPU を割り当てているか、ドライバー、環境のライブラリを確認してください:
 
     ```bash
     python -m torch.utils.collect_env

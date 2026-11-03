@@ -50,7 +50,7 @@ With `--freeze-links` (on by default), `freq` finds the cap hydrogens that `extr
 2. **Hessian mode**:
 `--hessian-calc-mode` selects `FiniteDifference` (finite differences, the default) or `Analytical`.
 3. **Thermochemistry (QRRHO)**:
-From the frequencies, the QRRHO model, which corrects the entropy of low frequencies (rotor cutoff 100 cm⁻¹), gives the Gibbs free-energy correction `G_corr`. G is E + `G_corr`, where E is the electronic energy, and always includes the translational and rotational terms of the whole structure besides the vibrational terms of the positive frequencies. The console summary prints `G_corr` and G in Hartree on the lines `Gibbs Free Energy Correction (G_corr)` and `Gibbs Free Energy (G = E + G_corr)`; `--dump` also writes them to `thermoanalysis.yaml`, and `--out-json` to `thermochemistry` in `result.json`, where G is `sum_EE_and_thermal_free_energy_ha`. The point group and rotational symmetry number are detected from the structure; YAML `thermo.symmetry_number` overrides the number.
+From the frequencies, the QRRHO model, which corrects the entropy of low frequencies (rotor cutoff 100 cm⁻¹), gives the Gibbs free-energy correction `G_corr`. G is E + `G_corr` (E is the electronic energy) and always includes the translational and rotational terms of the whole structure besides the vibrational terms of the positive frequencies. The console summary prints `G_corr` and G in Hartree on the lines `Gibbs Free Energy Correction (G_corr)` and `Gibbs Free Energy (G = E + G_corr)`; `--dump` also writes them to `thermoanalysis.yaml`, and `--out-json` to `thermochemistry` in `result.json`, where G is `sum_EE_and_thermal_free_energy_ha`. The point group and rotational symmetry number are detected from the structure; YAML `thermo.symmetry_number` overrides the number.
 4. **Writing the modes**:
 Up to `--max-write` mode animations are written, starting from the imaginary or lowest modes.
 
@@ -58,7 +58,7 @@ Up to `--max-write` mode animations are written, starting from the imaginary or 
 
 Without frozen atoms, `freq` removes the six rigid motions (three translations and three rotations), which are not vibrations, before reporting frequencies. With frozen atoms, it removes only the rigid motions that keep every frozen atom in place. With three or more frozen atoms that do not lie on one line, the normal case for a cluster model, nothing is removed and every vibrational mode of the movable atoms is kept. With one frozen atom, three motions are removed (rotations about that atom); with two, one is removed (rotation about the axis through them).
 
-`irc`, the TS frequency check and the Dimer direction in `tsopt`, and `--flatten` (removing extra imaginary modes) in `opt` and `tsopt` treat rigid motions the same way. With `--out-json`, `result.json` records the number of removed motions and the Hessian used under `rigid_projection`; see [JSON Output Reference](json-output.md#rigid-projection-provenance).
+The same applies to `irc`, to the TS frequency check and the Dimer direction in `tsopt`, and to `--flatten` (removing extra imaginary modes) in `opt` and `tsopt`. With `--out-json`, `result.json` records the number of removed motions and the Hessian used under `rigid_projection`; see [JSON Output Reference](json-output.md#rigid-projection-provenance).
 
 ---
 
@@ -89,7 +89,7 @@ result_freq/
 └─ result.json                   # Summary (--out-json)
 ```
 
-* **Minimum or TS?** The console summary prints n_imag as `Number of Imaginary Freq = N`; `freq` does not judge it, so `scientific_status` in `result.json` is `success` whatever n_imag is. A successful TS optimization gives one imaginary mode along the reaction coordinate: **exactly one** clear negative value at the top of `frequencies_cm-1.txt`, and every later value positive or within the tolerance. A TS then goes to [`irc`](irc.md). If a structure meant to be a minimum has imaginary modes, optimize it again with [`opt`](opt.md) `--flatten`; if a TS has none or several, see {ref}`When the TS search fails <ts-search-fails>`.
+* **Minimum or TS?** The console summary prints n_imag as `Number of Imaginary Freq = N`; `freq` does not judge the structure, so `scientific_status` in `result.json` is `success` whatever n_imag is. A successful TS optimization gives one imaginary mode along the reaction coordinate: **exactly one** clear negative value at the top of `frequencies_cm-1.txt`, and every later value positive or within the tolerance. Then run [`irc`](irc.md) on the TS. If a structure meant to be a minimum has imaginary modes, optimize it again with [`opt`](opt.md) `--flatten`; if a TS has none or several, see {ref}`When the TS search fails <ts-search-fails>`.
 * **Watching the motion**: open `mode_*_trj.xyz` or `.pdb` in PyMOL, VMD, OVITO, or another viewer to animate the vibration.
 
 ---
@@ -127,7 +127,7 @@ See the [generated CLI reference](reference/commands/freq.md) for every option.
 
 * **`freq` or `tsopt`?** `tsopt` already checks the imaginary frequencies. Run `freq` on its own when you need detailed thermochemistry or mode animations.
 * **At least one atom must move.** If every atom is frozen there is no vibration to analyze, and `freq` stops with an error.
-* **Analytical Hessian and `--uma-workers`**: with UMA, `--hessian-calc-mode Analytical` cannot run with `--uma-workers` above 1 and stops with an error. Use `--uma-workers 1` for an analytical Hessian. It uses more GPU memory, so test it on your system first.
+* **Analytical Hessian and `--uma-workers`**: with UMA, `--hessian-calc-mode Analytical` cannot run with `--uma-workers` above 1 and stops with an error. Use `--uma-workers 1` for an analytical Hessian. The analytical Hessian uses more GPU memory, so test it on your system first.
 * **`all --thermo` keeps the thermochemistry file**: `all` reads its thermochemistry from `thermoanalysis.yaml`, so with `--thermo` it writes this file even under `--no-dump`.
 * **The `--read-hess` / `--dump-hess` file** is one NumPy array (`numpy.save`): the Cartesian Hessian in Hartree/bohr², not mass-weighted, with atoms in input order. It covers all atoms (3N × 3N) or, when atoms are frozen, only the movable ones. `--read-hess` checks only the size, finiteness, and symmetry of the matrix, so pass a Hessian computed for the same geometry, charge, multiplicity, and calculator.
 

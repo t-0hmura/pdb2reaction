@@ -22,7 +22,7 @@ Common toggles:
 - `--dump`: write trajectory files
 - `--preopt` / `--endopt`: pre- / post-optimization
 - `--climb`: climbing image in the minimum energy path search
-- `--convert-files`: also write PDB / CIF / GJF copies of the outputs in the input format
+- `--convert-files`: also write copies of the outputs in the input format (PDB / CIF / GJF)
 
 ## Progressive help
 
@@ -127,7 +127,7 @@ A three-field selector gives the residue name, residue number, and atom name in 
 
 On `scan` and `all`, `--scan-lists/-s` accepts one or more inline Python literals; `scan2d` and `scan3d` accept exactly one. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
 
-**YAML / JSON spec file** (root = mapping; key is `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
+**YAML / JSON spec file** (top-level key `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
 
 ```yaml
 one_based: true            # optional; defaults to the command's --one-based/--zero-based (1-based)
@@ -155,7 +155,7 @@ Each `scan2d` / `scan3d` axis is `(i,j,low,high)`, `(i,j,k,low,high)`, or `(i,j,
 -s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"       # avoid: double-quoted outer literal requires escaping inner quotes
 ```
 
-For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted.
+For `scan`, each literal is one **stage**; pass several literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted.
 
 | Command | Accepted scan specification |
 | --- | --- |
@@ -223,7 +223,7 @@ Exit codes do not depend on JSON output. Exit code `0` covers both `success` and
 | `all` (TS optimization, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` (or the `--opt-mode` value, if given on the command line) |
 | `all` (endpoint optimization after IRC, `--opt-mode-post`) | L-BFGS | RFO | `hess` (or the `--opt-mode` value, if given on the command line) |
 
-The same `--opt-mode` value selects a **different algorithm** on each subcommand, and the defaults differ, so check the table before copying a recipe. Algorithm names are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. On `tsopt`, `--opt-mode grad` is therefore a **Dimer** TS search, not an L-BFGS minimization, and this Dimer periodically computes the Hessian to update its direction. Write `--opt-mode dimer` or `rsirfo` on `tsopt` and `--opt-mode lbfgs` or `rfo` on `opt` to make a recipe unambiguous.
+The same `--opt-mode` value selects a **different algorithm** on each subcommand, and the defaults differ, so check the table before copying a recipe. Algorithm names are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. On `tsopt`, `--opt-mode grad` is therefore a **Dimer** TS search, not an L-BFGS minimization, and it periodically computes the Hessian to update the dimer direction. Write `--opt-mode dimer` or `rsprfo` on `tsopt` and `--opt-mode lbfgs` or `rfo` on `opt` to make a recipe unambiguous.
 
 ## CLI ↔ YAML name mismatches
 

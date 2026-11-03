@@ -68,7 +68,7 @@ result_all/
 
 * **DFT と GPU のメモリ**: `--dft` には DFT 用の追加パッケージが要ります。その導入と GPU メモリについては [MLIP の TS を DFT で確かめる](dft-backend.md#使用上の注意点) の使用上の注意点を参照してください。
 * **`summary.json` の障壁**: `segments[].barrier_kcal` は TS 最適化の前の、MEP の上の障壁です。`--tsopt` を付けると、最適化した TS と端点から求めた障壁が `post_segments[].mlip.barrier_kcal` に入り、`--thermo` で `post_segments[].gibbs_mlip.barrier_kcal`、`--dft` で `post_segments[].dft.barrier_kcal` が加わります。
-* **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` は、すべてのセグメントにそろっている最も高いレベル（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で比べた、最も高い障壁です。使ったレベルは `rate_limiting_step.method` に入ります。
+* **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` は、すべてのセグメントにそろっている最も高いレベル（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で比べた、最大の障壁です。使ったレベルは `rate_limiting_step.method` に入ります。
 
 ## 次のステップ
 

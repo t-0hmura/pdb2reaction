@@ -85,7 +85,7 @@ model to another command.
   general. A mapping name that matches no unknown selected residue gives a
   warning and is ignored. Ligand and ion details:
   [formats.md](../pdb2reaction-model-setup/formats.md#ligand-ion-and-metal-charges).
-- A residue with non-standard amino-acid names (for example from MCPB.py) is
+- A residue with a non-standard amino-acid name (for example from MCPB.py) is
   neither cut nor capped, and a WARNING says that backbone truncation was not
   applied; register it with `--modified-residue 'HD1,HE1'` (a bare name counts
   as charge 0; `NAME:charge` sets it).
@@ -107,7 +107,7 @@ is in [formats.md](../pdb2reaction-model-setup/formats.md#cap-hydrogens).
 ### Three sources of frozen atoms
 
 - `--freeze-links` (on by default) freezes the cap parents. It reads `LKH`
-  from PDB/mmCIF input, or from XYZ/GJF input given with `--ref-pdb`.
+  from PDB/mmCIF input, or from `--ref-pdb` for XYZ/GJF input.
 - `--freeze-atoms 'i,j,k'` takes 1-based atom numbers in any input format.
 - YAML `geom.freeze_atoms` (with `--config`) takes 1-based numbers in any
   input format.
@@ -159,7 +159,7 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 With frozen atoms, `freq`, `irc`, the TS check and Dimer direction in
 `tsopt`, and `--flatten` use the Hessian of the movable atoms, and only rigid
 motions that keep every frozen atom in place are removed. For a cluster with
-three or more frozen atoms off one line, that removes nothing. This is
+three or more frozen atoms not on one line, nothing is removed. This is
 separate from `tsopt --ref-mode`. See the
 [JSON record](../../docs/json-output.md#rigid-projection-provenance) and
 [details](../../docs/freq.md#rigid-modes-with-frozen-boundaries).

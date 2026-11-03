@@ -1,6 +1,6 @@
 # Quickstart: `pdb2reaction all`
 
-`pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points. Use this mode when a reaction coordinate is hard to define: build the intermediates or products yourself in PyMOL or GaussView and give them as inputs. Because no coordinate is fixed in advance, the search may also show mechanism candidates you did not expect.
+`pdb2reaction all` builds a reaction path from the reactant (R) and product (P) in one run. It cuts out a cluster model around the substrates and searches for the minimum energy path (MEP) between R and P. With `--tsopt --thermo --dft`, the same run continues to transition-state (TS) optimization, an intrinsic reaction coordinate (IRC) calculation, frequencies, and DFT single points. Use this mode when a reaction coordinate is hard to define: build the intermediates or products yourself in PyMOL or GaussView and give them as inputs. Because no coordinate is fixed in advance, the search may also show mechanism candidates you did not expect.
 
 The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6-methyltransferase BezA in [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples): `1.R.pdb` is the reactant and `3.P.pdb` the product. Get it with `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`. For your own reaction, replace them with your full-system structures.
 
@@ -14,7 +14,7 @@ The commands below use the bundled example of the GPP (geranyl pyrophosphate) C6
 
 ## Minimal command
 
-Give R and P in reaction order, the residues to cut out around (`-c`), and the ligand charges (`-l`).
+Give R and P in reaction order, the residues to center the cluster on (`-c`), and the ligand charges (`-l`).
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -52,7 +52,7 @@ result_all/
         └── summary.json         # MEP search results
 ```
 
-The minimal command stops after the MEP search and does not create `segments/`. With `--tsopt`, a reactive segment adds `segments/seg_NN/` with the R/TS/P structures (`reactant.pdb`, `ts.pdb`, `product.pdb`), `ts/`, and `irc/`; `--thermo` also adds `freq/`.
+The minimal command stops after the MEP search and does not create `segments/`. With `--tsopt`, each reactive segment gets `segments/seg_NN/` with the R/TS/P structures (`reactant.pdb`, `ts.pdb`, `product.pdb`), `ts/`, and `irc/`; `--thermo` also adds `freq/`.
 
 ## Checking the result
 

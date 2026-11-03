@@ -125,7 +125,7 @@ geom:
 ```
 
 **Notes:**
-- Frozen atoms have zeroed forces. With the default `return_partial_hessian: true`, the Hessian covers only the movable atoms; setting it false returns a full matrix with frozen rows and columns zeroed
+- Frozen atoms have zeroed forces. With the default `calc.return_partial_hessian: true`, the Hessian covers only the movable atoms; setting it to false returns a full matrix with frozen rows and columns zeroed
 - In Cartesian PHVA (partial Hessian vibrational analysis), only the rigid motions of the whole system that keep the frozen atoms in place are removed; see [freq](freq.md#rigid-modes-with-frozen-boundaries)
 - For `irc`, `geom.coord_type` is always `cart`, whatever YAML or the CLI sets
 
@@ -218,7 +218,7 @@ opt:
 
 **Energy plateau stop (off by default):**
 `--stop-plateau` on `opt` / `tsopt` / `all` turns `energy_plateau` on, and
-`--stop-plateau-thresh` / `--stop-plateau-window` set the two values below.
+`--stop-plateau-thresh` / `--stop-plateau-window` set `energy_plateau_thresh` / `energy_plateau_window`.
 The optimizer then stops as `stalled`, not converged, when the energy range
 (max − min) over the last `energy_plateau_window` steps falls below
 `energy_plateau_thresh`. Use it when MLIP force noise keeps the force above the
@@ -549,8 +549,8 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
- energy_increase_thresh: 0.0   # Stop on any one-step rise in ordinary mode
- dump_every: null # Disabled; positive cadence writes a coordinate/energy/gradient checkpoint without a Hessian
+ energy_increase_thresh: 0.0   # Stop on any one-step energy rise
+ dump_every: null # Disabled; N > 0 writes a coordinate/energy/gradient checkpoint (no Hessian) every N steps
  dump_fn: irc_data.h5 # Checkpoint filename used only when dump_every is set
  displ: energy # Displacement construction method
  displ_energy: 0.001 # Energy-based displacement scaling

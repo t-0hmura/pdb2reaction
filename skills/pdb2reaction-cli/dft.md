@@ -23,7 +23,7 @@ pdb2reaction dft -i seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
 ```
 
 The default method is `wb97m-v/def2-svp`. XYZ input needs `-q` and `-m`, or
-`--ref-pdb` so that `-l` works. `--solvent` adds PySCF implicit solvent
+`--ref-pdb` so that `-l` works. `--solvent NAME` adds PySCF implicit solvent
 (`--solvent-model smd` by default, or `pcm`); `--dft-nprocs` and
 `--dft-memory` override the detected CPU thread count and host RAM limit.
 On a machine without a usable GPU:
@@ -114,7 +114,7 @@ Combine the energies with [`energy-diagram`](utilities.md#energy-diagram).
 
 ## Next step
 
-- Install, and aarch64 handling:
+- Install and aarch64 handling:
   [backends.md](../pdb2reaction-install/backends.md#dft-pyscf-gpu4pyscf).
 - `-b dft`, `all --dft`, and GPU memory: [docs](../../docs/dft-backend.md).
 - Geometries for the single points: [tsopt.md](tsopt.md), [irc.md](irc.md).

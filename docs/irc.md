@@ -143,7 +143,7 @@ See the [generated CLI reference](reference/commands/irc.md) for every option.
 
 ## Notes
 
-* **A branch that stops at once**: when a branch ends after three frames or fewer, the console warns `[irc] IRC stopped after only a few frames in …`. Try example 4 first; a large step can make EulerPC unstable.
+* **A branch that stops early**: when a branch ends after three frames or fewer, the console warns `[irc] IRC stopped after only a few frames in …`. Try example 4 first; a large step can make EulerPC unstable.
 * **`--never-stop` still stops on failures**: even with `--never-stop`, numerical failures and interruptions stop the run. Inspect the trajectory and optimize the endpoints, and raise `--max-cycles` only when the extra path is useful.
 * **`--root` counts from 0**: a successful TS optimization gives one imaginary mode along the reaction coordinate, so for a TS with n_imag = 1 keep `--root 0` (the only negative eigenvalue). Use `1`, `2`, … only when you know that spurious modes with lower (more negative) eigenvalues come before the reaction mode.
 * **Fixed settings**: `irc` always uses Cartesian coordinates (`geom.coord_type: cart`) and the Hessian of the movable atoms only (`calc.return_partial_hessian: true`), whatever the YAML says.
