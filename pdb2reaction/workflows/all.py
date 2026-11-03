@@ -148,6 +148,7 @@ from pdb2reaction.cli.common_options import (
     add_allow_charge_mult_mismatch_option,
     add_backend_model_option,
     add_calc_file_option,
+    add_compile_option,
     add_coord_type_option,
     add_deterministic_option,
     add_precision_option,
@@ -1088,6 +1089,7 @@ def _write_args_yaml_with_freeze_atoms(
     freeze_atoms: Sequence[int],
     coord_type: Optional[str] = None,
     precision: Optional[str] = None,
+    compile_model: Optional[bool] = None,
     backend_model: Optional[str] = None,
     dft_settings: Optional[Mapping[str, Any]] = None,
     solvent_xtb_cmd: Optional[str] = None,
@@ -1108,12 +1110,14 @@ def _write_args_yaml_with_freeze_atoms(
     stage that reads this YAML — the path is how ``all --coord-type`` is
     propagated uniformly to opt / tsopt / scan / path-opt / path-search
     without per-call argv plumbing. ``precision`` is propagated the same way
-    via ``calc.precision`` so ``all --precision fp64`` reaches every child.
+    via ``calc.precision`` so ``all --precision fp64`` reaches every child, and
+    ``compile_model`` via ``calc.compile_model`` (``all --compile``).
     """
     if (
         not freeze_atoms
         and coord_type is None
         and precision is None
+        and compile_model is None
         and backend_model is None
         and dft_settings is None
         and solvent_xtb_cmd is None
@@ -1142,6 +1146,7 @@ def _write_args_yaml_with_freeze_atoms(
 
     if (
         precision is not None
+        or compile_model is not None
         or backend_model is not None
         or dft_settings is not None
         or solvent_xtb_cmd is not None
@@ -1152,6 +1157,8 @@ def _write_args_yaml_with_freeze_atoms(
         calc_cfg = dict(calc_cfg)
         if precision is not None:
             calc_cfg["precision"] = precision
+        if compile_model is not None:
+            calc_cfg["compile_model"] = bool(compile_model)
         if backend_model is not None:
             calc_cfg["model"] = backend_model
         if dft_settings is not None:
@@ -2141,6 +2148,7 @@ def _enrich_summary(
     )
     if calculator_provenance_data is not None:
         for key in (
+            "mlip_compiled",
             "primary_method",
             "primary_method_label",
             "dft_settings",
@@ -4924,6 +4932,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @add_print_every_option()
 @add_precision_option(post_option=True)
 @add_precision_post_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -5019,6 +5028,7 @@ def cli(
     cli_coord_type: Optional[str],
     precision: Optional[str],
     precision_post: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -5903,6 +5913,8 @@ def cli(
         apply_backend_model_to_calc_cfg(_dry_calc_cfg, backend_model)
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(_dry_calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.core.compile_policy import apply_compile_option
+        apply_compile_option(_dry_calc_cfg, compile_model)
         from pdb2reaction.backends import apply_effective_precision
         if precision_post is not None:
             apply_effective_precision(deepcopy(_dry_calc_cfg), precision_post)
@@ -6343,6 +6355,7 @@ def cli(
             else None
         ),
         precision=precision,
+        compile_model=compile_model,
         backend_model=backend_model,
         solvent_xtb_cmd=solvent_xtb_cmd_override(ctx),
         session=session,
@@ -6366,6 +6379,8 @@ def cli(
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
     apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
+    from pdb2reaction.core.compile_policy import apply_compile_option
+    apply_compile_option(calc_cfg_shared, compile_model)
     from pdb2reaction.backends import apply_effective_precision
     # TSOPT, IRC, endpoint optimization and freq resolve --precision-post from
     # the mapping before --precision is applied, as their child commands do;

@@ -30,8 +30,8 @@ set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # Prebuilt PyTorch/backend wheels need a compatible NVIDIA driver, not a local
-# CUDA toolkit module. UMA and ORB compile code at run time for speed, so a
-# compiler must be on PATH (gcc; g++ on a CPU). If the compute node has none,
+# CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so
+# gcc must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none,
 # load the site's compiler module here: module load <COMPILER_MODULE>
 # Load <CUDA_MODULE> as well only for a source build.
 # - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
@@ -89,8 +89,8 @@ Use the same body as above, but replace the Torque resource line with:
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-# Prebuilt wheels need no CUDA module. UMA and ORB compile code at run time for
-# speed, so a compiler must be on PATH (gcc; g++ on a CPU); if the compute node
+# Prebuilt wheels need no CUDA module. UMA on a GPU compiles code at run time for
+# speed, so gcc must be on PATH (on a CPU, --compile needs g++ too); if the compute node
 # has none:
 # module load <COMPILER_MODULE>   (and <CUDA_MODULE> only for a source build)
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup

@@ -265,7 +265,7 @@ pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF�
 ## 使用上の注意点
 
 - `--precision tf32` と、ORB・MACE の `--precision fp32` はスクリーニング専用です。有限差分 Hessian のノイズが増えるので、結果を使う前に n_imag を確かめてください。
-- UMA の `--precision tf32` は、インストールした fairchem-core に UMA Nitro があれば（`uma-s-1p2p1` 系の checkpoint、ワーカー 1 つ）それで計算します。ほかの checkpoint は TF32 でコンパイルした経路で計算します。GPU での tf32 の計算では、FAIR-Chem がいつも `Running in a reduced-precision mode` と出力します。
+- UMA の `--precision tf32` は、インストールした fairchem-core に UMA Nitro があれば（`uma-s-1p2p1` 系の checkpoint、ワーカー 1 つ）それで計算します。ほかの checkpoint は TF32 の速い経路で計算します。GPU での tf32 の計算では、FAIR-Chem がいつも `Running in a reduced-precision mode` と出力します。
 - AIMNet2 は `--precision fp64` にも `--deterministic` にも対応せず、どちらもエラーで止まります。AIMNet2 はモデルへの入力を float32 にし、力を PyTorch の決定論的モードの外にある独自の CUDA のコードで計算するので、力はビット単位で再現しません（エネルギーは再現します）。繰り返しの計算を一致させたいときは、UMA、ORB、MACE のいずれかで `--deterministic` を付け、同じ環境で 2 回実行して比べてください。
 
 (ja-workers-analytical-error)=

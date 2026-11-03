@@ -21,6 +21,7 @@ from .base import (
     _prepare_model_for_autograd_hessian,
     _restore_model_after_autograd_hessian,
 )
+from pdb2reaction.core.compile_policy import resolve_compile
 from pdb2reaction.core.defaults import DEFAULT_ORB_MODEL
 
 def _is_conservative_orb_model(model_name: str) -> bool:
@@ -101,7 +102,7 @@ class OrbCalculator(MLIPCalculator):
         # finite-difference Hessians.  Callers may request "float32-high"
         # explicitly for screening.
         precision: str = "float64",
-        compile_model: Optional[bool] = None,
+        compile_model: bool = False,
         # Base class parameters
         charge: int = 0,
         spin: int = 1,
@@ -145,8 +146,13 @@ class OrbCalculator(MLIPCalculator):
 
         self.model_name = str(model)
         self.precision = _normalize_orb_precision(precision)
-        # None leaves compilation to orb-models (compiled on CUDA and CPU).
-        self.compile_model = None if compile_model is None else bool(compile_model)
+        # Always an explicit bool: orb-models compiles when it is left None.
+        self.compile_model = resolve_compile(
+            compile_model,
+            backend="orb",
+            device=self.device_str,
+            analytical_hessian=(self.hessian_calc_mode == "Analytical"),
+        )
 
         if not _is_conservative_orb_model(self.model_name):
             raise BackendError(
@@ -302,16 +308,7 @@ class OrbCalculator(MLIPCalculator):
         model device; the base dispatcher applies unit conversion,
         active-DOF trimming, and the ``out_hess_torch`` decision.
         """
-        import warnings
         from ase import Atoms
-
-        if self.compile_model:
-            warnings.warn(
-                "OrbCalculator(compile_model=True) may interact poorly with "
-                "analytical Hessian autograd. If this call fails, retry with "
-                "compile_model=False or --hessian-calc-mode FiniteDifference.",
-                stacklevel=2,
-            )
 
         torch = self._torch
         n_atoms = len(elem)
@@ -427,7 +424,7 @@ class OrbASECalculator:
         model: str = DEFAULT_ORB_MODEL,
         device: str = "auto",
         precision: str = "float64",
-        compile_model: Optional[bool] = None,
+        compile_model: bool = False,
     ):
         calc = OrbCalculator(
             model=model, device=device, precision=precision,

@@ -27,6 +27,7 @@ from pdb2reaction.core.output import emit
 from pdb2reaction.cli.common_options import (
     add_backend_model_option,
     add_precision_option,
+    add_compile_option,
     add_solvent_xtb_cmd_option,
     solvent_xtb_cmd_override,
 )
@@ -46,7 +47,7 @@ def recompute_energies(
     traj_path: Path, charge: Optional[int], multiplicity: Optional[int],
     backend: str = "uma", solvent: str = "none", solvent_model: str = "alpb",
     xtb_cmd: str = "xtb", backend_model: Optional[str] = None,
-    precision: Optional[str] = None,
+    precision: Optional[str] = None, compile_model: Optional[bool] = None,
 ) -> List[float]:
     """
     Recalculate Hartree energies for every frame using the backend factory.
@@ -64,7 +65,8 @@ def recompute_energies(
         frames[0].get_chemical_symbols(), charge or 0, multiplicity or 1
     )
     calc_cfg, _ = _resolved_backend_config(
-        backend, backend_model=backend_model, precision=precision
+        backend, backend_model=backend_model, precision=precision,
+        compile_model=compile_model,
     )
     calc_cfg.pop("backend")
     calc = create_calculator(
@@ -86,23 +88,26 @@ def _resolved_backend_config(
     *,
     backend_model: Optional[str] = None,
     precision: Optional[str] = None,
+    compile_model: Optional[bool] = None,
 ) -> Tuple[dict, dict]:
-    """Resolve backend-specific model/precision and its public provenance."""
+    """Resolve backend-specific model/precision/compilation and its public provenance."""
     from pdb2reaction.backends import (
         apply_backend_model_to_calc_cfg,
         apply_effective_precision,
     )
+    from pdb2reaction.core.compile_policy import apply_compile_option
     from pdb2reaction.core.utils import calculator_provenance
 
     calc_cfg = {"backend": backend}
     apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
     apply_effective_precision(calc_cfg, precision)
+    apply_compile_option(calc_cfg, compile_model)
     provenance = calculator_provenance(calc_cfg)
     return calc_cfg, {
         key: provenance[key]
         for key in (
             "mlip_backend", "mlip_model", "mlip_model_label", "mlip_task",
-            "mlip_precision",
+            "mlip_precision", "mlip_compiled",
         )
     }
 
@@ -287,6 +292,7 @@ def run_trj2fig(
     xtb_cmd: str = "xtb",
     backend_model: Optional[str] = None,
     precision: Optional[str] = None,
+    compile_model: Optional[bool] = None,
 ) -> dict:
     """Run trj2fig and return a summary dict with energies and output paths."""
     traj = input_path.expanduser().resolve()
@@ -304,15 +310,18 @@ def run_trj2fig(
             "mlip_model_label": None,
             "mlip_task": None,
             "mlip_precision": None,
+            "mlip_compiled": None,
         }
     else:
         _, provenance = _resolved_backend_config(
-            backend, backend_model=backend_model, precision=precision
+            backend, backend_model=backend_model, precision=precision,
+            compile_model=compile_model,
         )
         energies = recompute_energies(
             traj, charge, multiplicity,
             backend=backend, solvent=solvent, solvent_model=solvent_model,
             xtb_cmd=xtb_cmd, backend_model=backend_model, precision=precision,
+            compile_model=compile_model,
         )
         energy_provenance = ["mlip-recomputed"] * len(energies)
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
@@ -406,6 +415,7 @@ def run_trj2fig(
               show_default=True, help="MLIP backend.")
 @add_backend_model_option()
 @add_precision_option()
+@add_compile_option()
 @click.option("--solvent", default="none", show_default=True,
               help="Computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
@@ -432,6 +442,7 @@ def cli(
     backend: str,
     backend_model: Optional[str],
     precision: Optional[str],
+    compile_model: Optional[bool],
     solvent: str,
     solvent_model: str,
     out_json: bool,
@@ -456,6 +467,7 @@ def cli(
             xtb_cmd=solvent_xtb_cmd_override(ctx) or "xtb",
             backend_model=backend_model,
             precision=precision,
+            compile_model=compile_model,
         )
     except (ValueError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -481,6 +493,7 @@ def cli(
             "mlip_model_label": info["mlip_model_label"],
             "mlip_task": info["mlip_task"],
             "mlip_precision": info["mlip_precision"],
+            "mlip_compiled": info["mlip_compiled"],
             "charge": info["charge"],
             "multiplicity": info["multiplicity"],
             "solvent": info["solvent"],

@@ -32,6 +32,7 @@ cat result_opt/result.json | python -m json.tool
 | `mlip_model_label` | string \| null | 任意。正確な識別子から導出した論文表記用のモデル名 |
 | `mlip_task` | string \| null | 任意。複数ドメインのモデルで使ったバックエンドのタスク。正確な識別子は `mlip_model` に保持 |
 | `mlip_precision` | string \| null | 実効精度の共通表記（`tf32` / `fp32` / `fp64`）。dtype をユーザーのコードが管理する自作の calculator では null |
+| `mlip_compiled` | bool \| null | UMA・ORB のモデルを torch.compile したか（`--compile`）。ほかのバックエンドと解析 Hessian では false。描画だけのコマンドが calculator を評価しなかった場合は null |
 
 **`environment`**:
 
@@ -366,6 +367,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
 | `energy_source` | string | `"trajectory_comment"` または `"mlip_recomputed"` |
 | `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | 再計算の設定。軌跡コメントを読む場合はすべて null |
+| `mlip_compiled` | bool \| null | 計算し直しでモデルをコンパイルしたか（`--compile`）。軌跡コメントを読む場合は null |
 | `energy_provenance` | string[] | フレームごとのエネルギーの出どころ |
 | `energy_unit` | string | 保存したエネルギーの単位（`hartree`） |
 | `backend` | string \| null | フレームを再計算した場合のみ MLIP のバックエンド。軌跡コメントのエネルギーを読む場合は null |
@@ -435,6 +437,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `mlip_model_label` | string \| null | 論文表記用のモデル名 |
 | `mlip_task` | string \| null | 複数ドメインのモデルで使ったバックエンドのタスク |
 | `mlip_precision` | string \| null | 実効の `tf32` / `fp32` / `fp64` 表記。自作の calculator では null |
+| `mlip_compiled` | bool | UMA・ORB のモデルを torch.compile したか（`--compile`）。解析 Hessian を使う段はコンパイルしない |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |

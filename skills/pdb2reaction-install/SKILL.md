@@ -67,11 +67,12 @@ pins `nvalchemi-toolkit-ops<0.4`, so pip lowers `fairchem-core` there.
 ## System packages
 
 pip and conda do not install a compiler or the libraries of Chrome, and a bare
-container or cluster node often lacks both. UMA and ORB compile code at run
-time for speed: a GPU run needs a C compiler (`gcc`), a CPU run a C++ compiler (`g++`).
+container or cluster node often lacks both. On a GPU, UMA compiles code at run
+time for speed and needs a C compiler (`gcc`) even without `--compile`; with
+`--compile`, UMA and ORB need a C compiler on a GPU and a C++ compiler (`g++`) on a CPU.
 PNG export needs the operating-system libraries of the Chrome that
 `plotly_get_chrome -y` downloads. Check with `gcc --version` (`g++ --version`
-on a CPU), then install:
+for `--compile` on a CPU), then install:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y gcc g++    # Ubuntu/Debian
@@ -171,7 +172,7 @@ installed. An `ImportError` points to that backend's section in
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA and ORB compile code at run time for speed | Install `gcc` (`g++` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Install `gcc` (`g++` for `--compile` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`), or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly, or an operating-system library it needs is missing | `plotly_get_chrome -y`, then the libraries in [System packages](#system-packages) |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 

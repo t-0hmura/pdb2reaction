@@ -366,7 +366,7 @@ To add a built-in backend with its own `--backend` name, follow recipe 3.2
   the result.
 - With UMA, `--precision tf32` runs FAIR-Chem's UMA Nitro where the installed
   fairchem-core provides it (the `uma-s-1p2p1` checkpoints, one worker); other
-  checkpoints run the compiled path with TF32. FAIR-Chem logs
+  checkpoints run the fast path with TF32. FAIR-Chem logs
   `Running in a reduced-precision mode` for every tf32 run on a GPU.
 - AIMNet2 supports neither `--precision fp64` nor `--deterministic`; both stop
   the run with an error. AIMNet2 casts its model inputs to float32, and it

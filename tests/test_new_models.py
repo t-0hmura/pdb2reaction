@@ -123,12 +123,13 @@ def test_new_models_cite_their_model_and_dataset(backend, model, expected) -> No
     assert expected <= keys
 
 
-def test_orb_compilation_is_left_to_orb_models() -> None:
+def test_orb_is_not_compiled_by_default() -> None:
     from pdb2reaction.backends.orb import OrbASECalculator, OrbCalculator
 
-    assert defaults.ORB_BACKEND_DEFAULTS["compile_model"] is None
+    assert "compile_model" not in defaults.ORB_BACKEND_DEFAULTS
+    assert defaults.CALC_KW_DEFAULT["compile_model"] is None
     for factory in (OrbCalculator.__init__, OrbASECalculator.__new__):
-        assert inspect.signature(factory).parameters["compile_model"].default is None
+        assert inspect.signature(factory).parameters["compile_model"].default is False
 
 
 def test_uma_reference_energies_skip_checkpoints_without_them(monkeypatch) -> None:

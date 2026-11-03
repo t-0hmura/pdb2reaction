@@ -784,7 +784,7 @@ def test_colab_setup_installs_missing_cyipopt(monkeypatch) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "1.0.0" if name == "pdb2reaction" else "test",
+        lambda name: "0.7.0" if name == "pdb2reaction" else "test",
     )
     monkeypatch.setattr(
         os.path,
@@ -854,7 +854,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     versions = {
         "pyscf": "2.11.0",
         "gpu4pyscf-cuda13x": "1.5.2",
-        "pdb2reaction": "1.0.0",
+        "pdb2reaction": "0.7.0",
     }
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(subprocess, "Popen", _FakePopen)
@@ -867,8 +867,8 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     installs = [argv for argv in calls if "install" in argv]
     # One pinned install carries the extra, so the DFT branch differs from the
     # plain branch only by the `[dft]` marker on the same requested version.
-    assert any("pdb2reaction[dft]==1.0.0" in argv for argv in installs)
-    assert not any("pdb2reaction==1.0.0" in argv for argv in installs)
+    assert any("pdb2reaction[dft]==0.7.0" in argv for argv in installs)
+    assert not any("pdb2reaction==0.7.0" in argv for argv in installs)
     assert popen_calls == []          # no streamed pip log, only the announcement
     logged = capsys.readouterr().out
     assert "install_dft is ticked" in logged
@@ -932,7 +932,7 @@ def test_colab_setup_install_xtb_puts_xtb_from_conda_forge_on_path(
     monkeypatch.setattr(urllib.request, "urlretrieve", lambda *_args: None)
     monkeypatch.setattr(os.path, "isdir", lambda path: str(path) == "/content" or real_isdir(path))
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(importlib.metadata, "version", lambda name: "1.0.0" if name == "pdb2reaction" else "test")
+    monkeypatch.setattr(importlib.metadata, "version", lambda name: "0.7.0" if name == "pdb2reaction" else "test")
     namespace: dict = {}
     exec(compile(setup, str(NOTEBOOK), "exec"), namespace)
 
@@ -984,7 +984,7 @@ def test_colab_setup_operates_orb_and_uma_branches(
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "1.0.0" if name == "pdb2reaction" else "test",
+        lambda name: "0.7.0" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
     if use_token:
@@ -1032,7 +1032,7 @@ def test_colab_setup_handles_cancelled_uma_sign_in(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "1.0.0" if name == "pdb2reaction" else "test",
+        lambda name: "0.7.0" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -1055,25 +1055,25 @@ def test_colab_setup_explains_unavailable_release(monkeypatch) -> None:
 
     def fake_run(argv, **_kwargs):
         command = [str(value) for value in argv]
-        failed = any(value == "pdb2reaction==1.0.0" for value in command)
+        failed = any(value == "pdb2reaction==0.7.0" for value in command)
         return types.SimpleNamespace(stdout="GPU 0", stderr="", returncode=1 if failed else 0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "1.0.0")
+    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "0.7.0")
 
     with pytest.raises(RuntimeError) as error:
         exec(compile(setup, str(NOTEBOOK), "exec"), {})
 
     message = str(error.value)
-    assert "Could not install pdb2reaction==1.0.0 from PyPI" in message
-    assert "version v1.0.0 may not be published" in message
+    assert "Could not install pdb2reaction==0.7.0 from PyPI" in message
+    assert "version v0.7.0 may not be published" in message
     assert "pdb2reaction-src.zip pair, then enter debug" in message
 
 
 def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     setup = _notebook()["cells"][1]["source"].replace(
-        'pdb2reaction_version = "v1.0.0"', 'pdb2reaction_version = "debug"', 1,
+        'pdb2reaction_version = "v0.7.0"', 'pdb2reaction_version = "debug"', 1,
     ).replace("install_dft = True", "install_dft = False", 1)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
@@ -1090,7 +1090,7 @@ def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     message = str(error.value)
     assert "Debug mode needs the adjacent source ZIP" in message
     assert "pdb2reaction-src.zip" in message
-    assert "enter v1.0.0 for a published release install" in message
+    assert "enter v0.7.0 for a published release install" in message
 
 
 def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
@@ -4841,7 +4841,7 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch, tmp_path, hub_token
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
         importlib.metadata, "version",
-        lambda name: "1.0.0" if name == "pdb2reaction" else "test",
+        lambda name: "0.7.0" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -4884,7 +4884,7 @@ def test_colab_uma_login_reads_the_runtime_token_before_the_secret(monkeypatch, 
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
         importlib.metadata, "version",
-        lambda name: "1.0.0" if name == "pdb2reaction" else "test",
+        lambda name: "0.7.0" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -6956,7 +6956,7 @@ def test_pip_check_reports_broken_requirements_of_the_tool_and_backend(monkeypat
         "orb-models 0.7.0 has requirement dm-tree==0.1.8, but you have dm-tree 0.1.9.\n"
         "fairchem-core 2.24.0 has requirement nvalchemi-toolkit-ops>=0.4.1, but you have "
         "nvalchemi-toolkit-ops 0.3.1.\n"
-        "pdb2reaction 1.0.0 has requirement torch<2.14,>=2.13, but you have torch 2.8.0.\n"
+        "pdb2reaction 0.7.0 has requirement torch<2.14,>=2.13, but you have torch 2.8.0.\n"
     )
     check, _ = _pip_check_from_setup(monkeypatch, returncode=1, stdout=_COLAB_ONLY_CONFLICTS + ours)
     with pytest.raises(RuntimeError) as raised:
@@ -6967,13 +6967,13 @@ def test_pip_check_reports_broken_requirements_of_the_tool_and_backend(monkeypat
 
 
 def test_pip_check_skips_only_the_listed_expected_line(monkeypatch) -> None:
-    missing = "pdb2reaction 1.0.0 requires fairchem-core, which is not installed.\n"
+    missing = "pdb2reaction 0.7.0 requires fairchem-core, which is not installed.\n"
     expected = ("requires fairchem-core, which is not installed",)
     check, _ = _pip_check_from_setup(monkeypatch, returncode=1, stdout=missing)
     check(ignore=expected)
     with pytest.raises(RuntimeError, match="fairchem-core, which is not installed"):
         check()
-    other = "pdb2reaction 1.0.0 requires pyscf, which is not installed.\n"
+    other = "pdb2reaction 0.7.0 requires pyscf, which is not installed.\n"
     check, _ = _pip_check_from_setup(monkeypatch, returncode=1, stdout=missing + other)
     with pytest.raises(RuntimeError, match="requires pyscf"):
         check(ignore=expected)

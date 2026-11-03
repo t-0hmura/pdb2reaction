@@ -128,6 +128,9 @@ Options:
                                   speed (uma, orb only); avoid it for Hessians.
                                   aimnet2: fp32 only.  [default: (per backend:
                                   uma fp32; orb, mace fp64)]
+  --compile / --no-compile        torch.compile the UMA or ORB model: slower
+                                  first call, slightly faster afterwards; worth
+                                  it only for long runs.  [default: (off)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2p1 / uma-s-1p2p1-ft-d4rev / uma-m-1p1
                                   for uma, orbmol-v2 / orb_v3_conservative_omol

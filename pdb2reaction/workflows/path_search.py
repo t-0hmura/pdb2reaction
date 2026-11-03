@@ -123,6 +123,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_deterministic_option,
     add_precision_option,
+    add_compile_option,
     add_dft_calculator_options,
 )
 from pdb2reaction.cli.decorators import run_cli, load_merged_yaml_cfg
@@ -2330,6 +2331,7 @@ def _merge_final_and_write(final_images: List[Any],
 @add_solvent_xtb_cmd_option()
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -2377,6 +2379,7 @@ def cli(
     solvent_model: str,
     cli_coord_type: Optional[str],
     precision: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -2727,6 +2730,8 @@ def cli(
         from pdb2reaction.backends import apply_effective_precision
         apply_effective_precision(calc_cfg, precision)
         apply_backend_defaults(calc_cfg)
+        from pdb2reaction.core.compile_policy import apply_compile_option
+        apply_compile_option(calc_cfg, compile_model)
         from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
         finalize_dft_calculator_config(
             ctx, calc_cfg, output_dir=stopt_cfg["out_dir"]

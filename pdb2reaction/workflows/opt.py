@@ -82,7 +82,7 @@ from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
     add_coord_type_option,
     add_print_every_option,
-    add_precision_option, add_backend_model_option,
+    add_precision_option, add_compile_option, add_backend_model_option,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_dft_calculator_options,
@@ -560,6 +560,7 @@ def _seed_rfo_initial_hessian(
 @add_ml_charge_spin_options()
 @add_print_every_option()
 @add_precision_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -601,6 +602,7 @@ def cli(
     cli_coord_type: Optional[str],
     print_every: Optional[int],
     precision: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -686,6 +688,8 @@ def cli(
             from pdb2reaction.backends import apply_effective_precision
             apply_effective_precision(calc_cfg, precision)
             apply_backend_defaults(calc_cfg)
+            from pdb2reaction.core.compile_policy import apply_compile_option
+            apply_compile_option(calc_cfg, compile_model)
             if cli_param_overridden(ctx, "max_cycles") and max_cycles is not None:
                 opt_cfg["max_cycles"] = int(max_cycles)
             if cli_param_overridden(ctx, "dump"):

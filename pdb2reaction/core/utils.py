@@ -3164,7 +3164,7 @@ def _canonical_mlip_precision(backend: str, value: Any) -> Optional[str]:
 
 
 def calculator_run_label(calc_cfg: Mapping[str, Any]) -> str:
-    """Format backend, model, task, and precision for concise run headers."""
+    """Format backend, model, task, precision, and compilation for concise run headers."""
     provenance = calculator_provenance(calc_cfg)
     backend = str(provenance["mlip_backend"])
     backend_label = {
@@ -3175,11 +3175,14 @@ def calculator_run_label(calc_cfg: Mapping[str, Any]) -> str:
             provenance.get("mlip_model_label"), provenance.get("mlip_precision")
         ) if value not in (None, "")
     ]
+    if provenance.get("mlip_compiled"):
+        details.append("compiled")
     return f"{backend_label} ({', '.join(details)})" if details else backend_label
 
 
 def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
     """Return backend-neutral MLIP provenance for machine-readable outputs."""
+    from pdb2reaction.core.compile_policy import runs_compiled
     from pdb2reaction.core.defaults import CALC_KW_DEFAULT
 
     backend = str(calc_cfg.get("backend") or CALC_KW_DEFAULT["backend"]).lower()
@@ -3197,6 +3200,7 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
             "mlip_model_label": settings.func_basis,
             "mlip_task": settings.engine,
             "mlip_precision": None,
+            "mlip_compiled": False,
             "dft_settings": settings.scientific_identity(),
             "dft_resources": {
                 "memory_mode": settings.memory_mode,
@@ -3245,6 +3249,7 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
         "mlip_model_label": mlip_model_label(backend, model, task_name),
         "mlip_task": None if task_name is None else str(task_name),
         "mlip_precision": precision,
+        "mlip_compiled": runs_compiled({**calc_cfg, "backend": backend}),
         "primary_method": "mlip",
         "primary_method_label": "MLIP",
     }

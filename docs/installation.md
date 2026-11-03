@@ -24,7 +24,7 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-UMA and ORB need a compiler, and image export (PNG, JPEG, SVG, PDF) needs the libraries of Chrome. Install them first if they are missing: {ref}`System prerequisites <system-prerequisites>`.
+UMA on a GPU and `--compile` need a compiler, and image export (PNG, JPEG, SVG, PDF) needs the libraries of Chrome. Install them first if they are missing: {ref}`System prerequisites <system-prerequisites>`.
 
 Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded. This needs a free HF account with a read-only token, and you may need to accept the license on the UMA model page:
 
@@ -56,7 +56,7 @@ If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cud
 
 pip and conda do not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
 
-- **A compiler for UMA and ORB.** UMA and ORB compile code at run time for speed: a GPU run needs a C compiler (`gcc`), and a CPU run needs a C++ compiler (`g++`). The conda environment of the Optional section above gets a C compiler through `cuda-nvcc`.
+- **A compiler for UMA and `--compile`.** On a GPU, UMA compiles code at run time for speed (PyTorch builds GPU kernels with Triton), so it needs a C compiler (`gcc`) even without `--compile`. With `--compile`, UMA and ORB also compile the model: a GPU run needs a C compiler, and a CPU run needs a C++ compiler (`g++`). The conda environment of the Optional section above gets a C compiler through `cuda-nvcc`.
 - **Libraries for Chrome.** PNG, JPEG, SVG and PDF figures (`energy-diagram`, `trj2fig`, and the diagrams of `all`) are drawn by headless Chrome, which `plotly_get_chrome -y` downloads. Chrome loads the operating-system libraries below.
 
 Ubuntu/Debian (on Ubuntu 22.04 and Debian 12, write `libasound2` instead of `libasound2t64`; drop `sudo` if you are root):
@@ -131,7 +131,7 @@ If you prefer to build the environment piece by piece:
     plotly_get_chrome -y
     ```
 
-    The compiler UMA and ORB need and the libraries Chrome needs are system packages: see {ref}`System prerequisites <system-prerequisites>`.
+    The compiler that UMA and `--compile` need and the libraries Chrome needs are system packages: see {ref}`System prerequisites <system-prerequisites>`.
 
     On aarch64, the `warp-lang` 1.18.0 wheel, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0` (`nvalchemi-toolkit-ops` needs 1.13.0 or newer).
 

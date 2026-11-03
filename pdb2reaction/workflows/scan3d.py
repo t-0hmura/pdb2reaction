@@ -108,7 +108,7 @@ from pdb2reaction.cli.common_options import (
     apply_solvent_xtb_cmd_override,
     add_coord_type_option,
     add_print_every_option,
-    add_precision_option, add_backend_model_option,
+    add_precision_option, add_compile_option, add_backend_model_option,
     add_dft_calculator_options,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
@@ -168,6 +168,7 @@ def _result_calculator_fields(
             "mlip_model_label": None,
             "mlip_task": None,
             "mlip_precision": None,
+            "mlip_compiled": None,
             "solvent": None,
         }
 
@@ -248,6 +249,7 @@ def _result_calculator_fields(
 @add_coord_type_option()
 @add_print_every_option()
 @add_precision_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -291,6 +293,7 @@ def cli(
     cli_coord_type: Optional[str],
     print_every: Optional[int],
     precision: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -388,6 +391,8 @@ def cli(
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         apply_backend_defaults(calc_cfg)
+        from pdb2reaction.core.compile_policy import apply_compile_option
+        apply_compile_option(calc_cfg, compile_model)
         from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
         finalize_dft_calculator_config(
             ctx, calc_cfg, output_dir=opt_cfg["out_dir"]

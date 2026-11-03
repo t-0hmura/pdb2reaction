@@ -63,6 +63,7 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
         "model", "task_name", "workers", "workers_per_node",
         "max_neigh", "radius", "r_edges", "out_hess_torch", "print_vram",
         "precision",  # tf32 | fp32 (default, IEEE FP32) | fp64 (full-precision base inference)
+        "compile_model",
     },
     "orb": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
@@ -100,7 +101,7 @@ _ASE_ACCEPTED_KEYS: Dict[str, set] = {
     # PES (e.g. under --precision fp64); UMAASECalculator honours it. Without it
     # the DMF path optimizer was pinned to fp32 while the HEI energy ranker ran
     # fp64 → frames optimized on one PES, ranked on another.
-    "uma": {"model", "device", "task_name", "workers", "workers_per_node", "precision"},
+    "uma": {"model", "device", "task_name", "workers", "workers_per_node", "precision", "compile_model"},
     "orb": {"model", "device", "precision", "compile_model"},
     "mace": {"model", "device", "default_dtype"},
     "aimnet2": {"model", "device", "charge", "spin"},

@@ -24,7 +24,7 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-UMA と ORB にはコンパイラが、画像（PNG・JPEG・SVG・PDF）の出力には Chrome のライブラリが要ります。足りないときは先に入れてください: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
+GPU での UMA と `--compile` にはコンパイラが、画像（PNG・JPEG・SVG・PDF）の出力には Chrome のライブラリが要ります。足りないときは先に入れてください: {ref}`システムの前提パッケージ <ja-system-prerequisites>`。
 
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします。無料の HF アカウントと読み取り専用トークンが要り、UMA モデルのページでライセンスへの同意が要ることもあります:
 
@@ -56,7 +56,7 @@ plotly_get_chrome -y
 
 pip と conda は、コンパイラと Chrome が使うライブラリを入れません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
 
-- **UMA と ORB 用のコンパイラ:** UMA と ORB は実行時に高速化のためコンパイルをします。GPU では C コンパイラ（`gcc`）、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
+- **UMA と `--compile` 用のコンパイラ:** GPU では、UMA は実行時に高速化のためコンパイルをします（PyTorch が Triton で GPU のカーネルを作ります）。そのため `--compile` を付けなくても C コンパイラ（`gcc`）が要ります。`--compile` を付けると UMA と ORB はモデルもコンパイルするので、GPU では C コンパイラ、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
 - **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。Chrome は `plotly_get_chrome -y` でダウンロードし、下の OS のライブラリを読み込みます。
 
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
@@ -128,7 +128,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     plotly_get_chrome -y
     ```
 
-    UMA と ORB が使うコンパイラと Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
+    GPU での UMA と `--compile` が使うコンパイラと、Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
 
     aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください（`nvalchemi-toolkit-ops` には 1.13.0 以上が必要です）。
 

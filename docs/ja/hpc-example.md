@@ -25,8 +25,8 @@ source /etc/profile.d/modules.sh
 module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # インストールした環境の名前に変える
 module load ompi                             # この MPI/Ray のテンプレートに必要な計算機のモジュール
-# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。UMA と ORB は実行時に高速化のためコンパイルをするので、
-# コンパイラ（gcc。CPU なら g++）が PATH に必要。計算ノードになければ: module load <COMPILER_MODULE>
+# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
 # 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/apps/miniconda3/etc/profile.d/conda.sh

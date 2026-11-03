@@ -67,7 +67,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
+from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_compile_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -577,6 +577,7 @@ def _prepare_frequency_output_paths(
 @add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options()
 @add_precision_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -618,6 +619,7 @@ def cli(
     solvent: str,
     solvent_model: str,
     precision: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -687,6 +689,8 @@ def cli(
     from pdb2reaction.backends import apply_effective_precision
     apply_effective_precision(calc_cfg, precision)
     apply_backend_defaults(calc_cfg)
+    from pdb2reaction.core.compile_policy import apply_compile_option
+    apply_compile_option(calc_cfg, compile_model)
     if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
     if cli_param_overridden(ctx, "max_write"):

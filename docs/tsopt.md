@@ -159,6 +159,7 @@ result_tsopt/
 | `--read-hess` | path | `None` | Start from the Hessian in a `.npy` file instead of computing it (Cartesian, Hartree/bohr², for all atoms or only the movable ones) |
 | `--dump-hess` | path | `None` | Save the final-geometry Hessian to a `.npy` file for `--read-hess` in `freq`, `tsopt`, or `irc`. Written only when the final Hessian is computed |
 | `--precision` | `tf32` / `fp32` / `fp64` | per backend (`uma`: `fp32`; `orb`, `mace`: `fp64`) | Backend precision. `mace` and `aimnet2` reject `tf32`, and `aimnet2` rejects `fp64` (see [MLIP Backends: Precision](backends.md#precision)) |
+| `--compile/--no-compile` | flag | off | torch.compile the UMA or ORB model (not with `--hessian-calc-mode Analytical`): slower first call, slightly faster afterwards |
 | `--coord-type` | `cart` / `redund` / `dlc` / `tric` | `cart` | Optimization coordinates: Cartesian / redundant internal / delocalized internal (DLC) / translation-rotation internal (TRIC) |
 | `--config` | path | `None` | YAML file applied before the command-line options |
 | `--dump/--no-dump` | flag | `False` | Write the optimization trajectory |

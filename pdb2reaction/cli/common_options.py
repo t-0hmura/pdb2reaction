@@ -339,6 +339,30 @@ def add_precision_post_option() -> Callable[[Callable], Callable]:
     return decorator
 
 
+def add_compile_option() -> Callable[[Callable], Callable]:
+    """Attach ``--compile/--no-compile`` to a Click command.
+
+    Unset (``None``) leaves the choice to ``calc.compile_model`` of the config,
+    and off when that is unset too. The CLI body resolves both into
+    ``calc.compile_model`` via
+    ``pdb2reaction.core.compile_policy.apply_compile_option``; the UMA and ORB
+    backends never compile the analytical Hessian. Same wire targets as
+    ``add_precision_option``.
+    """
+    def decorator(func: Callable) -> Callable:
+        return click.option(
+            "--compile/--no-compile",
+            "compile_model",
+            default=None,
+            show_default="off",
+            help=(
+                "torch.compile the UMA or ORB model: slower first call, slightly "
+                "faster afterwards; worth it only for long runs."
+            ),
+        )(func)
+    return decorator
+
+
 def add_backend_model_option() -> Callable[[Callable], Callable]:
     """Attach ``--backend-model NAME`` to a Click command.
 

@@ -60,6 +60,7 @@
   "mlip_task": "omol",
   "mlip_precision": "fp32",
   "mlip_precision_post": "fp32",
+  "mlip_compiled": false,
   "primary_method": "mlip",
   "primary_method_label": "MLIP",
   "charge": 0,

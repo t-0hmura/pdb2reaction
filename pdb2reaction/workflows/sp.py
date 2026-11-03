@@ -59,6 +59,7 @@ from pdb2reaction.cli.common_options import (
     apply_solvent_xtb_cmd_override,
     add_ml_charge_spin_options,
     add_precision_option,
+    add_compile_option,
     add_backend_model_option,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
@@ -148,6 +149,7 @@ logger = logging.getLogger(__name__)
 @add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options(allow_ref_pdb=False)
 @add_precision_option()
+@add_compile_option()
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
@@ -174,6 +176,7 @@ def cli(
     solvent: str,
     solvent_model: str,
     precision: Optional[str],
+    compile_model: Optional[bool],
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
@@ -243,6 +246,8 @@ def cli(
             precision if cli_param_overridden(ctx, "precision") else None,
         )
         apply_backend_defaults(calc_cfg)
+        from pdb2reaction.core.compile_policy import apply_compile_option
+        apply_compile_option(calc_cfg, compile_model)
 
         # YAML uses human-facing 1-based atom indices; pysisyphus and the
         # calculator adapters use 0-based indices internally.

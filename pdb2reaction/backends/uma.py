@@ -44,6 +44,7 @@ except Exception:
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
 
 from .base import MLIPCalculator, BackendError, normalize_hessian_calc_mode
+from pdb2reaction.core.compile_policy import resolve_compile
 from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 
 
@@ -82,22 +83,32 @@ def _check_uma_precision(precision: Any) -> str:
     return value
 
 
-def _uma_inference_settings(precision: str, *, analytical_hessian: bool, parallel: bool):
+def _uma_inference_settings(
+    precision: str,
+    *,
+    analytical_hessian: bool,
+    parallel: bool,
+    compile_model: bool = False,
+):
     """Explicit FAIR-Chem InferenceSettings for a UMA precision token.
 
-    - ``fp64``: float64 base precision, not compiled.
-    - ``fp32``: IEEE FP32 (``tf32=False``): the merged-MOLE compiled fast path
-      that fairchem-core 2.22/2.23 used as its default (2.24 names it
-      "high-precision").
-    - ``tf32``: the same fast path with TF32 matmul, and UMA Nitro where the
+    Every route except the analytical Hessian runs the merged-MOLE fast path
+    that fairchem-core 2.22/2.23 used as its default (2.24 names it
+    "high-precision"), compiled only when ``compile_model`` is set:
+
+    - ``fp64``: the fast path with float64 base precision.
+    - ``fp32``: the fast path in IEEE FP32 (``tf32=False``).
+    - ``tf32``: the fast path with TF32 matmul, and UMA Nitro where the
       installed fairchem-core has it (2.24+, single worker; FAIR-Chem falls back
-      to the TF32 fast path for checkpoints Nitro cannot serve).
+      to the TF32 fast path for checkpoints Nitro cannot serve). Nitro does not
+      use torch.compile.
 
     The analytical Hessian needs a double backward that the compiled model does
-    not support, so that route is not compiled at any precision.
+    not support, so that route keeps FAIR-Chem's defaults, uncompiled, at every
+    precision.
     """
     tf32 = precision == "tf32"
-    if precision == "fp64" or analytical_hessian:
+    if analytical_hessian:
         return _UMAInferenceSettings(
             tf32=tf32,
             compile=False,
@@ -107,10 +118,12 @@ def _uma_inference_settings(precision: str, *, analytical_hessian: bool, paralle
         tf32=tf32,
         activation_checkpointing=False,
         merge_mole=True,
-        compile=True,
+        compile=bool(compile_model),
         external_graph_gen=False,
         internal_graph_gen_version=2,
     )
+    if precision == "fp64":
+        kwargs["base_precision_dtype"] = "float64"
     if tf32 and not parallel and "nitro" in getattr(_UMAInferenceSettings, "__dataclass_fields__", {}):
         kwargs["nitro"] = True
     return _UMAInferenceSettings(**kwargs)
@@ -240,6 +253,7 @@ class UMAcore:
         r_edges: bool = False,
         precision: str = "fp32",
         analytical_hessian: bool = False,
+        compile_model: bool = False,
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -260,6 +274,7 @@ class UMAcore:
             self.precision,
             analytical_hessian=analytical_hessian,
             parallel=self.parallel_predict,
+            compile_model=compile_model,
         )
 
         self._AtomicData = AtomicData
@@ -436,6 +451,7 @@ class UMACalculator(MLIPCalculator):
         radius: Optional[float] = None,
         r_edges: bool = False,
         precision: str = "fp32",
+        compile_model: bool = False,
         out_hess_torch: bool = True,
         print_vram: bool = True,
         # Base class parameters
@@ -471,6 +487,12 @@ class UMACalculator(MLIPCalculator):
             print_timing=print_timing,
             **kwargs,
         )
+        compile_on = resolve_compile(
+            compile_model,
+            backend="uma",
+            device=device,
+            analytical_hessian=(mode == "Analytical"),
+        )
         self._core: Optional[UMAcore] = None
         self._core_kw = dict(
             charge=charge,
@@ -485,6 +507,7 @@ class UMACalculator(MLIPCalculator):
             r_edges=r_edges,
             precision=precision,
             analytical_hessian=(mode == "Analytical"),
+            compile_model=compile_on,
         )
         self.out_hess_torch = out_hess_torch
         self.print_vram = bool(print_vram)
@@ -802,6 +825,7 @@ class UMAASECalculator(FAIRChemCalculator):
         workers: int = 1,
         workers_per_node: int = 1,
         precision: str = "fp32",
+        compile_model: bool = False,
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -811,8 +835,14 @@ class UMAASECalculator(FAIRChemCalculator):
         )
 
         precision = _check_uma_precision(precision)
+        compile_on = resolve_compile(
+            compile_model, backend="uma", device=device, analytical_hessian=False
+        )
         uma_inference_settings = _uma_inference_settings(
-            precision, analytical_hessian=False, parallel=num_workers > 1
+            precision,
+            analytical_hessian=False,
+            parallel=num_workers > 1,
+            compile_model=compile_on,
         )
 
         if num_workers > 1:

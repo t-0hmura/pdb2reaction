@@ -68,6 +68,10 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     # "user named no precision" distinguishable from an explicit "--precision fp32";
     # a literal "fp32" here dispatched reduced precision to ORB and MACE.
     "precision": "auto",
+    # None (unset) | True | False. UMA and ORB run uncompiled unless --compile or
+    # True asks for torch.compile (core.compile_policy). The sentinel keeps
+    # "user named nothing" apart from an explicit False for the CLI/YAML check.
+    "compile_model": None,
     "hessian_calc_mode": "FiniteDifference",
     "out_hess_torch": True,
     "hessian_double": True,
@@ -94,8 +98,6 @@ ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
     # force noise inflates finite-difference Hessians into spurious imaginary
     # modes. Mirrors backends._BACKEND_DEFAULT_PRECISION["orb"] = "fp64".
     "precision": "float64",
-    # None leaves compilation to orb-models, which compiles on CUDA and CPU.
-    "compile_model": None,
 }
 
 MACE_BACKEND_DEFAULTS: Dict[str, Any] = {

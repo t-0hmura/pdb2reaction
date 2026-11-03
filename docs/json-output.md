@@ -39,6 +39,7 @@ when the command has the corresponding data:
 | `mlip_model_label` | string \| null | Optional publication-facing model label derived from the exact identifier |
 | `mlip_task` | string \| null | Optional backend task used by a multi-domain model; `mlip_model` remains the exact identifier |
 | `mlip_precision` | string \| null | Effective public precision token (`tf32`, `fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
+| `mlip_compiled` | bool \| null | Whether the UMA or ORB model ran through torch.compile (`--compile`); false for other backends and for the analytical Hessian; null when a plot-only command did not evaluate a calculator |
 
 **`environment`**:
 
@@ -395,6 +396,7 @@ are listed in [`summary.json` (`path-search` / `all`)](#summary-json-path-search
 | `max_energy_hartree` | float | Maximum energy across frames |
 | `energy_source` | string | `"trajectory_comment"` or `"mlip_recomputed"` |
 | `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | Effective recomputation provenance; all are null in trajectory-comment mode |
+| `mlip_compiled` | bool \| null | Whether the recomputation compiled the model (`--compile`); null in trajectory-comment mode |
 | `energy_provenance` | string[] | Per-frame energy source provenance |
 | `energy_unit` | string | Stored energy unit (`hartree`) |
 | `backend` | string \| null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
@@ -464,6 +466,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `mlip_model_label` | string \| null | Publication-facing model label |
 | `mlip_task` | string \| null | Backend task for a multi-domain model |
 | `mlip_precision` | string \| null | Effective `tf32` / `fp32` / `fp64` token; null for custom calculators |
+| `mlip_compiled` | bool | Whether the UMA or ORB model ran through torch.compile (`--compile`); stages with the analytical Hessian are not compiled |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `environment` | object | Hardware info |

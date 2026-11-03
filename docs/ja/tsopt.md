@@ -160,6 +160,7 @@ result_tsopt/
 | `--read-hess` | パス | `None` | Hessian を計算せず `.npy` ファイルから読んで開始（Cartesian、Hartree/bohr²、全原子または可動原子だけ） |
 | `--dump-hess` | パス | `None` | final geometry の Hessian を `.npy` ファイルに保存（`freq`・`tsopt`・`irc` の `--read-hess` 用）。最後の Hessian を計算したときだけ書く |
 | `--precision` | `tf32` / `fp32` / `fp64` | バックエンドごと（`uma`: `fp32`、`orb`・`mace`: `fp64`） | バックエンドの精度。`mace` と `aimnet2` は `tf32` を、`aimnet2` は `fp64` を受け付けない（{ref}`MLIP バックエンド: 精度 <ja-precision-by-gpu-class>` を参照） |
+| `--compile/--no-compile` | フラグ | off | UMA・ORB のモデルを torch.compile する（`--hessian-calc-mode Analytical` ではしない）。最初の呼び出しは遅くなり、以降はわずかに速くなる |
 | `--coord-type` | `cart` / `redund` / `dlc` / `tric` | `cart` | 最適化に使う座標系：デカルト座標 / 冗長内部座標 / 非局在化内部座標（DLC）/ 並進・回転を含む内部座標（TRIC） |
 | `--config` | パス | `None` | コマンドラインのオプションより前に適用する YAML ファイル |
 | `--dump/--no-dump` | フラグ | `False` | 最適化の軌跡を書き出す |
