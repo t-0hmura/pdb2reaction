@@ -6,72 +6,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-## [0.7.0] — 2026-11-02
+## [0.7.0] — 2026-11-04
 
 ### Breaking changes
 
-- A pair that contains a metal atom counts as a bond formed or broken only when its distance changes by at least `bond.metal_delta_fraction` × T (default `0.40`, about 1.0 Å for Mg–O; other pairs keep `delta_fraction` 0.05). Fluctuations of metal coordination no longer split `--refine-path` paths into extra segments, fail IRC endpoint matching or appear as bond changes. Every bond judgment reads the YAML `bond` section: the IRC endpoint matching, the segment bond changes and the TS-only R/P check of `all` and the endpoint comparison of `irc`, which used the defaults before, now also apply `bond_factor`, `margin_fraction`, `delta_fraction` and `metal_delta_fraction` from it, and `bond-summary` takes `--metal-delta-fraction`.
-- Input alignment relaxations always use the package L-BFGS defaults (line search, `max_step` 0.30) with the `gau` preset; the `--thresh` of `path-opt`, `path-search` and `all` no longer applies to them. With `--thresh baker` the final alignment relaxation could run to 10,000 cycles and stop the run with "Input alignment did not converge".
-- `all`: a segment that stops before IRC (TS optimization not converged, the final Hessian skipped with `--skip-final-freq`, or no imaginary mode) no longer stops the later segments; they still get their TS optimization, IRC and requested stages. `summary.json` keeps the first stop in `pipeline_stop` and lists every stop in `stopped_segments`, and `irc_plot_all.png` is drawn only when every segment has an IRC. The run ends `completed` / `partial` with exit 0 whichever segment stops; before, a stop before the last segment ended `failed` with exit 1. `summary.log` shows each such stop as `Stopped before IRC`; a TS-only run that stops is not listed in `stopped_segments`. With `--resume-segment`, the stops of the segments before the resumed one stay in these keys.
-- `all` without `--refine-path`: when the highest image of an interval's MEP is one of its end images, no segment is built for it, as in `path-search`: no barrier is reported and no TS optimization runs (`HEI is at an endpoint (idx=N). Returning the raw path.`), and the result is `partial` or `failed` with reason `endpoint_hei`. Before, `max(E) - E[0]` of such an interval was reported as its barrier and its end image was TS-optimized. The result warning names it `Path-opt interval N (seg_NNN)`, and the MEP energy diagram draws no TS for it.
+- A pair that contains a metal atom counts as a bond formed or broken only when its distance changes by at least `bond.metal_delta_fraction` × T (default `0.40`, about 1.0 Å for Mg–O). Every bond judgment, including the IRC endpoint matching of `all` and `irc`, reads the YAML `bond` section.
+- Input alignment relaxations use the package L-BFGS defaults with the `gau` preset; the `--thresh` of `path-opt`, `path-search` and `all` no longer applies to them.
+- `all`: a segment that stops before IRC no longer stops the later segments. A run with an MEP then ends `completed` / `partial` with exit 0; `pipeline_stop` keeps the first stop and `stopped_segments` lists every stop.
+- `all` without `--refine-path`: an interval whose highest MEP image is an end image gets no segment and no TS optimization (`endpoint_hei`), as in `path-search`.
 
 ### Added
 
-- `all --precision-post tf32|fp32|fp64` sets the MLIP precision of TS optimization, IRC, the endpoint optimizations and freq; unset, they use `--precision`. The root `summary.json` records it as `mlip_precision_post`.
-- `--compile/--no-compile` (or `calc.compile_model`) on every command that has `--precision` runs the UMA or ORB model through torch.compile: the first call is slower and later calls slightly faster, so it pays off only in long runs. The analytical Hessian is never compiled, and without a compiler the run stops with the install guidance. The `[backend]` line shows `compiled`, and `result.json` and `summary.json` record `mlip_compiled`.
-- A run that stops because UMA or ORB finds no compiler (C on a GPU, C++ on a CPU) or Chrome cannot start prints `Missing system prerequisite: ...` with the install commands and the docs page, not a PyTorch or Kaleido traceback; the exit status is unchanged. The docs and skills list these prerequisites.
-- Colab notebook: the `install_xtb` check box of Installation installs xTB from conda-forge (with Miniforge, which the notebook installs only then); until xTB is installed, the options that need it (`--solvent`, `--solvent-model`) are disabled with a note.
-- Python 3.13 is supported (`>=3.12,<3.14`). The `[orb]` extra still needs Python 3.12, because orb-models pins `dm-tree==0.1.8`, which has no Python 3.13 wheel; the Colab notebooks keep the Python 3.12 runtime.
-- `examples/run.sh` also runs the COMT example (`examples/comt`) with `-r 4.0`.
+- `all --precision-post tf32|fp32|fp64` sets the MLIP precision of TS optimization, IRC, the endpoint optimizations and freq; unset, they use `--precision`.
+- `--compile/--no-compile` on every command that has `--precision` runs UMA or ORB through torch.compile; it pays off only in long runs.
+- Python 3.13 is supported (`>=3.12,<3.14`); the `[orb]` extra still needs Python 3.12.
+- A run that finds no compiler or cannot start Chrome prints `Missing system prerequisite: ...` with the install commands instead of a traceback.
+- Colab notebook: an `install_xtb` check box in Installation installs xTB.
 
 ### Changed
 
-- UMA and ORB are no longer compiled by default; `--compile` turns it on. A C++ compiler is needed on a CPU only with `--compile`.
-- UMA fp64 runs on the fast-path settings (`merge_mole`, no activation checkpointing), about 1.8x faster on a 632-atom cluster.
-- `run.log` in the output directory is written while the command runs and also records output from C libraries (DMF's Ipopt), child processes and early logging handlers; rerunning into the same `-o` appends to it instead of replacing it. A helper process copies the output, so the lines printed just before a crash (an abort or a segfault in C code) also reach `run.log` and the terminal, and the command does not wait at exit for a process that outlives it; the `dft/run.log` of `all` no longer repeats the DFT output.
-- Colab notebook: from 721 px wide the GUI fits the visible notebook pane with the header, steps and command dock on screen, Mol* clicks no longer move the camera, the Setup viewer height can be dragged, and the token cached in the runtime is read before the Colab secret.
-- Docs and skills: ORB is installed in its own environment, like MACE; the UMA model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) and offline use on compute nodes (`HF_HUB_OFFLINE=1`) are documented.
-- `--show-config` no longer prints the always-empty `override_yaml` entry (`override:` in `path-search`), and thermochemistry no longer documents the unreachable `symmetry_number_source: "override"`.
-- Example scripts start with `#!/usr/bin/env bash` only; `set -euo pipefail` was removed.
-- The PyPI classifiers no longer list macOS; the docs name Linux (WSL on Windows) as the supported platform.
-- Colab notebook: ORB is installed by pip's resolver (fairchem-core drops to 2.22, as in the separate ORB environment), the MACE cell no longer pins `torchvision==0.23.0` (which pulled torch back to 2.8), the ORB and MACE installs end with `pip check`, and the duplicate-CuPy warning of the DFT install is no longer shown.
-- Colab notebook: the plot export installs the latest plotly, Kaleido and choreographer instead of pinning Kaleido 1.2.0 and choreographer 1.2.1, and the setup check draws its test PNG with the package's PNG writer.
-- Plotly/Kaleido PNG export (energy diagrams, `trj2fig` and other plots) gives up after two minutes instead of ten.
-- MACE uses the latest `mace-torch`: the Colab notebook installs `mace-torch>=0.3.16` instead of `mace-torch==0.3.16`. The MACE-POLAR-1 models need `pip install 'mace-torch[polar]>=0.3.17'`, which installs graph-longrange 0.4.4 or later; before, the docs, skills and error messages gave `pip install graph-longrange==0.4.0`.
-- CLI help: `extract -i/-o`, `--deterministic`, `opt --reject-uphill` and `all --tsopt-from-mep-tan` say what they do without internal names, `opt --one-based` no longer mentions `--scan-lists` (not an `opt` option), option help no longer repeats the choice list shown after the option name, `opt --distance-restraint` gives its own `(i,j,target_A)` format instead of pointing to `--scan-lists`, `--uma-workers` says it needs `fairchem-core[ray]`, and `--max-depth` says what a `seg_NNN_maxdepth` interval is; the generated reference says it is built from `--help-advanced`.
-- Docs (EN/JA) and skills: the Japanese pages use written style, unclear passages are reworded, the pages and skills give the console line `all` actually prints (`[Imaginary modes] n=1 (...)`; `[tsopt] Converged (n_imag=1).` comes only from `tsopt`), and the model-setup skill states that inputs need all hydrogens and how to count charges from them. The `bond-summary` page and skill give the threshold of pairs with a metal, the `all` page explains `endpoint_hei`, and the docs say that `hf auth login` is needed once per machine.
-- Docs (EN/JA) and skills: statements that were wrong in 0.6.0 are corrected. `--dft` needs the optional DFT extra. `all -s` takes targets only, `(i,j,target)`, `(i,j,k,deg)` and `(i,j,k,l,deg)`, not the ranges of `scan`. `--freeze-links` freezes nothing in `path-search` for XYZ and GJF input, which needs `--freeze-atoms`. `--opt-mode-post` defaults to an explicit `--opt-mode` and otherwise to `hess`. `--show-config` prints the merged settings on `all`, `path-search` and `sp` only; the other commands print the loaded YAML keys. The skills state the bond rule as the code applies it: a pair is bonded at a distance of at most 0.95 × T, where T is `--bond-factor` times the summed covalent radii. The `scan`, `scan2d` and `scan3d` pages say to run in `examples/`, and the troubleshooting table tells the `tsopt` line `No imaginary mode detected` from the `all` warning. The install skills give the CUDA library names of both the cu126 and the cu130 wheels, and the Docker recovery of the Colab local-runtime skill reruns `setup.ps1` first.
-- Colab notebook: a run that exits 0 with `scientific_status` `partial` shows `⚠ done (partial)` instead of `✓ done`.
-- Unless `-v 3` is given, the output no longer shows FAIR-Chem's `Running (unknown commit) with inference settings: ...` line, printed each time a UMA model is set up (with `--uma-workers 2` or more, each Ray worker still prints it once), choreographer's `Resorting to unclean kill browser.`, printed when Chrome is slow to close after the PNG is already saved, or the `[diagram] build_energy_diagram.labels` and `.energies_kcal` lines of `path-search`.
+- UMA and ORB are no longer compiled by default, and UMA fp64 uses the fast-path settings (about 1.8x faster on a 632-atom cluster).
+- `run.log` is written while the command runs, also records C libraries and child processes, and a rerun into the same `-o` appends to it.
+- Without `-v 3`, FAIR-Chem's inference-settings line and choreographer's `Resorting to unclean kill browser.` are no longer shown.
+- Colab notebook: the GUI fits the visible pane from 721 px wide, Mol* clicks keep the camera, and the ORB and MACE installs end with `pip check`.
+- MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
+- Docs, skills and CLI help: wrong statements are corrected, unclear passages reworded, and ORB is installed in its own environment.
 
 ### Fixed
 
-- The job-script templates in the docs and skills run `conda activate` between `set +u` and `set -u`; with `set -euo pipefail` the activate script of conda-forge's `cuda-nvcc` stopped with "NVCC_PREPEND_FLAGS: unbound variable".
-- With `--refine-path`, the root `summary.json` keeps the provisional `partial`/`failed` verdict until post-processing finishes, so a run that stops during TS optimization no longer leaves the path-search `success` there; this also holds for a run resumed with `--resume-segment`.
-- `all` with a TS-only input: when the endpoint optimization fails, the root `summary.json` records `primary_method` and the full `config` like the other exits, and the TS-only exits list `summary.log` among the output files.
-- `all --refine-path`: when the run ends before post-processing (no segments, no reactive segment, or none of `--tsopt`, `--thermo` and `--dft`), the root `summary.json` records the `config` of the `all` run, and `all` sets its verdict, like other runs; before, it was the summary of the `path-search` child with the `all` command, without `config`.
-- `all`: an error while comparing the IRC endpoints or the optimized endpoints with the MEP bonds is reported as `bond_change_check_failed:<error>` instead of a bond mismatch.
-- `all --resume-segment` after a run that stopped during post-processing (a failed final Hessian, a walltime limit): the root `summary.json` keeps the records of the segments that finished, so the resumed run continues; before, it failed with `requested post-processing record is missing`.
-- `all` without `--refine-path` draws the MEP energy diagram also for two or more intervals; before, it was not drawn.
-- GPU DFT (`-b dft`, `dft`) loads the environment's libcusolver when the system has no CUDA toolkit registered; gpu4pyscf searched only the system library cache, so a node with only the NVIDIA driver stopped with "Unable to load libcusolver".
-- The IRC warning for a branch that stops after a few frames names the `all` options (`--irc-step-size`, `--irc-never-stop`) when IRC runs inside `all`.
-- The optimizer progress table marks only the convergence criteria the preset checks; GSM rows no longer mark the energy and step columns, and `gau` rows no longer mark the energy change.
-- RS-P-RFO: a combined step that exceeds the trust radius by at most 1e-9 (relative) after the basis change back to Cartesians is scaled to the trust radius; before, the TS optimization stopped with "RS-P-RFO combined step exceeds the trust radius". A larger excess still stops it.
-- `--uma-workers` 2 or more: the error message and docs name `pip install "fairchem-core[ray]"`; Ray moved to that extra in fairchem-core 2.23, and `[extras]` never contained it. The message also appears when fairchem-core imports its parallel predictor but Ray is missing.
-- Colab notebook: after Validate, the log shows the whole dry-run output when the status chip turns valid; before, it could keep `[validate] preparing command and inputs …` for about 10 s or drop the `$ <command>` line.
-- Colab notebook: the MACE cell installs torchvision 0.28 with `mace-torch`; before, the torch 2.13 that the tool installs replaced the runtime's torch 2.11 but left its torchvision 0.26, which fails on import ("operator torchvision::nms does not exist"), so the cell stopped at `from mace.calculators import mace_omol`.
-- The error for an invalid `--config` YAML file no longer calls it a "configuration/override file"; no command takes an override file.
-- `all`: `summary.log` gives the MEP energy diagram as `energy_diagram_MEP.png` in the output directory; before, it gave the path under `_work/` from which the run had already moved the file.
-- `summary.log`: the energy diagram overview table of a run with two or more segments takes its MLIP and DFT//MLIP rows from the diagram of all segments; before, the rows covered the first segment only, with its product in the last column and `---` for the later states.
-- `all` without `--refine-path` records `overall_reaction_energy_kcal` and `overall_reaction_energy_method` (`MEP`) in the root `summary.json` when no diagram of a later stage exists, for example without `--tsopt` or after a TS optimization that does not converge; before, both keys were missing.
-- `all` without `--refine-path` titles the MEP energy diagram, and its entry in `summary.json`, with the method that built the path (`GSM` or `DMF`); before, the title always read `GSM`.
-- `all`: the TS labels of the diagrams of all segments (`energy_diagram_MLIP_all` and the like) follow the segment numbers (`TS3` for `seg_03`) when a bridge segment lies between reactive ones; before, the labels were counted from 1 and could name another TS than the segment records.
-- `opt` and `tsopt`: `final_max_force` and `final_rms_force` in `result.json` are the forces of the final geometry; before, a run that stopped at `--max-cycles` gave those of the geometry before the last step.
-- `path-search`: the warning for a highest-energy image at an end of the path reads `Returning the raw MEP path.`; before, it read `Returning the raw GSM path.` also with `--mep-mode dmf`.
-- `all --resume-segment N` with N of 2 or more stops with an error that names both values when the post-processing precision (`--precision-post`, or `--precision` without it) differs from the saved run; before, the segments kept from the saved run had results at the old precision while `summary.json` recorded the new one as `mlip_precision_post`.
-- `all --resume-segment`: the root `summary.json` holds the provisional verdict and the records of the kept segments from the start of the resumed run; before, it kept the saved run's final verdict, or with `--refine-path` lost the kept records, until the first resumed segment started.
-- `all --resume-segment` after a run that stopped during post-processing keeps the energy diagrams of the segments that finished in `summary.json` and `summary.log`; before, the resumed run listed only the diagrams of the segments it ran.
-- `all --refine-path`: the root `summary.json` written before post-processing lists the current output files, with `energy_diagram_MEP.png` and `mep_trj.*` in the output directory; before, it had no `current_output_paths` until the first segment started.
+- `all --resume-segment` continues a run that stopped during post-processing, and stops with an error when the post-processing precision differs from the saved run.
+- Multi-segment `all` runs: the TS labels of the energy diagrams follow the segment numbers, the `summary.log` overview table covers every segment, and the MEP diagram is drawn for two or more intervals.
+- `opt` and `tsopt`: `final_max_force` and `final_rms_force` are the forces of the final geometry.
+- RS-P-RFO no longer stops when a step exceeds the trust radius only by rounding (at most 1e-9 relative).
+- GPU DFT loads the environment's libcusolver on nodes without a system CUDA toolkit.
 
 ## [0.6.0] — 2026-10-24
 
