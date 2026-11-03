@@ -250,7 +250,7 @@ ja/architecture
 
 ### Software
 
-- Python 3.12 or 3.13.
+- Python 3.12 (recommended) or 3.13.
 - CPU or CUDA-enabled PyTorch. Prebuilt wheels include their CUDA runtime; a local toolkit is normally needed only for source builds.
 
 See [Installation](installation.md) for setup.

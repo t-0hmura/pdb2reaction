@@ -6,7 +6,7 @@ The install order, verification, and the failure table are in
 
 ## Core package
 
-- Python 3.12 or 3.13.
+- Python 3.12 (recommended) or 3.13.
 - PyPI install: [Install order](SKILL.md#install-order). PyTorch must be
   installed first ([CUDA and PyTorch](#cuda-and-pytorch)).
 - DMF: create the env with `cyipopt` and PyTorch from conda-forge

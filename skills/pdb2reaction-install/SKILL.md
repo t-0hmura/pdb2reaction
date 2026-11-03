@@ -17,7 +17,7 @@ when `pdb2reaction --version` prints the version and the smoke check in
 1. On a new or unknown host, run the probes in
    [backends.md](backends.md#probe-the-compute-environment) first.
 2. Create a conda env with Python 3.12 from conda-forge; pdb2reaction needs
-   Python 3.12 or 3.13. If you will use DMF
+   Python 3.12 (recommended) or 3.13. If you will use DMF
    (`--mep-mode dmf`) or `--solvent`, create it with `cyipopt`, `xtb`, and
    PyTorch from conda-forge instead (below) and skip step 3; `pydmf` comes with
    pdb2reaction.
