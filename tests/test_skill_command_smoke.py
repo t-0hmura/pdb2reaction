@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from _repo_files import require_repo_files
 
 
 def _load_module():
+    require_repo_files(".github/scripts/check_skill_commands.py")
     path = Path(__file__).parents[1] / ".github" / "scripts" / "check_skill_commands.py"
     spec = importlib.util.spec_from_file_location("check_skill_commands", path)
     assert spec is not None and spec.loader is not None

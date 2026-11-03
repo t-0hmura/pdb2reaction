@@ -141,6 +141,7 @@ from pdb2reaction.workflows._segment_resume import (
     retained_post_segments,
     retained_public_artifact,
     validate_resume_identity,
+    validate_resume_post_precision,
 )
 from pdb2reaction.cli.common_options import (
     add_solvent_xtb_cmd_option,
@@ -6491,6 +6492,12 @@ def cli(
             segment=int(resume_segment),
             available_segments=available_indices,
         )
+        # The kept segments were post-processed at the saved run's precision.
+        validate_resume_post_precision(
+            previous_root_summary,
+            _mlip_precision_post,
+            segment=int(resume_segment),
+        )
 
         produced = previous_manifest_payload["produced"]
         source_prefixes = (
@@ -7116,20 +7123,6 @@ def cli(
                 )
 
         if do_dft:
-            # Clear the calculator retained by Geometry before forking the DFT
-            # subprocess so it does not inherit the GPU-pinned model.
-            # ── Aggressively release GPU memory before DFT subprocess ──
-            for _obj in (gL, gR, gT, g_ts, g_react_opt, g_prod_opt):
-                if _obj is not None:
-                    if hasattr(_obj, "calculator"):
-                        _obj.calculator = None
-                    if hasattr(_obj, "results"):
-                        _obj.results = {}
-            del _obj
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
             _echo()
             _echo_detail(f"[dft] {stage_label}: DFT on R/TS/P")
             dft_jobs = [
@@ -9114,17 +9107,18 @@ def cli(
         root_summary = deepcopy(summary)
         _enrich_root_summary(root_summary)
         root_summary["post_segments"] = _json_safe(list(post_segments))
+        if energy_diagrams:
+            # The diagrams of the finished segments, kept for --resume-segment.
+            root_summary["energy_diagrams"] = _json_safe(list(energy_diagrams))
         _publish_root_summary(root_summary)
 
-    if resuming:
-        if refine_path:
-            # The saved path-search summary can read as success; as in a new
-            # run, the root keeps a fail-closed provisional verdict until
-            # post-processing re-authors it.
-            _publish_provisional_root_summary()
-        else:
-            _publish_root_summary(summary)
-    else:
+    # A resumed run keeps the records of the segments before --resume-segment.
+    post_segment_logs: List[Dict[str, Any]] = (
+        retained_post_segments(previous_root_summary or {}, int(resume_segment))
+        if resuming
+        else []
+    )
+    if not resuming:
         _publish_manifest_summary(
             summary_path,
             summary,
@@ -9132,16 +9126,10 @@ def cli(
             key="path.summary",
             out_dir=out_dir,
         )
-        if refine_path:
-            # The raw path-search summary reads as success; the root keeps the
-            # fail-closed provisional verdict until post-processing re-authors it.
-            root_summary = deepcopy(provisional_root_summary)
-            for key in ("resume_identity", "scan", "path_optimizers"):
-                if key in summary:
-                    root_summary[key] = summary[key]
-            _publish_root_summary(root_summary)
-        else:
-            _publish_root_summary(summary, warn_on_failure=True)
+    # The path summary can read as success and a resumed run's saved root keeps
+    # its final verdict; the root holds the fail-closed provisional verdict,
+    # with the kept segment records, until post-processing re-authors it.
+    _publish_provisional_root_summary(post_segment_logs)
     _refresh_current_public_outputs(manifest, out_dir)
     _persist_run_manifest(manifest, out_dir)
     segments = _read_summary(summary_path)
@@ -9303,11 +9291,6 @@ def cli(
     dft_seg_energies: List[Tuple[float, float, float]] = []
     g_dft_mlip_seg_energies: List[Tuple[float, float, float]] = []
     irc_trj_for_all: List[Tuple[Path, bool]] = []
-    post_segment_logs: List[Dict[str, Any]] = (
-        retained_post_segments(previous_root_summary or {}, int(resume_segment))
-        if resuming
-        else []
-    )
     pipeline_stop: Optional[Dict[str, Any]] = None
     stopped_segments: List[Dict[str, Any]] = []
     # A resumed run keeps the stops of the segments before --resume-segment.

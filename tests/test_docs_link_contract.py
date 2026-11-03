@@ -6,6 +6,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from _repo_files import require_repo_files
+
 
 def _load(name: str):
     path = Path(__file__).parents[1] / ".github" / "scripts" / f"{name}.py"
@@ -17,6 +19,7 @@ def _load(name: str):
     return module
 
 
+require_repo_files(".github/scripts/check_markdown_links.py")
 links = _load("check_markdown_links")
 
 

@@ -87,6 +87,7 @@ from pdb2reaction.core.utils import (
     PreparedInputStructure,
     emit_optimizer_terminal_status,
     optimizer_cycle_count,
+    optimizer_final_forces,
     optimizer_terminal_status,
     optional_positive_int,
 )
@@ -3912,9 +3913,9 @@ def cli(
                     },
                 }
                 # Convergence details from optimizer
-                if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
-                    _tsopt_result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
-                    _tsopt_result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+                _final_forces = optimizer_final_forces(last_optimizer)
+                if _final_forces is not None:
+                    _tsopt_result_data["final_max_force"], _tsopt_result_data["final_rms_force"] = _final_forces
                 if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
                     _tsopt_result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
                 if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:

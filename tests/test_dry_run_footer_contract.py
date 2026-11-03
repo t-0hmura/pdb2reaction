@@ -12,6 +12,7 @@ from pdb2reaction.core.utils import (
     DRY_RUN_COMPLETE_MESSAGE,
     emit_dry_run_complete,
 )
+from _repo_files import require_repo_files
 
 
 EXPECTED = "[Dry run] --dry-run completed. Input command is valid."
@@ -50,6 +51,7 @@ def test_canonical_dry_run_footer_is_exact(capsys) -> None:
 
 
 def test_every_dry_run_workflow_uses_the_canonical_terminal_footer(tmp_path, monkeypatch) -> None:
+    require_repo_files("tests/smoke")
     monkeypatch.chdir(tmp_path)
     for name, argv in DRY_RUN_COMMANDS.items():
         result = CliRunner().invoke(root_cli, [*argv, "--dry-run"])
@@ -60,6 +62,7 @@ def test_every_dry_run_workflow_uses_the_canonical_terminal_footer(tmp_path, mon
 
 
 def test_dry_run_plan_block_is_shown_only_at_verbose_three(tmp_path, monkeypatch) -> None:
+    require_repo_files("tests/smoke")
     monkeypatch.chdir(tmp_path)
     shown = set()
     for name, argv in DRY_RUN_COMMANDS.items():

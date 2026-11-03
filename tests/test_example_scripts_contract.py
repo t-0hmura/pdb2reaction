@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from _repo_files import require_repo_files
+
 
 def _load(name: str):
     path = Path(__file__).parents[1] / ".github" / "scripts" / f"{name}.py"
@@ -18,6 +20,7 @@ def _load(name: str):
     return module
 
 
+require_repo_files(".github/scripts/check_example_scripts.py")
 checker = _load("check_example_scripts")
 contract = checker.contract  # same module object the checker uses
 

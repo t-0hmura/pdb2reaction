@@ -194,7 +194,8 @@ for this check. Never cancel by a guessed ID or broad name match.
 For a completed MEP with failed segment post-processing, repeat the original
 `all` command against the persistent `--out-dir` and add
 `--resume-segment N`. Keep the original inputs, extraction, path, and
-calculator settings; post-processing settings may change. If the MEP itself
+calculator settings; post-processing settings may change, except
+`--precision-post` (resume from segment 1 to change it). If the MEP itself
 did not complete, restart the path calculation from its endpoint structures.
 
 ## Parallel job submission patterns

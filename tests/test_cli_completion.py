@@ -8,6 +8,7 @@ from click.testing import CliRunner
 
 from pdb2reaction.cli.completion import completion_guard, record_completion
 from pdb2reaction.core.utils import write_result_json
+from _repo_files import require_repo_files
 
 
 @pytest.mark.parametrize(
@@ -118,6 +119,7 @@ def test_opt_nonconvergence_exits_one_at_the_public_cli(tmp_path, out_json):
 
 
 def test_limited_smoke_checks_the_actual_exit_and_rejects_execution_failure():
+    require_repo_files("tests/smoke/run_limited.py")
     import importlib.util
     from pathlib import Path
 
@@ -140,6 +142,7 @@ def test_limited_smoke_checks_the_actual_exit_and_rejects_execution_failure():
 
 
 def test_skill_checker_rejects_removed_status_and_wrong_axis_values(tmp_path, monkeypatch):
+    require_repo_files(".github/scripts/check_skill_drift.py")
     import importlib.util
     from pathlib import Path
 

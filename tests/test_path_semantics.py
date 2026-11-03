@@ -7,6 +7,7 @@ from pdb2reaction.workflows.path_search import (
     CombinedPath,
     SegmentReport,
     _build_mep_diagram_data,
+    _echo_mep_diagram_inputs,
     _frame_ranges_by_segment,
     _select_hei_index as select_path_search_hei,
     _stitch_paths,
@@ -124,3 +125,21 @@ def test_cross_pair_recursive_segment_receives_interface_pair_index(
     )
 
     assert captured == [("pair_01_mid", 1)]
+
+
+@pytest.mark.parametrize("level", [0, 1, 2, 3])
+def test_mep_diagram_inputs_print_only_at_level_three(monkeypatch, capsys, level):
+    from pdb2reaction.core import output
+
+    monkeypatch.setattr(output, "_VERBOSE_LEVEL", level)
+    _echo_mep_diagram_inputs(["R", "TS1", "P"], [0.0, 12.5, -3.25])
+
+    out = capsys.readouterr().out
+    if level >= 3:
+        assert out == (
+            '[diagram] build_energy_diagram.labels = ["R", "TS1", "P"]\n'
+            "[diagram] build_energy_diagram.energies_kcal = "
+            "[0.000000, 12.500000, -3.250000]\n"
+        )
+    else:
+        assert out == ""

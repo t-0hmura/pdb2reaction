@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 
 from pdb2reaction.cli import cli
+from _repo_files import require_repo_files
 
 
 _COMMAND_RE = re.compile(
@@ -62,6 +63,7 @@ def _unknown_long_options(script: str) -> list[str]:
 
 
 def test_smoke_literal_options_match_click_commands() -> None:
+    require_repo_files("tests/smoke/run.sh")
     script = (
         Path(__file__).parents[1] / "tests" / "smoke" / "run.sh"
     ).read_text(encoding="utf-8")

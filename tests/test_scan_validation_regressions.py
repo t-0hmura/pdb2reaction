@@ -299,7 +299,7 @@ def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
         ),
     ],
 )
-def test_scan_html_plots_are_responsive_and_scan2d_keeps_native_projection(
+def test_scan3d_html_is_responsive_and_scan2d_keeps_its_fixed_size_and_native_projection(
     tmp_path, monkeypatch, command, n_atoms, scan_lists, html_name,
 ) -> None:
     from click.testing import CliRunner
@@ -333,12 +333,14 @@ def test_scan_html_plots_are_responsive_and_scan2d_keeps_native_projection(
 
     assert result.exit_code == 0, result.output
     html = (out_dir / html_name).read_text(encoding="utf-8")
-    assert re.search(r'"responsive":\s*true', html)
     assert re.search(r'"displaylogo":\s*false', html)
     if command == "scan3d":
         # The viewer fills its container instead of keeping a fixed pixel size.
+        assert re.search(r'"responsive":\s*true', html)
         assert not re.search(r"height:\d+px; width:\d+px", html)
     else:
+        # The figure sets 800x700 px, so the plot keeps that size in a browser.
+        assert re.search(r'"width":\s*800,\s*"height":\s*700', html)
         assert "2D Contour Projection (Bottom)" in html
         assert not re.search(r'"project":\s*\{\s*"z":\s*true', html)
         assert "Computed grid points" not in html

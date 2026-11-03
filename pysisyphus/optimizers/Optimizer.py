@@ -376,6 +376,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         # stopped decreasing while the configured force/step convergence
         # criteria are NOT met) is a *stalled* stop, never convergence.
         self.is_stalled = False
+        # Forces of the final geometry, set by final_summary().
+        self.final_max_force = None
+        self.final_rms_force = None
 
     def get_path_for_fn(self, fn, with_prefix=True):
         prefix = self.prefix if with_prefix else ""
@@ -981,6 +984,20 @@ class Optimizer(metaclass=abc.ABCMeta):
         # If the optimization was stopped _forces may not be set, so
         # then we force a calculation if it was not already set.
         _ = self.geometry.forces
+        # Keep the forces of the final geometry in the convergence basis of
+        # max_forces/rms_forces. A max-cycles stop takes a step after the
+        # last evaluation, so the history then lags one geometry behind.
+        if (
+            self.max_forces
+            and self.cart_coords
+            and np.array_equal(self.geometry.cart_coords, self.cart_coords[-1])
+        ):
+            self.final_max_force = float(self.max_forces[-1])
+            self.final_rms_force = float(self.rms_forces[-1])
+        else:
+            active_forces = self._active_convergence_vector(self.geometry.forces)
+            self.final_max_force = float(np.abs(active_forces).max())
+            self.final_rms_force = float(np.sqrt(np.mean(np.square(active_forces))))
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
         rms_cart_forces = np.sqrt(np.mean(cart_forces**2))

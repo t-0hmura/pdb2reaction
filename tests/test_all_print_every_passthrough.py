@@ -16,6 +16,7 @@ from click.testing import CliRunner
 from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.core.result_commit import RUN_ID_ENV
 from pdb2reaction.workflows import all as all_workflow
+from _repo_files import require_repo_files
 
 SMOKE = Path(__file__).resolve().parent / "smoke"
 
@@ -99,6 +100,7 @@ def test_all_forwards_print_every_as_child_cli_flag(
 
 
 def _path_cfg(tmp_path: Path, command: str, yaml_text: str, *extra: str):
+    require_repo_files("tests/smoke")
     config = _write(tmp_path / "config.yaml", "calc:\n  charge: -1\n  spin: 1\n" + yaml_text)
     structure = SMOKE / "r.pdb"
     result = CliRunner().invoke(

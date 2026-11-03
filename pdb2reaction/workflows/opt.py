@@ -71,6 +71,7 @@ from pdb2reaction.core.utils import (
     echo_resolved_device,
     emit_optimizer_terminal_status,
     optimizer_cycle_count,
+    optimizer_final_forces,
     optimizer_terminal_status,
     unbiased_energy_hartree,
     lossless_int,
@@ -1122,9 +1123,9 @@ def cli(
                 result_data["stop_reason"] = _opt_stop_reason
             if rigid_projection_info:
                 result_data["rigid_projection"] = dict(rigid_projection_info)
-            if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
-                result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
-                result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+            _final_forces = optimizer_final_forces(last_optimizer)
+            if _final_forces is not None:
+                result_data["final_max_force"], result_data["final_rms_force"] = _final_forces
             # Convergence thresholds (numeric values for the named preset)
             if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
                 result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}

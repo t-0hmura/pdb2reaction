@@ -33,6 +33,7 @@ from pdb2reaction.workflows._outcomes import (
     scan_scientific_status,
     seed_eligible_mask,
 )
+from _repo_files import require_repo_files
 
 
 # ---------------------------------------------------------------------------
@@ -803,6 +804,7 @@ def test_dmf_result_status_matches_the_gsm_convergence_form(
     # carries the tri-state bit and the optimization status is derived from it, so a
     # DMF consumer reading either field gets the IPOPT result rather than a pinned
     # placeholder, and an unreadable IPOPT status claims no outcome.
+    require_repo_files("tests/smoke")
     from types import SimpleNamespace
 
     from click.testing import CliRunner

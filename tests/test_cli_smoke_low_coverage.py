@@ -15,6 +15,7 @@ import pytest
 import pdb2reaction.io.energy_diagram as energy_diagram
 import pdb2reaction.io.trj2fig as trj2fig
 from pdb2reaction.cli import cli as root_cli
+from _repo_files import require_repo_files
 
 
 def _write_text(path: Path, text: str) -> Path:
@@ -604,7 +605,8 @@ def test_energy_diagram_rejects_unflagged_variadic_tokens(args: list[str]) -> No
 
 
 def test_verbose_is_a_per_subcommand_option() -> None:
-    """`-v/--verbose LEVEL` is injected into every subcommand."""
+    """`-v/--verbose LEVEL` is injected into every subcommand; it is no longer a
+    root-group option, so a root-placed `-v` is rejected."""
     runner = CliRunner()
     for name in (
         "opt", "tsopt", "freq", "irc", "sp", "scan",
@@ -613,6 +615,16 @@ def test_verbose_is_a_per_subcommand_option() -> None:
         res = runner.invoke(root_cli, [name, "--help"])
         assert res.exit_code == 0, res.output
         assert "-v, --verbose" in res.output, f"{name} --help is missing -v"
+
+    # A root-placed -v in front of a command is not routed to the default `all`.
+    for argv in (
+        ["-v", "2", "opt", "--help"],
+        ["-v2", "opt", "--help"],
+        ["--verbose=2", "opt", "--help"],
+    ):
+        root = runner.invoke(root_cli, argv)
+        assert root.exit_code != 0, argv
+        assert "No such option" in root.output, argv
 
     # The level is an IntRange(0, 3); 0/1/2/3 are accepted (default 2) and
     # out-of-range values are rejected.
@@ -694,6 +706,7 @@ def test_path_workflow_max_nodes_defaults_to_twenty(
 
 
 def test_opt_accepts_yaml_only_charge_and_spin(tmp_path: Path) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "calc.yaml"
     config.write_text("calc:\n  charge: -1\n  spin: 1\n", encoding="utf-8")
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
@@ -710,6 +723,7 @@ def test_opt_accepts_yaml_only_charge_and_spin(tmp_path: Path) -> None:
 
 
 def test_opt_accepts_the_constrained_projection_mode_from_yaml(tmp_path: Path) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "projection.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
@@ -736,6 +750,7 @@ def test_opt_accepts_the_constrained_projection_mode_from_yaml(tmp_path: Path) -
 def test_all_only_forwards_explicit_flatten(
     tmp_path: Path, toggle: list[str], expected: bool | None,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "all.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
@@ -764,6 +779,7 @@ def test_all_only_forwards_explicit_flatten(
 def test_all_show_config_marks_omitted_child_overrides_as_null(
     tmp_path: Path,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "all.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
@@ -807,6 +823,7 @@ def test_all_show_config_marks_omitted_child_overrides_as_null(
 def test_path_opt_explicit_preopt_cycles_override_yaml(
     tmp_path: Path, extra: list[str], expected_cycles: int,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "path-opt.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
@@ -831,6 +848,7 @@ def test_scan_passes_merged_yaml_mapping_to_runtime(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Guard against unpacking the loader's mapping instead of passing it on."""
+    require_repo_files("tests/smoke")
     import pdb2reaction.workflows.scan as scan_workflow
 
     config = tmp_path / "scan.yaml"
@@ -863,6 +881,7 @@ def test_scan_passes_merged_yaml_mapping_to_runtime(
 def test_scan_single_flag_multi_stage_form_does_not_depend_on_process_argv(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    require_repo_files("tests/smoke")
     import sys
 
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
@@ -883,6 +902,7 @@ def test_scan_single_flag_multi_stage_form_does_not_depend_on_process_argv(
 def test_scan_repeated_flag_multi_stage_form_matches_colab_command(
     tmp_path: Path,
 ) -> None:
+    require_repo_files("tests/smoke")
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
     result = CliRunner().invoke(
         root_cli,
@@ -908,6 +928,7 @@ def test_scan_repeated_flag_multi_stage_form_matches_colab_command(
 def test_grid_scans_accept_yaml_only_charge_and_spin(
     tmp_path: Path, command: str, scan_spec: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / f"{command}.yaml"
     config.write_text("calc:\n  charge: -1\n  spin: 1\n", encoding="utf-8")
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
@@ -929,6 +950,7 @@ def test_grid_scans_accept_yaml_only_charge_and_spin(
 def test_scan_dry_run_and_execution_reject_the_same_malformed_request(
     tmp_path: Path, command: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
     base_args = [
         command,
@@ -962,6 +984,7 @@ def test_scan_dry_run_and_execution_reject_the_same_malformed_spec_file(
     command: str,
     suffix: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     workflow = importlib.import_module(f"pdb2reaction.workflows.{command}")
     calculator_calls: list[dict[str, object]] = []
     device_calls: list[bool] = []
@@ -1036,6 +1059,7 @@ def test_scan_dry_run_parses_yaml_request_through_execution_adapter(
     spec_text: str,
     expected: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
     spec = tmp_path / f"{command}.yaml"
     spec.write_text(spec_text, encoding="utf-8")

@@ -6,6 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli.app import cli
+from _repo_files import require_repo_files
 
 
 def test_dft_rejects_redundant_backend_selector() -> None:
@@ -48,6 +49,7 @@ def test_dft_resource_defaults_are_lowmem_and_explicit_values_normalize(
 def test_standalone_dft_accepts_pyscf_object_defaults_without_false_conflict(
     tmp_path,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "pyscf.yaml"
     config.write_text(
         "dft:\n"
@@ -677,6 +679,7 @@ def test_scf_stepwise_grid_shortens_the_final_scf_of_the_dft_command() -> None:
 
 
 def test_calculator_dft_cli_flags_reach_the_dft_settings(tmp_path) -> None:
+    require_repo_files("tests/smoke")
     xyz = Path(__file__).parent / "smoke" / "r.xyz"
     result = CliRunner().invoke(
         cli,

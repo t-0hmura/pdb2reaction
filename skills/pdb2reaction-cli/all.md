@@ -66,7 +66,8 @@ was skipped or `segments` has a `kind` other than `"seg"`. Key details:
 
 Repeat the original command with the same inputs, extraction, path, and
 calculator options and the same `--out-dir`, add `--resume-segment N`, and
-change only post-processing options (for example `--tsopt-max-cycles`). The
+change only post-processing options (for example `--tsopt-max-cycles`, but not
+`--precision-post`; to change it, resume from segment 1). The
 saved MEP is checked, earlier segments are kept, and segment N onward, the
 summary, and the diagrams are written again. The run stops with an error when
 the saved inputs and MEP do not match the command.

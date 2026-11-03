@@ -465,7 +465,7 @@ def normalized_text(text: str, tmp_path: Path) -> str:
 
     for root in _roots(tmp_path):
         text = text.replace(root, "<TMP>")
-    return text.replace(str(__version__), "<VERSION>")
+    return text.replace(f"pdb2reaction {__version__}", "pdb2reaction <VERSION>")
 
 
 def normalized_argv(argv: Sequence[str], tmp_path: Path) -> List[str]:

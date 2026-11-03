@@ -12,6 +12,7 @@ from pdb2reaction.core.defaults import LBFGS_KW, OPT_BASE_KW
 from pdb2reaction.core.utils import build_scan_configs, build_sopt_kwargs
 from pdb2reaction.workflows import scan as scan_workflow
 from pdb2reaction.workflows import scan3d as scan3d_workflow
+from _repo_files import require_repo_files
 
 
 def _base_kw():
@@ -169,6 +170,7 @@ def test_scan_explicit_shared_key_conflict_is_an_error(yaml_cfg, cli):
 
 
 def test_scan_cli_uses_optimizer_section_value(tmp_path, monkeypatch):
+    require_repo_files("tests/smoke")
     config = tmp_path / "scan.yaml"
     config.write_text("lbfgs:\n  max_cycles: 50\n", encoding="utf-8")
     blocks = {}

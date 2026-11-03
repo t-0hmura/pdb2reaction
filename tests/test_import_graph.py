@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+from _repo_files import require_repo_files
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CHECKER_PATH = _REPO_ROOT / ".github" / "scripts" / "check_import_graph.py"
 
@@ -30,6 +32,7 @@ def _load_checker():
     return module
 
 
+require_repo_files(".github/scripts/check_import_graph.py")
 checker = _load_checker()
 
 

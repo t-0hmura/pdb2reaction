@@ -6,9 +6,11 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+from _repo_files import require_repo_files
 
 
 def _load_smoke_module():
+    require_repo_files(".github/scripts/smoke_docs_commands.py")
     path = Path(__file__).parents[1] / ".github" / "scripts" / "smoke_docs_commands.py"
     spec = importlib.util.spec_from_file_location("smoke_docs_commands", path)
     assert spec is not None and spec.loader is not None

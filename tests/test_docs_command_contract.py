@@ -12,6 +12,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from _repo_files import require_repo_files
+
 
 def _load(name: str):
     path = Path(__file__).parents[1] / ".github" / "scripts" / f"{name}.py"
@@ -23,6 +25,9 @@ def _load(name: str):
     return module
 
 
+require_repo_files(
+    ".github/scripts/docs_command_contract.py", ".github/scripts/check_bool_style.py"
+)
 contract = _load("docs_command_contract")
 bool_style = _load("check_bool_style")
 

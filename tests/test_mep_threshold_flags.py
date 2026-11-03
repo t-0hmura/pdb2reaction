@@ -13,6 +13,7 @@ from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.workflows import all as all_workflow
 from pdb2reaction.workflows.path_opt import resolve_dmf_solve_tol
 from test_all_root_summary_golden import pdb_frame, write
+from _repo_files import require_repo_files
 
 MEP_FLAGS = ("--gsm-param", "--thresh-gsm", "--thresh-dmf")
 
@@ -124,6 +125,7 @@ def test_path_dry_run_validates_effective_gsm_nodes(
     tmp_path: Path, command: str, mode: str, nodes: int,
     source: str, cli_override: int | None, expected_exit: int,
 ) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     args = [
         command, "-i", str(smoke / "r.pdb"), str(smoke / "p.pdb"),
@@ -155,6 +157,7 @@ def test_path_dry_run_validates_effective_gsm_nodes(
 def test_gsm_ignores_a_dormant_dmf_tolerance(
     tmp_path: Path, command: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     config = tmp_path / "dormant-dmf.yaml"
     config.write_text("dmf:\n  tol: nan\n", encoding="utf-8")
     smoke = Path(__file__).resolve().parent / "smoke"
@@ -174,6 +177,7 @@ def test_gsm_ignores_a_dormant_dmf_tolerance(
 def test_gsm_rejects_an_explicit_invalid_dmf_tolerance(
     tmp_path: Path, command: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     result = CliRunner().invoke(
         root_cli,
@@ -191,6 +195,7 @@ def test_gsm_rejects_an_explicit_invalid_dmf_tolerance(
 def test_all_dry_run_rejects_an_explicit_invalid_dmf_tolerance(
     tmp_path: Path,
 ) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     result = CliRunner().invoke(
         root_cli,
@@ -206,6 +211,7 @@ def test_all_dry_run_rejects_an_explicit_invalid_dmf_tolerance(
 
 
 def test_all_show_config_reports_each_threshold_owner(tmp_path: Path) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     result = CliRunner().invoke(
         root_cli,
@@ -236,6 +242,7 @@ def test_all_show_config_reports_effective_optimizer_modes(
     expected_path: str,
     expected_post: str,
 ) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     result = CliRunner().invoke(
         root_cli,
@@ -256,6 +263,7 @@ def test_all_show_config_reports_effective_optimizer_modes(
 
 @pytest.mark.parametrize("command", ["path-opt", "path-search"])
 def test_explicit_gsm_param_overrides_yaml(tmp_path: Path, command: str) -> None:
+    require_repo_files("tests/smoke")
     smoke = Path(__file__).resolve().parent / "smoke"
     config = tmp_path / "gsm.yaml"
     config.write_text("gs:\n  param: equi\n", encoding="utf-8")

@@ -18,7 +18,7 @@ import time
 import re
 
 import click
-from pdb2reaction.core.output import emit
+from pdb2reaction.core.output import emit, verbose_level
 import numpy as np
 
 from pysisyphus.helpers import geom_loader
@@ -915,6 +915,18 @@ class CombinedPath:
     single_opt_executed: bool = False
 
 
+def _echo_mep_diagram_inputs(
+    labels: Sequence[str], energies_kcal: Sequence[float]
+) -> None:
+    """Print the labels and energies passed to the MEP diagram at -v 3 only."""
+    if verbose_level() < 3:
+        return
+    labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
+    energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
+    click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
+    click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
+
+
 def _build_mep_diagram_data(
     combined: CombinedPath,
 ) -> Tuple[Dict[str, Any], List[str]]:
@@ -1299,7 +1311,7 @@ def _build_multistep_path(
 
     hei = int(gsm0.hei_idx)
     if not (1 <= hei <= len(gsm0.images) - 2):
-        click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.", err=True)
+        click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw MEP path.", err=True)
         _tag_images(gsm0.images, pair_index=pair_index)
         return CombinedPath(
             images=gsm0.images,
@@ -3224,10 +3236,7 @@ def cli(
             labels = diagram_payload["labels"]
             energies_kcal = diagram_payload["energies_kcal"]
 
-            labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
-            energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
-            click.echo(f"[diagram] build_energy_diagram.labels = {labels_repr}")
-            click.echo(f"[diagram] build_energy_diagram.energies_kcal = {energies_repr}")
+            _echo_mep_diagram_inputs(labels, energies_kcal)
 
             title_note = "(MEP; all segments)"
             fig = build_energy_diagram(

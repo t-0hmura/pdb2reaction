@@ -6913,13 +6913,26 @@ def test_orb_pip_check_failure_stops_before_the_ready_message(monkeypatch, capsy
 
 def test_mace_install_keeps_torch_and_expects_fairchem_core_missing(monkeypatch, capsys) -> None:
     # torchvision==0.23.0 requires torch==2.8.0, so pinning it replaced the torch that the tool needs.
+    # torchvision 0.28 requires torch==2.13.0, the torch the tool installs, so it keeps that torch.
     calls = []
     _run_backend_install_branch(monkeypatch, "mace", calls=calls)
     assert [call[0] for call in calls] == ["run", "pip", "pip check", "run"]
     assert calls[0][1][-5:] == ["pip", "uninstall", "-y", "-q", "fairchem-core"]
-    assert calls[1] == ("pip", ("mace-torch>=0.3.16",), {})
+    assert calls[1] == ("pip", ("mace-torch>=0.3.16", "torchvision>=0.28,<0.29"), {})
     assert calls[2] == ("pip check", ("requires fairchem-core, which is not installed",))
     assert "MACE installed" in capsys.readouterr().out
+
+
+def test_mace_torchvision_range_follows_the_torch_the_tool_requires() -> None:
+    # The tool's torch replaces the runtime's torch, and a torchvision built for the old torch fails
+    # on import (RuntimeError: operator torchvision::nms does not exist), which breaks mace.calculators.
+    # torch 2.N pairs with torchvision 0.(N+15): change the notebook range together with the torch pin.
+    pyproject = (NOTEBOOK.parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    torch_pin = re.search(r'"torch>=2\.(\d+),<2\.(\d+)"', pyproject)
+    assert torch_pin is not None
+    lower, upper = int(torch_pin.group(1)), int(torch_pin.group(2))
+    assert upper == lower + 1
+    assert f"'torchvision>=0.{lower + 15},<0.{upper + 15}'" in _notebook()["cells"][1]["source"]
 
 
 def _pip_check_from_setup(monkeypatch, *, returncode, stdout):

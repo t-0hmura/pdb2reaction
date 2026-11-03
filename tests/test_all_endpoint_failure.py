@@ -128,9 +128,16 @@ def _endpoint_optimizer(failed_endpoint, outcome_kind, calls):
 
 
 @pytest.mark.parametrize("branch", ["ts", "seg"])
-@pytest.mark.parametrize("failed_endpoint", [0, 1])
 @pytest.mark.parametrize("dump", [False, True])
-@pytest.mark.parametrize("outcome", ["hard_error", "nonfinite_error", "converged", "not_converged"])
+# The failed endpoint matters only when an endpoint raises.
+@pytest.mark.parametrize(
+    ("failed_endpoint", "outcome"),
+    [
+        (0, "hard_error"), (1, "hard_error"),
+        (0, "nonfinite_error"), (1, "nonfinite_error"),
+        (0, "converged"), (0, "not_converged"),
+    ],
+)
 def test_endpoint_boundary_retains_provenance_and_stops_consumers(
     monkeypatch, tmp_path, branch, failed_endpoint, dump, outcome,
 ):

@@ -8,12 +8,14 @@ import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli import cli as root_cli
+from _repo_files import require_repo_files
 
 SMOKE = Path(__file__).resolve().parent / "smoke"
 CALC_YAML = "calc:\n  charge: -1\n  spin: 1\n"
 
 
 def _invoke(tmp_path: Path, command: str, yaml_text: str, *extra: str):
+    require_repo_files("tests/smoke")
     config = tmp_path / "config.yaml"
     config.write_text(CALC_YAML + yaml_text, encoding="utf-8")
     structure = SMOKE / "r.pdb"
