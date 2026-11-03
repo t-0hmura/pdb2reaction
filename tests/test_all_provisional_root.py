@@ -171,6 +171,7 @@ def test_resume_after_a_stop_in_segment_2_keeps_the_diagram_of_segment_1(
     assert "segments/seg_01/energy_diagram_MLIP.png" in (
         resumed.out / "summary.log"
     ).read_text(encoding="utf-8")
+    assert "segments/seg_01/ts.pdb" in summary["current_output_paths"]
 
 
 @pytest.mark.parametrize(

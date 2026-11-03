@@ -4571,7 +4571,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Reuse the verified MEP in --out-dir and rerun post-processing from "
         "segment N. Repeat the original path/extraction/calculator options; "
-        "post-processing options may be changed."
+        "post-processing options other than --precision-post may be changed."
     ),
 )
 @click.option(
@@ -5636,6 +5636,8 @@ def cli(
             }
         )
     _primary_preview_cfg = deepcopy(_guard_calc_cfg)
+    from pdb2reaction.core.compile_policy import apply_compile_option
+    apply_compile_option(_primary_preview_cfg, compile_model)
     if str(_primary_preview_cfg.get("backend", "")).lower() == "dft":
         from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
 
@@ -8519,9 +8521,6 @@ def cli(
             energies_chain: List[float] = []
             for si, seg_info in enumerate(path_opt_segments):
                 Es = [float(x) for x in seg_info.get("energies", [])]
-                if not Es:
-                    labels = []
-                    break
                 seg_labels = segment_labels[3 * si : 3 * si + 3]
                 if 1 <= _path_opt._select_hei_index(Es) <= len(Es) - 2:
                     labels.extend(seg_labels)
@@ -9111,6 +9110,7 @@ def cli(
             # The diagrams of the finished segments, kept for --resume-segment.
             root_summary["energy_diagrams"] = _json_safe(list(energy_diagrams))
         _publish_root_summary(root_summary)
+        _persist_run_manifest(manifest, out_dir)
 
     # A resumed run keeps the records of the segments before --resume-segment.
     post_segment_logs: List[Dict[str, Any]] = (

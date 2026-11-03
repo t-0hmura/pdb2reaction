@@ -121,7 +121,7 @@ class OrbCalculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "ORB backend requires orb-models and torch. "
-                "Install with: pip install \"pdb2reaction[orb]\""
+                "Install it in a separate environment with: pip install \"pdb2reaction[orb]\""
             ) from exc
 
         super().__init__(
@@ -226,6 +226,8 @@ class OrbCalculator(MLIPCalculator):
                     )
                     out = self._loader(**kwargs)
             except Exception as exc:
+                if not isinstance(exc, TypeError):
+                    raise BackendError(f"Failed to load Orb model '{self.model_name}': {exc}") from exc
                 last_exc = exc
                 continue
             # The second base drops `compile`. Loading through it means

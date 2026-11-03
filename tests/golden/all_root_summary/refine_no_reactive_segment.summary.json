@@ -16,6 +16,25 @@
   "path_optimizers": [
     "lbfgs"
   ],
+  "energy_diagrams": [
+    {
+      "name": "energy_diagram_MEP",
+      "labels": [
+        "R",
+        "P"
+      ],
+      "energies_kcal": [
+        0.0,
+        -6.275094740632184
+      ],
+      "ylabel": "ΔE (kcal/mol)",
+      "energies_au": [
+        -100.0,
+        -100.01
+      ],
+      "image": "<TMP>/out/energy_diagram_MEP.png"
+    }
+  ],
   "execution_status": "completed",
   "scientific_status": "partial",
   "expected_item_ids": [
@@ -27,7 +46,6 @@
     "raw_path"
   ],
   "scientific_status_reasons": [
-    "no usable energy diagram was produced",
     "requested post-processing did not run: no reactive segment was identified",
     "path:raw_path:endpoint_hei"
   ],
@@ -135,6 +153,8 @@
   "charge": 0,
   "spin": 1,
   "n_segments_reactive": 0,
+  "overall_reaction_energy_kcal": -6.28,
+  "overall_reaction_energy_method": "MEP",
   "command": "pdb2reaction all -i <TMP>/input0.pdb -i <TMP>/input2.pdb -q 0 -m 1 --out-dir <TMP>/out --no-preopt --no-freeze-links --no-tsopt-from-mep-tan --refine-path --tsopt",
   "config": {
     "refine_path": true,

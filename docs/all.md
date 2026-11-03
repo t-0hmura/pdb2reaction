@@ -99,7 +99,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 | Converged, n_imag ≥ 2 | Runs IRC, with a warning, along the imaginary mode that best matches the MEP direction (the lowest one when none matches). The result is `partial`. |
 | Converged, n_imag = 0 | Stops before IRC. |
 | Not converged (cycle limit or `--stop-plateau`), or the final Hessian skipped with `--skip-final-freq` | Stops before IRC. |
-| The final Hessian fails with an error | Stops the whole run (`failed`, exit 1); no later segment is processed. |
+| The final Hessian fails with an error | Stops the whole run (`execution_status` `failed`, exit 1); no later segment is processed. |
 
 A segment that stops before IRC gets no IRC or later stage and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
 
@@ -222,7 +222,7 @@ For every option, run `pdb2reaction all --help-advanced` or see the [generated C
 * **Charge and multiplicity**: with `-c`, the total charge is the sum over the extracted model: built-in values for amino acids, ions, and water, `-l` for the other residues, and 0 for residues not listed in `-l`. Without `-c`, it comes from `-l` applied to the input, or from the `.gjf` header. The multiplicity is `-m`, otherwise the `.gjf` header, otherwise 1. See {ref}`Charge specification <charge-specification>`.
 * **Separately prepared structures**: when the input structures were prepared independently, their differences outside the reaction coordinate enter the barrier. Compare the structures before reading the barrier. For two mechanisms of the same composition, use one common atom set and atom order for both paths.
 * **`--write-ref-merge`**: writes the path merged back into the original full input, for inspection: `mep_w_ref*` in the output directory and `hei_w_ref_seg_NN.pdb` in `_work/path_search/`. It needs `--refine-path`, `-c`, and PDB or mmCIF input.
-* **`--resume-segment`**: it needs `--tsopt`, `--thermo`, or `--dft`, and cannot be combined with `--dry-run`. The run stops with an error when the saved inputs and MEP do not match the command.
+* **`--resume-segment`**: it needs `--tsopt` and cannot be combined with `--dry-run`. The run stops with an error when the saved inputs and MEP do not match the command.
 
 ### Comparing a mutant with the wild type
 

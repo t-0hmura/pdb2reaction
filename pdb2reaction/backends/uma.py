@@ -101,7 +101,7 @@ def _uma_inference_settings(
     - ``tf32``: the fast path with TF32 matmul, and UMA Nitro where the
       installed fairchem-core has it (2.24+, single worker; FAIR-Chem falls back
       to the TF32 fast path for checkpoints Nitro cannot serve). Nitro does not
-      use torch.compile.
+      use torch.compile, so ``--compile`` is ignored on the Nitro route.
 
     The analytical Hessian needs a double backward that the compiled model does
     not support, so that route keeps FAIR-Chem's defaults, uncompiled, at every
@@ -126,6 +126,7 @@ def _uma_inference_settings(
         kwargs["base_precision_dtype"] = "float64"
     if tf32 and not parallel and "nitro" in getattr(_UMAInferenceSettings, "__dataclass_fields__", {}):
         kwargs["nitro"] = True
+        kwargs["compile"] = False
     return _UMAInferenceSettings(**kwargs)
 
 
@@ -492,6 +493,7 @@ class UMACalculator(MLIPCalculator):
             backend="uma",
             device=device,
             analytical_hessian=(mode == "Analytical"),
+            uma_tf32_single_worker=(str(precision).lower() == "tf32" and worker_count == 1),
         )
         self._core: Optional[UMAcore] = None
         self._core_kw = dict(
@@ -836,7 +838,8 @@ class UMAASECalculator(FAIRChemCalculator):
 
         precision = _check_uma_precision(precision)
         compile_on = resolve_compile(
-            compile_model, backend="uma", device=device, analytical_hessian=False
+            compile_model, backend="uma", device=device, analytical_hessian=False,
+            uma_tf32_single_worker=(precision == "tf32" and num_workers == 1),
         )
         uma_inference_settings = _uma_inference_settings(
             precision,

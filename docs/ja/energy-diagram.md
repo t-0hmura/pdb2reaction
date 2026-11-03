@@ -22,7 +22,7 @@
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png --out-json
 ```
 
-端末に `[energy-diagram] Saved -> …/energy.png`（絶対パス）が出て、画像と同じ場所の `result.json` に `n_points: 3` があれば成功です。
+端末に `[energy-diagram] Saved -> energy.png` が出て、画像と同じ場所の `result.json` に `n_points: 3` があれば成功です。
 
 ### 2. 値ごとに `-i` を付ける
 

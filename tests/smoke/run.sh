@@ -13,9 +13,9 @@
 #   cd /path/to/scratch/p2r-smoke
 #   bash run.sh
 #
-# ORB cannot share the UMA environment (docs/installation.md), so the ORB steps
-# (test53, test53b, and `orb` in the last line) run in a separate ORB
-# environment, and the rest runs here without them.
+# ORB cannot share the UMA environment (docs/installation.md): run the ORB steps
+# (test53, test53b, and the `orb` argument of run_backend_hessian.sh) in a
+# separate ORB environment and delete them from the copy that runs here.
 #
 # If you need an HPC scheduler wrapper, keep that in
 # your own out-of-tree submission script and have it invoke this file as

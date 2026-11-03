@@ -63,7 +63,6 @@ from pdb2reaction.io.plotly_image import write_plotly_image
 from pdb2reaction.core.utils import (
     as_list,
     collect_option_values,
-    deep_update,
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
@@ -938,7 +937,6 @@ def _build_mep_diagram_data(
     E0_au = float(path_energies[0])
     EP_au = float(path_energies[-1])
     ts_groups: List[Dict[str, Any]] = []
-    ts_count = 0
     current: Optional[Dict[str, Any]] = None
     E_current_kcal = 0.0
 
@@ -951,7 +949,6 @@ def _build_mep_diagram_data(
 
     for seg in combined.segments:
         if _is_bond_change_seg(seg):
-            ts_count += 1
             barrier = getattr(seg, "barrier_kcal", None)
             barrier_kcal = float(barrier) if barrier is not None else float("nan")
             delta_kcal = float(getattr(seg, "delta_kcal", float("nan")))
@@ -962,12 +959,12 @@ def _build_mep_diagram_data(
 
             first_im_energy = E_current_kcal + delta_kcal
             current = {
-                "ts_label": f"TS{ts_count}",
+                "ts_label": f"TS{seg.seg_index}",
                 "ts_energy": E_current_kcal + barrier_kcal,
                 "first_im_energy": first_im_energy,
                 "tail_im_energy": first_im_energy,
                 "has_extra": False,
-                "index": ts_count,
+                "index": int(seg.seg_index),
                 "bridge_peaks": [],
             }
             ts_groups.append(current)
@@ -1015,17 +1012,17 @@ def _build_mep_diagram_data(
 
             if index == len(ts_groups):
                 continue
-            labels.append(f"IM{index}_1")
+            labels.append(f"IM{group['index']}_1")
             energies_kcal.append(float(group["first_im_energy"]))
-            chain_tokens.extend(["-->", f"IM{index}_1"])
+            chain_tokens.extend(["-->", f"IM{group['index']}_1"])
             for peak in group.get("bridge_peaks", []):
                 labels.append(str(peak["label"]))
                 energies_kcal.append(float(peak["energy"]))
                 chain_tokens.extend(["-->", str(peak["label"])])
             if group["has_extra"]:
-                labels.append(f"IM{index}_2")
+                labels.append(f"IM{group['index']}_2")
                 energies_kcal.append(float(group["tail_im_energy"]))
-                chain_tokens.extend(["-|-->", f"IM{index}_2"])
+                chain_tokens.extend(["-|-->", f"IM{group['index']}_2"])
 
         labels.append("P")
         energies_kcal.append(E_current_kcal)
@@ -2563,7 +2560,6 @@ def cli(
             rfo_cfg=rfo_cfg,
             stopt_cfg=stopt_cfg,
             opt_base_kw=OPT_BASE_KW,
-            deep_update=deep_update,
         )
 
         resolved_charge = charge

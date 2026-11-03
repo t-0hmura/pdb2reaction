@@ -37,10 +37,11 @@ HELP = (
 
 @pytest.fixture(autouse=True)
 def _fresh_state(monkeypatch):
-    """Reset the once-per-process note and run at the default verbosity with the console gate off."""
+    """Reset the once-per-process notes and run at the default verbosity with the console gate off."""
     from pdb2reaction.core import output, utils
 
     monkeypatch.setattr(compile_policy, "_analytical_noted", False)
+    monkeypatch.setattr(compile_policy, "_uma_tf32_noted", False)
     for module, name, value in (
         (output, "_VERBOSE_LEVEL", 2),
         (utils, "_GATE_ACTIVE", False),
@@ -118,6 +119,20 @@ def test_analytical_hessian_is_not_compiled_and_says_so_once(monkeypatch, capsys
         assert resolve_compile(True, backend=backend, device="cpu", analytical_hessian=True) is False
     err = capsys.readouterr().err
     assert err.count("[compile] --compile is ignored for the analytical Hessian.") == 1
+
+
+def test_uma_tf32_on_one_worker_is_not_compiled_and_says_so_once(monkeypatch, capsys):
+    monkeypatch.setattr(compile_policy.shutil, "which", _which_from(set()))
+    for _ in range(2):
+        assert resolve_compile(
+            True, backend="uma", device="cpu", analytical_hessian=False, uma_tf32_single_worker=True,
+        ) is False
+    err = capsys.readouterr().err
+    assert err.count(
+        "[compile] --compile is ignored with --precision tf32 on UMA (UMA Nitro does not use torch.compile)."
+    ) == 1
+    assert runs_compiled({"backend": "uma", "precision": "tf32", "compile_model": True}) is False
+    assert runs_compiled({"backend": "uma", "precision": "tf32", "compile_model": True, "workers": 2}) is True
 
 
 @pytest.mark.parametrize(("device", "name"), [("cpu", "g++"), ("cuda", "gcc")])
@@ -321,7 +336,8 @@ def test_no_compile_is_accepted_by_other_backends(tmp_path):
 
 
 def test_sp_with_compile_and_no_compiler_stops_before_the_model_loads(monkeypatch, tmp_path):
-    pytest.importorskip("fairchem")
+    # The real FAIR-Chem, not the import stub test_uma_workers_analytical.py leaves without it.
+    pytest.importorskip("fairchem.core.units.mlip_unit.api.inference")
     import pdb2reaction.backends.uma as uma_module
 
     def no_load(*args, **kwargs):
@@ -353,7 +369,8 @@ def test_sp_with_compile_and_no_compiler_stops_before_the_model_loads(monkeypatc
     [(False, "FiniteDifference", False), (True, "FiniteDifference", True), (True, "Analytical", False)],
 )
 def test_uma_calculator_passes_the_resolved_choice_to_its_core(monkeypatch, compile_model, mode, expected):
-    pytest.importorskip("fairchem")
+    # The real FAIR-Chem, not the import stub test_uma_workers_analytical.py leaves without it.
+    pytest.importorskip("fairchem.core.units.mlip_unit.api.inference")
     from pdb2reaction.backends.uma import UMACalculator
 
     monkeypatch.setattr(compile_policy.shutil, "which", _which_from({"g++"}))
@@ -364,7 +381,8 @@ def test_uma_calculator_passes_the_resolved_choice_to_its_core(monkeypatch, comp
 
 @pytest.mark.parametrize("compile_model", [False, True])
 def test_uma_ase_calculator_builds_the_fast_path(monkeypatch, compile_model):
-    pytest.importorskip("fairchem")
+    # The real FAIR-Chem, not the import stub test_uma_workers_analytical.py leaves without it.
+    pytest.importorskip("fairchem.core.units.mlip_unit.api.inference")
     import pdb2reaction.backends.uma as uma_module
 
     class Reached(Exception):
@@ -504,6 +522,17 @@ def test_all_rejects_compile_with_another_backend_in_dry_run(tmp_path):
     )
     assert result.exit_code == 2, result.output
     assert "--compile applies to the uma and orb backends" in result.output
+
+
+def test_all_show_config_prints_mlip_compiled(tmp_path):
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    result = CliRunner().invoke(root_cli, [
+        "all", "-i", str(xyz), "-i", str(xyz), "-q", "0", "--compile",
+        "--show-config", "--dry-run", "--out-dir", str(tmp_path / "out"),
+    ])
+    assert result.exit_code == 0, result.output
+    assert "mlip_compiled: true" in result.output
 
 
 def test_all_summary_copies_mlip_compiled(tmp_path):

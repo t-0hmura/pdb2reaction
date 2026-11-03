@@ -90,8 +90,9 @@ Dimer) and its endpoint optimization (to L-BFGS) from the default `hess`.
 
 `bond_changes` records the change from `finished_first.xyz` to
 `finished_last.xyz`: a pair is bonded when its distance is at most 0.95 × T
-(T is 1.20 × the summed covalent radii) and counts only if its distance changes
-by at least 0.05 × T. This is the same algorithm as `bond-summary` and
+(T is the summed covalent radii times `bond.bond_factor`, default 1.20) and
+counts only if its distance changes by at least `bond.delta_fraction` × T
+(default 0.05). This is the same algorithm as `bond-summary` and
 `path-search` segmentation. After you assign R and P, swap formed and broken if
 the chemical direction is last → first. The key is absent when the endpoint
 comparison was not available.

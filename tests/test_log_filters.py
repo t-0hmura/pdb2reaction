@@ -27,14 +27,16 @@ def _remove_filters(root: logging.Logger, chrome: logging.Logger) -> None:
 
 @pytest.fixture
 def installed():
-    import logistro
+    logistro = pytest.importorskip("logistro")
 
     root = logging.getLogger()
     chrome = logistro.getLogger(log_filters._CHOREOGRAPHER_LOGGER)
     had_root = log_filters._FAIRCHEM_FILTER in root.filters
     had_chrome = log_filters._CHOREOGRAPHER_FILTER in chrome.filters
-    log_filters.install_dependency_log_filters()
-    log_filters.install_dependency_log_filters()
+    log_filters.install_fairchem_log_filter()
+    log_filters.install_choreographer_log_filter()
+    log_filters.install_fairchem_log_filter()
+    log_filters.install_choreographer_log_filter()
     yield root, chrome
     if not had_root:
         root.removeFilter(log_filters._FAIRCHEM_FILTER)
@@ -110,7 +112,7 @@ def test_cli_start_installs_the_filters(installed):
 
     assert result.exit_code == 0, result.output
     assert log_filters._FAIRCHEM_FILTER in root.filters
-    assert log_filters._CHOREOGRAPHER_FILTER in chrome.filters
+    assert log_filters._CHOREOGRAPHER_FILTER not in chrome.filters
 
 
 @pytest.mark.parametrize("hide", [False, True])
@@ -141,7 +143,7 @@ def test_png_worker_installs_the_filters_when_told(installed, monkeypatch, tmp_p
     )
 
     assert connection.value == ("ok", "")
-    assert (log_filters._FAIRCHEM_FILTER in root.filters) is hide
+    assert log_filters._FAIRCHEM_FILTER not in root.filters
     assert (log_filters._CHOREOGRAPHER_FILTER in chrome.filters) is hide
 
 

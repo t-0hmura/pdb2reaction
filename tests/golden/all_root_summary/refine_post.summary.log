@@ -28,7 +28,11 @@ Multiplicity (2S+1): 1
   MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    (no diagram available)
+    Image : energy_diagram_MEP.png
+    State    ΔE [kcal/mol]
+        R          0.0000
+        TS1       31.3800
+        P         -6.2800
 
 [2] Segment-level MEP summary (MLIP path)
   - Segment 01 [seg]  tag=seg_001
@@ -102,6 +106,12 @@ Multiplicity (2S+1): 1
     DFT//MLIP ΔG  [kcal/mol]        -5.65
 
 [4] Energy diagrams (overview)
+  energy_diagram_MEP  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.380
+        P        -6.280
+    Image : energy_diagram_MEP.png
   energy_diagram_MLIP  (ylabel: ΔE (kcal/mol))
     State   ΔE [kcal/mol]
         R         0.000
@@ -153,7 +163,7 @@ Multiplicity (2S+1): 1
 
   Energy diagram overview table
     State                            R     TS1       P
-    MEP ΔE  [kcal/mol]             ---     ---     ---
+    MEP ΔE  [kcal/mol]            0.00   31.38   -6.28
     MLIP ΔE  [kcal/mol]           0.00   31.38   -6.28
     MLIP ΔG  [kcal/mol]           0.00   30.12   -5.65
     DFT//MLIP ΔE  [kcal/mol]      0.00   31.38   -6.28

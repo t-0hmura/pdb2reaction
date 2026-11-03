@@ -15,8 +15,7 @@ MLIP backend       : UMA
 MLIP model         : UMA-S-1.2.1 (OMol)
 MLIP precision     : fp32
 Execution status    : completed
-Scientific status   : partial
-RESULT WARNING      : No usable energy diagram was produced. Review the MEP and TSOPT results.
+Scientific status   : success
 Total charge (ML)  : 0
 Multiplicity (2S+1): 1
 
@@ -26,7 +25,11 @@ Multiplicity (2S+1): 1
   MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    (no diagram available)
+    Image : energy_diagram_MEP.png
+    State    ΔE [kcal/mol]
+        R          0.0000
+        TS1       31.3800
+        P         -6.2800
 
 [2] Segment-level MEP summary (MLIP path)
   - Segment 01 [seg]  tag=seg_001
@@ -51,7 +54,20 @@ Multiplicity (2S+1): 1
     DFT//MLIP ΔG  [kcal/mol]          ---
 
 [4] Energy diagrams (overview)
-  (no energy diagrams recorded)
+  energy_diagram_MEP  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        TS1      31.380
+        P        -6.280
+    Image : energy_diagram_MEP.png
+
+  Energy diagram overview table
+    State                            R     TS1       P
+    MEP ΔE  [kcal/mol]            0.00   31.38   -6.28
+    MLIP ΔE  [kcal/mol]            ---     ---     ---
+    MLIP ΔG  [kcal/mol]            ---     ---     ---
+    DFT//MLIP ΔE  [kcal/mol]       ---     ---     ---
+    DFT//MLIP ΔG  [kcal/mol]       ---     ---     ---
 
 [5] Output directory structure
   out/

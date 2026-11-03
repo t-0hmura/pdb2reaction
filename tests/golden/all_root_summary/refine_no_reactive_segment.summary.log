@@ -17,7 +17,6 @@ MLIP precision     : fp32
 Execution status    : completed
 Scientific status   : partial
 Pipeline stop       : post (no_reactive_segment)
-RESULT WARNING      : No usable energy diagram was produced. Review the MEP and TSOPT results.
 RESULT WARNING      : Requested post-processing did not run: no reactive segment was identified.
 RESULT WARNING      : The highest-energy image is at an endpoint. No barrier is reported; check the inputs or add an intermediate.
 Total charge (ML)  : 0
@@ -29,7 +28,10 @@ Multiplicity (2S+1): 1
   MEP energy plot      : energy_diagram_MEP.png
 
   MEP energy diagram (ΔE, kcal/mol)
-    (no diagram available)
+    Image : energy_diagram_MEP.png
+    State    ΔE [kcal/mol]
+        R          0.0000
+        P         -6.2751
 
 [2] Segment-level MEP summary (MLIP path)
   - Segment 01 [bridge]  tag=seg_001
@@ -54,7 +56,19 @@ Multiplicity (2S+1): 1
     DFT//MLIP ΔG  [kcal/mol]          ---
 
 [4] Energy diagrams (overview)
-  (no energy diagrams recorded)
+  energy_diagram_MEP  (ylabel: ΔE (kcal/mol))
+    State   ΔE [kcal/mol]
+        R         0.000
+        P        -6.275
+    Image : energy_diagram_MEP.png
+
+  Energy diagram overview table
+    State                            R       P
+    MEP ΔE  [kcal/mol]            0.00   -6.28
+    MLIP ΔE  [kcal/mol]            ---     ---
+    MLIP ΔG  [kcal/mol]            ---     ---
+    DFT//MLIP ΔE  [kcal/mol]       ---     ---
+    DFT//MLIP ΔG  [kcal/mol]       ---     ---
 
 [5] Output directory structure
   out/

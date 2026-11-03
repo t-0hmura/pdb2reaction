@@ -22,7 +22,7 @@ Pass all values as one quoted list.
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png --out-json
 ```
 
-The console prints `[energy-diagram] Saved -> …/energy.png` with the absolute path, and `result.json` next to the image has `n_points: 3`.
+The console prints `[energy-diagram] Saved -> energy.png`, and `result.json` next to the image has `n_points: 3`.
 
 ### 2. One `-i` per value
 

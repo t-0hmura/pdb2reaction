@@ -132,7 +132,7 @@ if rls:
 ```
 
 - "Bond formed" lists bonds present in P but not in R; "Bond broken" lists bonds present in R but not in P. A section with no change is `{"Bond formed": ["None"]}`, without `(k)`.
-- A bond is counted when its length is at most 0.95 × T, where T is `--bond-factor` (default 1.20) times the sum of covalent radii, and only if the length changes by at least 0.05 × T. `bond-summary` in [utilities.md](../pdb2reaction-cli/utilities.md) uses the same rule.
+- A bond is counted when its length is at most 0.95 × T, where T is `--bond-factor` (default 1.20) times the sum of covalent radii, and only if the length changes by at least 0.05 × T (0.40 × T for a pair that contains a metal atom). `bond-summary` in [utilities.md](../pdb2reaction-cli/utilities.md) uses the same rule.
 - Standalone `irc` writes a flat `{"formed": [...], "broken": [...]}` dict in its `result.json`, with `bond_changes_direction`.
 - An unexpected or long list is not a verdict. Look at the endpoint structures, then check the segment with TS optimization, n_imag, and IRC.
 

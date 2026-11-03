@@ -118,8 +118,8 @@ def validate_resume_post_precision(
 ) -> None:
     """Stop when the kept segments were post-processed at another precision."""
 
-    if int(segment) <= 1:
-        return  # every segment is recomputed
+    if not retained_post_segments(recorded_summary, segment):
+        return  # no earlier segment is kept
     # A root written before --precision-post post-processed at --precision.
     recorded = recorded_summary.get(
         "mlip_precision_post", recorded_summary.get("mlip_precision")

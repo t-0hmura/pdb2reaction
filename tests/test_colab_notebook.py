@@ -2251,11 +2251,11 @@ def test_xtb_options_are_off_until_xtb_is_installed(
 
 
 @pytest.mark.parametrize(
-    ("ready", "sub", "kept"),
-    [(False, "opt", False), (True, "opt", True), (False, "dft", True)],
+    ("ready", "sub", "refused"),
+    [(False, "opt", True), (True, "opt", False), (False, "dft", False)],
 )
-def test_a_restored_session_drops_xtb_options_until_xtb_is_installed(
-    tmp_path: Path, monkeypatch, ready, sub, kept,
+def test_a_restored_session_rejects_xtb_options_until_xtb_is_installed(
+    tmp_path: Path, monkeypatch, ready, sub, refused,
 ) -> None:
     app, _ = _execute_app(monkeypatch, tmp_path)
     if "dft" not in app["SUBS"]:
@@ -2264,10 +2264,16 @@ def test_a_restored_session_drops_xtb_options_until_xtb_is_installed(
     saved = app["_session_dict"]()
     saved["advanced_overrides"] = {sub: {"solvent": "water", "verbose": 3}}
 
-    assert app["_apply_session"](saved) == []
-    argv = app["_advanced_argv"](sub)
-    assert ("--solvent" in argv) is kept
-    assert "--verbose" in argv
+    if refused:
+        before = json.dumps(app["S"]["advanced_overrides"], sort_keys=True)
+        with pytest.raises(ValueError, match="xTB is needed for --solvent"):
+            app["_apply_session"](saved)
+        assert json.dumps(app["S"]["advanced_overrides"], sort_keys=True) == before
+    else:
+        assert app["_apply_session"](saved) == []
+        argv = app["_advanced_argv"](sub)
+        assert "--solvent" in argv
+        assert "--verbose" in argv
 
 
 def test_colab_manifest_hashes_inplace_input_before_execution(

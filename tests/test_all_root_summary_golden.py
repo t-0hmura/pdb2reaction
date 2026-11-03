@@ -266,6 +266,11 @@ class PipelineStubs:
             )
             for segment in segments
         ]
+        if all_frames:
+            diagram, _ = path_search_workflow._build_mep_diagram_data(path_search_workflow.CombinedPath(
+                images=all_frames, energies=[FRAME_ENERGIES[k] for k in all_frames], segments=reports))
+            diagram["image"] = str(out / "energy_diagram_MEP.png")
+            summary["energy_diagrams"] = [diagram]
         leaves, expected = path_search_workflow._path_leaves_and_expected(reports)
         attach_outcomes(summary, truth=aggregate_workflow_truth(leaves, expected),
                         stage_outcomes=leaves)

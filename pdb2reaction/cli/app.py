@@ -762,9 +762,9 @@ def cli(ctx: click.Context) -> None:
     # `_ensure_verbose_option`); the start header is emitted by that option's
     # eager callback once the level is known, not from this group body.
     if not ctx.resilient_parsing:
-        from pdb2reaction.core.log_filters import install_dependency_log_filters
+        from pdb2reaction.core.log_filters import install_fairchem_log_filter
         from pdb2reaction.core.utils import set_base_dir
-        install_dependency_log_filters()
+        install_fairchem_log_filter()
         set_base_dir(Path.cwd())
 
 
