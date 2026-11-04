@@ -56,6 +56,8 @@ The optimized R, TS, and P are written to `result_all/segments/seg_01/`.
 
 ### 4. Resume post-processing from a segment
 
+After a process stops, repeat the original command with the same `--out-dir` and add `--resume`. It keeps finished segments and restarts the first unfinished segment from its saved HEI.
+
 To redo the post-processing from segment N, repeat the original command with the same inputs, extraction, path, and calculator options and the same `--out-dir`, and add `--resume-segment N`. Post-processing options such as `--tsopt-max-cycles` may change, but `--precision-post` may not: the segments before N keep their results, so the run stops when the post-processing precision differs. To change it, resume from segment 1.
 
 ```bash
@@ -199,6 +201,7 @@ The number in a TS label of the diagrams (TS1, TS2, ...) is the number of its se
 | `--flatten/--no-flatten` | flag | `False` | Remove extra imaginary modes left after the TS optimization |
 | `--stop-plateau/--no-stop-plateau` | flag | `False` | Stop an optimization when the energy stops changing before convergence; the run is reported as stalled, not converged |
 | `--tsopt-max-cycles` | integer | `100000` | Cycle limit of the TS optimization |
+| `--resume/--no-resume` | flag | `False` | Resume from the first unfinished segment using the saved MEP |
 | `--resume-segment` | integer | `None` | Redo the post-processing from segment N, reusing the MEP in `--out-dir` (example 4) |
 | `--dry-run/--no-dry-run` | flag | `False` | Check the options and print the plan without running a calculation. With `-c`, extraction runs in a temporary directory to check the charge |
 | `-o, --out-dir` | path | `./result_all/` | Output directory |

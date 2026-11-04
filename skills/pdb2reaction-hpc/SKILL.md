@@ -191,6 +191,9 @@ for this check. Never cancel by a guessed ID or broad name match.
 
 ## Failed jobs / restart
 
+After a process stops during post-processing, repeat the original command with
+`--resume` and the same persistent `--out-dir`.
+
 For a completed MEP with failed segment post-processing, repeat the original
 `all` command against the persistent `--out-dir` and add
 `--resume-segment N`. Keep the original inputs, extraction, path, and

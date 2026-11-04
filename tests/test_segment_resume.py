@@ -7,6 +7,7 @@ from pdb2reaction.workflows._run_session import ArtifactClaimError, InvocationMa
 from pdb2reaction.workflows._segment_resume import (
     build_resume_identity,
     invalidate_from_segment,
+    next_resume_segment,
     retained_energy_diagrams,
     retained_post_segments,
     validate_resume_identity,
@@ -26,9 +27,12 @@ def _identity(tmp_path: Path):
 def test_resume_identity_requires_exact_path_state(tmp_path: Path) -> None:
     identity = _identity(tmp_path)
     validate_resume_identity(identity, identity, segment=2, available_segments=[1, 2])
+    validate_resume_identity(identity, identity, segment=None, available_segments=[1, 2])
     changed = {**identity, "charge": 1}
     with pytest.raises(click.UsageError, match="charge changed"):
         validate_resume_identity(identity, changed, segment=2, available_segments=[1, 2])
+    with pytest.raises(click.UsageError, match="charge changed"):
+        validate_resume_identity(identity, changed, segment=None, available_segments=[1, 2])
     with pytest.raises(click.BadParameter, match="not present"):
         validate_resume_identity(identity, identity, segment=3, available_segments=[1, 2])
 
@@ -72,3 +76,13 @@ def test_resume_retains_only_completed_prefix_metadata(tmp_path: Path) -> None:
     }
     assert retained_post_segments(summary, 2) == [{"index": 1}]
     assert retained_energy_diagrams(summary, 2) == [summary["energy_diagrams"][0]]
+
+
+@pytest.mark.parametrize(
+    "finished,available,expected",
+    [([], [1, 2, 3], 1), ([1], [1, 2, 3], 2),
+     ([1], [1, 3], 3), ([1, 2, 3], [1, 2, 3], 4), ([], [], 1)],
+)
+def test_auto_resume_selects_first_unfinished_segment(finished, available, expected):
+    summary = {"post_segments": [{"index": index} for index in finished]}
+    assert next_resume_segment(summary, available) == expected

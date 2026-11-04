@@ -122,7 +122,7 @@ An `all` run writes the main outputs of the stages it runs to `./result_all/`:
 - `energy_diagram_MEP.png` — MEP energy diagram
 - `summary.log` / `summary.json`
 
-Intermediate files go to `_work/`; keep it if you might redo the post-processing with `--resume-segment`. Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
+Intermediate files go to `_work/`; keep it if you might redo the post-processing with `--resume` or `--resume-segment`. Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
 
 ## Colab GUI workspace
 

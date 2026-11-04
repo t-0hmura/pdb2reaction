@@ -62,7 +62,10 @@ for post in d.get("post_segments", []):   # match to segments by "index"
 was skipped or `segments` has a `kind` other than `"seg"`. Key details:
 [outputs](../pdb2reaction-overview/outputs.md#per-segment-keys).
 
-## Resume a failed segment
+## Resume
+
+After a process stops, repeat the original command with the same `--out-dir` and add
+`--resume`. Finished segments are kept; the first unfinished segment restarts from its saved HEI.
 
 Repeat the original command with the same inputs, extraction, path, and
 calculator options and the same `--out-dir`, add `--resume-segment N`, and

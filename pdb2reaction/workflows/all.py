@@ -137,6 +137,7 @@ from pdb2reaction.workflows._segment_resume import (
     file_sha256,
     invalidate_from_segment,
     load_previous_manifest,
+    next_resume_segment,
     retained_energy_diagrams,
     retained_post_segments,
     retained_public_artifact,
@@ -4208,6 +4209,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--radius",
         "--selected-resn",
         "--refine-path",
+        "--resume",
         "--resume-segment",
         "-o",
         "--print-every",
@@ -4607,6 +4609,12 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--resume/--no-resume",
+    default=False,
+    show_default=True,
+    help="Resume from the first unfinished segment using the verified MEP in --out-dir.",
 )
 @click.option(
     "--resume-segment",
@@ -5026,6 +5034,7 @@ def cli(
     thresh_gsm: Optional[str],
     thresh_dmf: Optional[str],
     config_yaml: Optional[Path],
+    resume: bool,
     resume_segment: Optional[int],
     show_config: bool,
     dry_run: bool,
@@ -5151,15 +5160,18 @@ def cli(
     if "--no-dft" in _negative_bool_args:
         do_dft = False
 
-    resuming = resume_segment is not None
+    if resume and resume_segment is not None:
+        raise click.UsageError("Use either --resume or --resume-segment.")
+    resuming = resume or resume_segment is not None
+    resume_flag = "--resume" if resume else "--resume-segment"
     if resuming and dry_run:
         raise click.UsageError(
-            "--resume-segment performs a verified in-place continuation and "
+            f"{resume_flag} performs a verified in-place continuation and "
             "cannot be combined with --dry-run."
         )
     if resuming and not (do_tsopt or do_thermo or do_dft):
         raise click.UsageError(
-            "--resume-segment requires at least one post-processing stage: "
+            f"{resume_flag} requires at least one post-processing stage: "
             "--tsopt, --thermo, or --dft."
         )
 
@@ -6533,10 +6545,15 @@ def cli(
             for item in prior_segments
             if isinstance(item, dict)
         ]
+        if resume:
+            reactive_indices = [
+                int(item["index"]) for item in prior_segments if _is_reactive_segment(item)
+            ]
+            resume_segment = next_resume_segment(previous_root_summary, reactive_indices)
         validate_resume_identity(
             previous_root_summary.get("resume_identity"),
             resume_identity,
-            segment=int(resume_segment),
+            segment=None if resume else int(resume_segment),
             available_segments=available_indices,
         )
         # The kept segments were post-processed at the saved run's precision.
@@ -6583,7 +6600,10 @@ def cli(
                 "The saved run manifest does not contain the path summary required for resume."
             )
         selected_hei_key = f"path.hei.{int(resume_segment):02d}"
-        if selected_hei_key not in manifest.produced:
+        if (
+            (not resume or int(resume_segment) in reactive_indices)
+            and selected_hei_key not in manifest.produced
+        ):
             raise click.ClickException(
                 f"The saved MEP has no verified HEI artifact for segment "
                 f"{int(resume_segment):02d}."

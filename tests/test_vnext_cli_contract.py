@@ -19,7 +19,7 @@ def test_all_exposes_canonical_names_with_compatibility_aliases() -> None:
 
 
 def test_all_public_booleans_are_toggle_options() -> None:
-    for name in ("include_h2o", "do_tsopt", "do_thermo", "do_dft", "scan_preopt_override"):
+    for name in ("resume", "include_h2o", "do_tsopt", "do_thermo", "do_dft", "scan_preopt_override"):
         option = _option("all", name)
         assert option.is_bool_flag
         assert option.secondary_opts

@@ -220,7 +220,7 @@ def _select_executable_all_commands(commands: list[str]) -> list[str]:
         # Resume is validated statically above. Executing it requires an
         # existing, identity-matched MEP and is intentionally incompatible
         # with the synthetic --dry-run lane used here.
-        if "--resume-segment" in tokens:
+        if "--resume" in tokens or "--resume-segment" in tokens:
             continue
         if len(tokens) >= 2 and tokens[1] == "all":
             all_cmds.add(cmd)
