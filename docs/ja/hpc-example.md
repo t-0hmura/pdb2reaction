@@ -1,6 +1,94 @@
-# HPC 実行例: PBS + Open MPI + Ray
+# HPC 実行例: GPU 1 つと、PBS + Open MPI + Ray
 
-PBS と Open MPI の上で Ray のクラスターを立て、UMA のワーカーを複数のノードに広げるジョブスクリプトの例です。1 ノードのジョブには、この Ray の設定は要りません。`--uma-workers` を 2 以上にするには Ray が必要で、`pip install "fairchem-core[ray]"` で入ります。
+PBS と Slurm の GPU 1 つのジョブスクリプトに続けて、Ray で複数のノードを使う PBS のスクリプトを示します。
+
+## GPU 1 つ
+
+**下のスクリプトはテンプレートとして扱ってください**: キュー、モジュール名、conda パス、リソース要求は環境に合わせて調整が必要です。最後のコマンドの入力と `-c`・`-l` は、自分のものに置き換えてください。PBS のスクリプトは `run_p2r.pbs` として入力と同じディレクトリに保存し、そのディレクトリから `qsub run_p2r.pbs` で投入します。Slurm のスクリプトは `run_p2r.sh` として保存し、`sbatch run_p2r.sh` で投入します。
+
+### PBS（Torque）例
+
+```bash
+#!/usr/bin/env bash
+#PBS -N pdb2reaction
+#PBS -q default
+#PBS -l nodes=1:ppn=8:gpus=1,mem=64GB,walltime=24:00:00
+#PBS -j oe
+
+set -euo pipefail
+cd "${PBS_O_WORKDIR}"
+
+# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
+# 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
+set +u                                       # conda の activate スクリプトは未設定の変数を読む
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate <your-env>
+set -u
+
+# 長い計算の前に、GPU が使えなければ止める
+which pdb2reaction
+pdb2reaction --version
+python -c "import sys, torch; ok=torch.cuda.is_available(); print('cuda:', ok, 'device:', torch.cuda.get_device_name(0) if ok else 'unavailable'); sys.exit(0 if ok else 2)"
+nvidia-smi -L
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --out-dir result_all
+```
+
+PBS Pro では、リソースの行を次に置き換えます。
+
+```bash
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=24:00:00
+```
+
+### Slurm 例
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --job-name=pdb2reaction
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=%x.%j.out
+
+set -euo pipefail
+cd "${SLURM_SUBMIT_DIR}"
+
+# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
+# 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
+set +u                                       # conda の activate スクリプトは未設定の変数を読む
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate <your-env>
+set -u
+
+# 長い計算の前に、GPU が使えなければ止める
+which pdb2reaction
+pdb2reaction --version
+python -c "import sys, torch; ok=torch.cuda.is_available(); print('cuda:', ok, 'device:', torch.cuda.get_device_name(0) if ok else 'unavailable'); sys.exit(0 if ok else 2)"
+nvidia-smi -L
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --out-dir result_all
+```
+
+結果の見方は [実行結果の判定](all.md#実行結果の判定) と同じです。
+
+## 複数のノード: PBS + Open MPI + Ray
+
+下のスクリプトは、PBS と Open MPI の上で Ray のクラスターを立て、UMA のワーカーを複数のノードに広げる例です。複数のノードで動かすときだけ使ってください。1 ノードのジョブには、この Ray の設定は要りません。`--uma-workers` を 2 以上にするには Ray が必要で、`pip install "fairchem-core[ray]"` で入ります。
 
 ワーカーは次の 2 つで指定します。
 
@@ -209,7 +297,7 @@ pdb2reaction は、最適化の各ステップ、経路の各イメージ、有�
 
 ## 使用上の注意点
 
-* **1 ノードのジョブ**: ジョブスクリプトは `pdb2reaction` のコマンドを実行するだけで、GPU 1 つならデフォルトの `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。GPU 1 つのジョブの雛形は [`skills/pdb2reaction-hpc`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-hpc/SKILL.md) にあります。
+* **1 ノードのジョブ**: ジョブスクリプトは、上の GPU 1 つの例のように `pdb2reaction` のコマンドを実行するだけで、GPU 1 つならデフォルトの `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。Ray のスクリプトは、複数のノードで動かすときだけ使います。
 * **Ray のクラスターが立ち上がらないとき**: `opt` を始める前に終了コード 2 で止まります。
 * **解析 Hessian はワーカー 1 つで使います**: `--uma-workers` を 2 以上にすると解析 Hessian は使えず、`--hessian-calc-mode Analytical` はエラーで止まります。`--uma-workers 1` にするか、`FiniteDifference` の Hessian を使ってください。
 * **ワーカーを使うのは UMA だけです**: ORB / MACE / AIMNet2 では、1 以外の `workers` / `workers_per_node` は警告を出して無視されます。

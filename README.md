@@ -30,8 +30,6 @@ pdb2reaction all -i R.xyz P.xyz -q +1 --tsopt --thermo --dft
 
 **MEP search → TS optimization → IRC → Thermochemistry → DFT single-point**
 
-`--dft` needs the optional DFT extra (`[dft]` in the table under [Installation](#installation)).
-
 Without `-c`, the input structures are used as they are; set the total charge with `-q`.
 
 ## Features
@@ -48,13 +46,13 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ## Installation
 
-Requirements: Linux, Python 3.12 (recommended) or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA on a GPU also needs a C compiler (`gcc`), as does `--compile` (`g++` on a CPU), and PNG export needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
+Requirements: Linux, Python 3.12 (recommended) or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA on a GPU also needs a C compiler (`gcc`), as does `--compile` (`g++` on a CPU), and image export (PNG, JPEG, SVG, PDF) needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 
-# 2. Install pdb2reaction and headless Chrome (for PNG export of plots)
+# 2. Install pdb2reaction and headless Chrome (for image export of plots: PNG, JPEG, SVG, PDF)
 pip install pdb2reaction
 plotly_get_chrome -y
 

@@ -25,9 +25,9 @@ when `pdb2reaction --version` prints the version and the smoke check in
    newest CUDA the driver supports; choose a wheel at or below it (`cu126`,
    `cu130`, or `cu132`). `cu130` is the recommended choice. Details are in
    [CUDA and PyTorch](backends.md#cuda-and-pytorch).
-4. Install pdb2reaction and headless Chrome for Plotly PNG export. The bundled
-   `pysisyphus` and `thermoanalysis` come with it; do not install them
-   separately.
+4. Install pdb2reaction and headless Chrome for Plotly image export (PNG, JPEG,
+   SVG, PDF). The bundled `pysisyphus` and `thermoanalysis` come with it; do not
+   install them separately.
 5. Accept the UMA license on Hugging Face and log in (see [UMA](backends.md#uma)).
 6. Add optional backends. MACE needs its own env
    ([MACE](backends.md#mace-separate-environment)); `xtb` comes from conda-forge
@@ -70,9 +70,13 @@ pins `nvalchemi-toolkit-ops<0.4`, so pip downgrades `fairchem-core` there.
 container or cluster node often lacks both. On a GPU, UMA compiles code at run
 time for speed and needs a C compiler (`gcc`) even without `--compile`; with
 `--compile`, UMA and ORB need a C compiler on a GPU and a C++ compiler (`g++`) on a CPU.
-PNG export needs the operating-system libraries of the Chrome that
-`plotly_get_chrome -y` downloads. Check with `gcc --version` (`g++ --version`
-for `--compile` on a CPU), then install:
+Image export (PNG, JPEG, SVG, PDF) needs the operating-system libraries of the Chrome that
+`plotly_get_chrome -y` downloads. The conda command for DMF or `--solvent` above
+installs conda's compilers through `cuda-nvcc`, under prefixed names
+(`x86_64-conda-linux-gnu-gcc`, ...), and `conda activate` sets `$CC` and `$CXX` to
+them. In an env made with that command, check with `$CC --version` (`$CXX --version`
+for `--compile` on a CPU); in any other env, and outside one, with `gcc --version`
+(`g++ --version`). Then install what is missing:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y gcc g++    # Ubuntu/Debian

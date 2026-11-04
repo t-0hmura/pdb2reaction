@@ -29,8 +29,6 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-`--dft` needs the DFT extra from step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
-
 Every requested stage has finished when the console prints `[Imaginary modes] n=1 (...)` for each TS and `Scientific status: success` under the last `====== Pipeline summary ======`; `result_mep/summary.json` holds the same values. Then check the endpoints as in [Reading the run status](#reading-the-run-status). The optimized structures are in `result_mep/segments/seg_NN/`.
 
 ### 2. Path from the reactant by a staged scan
@@ -103,7 +101,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 
 A segment that stops before IRC skips IRC and the later stages, and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
 
-If one endpoint optimization does not converge, the result is `partial` and `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
+If one endpoint optimization does not converge, the result is `partial`, that segment skips the frequency and DFT stages, and the other segments are still post-processed; `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
 
 ---
 
@@ -173,6 +171,8 @@ The energy diagrams are named by method:
 
 Energies in the diagrams are in kcal/mol relative to the first state (the reactant).
 
+The number in a TS label of the diagrams (TS1, TS2, ...) is the number of its segment `seg_NN`. An interval that gets no TS optimization also takes a number, so the TS numbers can skip (for example TS1, TS3). With `--refine-path`, these are the [bridge and kink segments](path-search.md#how-it-works), which have no bond change; without it, they are the pairs of inputs whose MEP has an end image as its highest image. If an interval with no bond change also needs a TS with one imaginary mode, {ref}`extract <trajectory-one-frame>` the first and last frames of its segment (`frame_start` and `frame_stop - 1` in `summary.json`, counted from 0; use `frame_start - 1` if the shared start was kept with the preceding segment) from `mep_trj.xyz` and run `all --tsopt` on them without `--refine-path`.
+
 ---
 
 ## Main options
@@ -190,7 +190,7 @@ Energies in the diagrams are in kcal/mol relative to the first state (the reacta
 | `-s, --scan-lists` | text | `None` | Staged scan targets for one input, one literal per stage (e.g. `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`; format in {ref}`Scan-list spec <scan-list-spec>`) |
 | `--tsopt/--no-tsopt` | flag | `False` | Optimize the TS of each segment and run IRC |
 | `--thermo/--no-thermo` | flag | `False` | Frequencies and thermochemistry on R, TS, and P (needs `--tsopt`) |
-| `--dft/--no-dft` | flag | `False` | DFT single points on R, TS, and P (needs `--tsopt` and the DFT extra) |
+| `--dft/--no-dft` | flag | `False` | DFT single points on R, TS, and P (needs `--tsopt`) |
 | `--refine-path/--no-refine-path` | flag | `False` | Run the recursive `path-search` instead of one `path-opt` per pair |
 | `--mep-mode` | `gsm` / `dmf` | `gsm` | MEP method: GSM or DMF |
 | `--opt-mode` | `grad` / `hess` | `grad` | Optimizer for the single-structure optimizations and the scan: `grad` = L-BFGS, `hess` = RFO |

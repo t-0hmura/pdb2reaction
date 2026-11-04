@@ -1,6 +1,94 @@
-# HPC example: PBS + Open MPI + Ray
+# HPC example: one GPU, and PBS + Open MPI + Ray
 
-This page shows a job script that starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. A job on one node does not need this Ray setup. Setting `--uma-workers` to 2 or more requires Ray (`pip install "fairchem-core[ray]"`).
+This page shows one-GPU job scripts for PBS and Slurm, followed by a PBS script that runs over several nodes with Ray.
+
+## One GPU
+
+**Treat the scripts below as templates**: you will need to adjust the queue, module names, conda path, and resource requests to match your environment. Replace the inputs, `-c`, and `-l` of the last command with your own. Save the PBS script as `run_p2r.pbs` next to the inputs and submit it from that directory with `qsub run_p2r.pbs`; save the Slurm script as `run_p2r.sh` and submit it with `sbatch run_p2r.sh`.
+
+### PBS (Torque) example
+
+```bash
+#!/usr/bin/env bash
+#PBS -N pdb2reaction
+#PBS -q default
+#PBS -l nodes=1:ppn=8:gpus=1,mem=64GB,walltime=24:00:00
+#PBS -j oe
+
+set -euo pipefail
+cd "${PBS_O_WORKDIR}"
+
+# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
+# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: module load <COMPILER_MODULE>
+# For a source-built extension, also: module load <CUDA_MODULE>
+set +u                                       # conda's activate scripts read unset variables
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate <your-env>
+set -u
+
+# Stop before the long run if no GPU is usable
+which pdb2reaction
+pdb2reaction --version
+python -c "import sys, torch; ok=torch.cuda.is_available(); print('cuda:', ok, 'device:', torch.cuda.get_device_name(0) if ok else 'unavailable'); sys.exit(0 if ok else 2)"
+nvidia-smi -L
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --out-dir result_all
+```
+
+On PBS Pro, replace the resource line with:
+
+```bash
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=24:00:00
+```
+
+### Slurm example
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --job-name=pdb2reaction
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=%x.%j.out
+
+set -euo pipefail
+cd "${SLURM_SUBMIT_DIR}"
+
+# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
+# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: module load <COMPILER_MODULE>
+# For a source-built extension, also: module load <CUDA_MODULE>
+set +u                                       # conda's activate scripts read unset variables
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate <your-env>
+set -u
+
+# Stop before the long run if no GPU is usable
+which pdb2reaction
+pdb2reaction --version
+python -c "import sys, torch; ok=torch.cuda.is_available(); print('cuda:', ok, 'device:', torch.cuda.get_device_name(0) if ok else 'unavailable'); sys.exit(0 if ok else 2)"
+nvidia-smi -L
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --out-dir result_all
+```
+
+Check the result as in [Reading the run status](all.md#reading-the-run-status).
+
+## Several nodes: PBS + Open MPI + Ray
+
+The script below starts a Ray cluster under PBS and Open MPI and spreads UMA workers over several nodes. Use it only for runs over several nodes; a job on one node does not need this Ray setup. Setting `--uma-workers` to 2 or more requires Ray (`pip install "fairchem-core[ray]"`).
 
 Two settings control the workers:
 
@@ -195,7 +283,7 @@ The job succeeded if its log shows `[opt] Converged!` and its exit code is 0. Th
 
 ## Walltime budgeting
 
-The 24 h limit in the script is an example ceiling, not a measured value. Set the budget from short trial runs on the target system:
+The 24 h limit in the scripts is an example ceiling, not a measured value. Set the budget from short trial runs on the target system:
 
 - **Cluster-model `opt` / `tsopt`**: time a run on a representative structure with the chosen backend and model, Hessian mode, precision, and convergence settings.
 - **`pdb2reaction all` end-to-end** (extract → MEP → TS → IRC → freq → DFT): time one representative segment. The DFT stage is not a multi-GPU SCF driver, so requesting more GPUs does not make it faster.
@@ -209,7 +297,7 @@ Choose precision by backend and purpose, then measure its cost on the allocated 
 
 ## Notes
 
-* **One node**: the job script only runs the `pdb2reaction` command, with the default `--uma-workers 1` for one GPU, or with `--uma-workers N --uma-workers-per-node N` to use N GPUs of that node. A one-GPU job template is in [`skills/pdb2reaction-hpc`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-hpc/SKILL.md).
+* **One node**: the job script only runs the `pdb2reaction` command, as in the one-GPU scripts above: the default `--uma-workers 1` uses one GPU, and `--uma-workers N --uma-workers-per-node N` uses N GPUs of that node. The Ray script is only for runs over several nodes.
 * **Ray cluster not ready**: if the Ray cluster does not come up, the script stops with exit code 2 before `opt` starts.
 * **Analytical Hessian needs one worker**: with `--uma-workers` above 1, the analytical Hessian is not available, and `--hessian-calc-mode Analytical` stops with an error. Use `--uma-workers 1`, or the `FiniteDifference` Hessian.
 * **Only UMA uses workers**: with ORB / MACE / AIMNet2, `workers` / `workers_per_node` values other than 1 are ignored with a warning.

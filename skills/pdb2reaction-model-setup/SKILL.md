@@ -144,11 +144,15 @@ Look up a ligand's formal charge in the mechanism's primary paper or deposited
 structure documentation first, then PubChem or ChEBI (`Formal Charge`) and the
 RCSB ligand page, for example `https://www.rcsb.org/ligand/SAM`. From SMILES,
 use `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
-Then count the H atoms the input has on each group and set the charge from
-them (SAM with two H on its amine N is 0, with three H +1); the table gives
-typical values at pH 7. Record the source and the modeled protonation and
-oxidation state. If the sources do not settle one state, stop and ask the user; never default a metal
-or radical cluster to `-q 0 -m 1` without checking.
+Then, for a substrate, cofactor, or non-standard residue, count the H atoms the
+input has on each ionizable group and set the charge from them (SAM with two H
+on its amine N is 0, with three H +1); the table gives typical values at pH 7.
+Standard amino acids take their charge from the residue name. Record the source
+and the modeled protonation and oxidation state. Unless the user gave the
+charge, confirm it with the user before running the calculation, listing the
+candidates if the sources do not settle one state. If the workflow names
+someone else to confirm, such as a reviewing agent, follow the workflow. Never
+default a metal or radical cluster to `-q 0 -m 1` without checking.
 
 | Group at pH 7 | Typical charge |
 |---|---|
@@ -224,8 +228,8 @@ WT/mutant or other cross-variant models may differ in atoms. Keep residue positi
 1. Read the file first: residues, atom count, and any charge and multiplicity.
 2. Check that the change keeps the format rules, such as PDB column widths and
    the XYZ atom-count line.
-3. For an unknown charge or multiplicity, confirm with the user or the
-   literature before you choose ([Unknown substrate charge](#unknown-substrate-charge)).
+3. For an unknown charge or multiplicity, follow
+   [Unknown substrate charge](#unknown-substrate-charge) before you choose.
 4. Make the smallest edit, such as one residue rename or one charge change,
    not a full rewrite.
 

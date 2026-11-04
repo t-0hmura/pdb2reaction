@@ -28,7 +28,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - UMA and ORB are no longer compiled by default, and UMA fp64 uses the fast-path settings (about 1.8x faster on a 632-atom cluster).
 - `run.log` is written while the command runs, also records C libraries and child processes, and a rerun into the same `-o` appends to it.
 - Without `-v 3`, FAIR-Chem's inference-settings line and choreographer's `Resorting to unclean kill browser.` are no longer shown.
-- Colab notebook: the GUI fits the visible pane from 721 px wide, Mol* clicks keep the camera, and the ORB and MACE installs end with `pip check`.
+- Colab notebook: the GUI fits the visible pane from 721 px wide, and Mol* clicks keep the camera.
 - MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
 - Docs, skills and CLI help: wrong statements are corrected, unclear passages reworded, and ORB is installed in its own environment.
 
@@ -36,7 +36,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 - `all --resume-segment` continues a run that stopped during post-processing, and stops with an error when the post-processing precision differs from the saved run.
 - Multi-segment `all` runs: the TS labels of the energy diagrams follow the segment numbers, the `summary.log` overview table covers every segment, and the MEP diagram is drawn for two or more intervals.
-- `opt` and `tsopt`: `final_max_force` and `final_rms_force` are the forces of the final geometry.
+- `all`: a segment with an unconverged endpoint skips freq and DFT, keeps its last structures, and continues as `partial` with exit 0.
+- `opt` and `tsopt`: final forces, steps and `convergence_thresholds` are recorded for every optimizer; forces match the final geometry.
 - RS-P-RFO no longer stops when a step exceeds the trust radius only by rounding (at most 1e-9 relative).
 - GPU DFT loads the environment's libcusolver on nodes without a system CUDA toolkit.
 

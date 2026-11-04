@@ -29,8 +29,6 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
-`--dft` には、{ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 で入れる DFT 用の追加パッケージが要ります。
-
 端末に各 TS の `[Imaginary modes] n=1 (...)` と、最後の `====== Pipeline summary ======` の下の `Scientific status: success` が出れば、指定した段はすべて終わっています。`result_mep/summary.json` にも同じ値が入ります。続けて [実行結果の判定](#実行結果の判定) のとおり端点を確かめてください。最適化した構造は `result_mep/segments/seg_NN/` にあります。
 
 ### 2. 反応物から段階的スキャンで経路を作る
@@ -103,7 +101,7 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
 
 IRC の前で止まったセグメントは IRC とその後の段を行わず、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残ります。ほかのセグメントは後処理を続けます。`summary.json` は最初の停止を `pipeline_stop` に残し、止まったセグメントすべてを `stopped_segments` に列挙します。`irc_plot_all.png` は全セグメントに IRC があるときだけ描きます。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
 
-片方の端点の最適化が収束しない場合、結果は `partial` になり、`segments/seg_NN/endpoint_opt/` を確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
+片方の端点の最適化が収束しない場合、結果は `partial` になり、そのセグメントは振動数と DFT の段を行いません。ほかのセグメントは後処理を続けます。`segments/seg_NN/endpoint_opt/` は確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
 
 ---
 
@@ -173,6 +171,8 @@ result_all/
 
 図のエネルギーは、最初の状態（反応物）を基準にした kcal/mol です。
 
+図の TS ラベル（TS1、TS2、…）の番号は、そのセグメント `seg_NN` の番号です。TS 最適化を行わない区間も番号を取るので、TS の番号は飛ぶことがあります（たとえば TS1 の次が TS3）。`--refine-path` を付けたときは結合が変わらない[ブリッジと配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)が、付けないときは MEP の最高エネルギーのイメージが端のイメージになった入力の組が、これに当たります。結合の変わらない区間にも虚振動 1 つの TS が要るときは、そのセグメントの最初と最後のフレーム（`summary.json` の `frame_start` と `frame_stop - 1`。0 始まりで、共有する始点が前のセグメントに属するときは `frame_start - 1`）を `mep_trj.xyz` から {ref}`取り出し <ja-trajectory-one-frame>`、`--refine-path` を付けずに `all --tsopt` にかけてください。
+
 ---
 
 ## 主な CLI オプション
@@ -190,7 +190,7 @@ result_all/
 | `-s, --scan-lists` | 文字列 | `None` | 1 構造の段階的スキャンの目標。1 つのリテラルが 1 ステージ（例: `'[("A:SAM:320:CS1","A:GPP:321:C7",1.60)]'`。書き方は {ref}`スキャンリスト仕様 <ja-scan-list-spec>`） |
 | `--tsopt/--no-tsopt` | フラグ | `False` | 各セグメントの TS を最適化し、IRC を実行 |
 | `--thermo/--no-thermo` | フラグ | `False` | R・TS・P の振動数と熱化学（`--tsopt` が必要） |
-| `--dft/--no-dft` | フラグ | `False` | R・TS・P の DFT 一点計算（`--tsopt` と DFT 用の追加パッケージが必要） |
+| `--dft/--no-dft` | フラグ | `False` | R・TS・P の DFT 一点計算（`--tsopt` が必要） |
 | `--refine-path/--no-refine-path` | フラグ | `False` | 隣り合う組ごとの `path-opt` の代わりに、再帰的な `path-search` を実行 |
 | `--mep-mode` | `gsm` / `dmf` | `gsm` | MEP の手法: GSM または DMF |
 | `--opt-mode` | `grad` / `hess` | `grad` | 単一構造の最適化とスキャンのオプティマイザ: `grad` = L-BFGS、`hess` = RFO |

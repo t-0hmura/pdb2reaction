@@ -73,7 +73,7 @@ cat result_opt/result.json | python -m json.tool
 
 出力ディレクトリを用意した後に例外で実行が止まった場合は、`--out-json` が無くても `"execution_status": "failed"` と `"error_type"` を含む `result.json` と `summary.json` を書き出します。それより前の失敗は[使用上の注意点](#使用上の注意点)を参照してください。
 
-最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。オプティマイザの結果には該当する最終の力/ステップやサイクルの欄が入り、DFT と Dimer は持たない欄を出しません。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
+最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。オプティマイザの結果には該当する最終の力/ステップやサイクルの欄が入り、DFT は持たない欄を出しません。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
 
 オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定したサイクル数にわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。停滞は未収束の一種で、`converged` にはなりません。止まった理由は `stop_reason` に記録されます。
 
@@ -144,7 +144,7 @@ cat result_opt/result.json | python -m json.tool
 | `safeguards` | object | 厳密な鞍点の確認、最後に追ったモードの番号と重なり、止まった理由と、指定したときだけ働くモードの消失・回復の処理の記録。これらの回復の処理はデフォルトでは無効 |
 | `rigid_projection` | object | 剛体モードと厳密な Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
-`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ TS の欄を持ちますが、最終の力/ステップの欄と `safeguards` はありません。
+`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ欄を持ちますが、`safeguards` はありません。
 
 ### `freq`
 
@@ -422,7 +422,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 |-----------|------|------|
 | `execution_status` / `scientific_status` | string / string | 実行が完了したかと、指定した計算の段がすべて完了したか。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
-| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop`。ただし経路のセグメントの `before_irc` の停止は `Stopped before IRC`（`stopped_segments` を参照）と表示し、TS-only の停止は `stopped_segments` に入らない |
+| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`、または `endpoint_not_converged`）。`summary.log` では `Pipeline stop`。ただし経路のセグメントの `before_irc` の停止は `Stopped before IRC`（`stopped_segments` を参照）と表示し、TS-only の停止は `stopped_segments` に入らない。`endpoint_not_converged` は `post_segments[].pipeline_stop` にだけ書く。そのセグメントの端点の最適化が収束しなかったので freq と DFT を行わず、ほかのセグメントは処理を続ける |
 | `stopped_segments` | object[] \| なし | IRC の前で止まったすべてのセグメント（`stage`・`segment`・`reason`）。ほかのセグメントは処理を続ける。`summary.log` では `Stopped before IRC` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `scan` | object \| なし | scan を初期経路に使う `all` の、前段の scan の状態・各段階の結果・診断。 |
@@ -430,7 +430,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
 | `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含みます。`path-opt` の `result.json` にも記録 |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` では `preopt_converged` が `scientific_status` の判定に入ります。`--tsopt` で、すべての反応セグメントの TS と両端点の最適化が収束すると、判定から外れます |
-| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（配座変化の区間では `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。 |
+| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（配座変化の区間では `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。`path-search` と `all --refine-path` は、`mep_trj.xyz` でそのセグメントに属するフレームも 0 始まりで記録します。`frame_ranges` は `[start, stop]` の組のリストで、`stop` は含みません。組が 1 つのときは、その組を `frame_start` と `frame_stop` にも書きます。経路をつなぐ際に共有する始点を省いたとき、そのフレームは前のセグメントに属するため `frame_start - 1` を使います。最後のフレームは `frame_stop - 1` です。 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |

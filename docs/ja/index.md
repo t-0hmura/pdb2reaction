@@ -94,7 +94,7 @@ orphan: true
 | **MLIP バックエンド設定** | [MLIP バックエンド](backends.md) |
 | **各コマンドが書き出すファイル** | [出力ディレクトリのレイアウト](output-layout.md) |
 | **`result.json` と `summary.json` の欄** | [JSON 出力の一覧](json-output.md) |
-| **複数の GPU ノードで動かす（PBS + Ray）** | [HPC 実行例](hpc-example.md) |
+| **PBS・Slurm のジョブスクリプト（GPU 1 つ。複数の GPU ノードは Ray）** | [HPC 実行例](hpc-example.md) |
 | **AI エージェントから使う** | [エージェントスキル](#エージェントスキル) |
 | **コードの構成（開発者向け）** | [アーキテクチャ](architecture.md) |
 | **用語** | [用語集](glossary.md) |

@@ -12,7 +12,7 @@
 # 1) Create and activate a Python 3.12 environment (conda here; venv also works)
 # 2) Install a CUDA-enabled PyTorch build
 # 3) Install pdb2reaction
-# 4) Install headless Chrome for Plotly static image export (PNG)
+# 4) Install headless Chrome for Plotly static image export (PNG, JPEG, SVG, PDF)
 #    Downloads a Chromium binary; requires internet access.
 
 conda create -n p2r -c conda-forge --override-channels python=3.12 -y
@@ -223,5 +223,5 @@ If you prefer to build the environment piece by piece:
 - [Quickstart: TS-only mode](quickstart-tsopt.md) — optimize and check a TS candidate
 - [Refine an MLIP TS with DFT](dft-backend.md) — refine and check the TS with DFT
 - [Common options and selectors](cli-conventions.md) — shared options, and how to specify residues and atoms
-- [HPC example](hpc-example.md) — job script that spreads UMA workers over several GPU nodes
+- [HPC example](hpc-example.md) — job scripts for one GPU, and for UMA workers over several GPU nodes
 - [Troubleshooting](troubleshooting.md) — common errors and what to try

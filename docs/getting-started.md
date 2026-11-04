@@ -222,7 +222,7 @@ The skills define the CLI subcommands, the input/output rules for PDB/mmCIF/XYZ/
 If an error occurs during a run, see these pages:
 
 * {ref}`Troubleshooting <troubleshooting-quick-table>`: fixes by error symptom, and solutions for installation and environment problems
-* [MLIP Backends](backends.md): details on GPU memory and parallel runs; [HPC example](hpc-example.md) for a job script over several GPU nodes
+* [MLIP Backends](backends.md): details on GPU memory and parallel runs; [HPC example](hpc-example.md) for job scripts on one GPU or on several GPU nodes
 
 To see every option of a command, use the help options:
 

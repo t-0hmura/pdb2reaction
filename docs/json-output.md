@@ -85,8 +85,8 @@ point, see [Notes](#notes).
 
 When an optimization ends without converging, `result.json` records
 `"optimization_status": "not_converged"`. Optimizer results include the final
-force/step or cycle fields that apply; DFT and Dimer omit the fields they do not
-have. For what to change before a retry, see
+force/step or cycle fields that apply; DFT omits the fields it does not have.
+For what to change before a retry, see
 {ref}`Troubleshooting › Calculation / convergence <calculation-convergence-problems>`.
 
 An optimizer may also report `"optimization_status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the force/step convergence criteria remained unmet. A stall is a kind of non-convergence, never `converged`; `stop_reason` records why the run stopped.
@@ -166,8 +166,7 @@ The final PHVA runs after the optimizer converges or stops on an energy plateau
 `saddle_validation` are independent, so a converged run can end with
 `saddle_validation: "higher_order"`; it is not a first-order TS. For when `all`
 goes on to IRC, see [tsopt › Reading the TS result](tsopt.md#reading-the-ts-result).
-Dimer results have the same TS
-fields but no final force/step fields and no `safeguards` object.
+Dimer results have the same fields but no `safeguards` object.
 
 ### `freq`
 
@@ -451,7 +450,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 |-------|------|-------------|
 | `execution_status` / `scientific_status` | string / string | Execution completeness and completion of requested numerical/calculation stages. |
 | `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
-| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`, except that a `before_irc` stop of a segment of a path is shown as `Stopped before IRC` (see `stopped_segments`); a TS-only stop is not in `stopped_segments`. |
+| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` with endpoint-specific `failures`, or `endpoint_not_converged`). Rendered in `summary.log` as `Pipeline stop`, except that a `before_irc` stop of a segment of a path is shown as `Stopped before IRC` (see `stopped_segments`); a TS-only stop is not in `stopped_segments`. `endpoint_not_converged` is written only in `post_segments[].pipeline_stop`: an endpoint optimization of that segment did not converge, so its freq and DFT were skipped, and the other segments are still processed. |
 | `stopped_segments` | object[] \| absent | Every segment that stopped before IRC (`stage`, `segment`, `reason`); the other segments are still processed. Rendered in `summary.log` as `Stopped before IRC`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed stage identifiers. |
 | `scan` | object \| absent | Preliminary scan status, stage outcomes and diagnostics in scan-seeded `all` runs. |
@@ -459,7 +458,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
 | `path_optimizers` | string[] | Single-structure optimizers actually used during path preparation/refinement (`lbfgs`, `rfo`); includes scan and alignment work in `all`. Also present in `path-opt` `result.json` |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | Whether endpoint preoptimization ran, and whether every endpoint converged; `null` when any endpoint reported no readable signal. In `all`, `preopt_converged` counts toward `scientific_status`; with `--tsopt`, it no longer counts once the TS and both endpoint optimizations have converged for every reactive segment |
-| `segments` | object[] | Per-segment `index` (1-based; `all` writes segment 1 to `segments/seg_01/`), `tag` (a label; its number can differ from `index`), `kind` (`"seg"` for a reactive segment, `"kink"` for a [kink](path-search.md#how-it-works) with no covalent bond change, `"bridge"` for a [bridge segment](path-search.md#how-it-works), `"tsopt"` in TS-only mode), `converged` (whether every optimization that built the segment converged; `null` when no convergence signal was readable), `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). `barrier_kcal` is the barrier on the MEP before TS optimization (`null` for a kink); in TS-only mode it is TS − R, where R is the higher-energy IRC endpoint (a name for the direction, not the chemical direction of the reaction; see [all › Notes](all.md#notes)). |
+| `segments` | object[] | Per-segment `index` (1-based; `all` writes segment 1 to `segments/seg_01/`), `tag` (a label; its number can differ from `index`), `kind` (`"seg"` for a reactive segment, `"kink"` for a [kink](path-search.md#how-it-works) with no covalent bond change, `"bridge"` for a [bridge segment](path-search.md#how-it-works), `"tsopt"` in TS-only mode), `converged` (whether every optimization that built the segment converged; `null` when no convergence signal was readable), `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). `barrier_kcal` is the barrier on the MEP before TS optimization (`null` for a kink); in TS-only mode it is TS − R, where R is the higher-energy IRC endpoint (a name for the direction, not the chemical direction of the reaction; see [all › Notes](all.md#notes)). `path-search` and `all --refine-path` also write the segment's frames in `mep_trj.xyz`, counted from 0: `frame_ranges` is a list of `[start, stop]` pairs with `stop` excluded, and `frame_start` and `frame_stop` give the pair when there is only one. When stitching omits a shared first frame, it belongs to the preceding segment: use `frame_start - 1` for that endpoint. The last frame is `frame_stop - 1`. |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
 | `mlip_backend` | string | Backend identifier |
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |

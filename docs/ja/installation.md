@@ -12,7 +12,7 @@
 # 1) Python 3.12 の環境を作成してアクティブ化（例は conda。venv などでもよい）
 # 2) CUDA 対応の PyTorch ビルドをインストール
 # 3) pdb2reaction をインストール
-# 4) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
+# 4) Plotly の静的画像の書き出し（PNG・JPEG・SVG・PDF）用のヘッドレス Chrome をインストール
 #    Chromium のバイナリをダウンロード（インターネット接続が必要）
 
 conda create -n p2r -c conda-forge --override-channels python=3.12 -y
@@ -219,5 +219,5 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 - [クイックスタート: TS-only モード](quickstart-tsopt.md) — TS 候補を最適化して確かめる
 - [MLIP の TS を DFT で確かめる](dft-backend.md) — TS を DFT で精密化して確かめる
 - [共通オプションと残基・原子の指定](cli-conventions.md) — 共通のオプションと、残基・原子の指定の書き方
-- [HPC 実行例](hpc-example.md) — UMA のワーカーを複数の GPU ノードに広げるジョブスクリプト
+- [HPC 実行例](hpc-example.md) — GPU 1 つ用のジョブスクリプトと、UMA のワーカーを複数の GPU ノードに広げるジョブスクリプト
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと試すこと
