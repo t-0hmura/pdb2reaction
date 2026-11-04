@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from Bio.PDB import PDBParser
 from pysisyphus.constants import BOHR2ANG
 from pdb2reaction.workflows.path_search import (
@@ -13,6 +14,7 @@ from pdb2reaction.workflows.path_search import (
     _full_system_merge_enabled,
     _merge_pair_to_full,
     _structure_to_arrays,
+    SegmentReport,
 )
 
 
@@ -51,7 +53,8 @@ def test_reference_merge_pdb_remark_is_compact_and_unambiguous() -> None:
     assert all(len(f"REMARK   1 {line}") <= 80 for line in _INSPECTION_MERGE_REMARKS)
 
 
-def test_reference_merge_writes_inspection_remark(tmp_path: Path) -> None:
+@pytest.mark.parametrize("kind,barrier", [("seg", 3.5), ("kink", None)])
+def test_reference_merge_writes_inspection_remark(tmp_path: Path, kind, barrier) -> None:
     template = tmp_path / "template.pdb"
     template.write_text(
         "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N\n"
@@ -77,6 +80,8 @@ def test_reference_merge_writes_inspection_remark(tmp_path: Path) -> None:
         keymapA=keymap_a,
         keymapB=keymap_b,
         out_path=None,
+        seg_indices_for_frames=[1],
+        seg_report_lookup={1: SegmentReport("seg_000", barrier, 1.0, "", kind=kind)},
     )
 
     assert len(blocks) == 1
@@ -84,3 +89,5 @@ def test_reference_merge_writes_inspection_remark(tmp_path: Path) -> None:
         "REMARK   1 FOR_INSPECTION ACTIVE_SITE_PATH_IN_STATIC_FULL_SYSTEM_TEMPLATE"
         in blocks[0]
     )
+    expected_barrier = "3.500000" if barrier is not None else "n/a"
+    assert f"KIND {kind} DELTAE_BARRIER_KCAL {expected_barrier} DELTAE_KCAL 1.000000" in blocks[0]

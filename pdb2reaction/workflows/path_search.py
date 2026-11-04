@@ -1840,9 +1840,10 @@ def _merge_pair_to_full(pair_images: List[Any],
         if seg_idx and seg_report_lookup is not None:
             rep = seg_report_lookup.get(seg_idx, None)
             if rep is not None:
+                barrier = f"{rep.barrier_kcal:.6f}" if rep.barrier_kcal is not None else "n/a"
                 remark_lines.append(
                     f"MEP_SEG_INDEX {int(seg_idx):02d} TAG {rep.tag} KIND {rep.kind} "
-                    f"DELTAE_BARRIER_KCAL {rep.barrier_kcal:.6f} DELTAE_KCAL {rep.delta_kcal:.6f}"
+                    f"DELTAE_BARRIER_KCAL {barrier} DELTAE_KCAL {rep.delta_kcal:.6f}"
                 )
                 if rep.kind != "bridge" and rep.summary and rep.summary.strip() and rep.summary.strip() != "(no covalent changes detected)":
                     for ln in rep.summary.strip().splitlines():
