@@ -1311,6 +1311,11 @@ class HessianDimer:
         self.imaginary_frequencies_cm: List[float] = []
         self.hessian_status = "not_run"
         self.hessian_error: Optional[str] = None
+        # (max, rms) force and step, and the convergence thresholds, of the
+        # last LBFGS segment (result.json).
+        self.final_forces: Optional[Tuple[float, float]] = None
+        self.final_steps: Optional[Tuple[float, float]] = None
+        self.convergence_thresholds: Optional[Dict[str, float]] = None
 
         # UMA settings
         self.uma_kwargs = dict(charge=0, spin=1, model=DEFAULT_UMA_MODEL,
@@ -1502,6 +1507,17 @@ class HessianDimer:
         opt.run()
         steps = opt.cur_cycle + 1
         converged = opt.is_converged
+        self.final_forces = optimizer_final_forces(opt)
+        self.final_steps = (
+            (float(opt.max_steps[-1]), float(opt.rms_steps[-1]))
+            if getattr(opt, "max_steps", None)
+            else None
+        )
+        self.convergence_thresholds = (
+            {k: float(v) for k, v in opt.convergence.items()}
+            if getattr(opt, "convergence", None)
+            else None
+        )
         # Propagate an energy-plateau stall from the child LBFGS.
         if getattr(opt, "is_stalled", False):
             self.is_stalled = True
@@ -3014,6 +3030,15 @@ def cli(
                 _dimer_stop_reason = getattr(runner, "stop_reason", "") or ""
                 if _dimer_stop_reason:
                     _tsopt_result_data["stop_reason"] = _dimer_stop_reason
+                _final_forces = getattr(runner, "final_forces", None)
+                if _final_forces is not None:
+                    _tsopt_result_data["final_max_force"], _tsopt_result_data["final_rms_force"] = _final_forces
+                _convergence_thresholds = getattr(runner, "convergence_thresholds", None)
+                if _convergence_thresholds:
+                    _tsopt_result_data["convergence_thresholds"] = dict(_convergence_thresholds)
+                _final_steps = getattr(runner, "final_steps", None)
+                if _final_steps is not None:
+                    _tsopt_result_data["final_max_step"], _tsopt_result_data["final_rms_step"] = _final_steps
                 for ext in (".pdb", ".cif", ".gjf"):
                     f = out_dir_path / f"final_geometry{ext}"
                     if f.exists():
