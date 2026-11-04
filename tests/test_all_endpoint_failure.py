@@ -141,7 +141,8 @@ def _endpoint_optimizer(failed_endpoint, outcome_kind, calls):
 def test_endpoint_boundary_retains_provenance_and_stops_consumers(
     monkeypatch, tmp_path, branch, failed_endpoint, dump, outcome,
 ):
-    """Both endpoints are tried; a failure keeps its diagnostics and stops freq/DFT."""
+    """Both endpoints are tried; a failed or non-converged endpoint keeps its
+    diagnostics and stops freq/DFT."""
     calls = []
     scenario = Scenario(
         f"endpoint_{branch}", (1,) if branch == "ts" else (0, 2),
@@ -190,10 +191,68 @@ def test_endpoint_boundary_retains_provenance_and_stops_consumers(
             assert summary["execution_status"] == "failed"
     else:
         assert all((structures / f"{state}.xyz").is_file() for state in STATES)
-        assert len(freq_calls) == 3 and run.dft_calls == ["R", "TS", "P"]
         assert (seg_root / "endpoint_opt").exists() is (dump or outcome == "not_converged")
         assert post["endpoint_opt"]["reactant"]["n_opt_cycles"] == 3
         assert post["endpoint_opt"]["product"]["n_opt_cycles"] == 4
+        if outcome == "converged":
+            assert len(freq_calls) == 3 and run.dft_calls == ["R", "TS", "P"]
+            assert "pipeline_stop" not in post
+        else:
+            # Neither endpoint converged, so freq and DFT are skipped.
+            assert freq_calls == [] and run.dft_calls == []
+            assert post["pipeline_stop"] == {
+                "stage": "endpoint_opt", "segment": 1, "reason": "endpoint_not_converged",
+            }
+
+
+@pytest.mark.parametrize("branch", ["ts", "seg"])
+def test_unconverged_endpoint_skips_freq_and_dft_of_its_segment(monkeypatch, tmp_path, branch):
+    """freq and DFT are not run for a segment whose endpoint did not converge; the
+    next segment is still processed and the result is partial with exit 0."""
+    if branch == "ts":
+        scenario = Scenario("ts_only", (1,), ["--tsopt", "--thermo", "--dft"],
+                            endpoint_not_converged="product")
+    else:
+        scenario = Scenario("two_segments", (0, 2, 4), ["--tsopt", "--thermo", "--dft"],
+                            endpoint_not_converged="seg_01_product")
+    run = invoke(tmp_path, monkeypatch, scenario)
+    summary = json.loads((run.out / "summary.json").read_text())
+    first = summary["post_segments"][0]
+    freq_segments = [
+        Path(call[call.index("--out-dir") + 1]).parent.parent.name
+        for call in run.children if call[0] == "freq"
+    ]
+
+    assert run.exit_code == 0, run.output
+    assert (summary["execution_status"], summary["scientific_status"]) == ("completed", "partial")
+    assert summary["scientific_status_reasons"] == ["all:segment_1:endpoint_opt:product_not_converged"]
+    for stage in ("thermo", "dft"):
+        assert (
+            f"[{stage}] seg_01: skipped because the product endpoint optimization did not converge"
+            in run.output
+        )
+    assert first["pipeline_stop"] == {
+        "stage": "endpoint_opt", "segment": 1, "reason": "endpoint_not_converged",
+    }
+    assert first["endpoint_opt"]["product_converged"] is False
+    assert isinstance(first["mlip"], dict)
+    assert not {"gibbs_mlip", "dft", "gibbs_dft_mlip", "thermo_symmetry"} & set(first)
+    assert (run.out / "segments" / "seg_01" / "energy_diagram_MLIP.png").is_file()
+    assert not (run.out / "segments" / "seg_01" / "freq").exists()
+    assert not (run.out / "segments" / "seg_01" / "dft").exists()
+    # A G or DFT diagram over all segments needs every segment.
+    assert (run.out / "energy_diagram_MLIP_all.png").is_file()
+    for stem in ("G_MLIP", "DFT", "G_DFT_plus_MLIP"):
+        assert not (run.out / f"energy_diagram_{stem}_all.png").exists()
+    assert summary["rate_limiting_step"]["method"] == "MLIP"
+    if branch == "ts":
+        assert freq_segments == [] and run.dft_calls == []
+        assert summary["config"]["dft_status"] is None
+    else:
+        assert freq_segments == ["seg_02"] * 3 and run.dft_calls == ["R", "TS", "P"]
+        second = summary["post_segments"][1]
+        assert "pipeline_stop" not in second
+        assert {"gibbs_mlip", "dft", "gibbs_dft_mlip"} <= set(second)
 
 
 def test_ts_only_endpoint_failure_records_irc_trajectory(monkeypatch, tmp_path):
