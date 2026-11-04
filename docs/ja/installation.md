@@ -15,7 +15,7 @@
 # 4) Plotly の静的画像の書き出し（PNG・JPEG・SVG・PDF）用のヘッドレス Chrome をインストール
 #    Chromium のバイナリをダウンロード（インターネット接続が必要）
 
-conda create -n p2r -c conda-forge --override-channels python=3.12 -y
+conda create -n p2r -c conda-forge python=3.12
 conda activate p2r
 
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # 推奨。cu126 / cu132 なら末尾を置き換え
@@ -43,7 +43,8 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 DMF（`--mep-mode dmf`）か `--solvent`（xTB）を使う場合は、代わりに cyipopt・xTB・PyTorch を conda-forge から入れて環境を作り、pdb2reaction を導入します:
 
 ```bash
-conda create -n p2r -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda create -n p2r -c conda-forge python=3.12 \
+  cyipopt xtb "pytorch=2.13.0=cuda130*"
 conda activate p2r
 pip install pdb2reaction
 plotly_get_chrome -y
@@ -56,14 +57,13 @@ plotly_get_chrome -y
 
 `pip install pdb2reaction` では、コンパイラと Chrome が使うライブラリは入りません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
 
-- **UMA と `--compile` 用のコンパイラ:** GPU では、UMA は実行時に高速化のためコンパイルをします（PyTorch が Triton で GPU のカーネルを作ります）。そのため `--compile` を付けなくても C コンパイラ（`gcc`）が要ります。`--compile` を付けると UMA と ORB はモデルもコンパイルするので、GPU では C コンパイラ、CPU では C++ コンパイラ（`g++`）が要ります。上の「任意」の conda 環境では、`cuda-nvcc` が C コンパイラを入れます。
+- **UMA と `--compile` 用のコンパイラ:** GPU では、UMA は実行時に高速化のためコンパイルをします（PyTorch が Triton で GPU のカーネルを作ります）。そのため `--compile` を付けなくても C コンパイラ（`gcc`）が要ります。`--compile` を付けると UMA と ORB はモデルもコンパイルするので、GPU では C コンパイラ、CPU では C++ コンパイラ（`g++`）が要ります。
 - **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。`plotly_get_chrome -y` でダウンロードした Chrome は、下の OS のライブラリを読み込みます。
 
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y gcc g++
 sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
   libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
   libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
@@ -73,14 +73,13 @@ sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-br
 Rocky/RHEL:
 
 ```bash
-sudo dnf install -y gcc gcc-c++
 sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
   dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
   libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs \
   vulkan-loader wget xdg-utils
 ```
 
-sudo が使えない HPC では、`module load gcc` か、環境へのコンパイラの追加（`conda install -c conda-forge c-compiler cxx-compiler`）を使います。Chrome のライブラリは管理者に依頼してください。
+既存のコンパイラを使います。コンパイラや CUDA のビルド部品の不足・非対応のエラーが出たときは `conda install -c conda-forge cuda-nvcc` を実行し、環境を再度 activate してから再実行してください。HPC で Chrome のライブラリが足りない場合は管理者に依頼してください。
 
 コンパイラが足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けて上のコマンドを表示します。Chrome のライブラリが足りないときは、`energy-diagram` と `trj2fig` は同じように止まり、`all`・`path-search`・`scan2d` は 1 行で知らせ、PNG の作成だけを省いて続けます。
 
@@ -100,7 +99,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 2. **conda 環境を作成してアクティブ化**
 
     ```bash
-    conda create -n <your-env> -c conda-forge --override-channels python=3.12 -y
+    conda create -n <your-env> -c conda-forge python=3.12
     conda activate <your-env>
     ```
 
@@ -108,7 +107,7 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     `--mep-mode dmf`（DMF 法）で MEP を探索するときと、xTB の溶媒補正（`--solvent`）を使うときに必要です。この手順で PyTorch も入るので、手順 4 は飛ばします。GSM のみを使い `--solvent` も使わない場合はスキップできます。この手順の後も `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
 
     ```bash
-    conda install -c conda-forge --override-channels cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y   # nvidia-smi の CUDA が 13.0 より小さいなら cuda129
+    conda install -c conda-forge cyipopt xtb "pytorch=2.13.0=cuda130*"   # nvidia-smi の CUDA が 13.0 より小さいなら cuda129
     ```
 
 4. **適切な CUDA ビルドの PyTorch をインストール**
@@ -149,13 +148,14 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
-    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、同じ環境に入れると UMA の `fairchem-core` が古い版に下がります。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。ORB は Python 3.12 でだけ使えます（`orb-models` が固定する `dm-tree==0.1.8` に Python 3.13 用の wheel がないためです）。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
+    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、UMA の `fairchem-core` と競合します。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。ORB は Python 3.12 でだけ使えます（`orb-models` が固定する `dm-tree==0.1.8` に Python 3.13 用の wheel がないためです）。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
-    conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
+    conda create -n orb-env -c conda-forge python=3.12
     conda activate orb-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
-    pip install "pdb2reaction[orb]"
+    pip install pdb2reaction
+    pip uninstall fairchem-core && pip install orb-models
     ```
 
     **AIMNet2**:
@@ -167,12 +167,11 @@ sudo が使えない HPC では、`module load gcc` か、環境へのコンパ�
     **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。環境の名前 `mace-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
-    conda create -n mace-env -c conda-forge --override-channels python=3.12 -y
+    conda create -n mace-env -c conda-forge python=3.12
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
-    pip uninstall -y fairchem-core
-    pip install 'mace-torch>=0.3.16'
+    pip uninstall fairchem-core && pip install mace-torch
     ```
 
     **DFT**（`-b dft`、`--dft`、`pdb2reaction dft`）: `[dft]` は Linux x86_64 で CUDA 13 用の GPU4PySCF を導入します（手順 4 の cu130 / cu132 と、手順 3 の `cuda130` の PyTorch 向け）。cu126 の wheel か `cuda129` のビルドを使うときは、代わりに `[dft-cuda12]` を導入します。aarch64 では [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) をソースからビルドしてください。GPU のない環境でも `[dft]` で PySCF が入り、`--dft-engine cpu` で DFT を実行できます。

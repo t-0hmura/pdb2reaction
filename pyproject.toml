@@ -68,10 +68,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-orb = [
-    # orb-models 0.7 provides orbmol-v2, the default ORB model.
-    "orb-models>=0.7.0",
-]
 aimnet = ["aimnet>=0.2.0"]
 # NOTE: MACE is intentionally NOT exposed as a `[mace]` extra — `mace-torch`
 # hard-pins `e3nn==0.4.4` while fairchem-core requires `e3nn>=0.5`, so the two

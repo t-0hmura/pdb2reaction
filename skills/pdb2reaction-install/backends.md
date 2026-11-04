@@ -202,17 +202,17 @@ Pitfalls:
 
 ## ORB (separate environment)
 
-The `[orb]` extra installs orb-models 0.7 or newer. Weights download on first
-use, with no login. orb-models pins `nvalchemi-toolkit-ops<0.4`, so in the
-same env pip downgrades `fairchem-core` to 2.22, and UMA models that need a newer
-fairchem (such as `uma-s-1p2p1-ft-d4rev`) no longer load. Give ORB its own env
-and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel.
+ORB (`-b orb`) uses `orb-models`; weights download on first use with no login.
+Its `nvalchemi-toolkit-ops` requirement conflicts with UMA's `fairchem-core`.
+Give ORB its own environment, remove `fairchem-core`, and install `orb-models`.
+ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel.
 
 ```bash
-conda create -n <YOUR_ORB_ENV> -c conda-forge --override-channels python=3.12 -y
+conda create -n <YOUR_ORB_ENV> -c conda-forge python=3.12 -y
 conda activate <YOUR_ORB_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
-pip install 'pdb2reaction[orb]'
+pip install pdb2reaction
+pip uninstall -y fairchem-core && pip install orb-models
 python -c "import orb_models; print('orb_models:', orb_models.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='orb', charge=0, spin=1)"
 ```
@@ -240,12 +240,11 @@ Pitfalls:
 so MACE needs its own env. UMA does not run there.
 
 ```bash
-conda create -n <YOUR_MACE_ENV> -c conda-forge --override-channels python=3.12 -y
+conda create -n <YOUR_MACE_ENV> -c conda-forge python=3.12 -y
 conda activate <YOUR_MACE_ENV>
 pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 pip install pdb2reaction                 # pulls fairchem-core
-pip uninstall -y fairchem-core           # remove UMA's e3nn pin
-pip install 'mace-torch>=0.3.16'         # installs the e3nn MACE needs
+pip uninstall -y fairchem-core && pip install mace-torch
 python -c "import mace; print('mace:', mace.__version__)"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='mace', charge=0, spin=1)"
 ```

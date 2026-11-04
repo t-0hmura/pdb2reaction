@@ -15,7 +15,7 @@
 # 4) Install headless Chrome for Plotly static image export (PNG, JPEG, SVG, PDF)
 #    Downloads a Chromium binary; requires internet access.
 
-conda create -n p2r -c conda-forge --override-channels python=3.12 -y
+conda create -n p2r -c conda-forge python=3.12
 conda activate p2r
 
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130  # recommended; for cu126 / cu132, change the end
@@ -43,7 +43,8 @@ Check the installation with `pdb2reaction --version`, which prints the installed
 For DMF (`--mep-mode dmf`) or `--solvent` (xTB), create the environment instead with cyipopt, xTB, and PyTorch from conda-forge, then install pdb2reaction:
 
 ```bash
-conda create -n p2r -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda create -n p2r -c conda-forge python=3.12 \
+  cyipopt xtb "pytorch=2.13.0=cuda130*"
 conda activate p2r
 pip install pdb2reaction
 plotly_get_chrome -y
@@ -56,14 +57,13 @@ If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cud
 
 `pip install pdb2reaction` does not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
 
-- **A compiler for UMA and `--compile`.** On a GPU, UMA compiles code at run time for speed (PyTorch builds GPU kernels with Triton), so it needs a C compiler (`gcc`) even without `--compile`. With `--compile`, UMA and ORB also compile the model: a GPU run needs a C compiler, and a CPU run needs a C++ compiler (`g++`). The conda environment of the Optional section above gets a C compiler through `cuda-nvcc`.
+- **A compiler for UMA and `--compile`.** On a GPU, UMA compiles code at run time for speed (PyTorch builds GPU kernels with Triton), so it needs a C compiler (`gcc`) even without `--compile`. With `--compile`, UMA and ORB also compile the model: a GPU run needs a C compiler, and a CPU run needs a C++ compiler (`g++`).
 - **Libraries for Chrome.** PNG, JPEG, SVG and PDF figures (`energy-diagram`, `trj2fig`, and the diagrams of `all`) are drawn by headless Chrome, which `plotly_get_chrome -y` downloads. Chrome loads the operating-system libraries below.
 
 Ubuntu/Debian (on Ubuntu 22.04 and Debian 12, write `libasound2` instead of `libasound2t64`; drop `sudo` if you are root):
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y gcc g++
 sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-bridge2.0-0 \
   libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 libdbus-1-3 libexpat1 libgbm1 \
   libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 libx11-6 libxcb1 \
@@ -73,14 +73,13 @@ sudo apt-get install -y ca-certificates fonts-liberation libasound2t64 libatk-br
 Rocky/RHEL:
 
 ```bash
-sudo dnf install -y gcc gcc-c++
 sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo cups-libs \
   dbus-libs expat glib2 gtk3 libX11 libXcomposite libXdamage libXext libXfixes libXrandr \
   libgcc liberation-fonts libxcb libxkbcommon mesa-libgbm nspr nss nss-util pango systemd-libs \
   vulkan-loader wget xdg-utils
 ```
 
-Without sudo (HPC), run `module load gcc`, or add the compilers to your environment with `conda install -c conda-forge c-compiler cxx-compiler`. Ask the administrator to install Chrome's libraries.
+Use the existing compiler. If a compiler or CUDA build component is missing or unsupported, run `conda install -c conda-forge cuda-nvcc`, reactivate the environment, and rerun the command. On HPC, ask the administrator for any missing Chrome libraries.
 
 If a compiler is missing, the command stops and prints `Missing system prerequisite:` followed by these commands. If a Chrome library is missing, `energy-diagram` and `trj2fig` stop the same way, while `all`, `path-search` and `scan2d` print a one-line warning and skip only their PNG files.
 
@@ -102,7 +101,7 @@ If you prefer to build the environment piece by piece:
 2. **Create and activate a conda environment**
 
     ```bash
-    conda create -n <your-env> -c conda-forge --override-channels python=3.12 -y
+    conda create -n <your-env> -c conda-forge python=3.12
     conda activate <your-env>
     ```
 
@@ -110,7 +109,7 @@ If you prefer to build the environment piece by piece:
     Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search or the xTB solvent correction (`--solvent`); this step also installs PyTorch, so skip step 4. You can skip this step if you only use GSM without `--solvent`. If `--mep-mode dmf` still stops with an import error, see {ref}`Installation / environment <installation-environment-problems>`.
 
     ```bash
-    conda install -c conda-forge --override-channels cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y   # cuda129 if nvidia-smi shows CUDA below 13.0
+    conda install -c conda-forge cyipopt xtb "pytorch=2.13.0=cuda130*"   # cuda129 if nvidia-smi shows CUDA below 13.0
     ```
 
 4. **Install PyTorch with the right CUDA build**
@@ -150,15 +149,16 @@ If you prefer to build the environment piece by piece:
 
 7. **(Optional) Install additional MLIP backends**
 
-    pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
+    pdb2reaction uses UMA by default. For another backend, install its package and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, so pip would downgrade UMA's `fairchem-core`. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
+    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, which conflicts with UMA's `fairchem-core`. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
-    conda create -n orb-env -c conda-forge --override-channels python=3.12 -y
+    conda create -n orb-env -c conda-forge python=3.12
     conda activate orb-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
-    pip install "pdb2reaction[orb]"
+    pip install pdb2reaction
+    pip uninstall fairchem-core && pip install orb-models
     ```
 
     **AIMNet2**:
@@ -170,12 +170,11 @@ If you prefer to build the environment piece by piece:
     **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may change the environment name `mace-env`. Pick the PyTorch wheel as in step 4.
 
     ```bash
-    conda create -n mace-env -c conda-forge --override-channels python=3.12 -y
+    conda create -n mace-env -c conda-forge python=3.12
     conda activate mace-env
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     pip install pdb2reaction
-    pip uninstall -y fairchem-core
-    pip install 'mace-torch>=0.3.16'
+    pip uninstall fairchem-core && pip install mace-torch
     ```
 
     **DFT** (`-b dft`, `--dft`, `pdb2reaction dft`): `[dft]` installs the CUDA 13 GPU4PySCF build on Linux x86_64, for the cu130 / cu132 PyTorch wheels of step 4 and the `cuda130` build of step 3; with the cu126 wheel or the `cuda129` build, install `[dft-cuda12]` instead. On aarch64, build [GPU4PySCF](https://github.com/pyscf/gpu4pyscf) from source. Without a GPU, `[dft]` still installs PySCF; run DFT with `--dft-engine cpu`.

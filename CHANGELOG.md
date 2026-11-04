@@ -10,6 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Breaking changes
 
+- Remove the `[orb]` extra; install `orb-models` directly in a separate environment after uninstalling `fairchem-core`.
 - A pair that contains a metal atom counts as a bond formed or broken only when its distance changes by at least `bond.metal_delta_fraction` × T (default `0.40`, about 1.0 Å for Mg–O). Every bond judgment, including the IRC endpoint matching of `all` and `irc`, reads the YAML `bond` section.
 - Input alignment relaxations use the package L-BFGS defaults with the `gau` preset; the `--thresh` of `path-opt`, `path-search` and `all` no longer applies to them.
 - `all`: a segment that stops before IRC no longer stops the later segments. A run with an MEP then ends `completed` / `partial` with exit 0; `pipeline_stop` keeps the first stop and `stopped_segments` lists every stop.
@@ -19,8 +20,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 - `all --precision-post tf32|fp32|fp64` sets the MLIP precision of TS optimization, IRC, the endpoint optimizations and freq; unset, they use `--precision`.
 - `--compile/--no-compile` on every command that has `--precision` runs UMA or ORB through torch.compile; it pays off only in long runs.
-- Python 3.13 is supported (`>=3.12,<3.14`); the `[orb]` extra still needs Python 3.12.
-- A run that finds no compiler or cannot start Chrome prints `Missing system prerequisite: ...` with the install commands instead of a traceback.
+- Python 3.13 is supported (`>=3.12,<3.14`); ORB still needs Python 3.12.
+- A run that finds no compiler or CUDA build tools, or cannot start Chrome prints `Missing system prerequisite: ...` with the install commands instead of a traceback.
 - Colab notebook: an `install_xtb` check box in Installation installs xTB.
 
 ### Changed
@@ -29,7 +30,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `run.log` is written while the command runs, also records C libraries and child processes, and a rerun into the same `-o` appends to it.
 - Without `-v 3`, FAIR-Chem's inference-settings line and choreographer's `Resorting to unclean kill browser.` are no longer shown.
 - Colab notebook: the GUI fits the visible pane from 721 px wide, and Mol* clicks keep the camera.
-- MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
+- ORB and MACE are installed after removing `fairchem-core`; MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
+- Docs and skills use existing compilers and recommend `conda install -c conda-forge cuda-nvcc` only for missing or unsupported build tools.
 - Docs, skills and CLI help: wrong statements are corrected, unclear passages reworded, and ORB is installed in its own environment.
 
 ### Fixed

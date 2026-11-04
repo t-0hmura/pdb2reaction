@@ -34,7 +34,7 @@ when `pdb2reaction --version` prints the version and the smoke check in
    ([xTB](backends.md#xtb-solvent-correction)).
 
 ```bash
-conda create -n <YOUR_ENV> -c conda-forge --override-channels python=3.12 -y
+conda create -n <YOUR_ENV> -c conda-forge python=3.12 -y
 conda activate <YOUR_ENV>
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 pip install pdb2reaction                           # UMA via fairchem-core
@@ -47,22 +47,19 @@ For DMF or `--solvent`, replace the first three lines with the following
 (`cuda129` instead of `cuda130` when the driver is below CUDA 13.0):
 
 ```bash
-conda create -n <YOUR_ENV> -c conda-forge --override-channels python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" cuda-nvcc -y
+conda create -n <YOUR_ENV> -c conda-forge python=3.12 cyipopt xtb "pytorch=2.13.0=cuda130*" -y
 conda activate <YOUR_ENV>
 ```
 
 | Extra | Pulls in | When you need it |
 |---|---|---|
 | (none) | UMA via `fairchem-core`, base deps | Default; `-b uma` works |
-| `[orb]` | `orb-models` | `-b orb`, in a separate env |
 | `[aimnet]` | `aimnet>=0.2.0` | `-b aimnet2` |
 | `[dft]` | PySCF, CUDA 13 GPU4PySCF and CuPy on Linux x86_64 | `-b dft`, `--dft`, `pdb2reaction dft` with a `cu130` or `cu132` wheel or the conda-forge `cuda130` build |
 | `[dft-cuda12]` | PySCF, CUDA 12 GPU4PySCF and CuPy | Same, with a `cu126` wheel or the `cuda129` build |
 | `[ci]`, `[dev]`, `[docs]` | test, pytest, and Sphinx dependencies | Contributing and building docs |
 
-There is no `[mace]` extra, because `mace-torch` and `fairchem-core` need
-different `e3nn` versions. Install `[orb]` in its own env too: `orb-models`
-pins `nvalchemi-toolkit-ops<0.4`, so pip downgrades `fairchem-core` there.
+Install ORB and MACE directly in separate environments (see [Choose a backend](#choose-a-backend)).
 
 ## System packages
 
@@ -71,21 +68,17 @@ container or cluster node often lacks both. On a GPU, UMA compiles code at run
 time for speed and needs a C compiler (`gcc`) even without `--compile`; with
 `--compile`, UMA and ORB need a C compiler on a GPU and a C++ compiler (`g++`) on a CPU.
 Image export (PNG, JPEG, SVG, PDF) needs the operating-system libraries of the Chrome that
-`plotly_get_chrome -y` downloads. The conda command for DMF or `--solvent` above
-installs conda's compilers through `cuda-nvcc`, under prefixed names
-(`x86_64-conda-linux-gnu-gcc`, ...), and `conda activate` sets `$CC` and `$CXX` to
-them. In an env made with that command, check with `$CC --version` (`$CXX --version`
-for `--compile` on a CPU); in any other env, and outside one, with `gcc --version`
-(`g++ --version`). Then install what is missing:
+`plotly_get_chrome -y` downloads. Use the existing compiler; check with
+`${CC:-gcc} --version` (`${CXX:-g++} --version` for C++).
+If a compiler or CUDA build component is missing or unsupported, run:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y gcc g++    # Ubuntu/Debian
-sudo dnf install -y gcc gcc-c++                            # Rocky/RHEL
+conda install -c conda-forge -y cuda-nvcc
+conda activate <YOUR_ENV>
 ```
 
-Without sudo, use `module load gcc` or `conda install -c conda-forge c-compiler cxx-compiler`;
-ask the administrator for Chrome's libraries (without them, `all` and `path-search` skip
-only the PNG files). The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 and
+Then rerun the command. On HPC, ask the administrator for missing Chrome libraries.
+The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 and
 Debian 12: `libasound2` instead of `libasound2t64`):
 
 ```bash
@@ -113,7 +106,7 @@ that lists the same commands. Docs: [System prerequisites](../../docs/installati
 | `-b` | Default model | Install | Notes |
 |---|---|---|---|
 | `uma` (default) | `uma-s-1p2p1`; `uma-s-1p2p1-ft-d4rev`, `uma-s-1p2`, `uma-m-1p1` via `--backend-model` | Core dependency; gated weights need a Hugging Face login | fp32 by default; the only backend with several workers |
-| `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `[orb]` extra in a separate env | fp64 by default |
+| `orb` | `orbmol-v2`; `orb_v3_conservative_omol` via `--backend-model` | `orb-models` in a separate env | fp64 by default |
 | `mace` | `MACE-OMOL-0`; `MACE-POLAR-1-S`/`-M`/`-L` (`mace-torch[polar]` >= 0.3.17) via `--backend-model` | Separate env | fp64 by default |
 | `aimnet2` | `aimnet2`; `aimnet2-2025`, `aimnet2-nse` (open-shell), `aimnet2-pd` via `--backend-model` | `[aimnet]` extra | fp32 only; default model covers 14 elements, no Mg or first-row transition metals |
 
@@ -176,7 +169,7 @@ installed. An `ImportError` points to that backend's section in
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Install `gcc` (`g++` for `--compile` on a CPU): [System packages](#system-packages); on a cluster, `module load gcc` in the job script |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Install `cuda-nvcc` and reactivate the environment: [System packages](#system-packages) |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`), or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly, or an operating-system library it needs is missing | `plotly_get_chrome -y`, then the libraries in [System packages](#system-packages) |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 

@@ -3,7 +3,7 @@
 """
 ORB (orb-models) backend for pdb2reaction.
 
-Requires: ``pip install "pdb2reaction[orb]"`` (orb-models).
+Requires: ``pip install orb-models``.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ class OrbCalculator(MLIPCalculator):
         except Exception as exc:
             raise BackendError(
                 "ORB backend requires orb-models and torch. "
-                "Install it in a separate environment with: pip install \"pdb2reaction[orb]\""
+                "Install it in a separate environment with: pip uninstall fairchem-core && pip install orb-models"
             ) from exc
 
         super().__init__(
