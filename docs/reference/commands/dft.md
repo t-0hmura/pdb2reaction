@@ -8,8 +8,8 @@ Usage: pdb2reaction dft [OPTIONS]
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+detailed step logging
-                                  and deliverable paths; 3=everything (full
-                                  config blocks, per-file paths, DEBUG logging).
+                                  and output paths; 3=everything (full config
+                                  blocks, per-file paths, DEBUG logging).
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
@@ -22,8 +22,8 @@ Options:
                                   when -q is omitted (requires PDB/mmCIF input
                                   or --ref-pdb).
   -m, --multiplicity INTEGER RANGE
-                                  Spin multiplicity (2S+1; inherits from .gjf
-                                  when available).  [default: (1); x>=1]
+                                  Spin multiplicity (2S+1; read from .gjf if
+                                  present).  [default: (1); x>=1]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
   --func-basis TEXT               Exchange–correlation functional and basis set
@@ -39,7 +39,7 @@ Options:
                                   grids.level).  [default: 3]
   -o, --out-dir TEXT              Output directory.  [default: ./result_dft/]
   --dft-engine, --engine [gpu|cpu]
-                                  SCF backend: gpu (GPU4PySCF, raises error if
+                                  SCF backend: gpu (GPU4PySCF, fails if
                                   unavailable) or cpu (PySCF).  [default: gpu]
   --solvent TEXT                  Implicit-solvent name for native PySCF PCM/SMD
                                   (for example water).  [default: (none)]
@@ -54,8 +54,8 @@ Options:
                                   dft-low-memory]
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the SCF on a coarse grid first, then
-                                  on the final grid with the same settings.
-                                  [default: scf-stepwise-grid]
+                                  on the final grid.  [default: scf-stepwise-
+                                  grid]
   --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
                                   unaffected.  [default: (auto); x>=1]
   --dft-memory, --dft-mem TEXT    PySCF host RAM limit (for example 64GB or
@@ -66,7 +66,7 @@ Options:
                                   Print the loaded YAML file and its top-level
                                   keys, then continue.  [default: no-show-
                                   config]
-  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+  --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   --dry-run / --no-dry-run        Validate options and inputs without running
                                   DFT.  [default: no-dry-run]

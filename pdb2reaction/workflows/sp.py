@@ -84,7 +84,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--uma-workers", "--workers", "workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node", "--workers-per-node", "workers_per_node",
@@ -102,16 +102,16 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--hess/--no-hess", "do_hess", default=False, show_default=True,
-    help="Also compute a Hessian and save it to hessian.npy (active block when atoms are frozen).",
+    help="Also compute a Hessian and save it to hessian.npy (movable atoms only when atoms are frozen).",
 )
 @click.option(
     "--hessian-calc-mode", "hessian_calc_mode",
     type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
     help=(
-        "Hessian backend when --hess is set. FiniteDifference is the default "
-        "for every backend; UMA, ORB, MACE, and AIMNet2 also support an "
-        "explicit Analytical request."
+        "Hessian calculation method when --hess is set. FiniteDifference is the "
+        "default for every backend; UMA, ORB, MACE, AIMNet2, and DFT also "
+        "support Analytical."
     ),
 )
 @click.option(
@@ -130,7 +130,7 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--out-json/--no-out-json", "out_json",
     default=False, show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "-b", "--backend",
@@ -181,7 +181,7 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
-    """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
+    """Compute single-point energy and forces (and optionally the Hessian)."""
     merged_yaml_cfg, config_layer_cfg = load_merged_yaml_cfg(config_yaml)
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(

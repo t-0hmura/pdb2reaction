@@ -424,7 +424,7 @@ def _prepare_frequency_output_paths(
 
 
 @click.command(
-    help="Vibrational frequency analysis and mode writer (+ default thermochemistry summary).",
+    help="Vibrational frequency analysis with mode trajectories and a thermochemistry summary.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 # NOTE: the workers/workers_per_node help text below is intentionally explicit:
@@ -444,7 +444,7 @@ def _prepare_frequency_output_paths(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -484,7 +484,7 @@ def _prepare_frequency_output_paths(
     help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option("--max-write", type=int, default=FREQ_KW["max_write"], show_default=True,
-              help="How many modes to export (after sorting per --sort).")
+              help="How many modes to export (after sorting by --sort).")
 @click.option("--amplitude-ang", type=float, default=FREQ_KW["amplitude_ang"], show_default=True,
               help="Mode-trajectory amplitude (Å) used for both _trj.xyz and .pdb.")
 @click.option("--n-frames", type=int, default=FREQ_KW["n_frames"], show_default=True,
@@ -549,13 +549,13 @@ def _prepare_frequency_output_paths(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 # Hessian calculation mode
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None, show_default="FiniteDifference",
-              help="How the ML backend computes the Hessian (can also be set via YAML).")
+              help="How the backend computes the Hessian.")
 @click.option(
     "--hess-device",
     "hess_device",
@@ -563,9 +563,8 @@ def _prepare_frequency_output_paths(
     default="auto",
     show_default=True,
     help=(
-        "Device for post-evaluation Hessian placement and diagonalization "
-        "(auto/cuda/cpu). Use 'cpu' to move the evaluated Hessian off GPU before "
-        "diagonalization. The calculator itself still runs on its own device."
+        "Device used to store and diagonalize the Hessian. Use 'cpu' to offload "
+        "diagonalization from the GPU (does not affect the calculator device)."
     ),
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",

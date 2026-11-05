@@ -4,14 +4,14 @@
 Usage: pdb2reaction extract [OPTIONS]
 
   Extract an active site model around extraction centers (from PDB/mmCIF or
-  residue IDs/names), with biochemically aware truncation and optional cap-H;
-  mmCIF inputs also produce mmCIF outputs.
+  residue IDs/names), with biochemically aware truncation and optional cap
+  hydrogens; mmCIF inputs also produce mmCIF outputs.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+detailed step logging
-                                  and deliverable paths; 3=everything (full
-                                  config blocks, per-file paths, DEBUG logging).
+                                  and output paths; 3=everything (full config
+                                  blocks, per-file paths, DEBUG logging).
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
@@ -19,7 +19,7 @@ Options:
                                   Multiple files may be given space-separated
                                   after one -i or by repeating -i. PDBs whose
                                   residue or atom numbers overflow the fixed PDB
-                                  columns are also accepted. If multiple, they
+                                  columns are also accepted. Multiple inputs
                                   must have identical atom counts and ordering.
                                   [required]
   -c, --center TEXT               Centers (normally substrate + catalytic
@@ -36,12 +36,10 @@ Options:
                                   One path creates multi-MODEL output; N paths
                                   create one output per input.
   -r, --radius FLOAT RANGE        Cutoff (angstrom) around center atoms for
-                                  active-site inclusion. Zero is accepted and
-                                  evaluated internally as 0.001 angstrom
-                                  (effectively off for ordinary radius-based
-                                  neighbors).  [default: 2.6; x>=0.0]
-  --radius-het2het FLOAT RANGE    Cutoff (angstrom) for center hetero-atom
-                                  (non-C/H) to neighbor hetero-atom proximity. 0
+                                  active-site inclusion. 0 disables radius-based
+                                  expansion.  [default: 2.6; x>=0.0]
+  --radius-het2het FLOAT RANGE    Cutoff (angstrom) for center heteroatom
+                                  (non-C/H) to neighbor heteroatom proximity. 0
                                   is treated as 0.001 angstrom (effectively
                                   off).  [default: 0; x>=0.0]
   --include-h2o / --no-include-h2o
@@ -61,12 +59,11 @@ Options:
   --modified-residue TEXT         Comma-separated residue names to treat as
                                   amino acids for backbone truncation and charge
                                   assignment. NAME:charge adds or overrides the
-                                  nominal charge for this extraction; bare NAME
-                                  defaults to 0. Examples: 'HD1,HD2,HD3' or
-                                  'HD1:0,SEP:-2'.
+                                  nominal charge; bare NAME defaults to 0.
+                                  Examples: 'HD1,HD2,HD3' or 'HD1:0,SEP:-2'.
   -l, --ligand-charge TEXT        Total ligand charge (number) or per-resname
                                   mapping like 'GPP:-3,SAM:1'.
-  --out-json / --no-out-json      Write machine-readable result.json next to the
-                                  output PDB.  [default: no-out-json]
+  --out-json / --no-out-json      Write result.json next to the output PDB.
+                                  [default: no-out-json]
   -h, --help                      Show this message and exit.
 ```

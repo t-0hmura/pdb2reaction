@@ -95,7 +95,7 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
     help=(
         "Extract an active site model around extraction centers (from PDB/mmCIF or "
         "residue IDs/names), with biochemically aware truncation and optional "
-        "cap-H; mmCIF inputs also produce mmCIF outputs."
+        "cap hydrogens; mmCIF inputs also produce mmCIF outputs."
     ),
     context_settings={
         "help_option_names": ["-h", "--help"],
@@ -110,7 +110,7 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
         "Protein-substrate complex PDB/mmCIF file(s). Multiple files may be given space-separated "
         "after one -i or by repeating -i. PDBs whose residue or atom numbers overflow the "
         "fixed PDB columns are also accepted. "
-        "If multiple, they must have identical atom counts and ordering."
+        "Multiple inputs must have identical atom counts and ordering."
     ),
 )
 @click.option(
@@ -138,14 +138,13 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
     type=click.FloatRange(min=0.0), default=2.6, show_default=True,
     help=(
         "Cutoff (angstrom) around center atoms for active-site inclusion. "
-        "Zero is accepted and evaluated internally as 0.001 angstrom "
-        "(effectively off for ordinary radius-based neighbors)."
+        "0 disables radius-based expansion."
     ),
 )
 @click.option(
     "--radius-het2het",
     type=click.FloatRange(min=0.0), default=0, show_default=True,
-    help="Cutoff (angstrom) for center hetero-atom (non-C/H) to neighbor hetero-atom proximity. 0 is treated as 0.001 angstrom (effectively off).",
+    help="Cutoff (angstrom) for center heteroatom (non-C/H) to neighbor heteroatom proximity. 0 is treated as 0.001 angstrom (effectively off).",
 )
 @click.option(
     "--include-h2o/--no-include-h2o",
@@ -178,7 +177,7 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
     help=(
         "Comma-separated residue names to treat as amino acids for backbone "
         "truncation and charge assignment. NAME:charge adds or overrides the "
-        "nominal charge for this extraction; bare NAME defaults to 0. "
+        "nominal charge; bare NAME defaults to 0. "
         "Examples: 'HD1,HD2,HD3' or 'HD1:0,SEP:-2'."
     ),
 )
@@ -193,7 +192,7 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json next to the output PDB.",
+    help="Write result.json next to the output PDB.",
 )
 @click.pass_context
 def cli(

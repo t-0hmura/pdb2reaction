@@ -376,7 +376,7 @@ def _seed_rfo_initial_hessian(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -462,7 +462,7 @@ def _seed_rfo_initial_hessian(
     default=False,
     show_default=True,
     help=(
-        "Opt in to rejecting uphill RFO trials in hess mode (tolerance: "
+        "Reject uphill RFO steps in hess mode (tolerance: "
         "1e-4 Hartree) and shrink the trust radius; after repeated rejections "
         "at the smallest radius, keep the lower-energy geometry and stop after "
         "one convergence check. Ignored in grad/lbfgs mode."
@@ -541,7 +541,7 @@ def _seed_rfo_initial_hessian(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--dry-run/--no-dry-run",

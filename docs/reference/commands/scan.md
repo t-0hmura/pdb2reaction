@@ -8,7 +8,7 @@ Usage: pdb2reaction scan [OPTIONS]
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+optimizer cycle tables,
-                                  per-stage timing, VRAM, deliverable paths;
+                                  per-stage timing, VRAM, output paths;
                                   3=everything (full config blocks, per-file
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
@@ -31,10 +31,10 @@ Options:
                                   YAML calc.charge, or a .gjf input gives it.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -55,13 +55,12 @@ Options:
   --max-dihedral-step-size FLOAT RANGE
                                   Maximum scanned dihedral change per step
                                   [degree].  [default: 10.0; x>0.0]
-  --restraint-k, --bias-k FLOAT   Harmonic well strength k [eV/Å^2 for
-                                  distances; eV/rad^2 for angles]. YAML bias.k
-                                  applies when this option is omitted; explicit
-                                  CLI wins.  [default: (300.0)]
+  --restraint-k, --bias-k FLOAT   Restraint strength k [eV/Å^2 for distances;
+                                  eV/rad^2 for angles]. YAML bias.k applies when
+                                  this option is omitted.  [default: (300.0)]
   --relax-max-cycles INTEGER RANGE
-                                  Maximum optimizer cycles per grid relaxation.
-                                  An explicitly provided value overrides YAML
+                                  Maximum optimizer cycles per relaxation. An
+                                  explicitly provided value overrides YAML
                                   opt.max_cycles.  [default: (100000); x>=1]
   --opt-mode [grad|hess]          Relaxation mode: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
@@ -72,9 +71,8 @@ Options:
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
   --dump / --no-dump              Write per-step optimizer trajectory files.
-                                  scan_trj.xyz is always written; PDB/CIF
-                                  companions additionally require conversion
-                                  topology.  [default: no-dump]
+                                  scan_trj.xyz is always written.  [default: no-
+                                  dump]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input
@@ -106,21 +104,19 @@ Options:
   --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   --dry-run / --no-dry-run        Resolve and validate options (input,
-                                  charge/spin parity, --scan-lists parse) and
-                                  print the planned scan, then exit without
-                                  running any optimization.  [default: no-dry-
-                                  run]
+                                  charge/spin parity, --scan-lists) and print
+                                  the planned scan, then exit without running
+                                  any optimization.  [default: no-dry-run]
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system.  [default:
                                   (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles.
                                   [default: (100); x>=1]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
@@ -132,20 +128,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -159,10 +154,10 @@ Options:
                                   PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the

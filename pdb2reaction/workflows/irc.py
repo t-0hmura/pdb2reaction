@@ -301,7 +301,7 @@ def _echo_convert_trj_if_exists(
 
 
 @click.command(
-    help="Run an IRC calculation with EulerPC. Only the documented CLI options are accepted; all other settings come from YAML.",
+    help="Run an IRC calculation with EulerPC. Settings without a CLI option come from YAML.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -318,7 +318,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -422,7 +422,7 @@ def _echo_convert_trj_if_exists(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); an explicit value overrides YAML calc.hessian_calc_mode.",
+    help="How the backend computes the Hessian.",
 )
 @click.option(
     "--config",
@@ -469,7 +469,7 @@ def _echo_convert_trj_if_exists(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")

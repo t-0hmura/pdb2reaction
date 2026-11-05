@@ -8,14 +8,14 @@ Usage: pdb2reaction path-search [OPTIONS]
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+optimizer cycle tables,
-                                  per-stage timing, VRAM, deliverable paths;
+                                  per-stage timing, VRAM, output paths;
                                   3=everything (full config blocks, per-file
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Two or more PDB, mmCIF, XYZ, or GJF structures
                                   in reaction order. Repeat -i/--input for each
-                                  path.  [required]
+                                  file.  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -23,19 +23,18 @@ Options:
                                   GPU out-of-memory error, retry with cpu.
                                   [default: gpu]
   --refine-mode [peak|minima]     Refinement seed selection around the highest-
-                                  energy image: 'peak' uses HEI±1, 'minima' uses
-                                  the nearest local minima in each direction.
-                                  Defaults to peak for gsm and minima for dmf
-                                  when omitted.  [default: (peak for gsm, minima
+                                  energy image (HEI): 'peak' uses HEI±1,
+                                  'minima' uses the nearest local minima in each
+                                  direction.  [default: (peak for gsm, minima
                                   for dmf)]
   -q, --charge INTEGER            Total charge. Required unless --ligand-charge,
                                   YAML calc.charge, or a .gjf input gives it.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -43,8 +42,7 @@ Options:
                                   (e.g., GPP:-3,SAM:1) used to derive charge
                                   when -q is omitted (PDB/mmCIF inputs only).
   -m, --multiplicity INTEGER RANGE
-                                  Spin multiplicity (2S+1; inherits from a .gjf
-                                  template when available).  [default: (1 (or
+                                  Spin multiplicity (2S+1).  [default: (1 (or
                                   the .gjf template value)); x>=1]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
@@ -72,9 +70,7 @@ Options:
                                   MEP stage.  [default: (300); x>=1]
   --dmf-max-iterations, --max-cycles-dmf INTEGER RANGE
                                   Maximum IPOPT iterations for the DMF MEP
-                                  stage. This is a solver iteration count, not a
-                                  string-optimizer cycle count.  [default:
-                                  (3000); x>=1]
+                                  stage.  [default: (3000); x>=1]
   --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: climb]
@@ -96,8 +92,8 @@ Options:
                                   optimizer.  [default: (gau_loose)]
   --dmf-tol, --thresh-dmf TEXT    IPOPT dual-infeasibility tolerance for the DMF
                                   path optimizer: tight (0.04) | middle (0.10) |
-                                  loose (0.20) or a positive float. This is not
-                                  a Gaussian preset.  [default: (tight)]
+                                  loose (0.20) or a positive float.  [default:
+                                  (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -106,8 +102,8 @@ Options:
                                   [default: no-show-config]
   --dry-run / --no-dry-run        Validate options and inputs without running
                                   path search.  [default: no-dry-run]
-  --preopt / --no-preopt          If True, run initial single-structure
-                                  optimizations of inputs.  [default: preopt]
+  --preopt / --no-preopt          Run initial single-structure optimizations of
+                                  the inputs.  [default: preopt]
   --align / --no-align            After optional preoptimization, align adjacent
                                   inputs in sequence and match frozen-atom
                                   positions while relaxing the remaining atoms.
@@ -123,10 +119,8 @@ Options:
                                   merge]
   --ref-pdb FILE                  Pocket reference PDB/mmCIF files used to write
                                   the PDB outputs for XYZ/GJF inputs and for the
-                                  full-system merge. Useful when --input uses
-                                  XYZ/GJF intermediates but PDB snapshots exist
-                                  for merging. Must match the number and order
-                                  of --input.
+                                  full-system merge. Must match the number and
+                                  order of --input.
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
@@ -145,11 +139,10 @@ Options:
   --coord-type [cart|dlc]         Optimization coordinate system.  [default:
                                   (cart)]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
@@ -161,20 +154,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -188,10 +180,10 @@ Options:
                                   PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the

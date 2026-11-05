@@ -241,7 +241,7 @@ def add_scan_common_options(
             type=int,
             default=workers_default,
             show_default=True,
-            help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+            help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
         ),
         click.option(
             "--uma-workers-per-node",
@@ -308,8 +308,8 @@ def add_scan_common_options(
             default=bias_k_default,
             show_default=(bias_k_default if bias_k_default is not None else bias_k_shown),
             help=(
-                "Harmonic well strength k [eV/Å^2 for distances; eV/rad^2 for angles]. "
-                "YAML bias.k applies when this option is omitted; explicit CLI wins."
+                "Restraint strength k [eV/Å^2 for distances; eV/rad^2 for angles]. "
+                "YAML bias.k applies when this option is omitted."
             ),
         ),
         click.option(
@@ -318,7 +318,7 @@ def add_scan_common_options(
             default=relax_max_cycles_default,
             show_default="100000",
             help=(
-                "Maximum optimizer cycles per grid relaxation. An explicitly "
+                "Maximum optimizer cycles per relaxation. An explicitly "
                 "provided value overrides YAML opt.max_cycles."
             ),
         ),

@@ -263,8 +263,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default=OUT_DIR_SCAN,
     baseline_help="(unused)",
-    dump_help="Write per-step optimizer trajectory files. scan_trj.xyz is always written; "
-              "PDB/CIF companions additionally require conversion topology.",
+    dump_help="Write per-step optimizer trajectory files. scan_trj.xyz is always written.",
     max_step_help="Maximum scanned distance change per step [Å].",
     thresh_default=None,
     thresh_shown=OPT_BASE_KW["thresh"],
@@ -293,7 +292,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     show_default=True,
     help=(
         "Resolve and validate options (input, charge/spin parity, "
-        "--scan-lists parse) and print the planned scan, then exit "
+        "--scan-lists) and print the planned scan, then exit "
         "without running any optimization."
     ),
 )

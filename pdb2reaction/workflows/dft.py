@@ -556,7 +556,7 @@ def _finalize_dft_result(
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=click.IntRange(min=1), default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available).")
+@click.option("-m", "--multiplicity", "spin", type=click.IntRange(min=1), default=None, show_default="1", help="Spin multiplicity (2S+1; read from .gjf if present).")
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -582,7 +582,7 @@ def _finalize_dft_result(
     type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default="gpu",
     show_default=True,
-    help="SCF backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
+    help="SCF backend: gpu (GPU4PySCF, fails if unavailable) or cpu (PySCF).",
 )
 @click.option(
     "--solvent",
@@ -613,8 +613,7 @@ def _finalize_dft_result(
     "scf_stepwise_grid",
     default=DFT_KW["scf_stepwise_grid"],
     show_default=True,
-    help="Converge the SCF on a coarse grid first, then on the final grid "
-         "with the same settings.",
+    help="Converge the SCF on a coarse grid first, then on the final grid.",
 )
 @click.option(
     "--dft-nprocs",
@@ -652,7 +651,7 @@ def _finalize_dft_result(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--dry-run/--no-dry-run",

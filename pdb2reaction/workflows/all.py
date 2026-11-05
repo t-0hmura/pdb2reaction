@@ -4225,9 +4225,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.command(
     cls=BoolCompatCommand,
     help=(
-        "Run active site model extraction → optional staged scan → MEP search in one run.\n"
+        "Run active site model extraction → optional staged scan → MEP search in one command.\n"
         "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
-        "when extraction is skipped) and use stage results as inputs for path-opt (path_search with --refine-path); "
+        "when extraction is skipped) and use stage results as inputs for the MEP search; "
         "(b) with --tsopt and no --scan-lists, run TSOPT-only mode."
     ),
     context_settings={
@@ -4253,10 +4253,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     multiple=True,
     required=True,
     help=(
-        "Two or more **full structures** (PDB/mmCIF/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
-        "or a single **full structure** (with --scan-lists or with --tsopt). "
-        "Extraction (-c/--center) accepts PDB/mmCIF. mmCIF is processed through an internal PDB "
-        "bridge and emitted again as mmCIF; oversized PDBs use the same safe bridge. "
+        "Two or more full structures (PDB/mmCIF/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
+        "or a single full structure (with --scan-lists or with --tsopt). "
+        "Extraction (-c/--center) accepts PDB/mmCIF. mmCIF and oversized PDB inputs give mmCIF outputs. "
         "Pass multiple files after one -i/--input, or repeat -i/--input for each file."
     ),
 )
@@ -4273,7 +4272,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "(insertion codes OK: '123A' / 'A:123A'), "
         "a residue-name list like 'GPP,SAM', or chain-qualified 'A:SAM' / 'A:SAM:123'. "
         "Each match starts radius expansion. "
-        "When omitted, extraction is skipped and the **full input structure(s)** are used directly as active site models."
+        "When omitted, extraction is skipped and the full input structure(s) are used directly as active site models."
     ),
 )
 @click.option(
@@ -4282,7 +4281,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=click.Path(path_type=Path, file_okay=False),
     default=Path(OUT_DIR_ALL),
     show_default=True,
-    help="Top-level output directory for the pipeline.",
+    help="Top-level output directory.",
 )
 # ===== Extractor knobs =====
 @click.option(
@@ -4292,9 +4291,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=2.6,
     show_default=True,
     help=(
-        "Inclusion cutoff (Å) around center atoms. Zero is accepted and "
-        "evaluated internally as 0.001 Å (effectively off for ordinary "
-        "radius-based neighbors)."
+        "Inclusion cutoff (Å) around center atoms. 0 disables radius-based expansion."
     ),
 )
 @click.option(
@@ -4302,7 +4299,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=click.FloatRange(min=0.0),
     default=0.0,
     show_default=True,
-    help="Independent hetero–hetero cutoff (Å) for non‑C/H pairs.",
+    help="Independent hetero-hetero cutoff (Å) for non-C/H pairs.",
 )
 @click.option(
     "--include-h2o/--no-include-h2o",
@@ -4374,9 +4371,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=int,
     default=None,
     help=(
-        "Total system charge. This explicit value has highest priority over "
-        "extractor/workflow-derived charge; a mismatch emits a warning. Omit "
-        "it to use automatic charge derivation."
+        "Total system charge. Overrides the derived charge; a mismatch emits "
+        "a warning. Omit it to use automatic charge derivation."
     ),
 )
 @click.option(
@@ -4386,7 +4382,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -4495,8 +4491,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="3000",
     help=(
-        "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
-        "iteration count, not a string-optimizer cycle count."
+        "Maximum IPOPT iterations for the DMF MEP stage."
     ),
 )
 @click.option(
@@ -4530,10 +4525,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Dump GSM/MEP trajectories. An explicit parent toggle is forwarded to "
-        "path-search/path-opt and scan/tsopt; when omitted, child YAML/defaults apply. "
-        "When --thermo is enabled, freq always retains thermoanalysis.yaml because "
-        "the composite workflow consumes that file; --no-dump does not suppress it."
+        "Dump trajectories from the MEP, scan and tsopt stages; when omitted, each "
+        "stage's YAML/defaults apply. With --thermo, freq always keeps thermoanalysis.yaml."
     ),
 )
 @click.option(
@@ -4549,8 +4542,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Run a single-pass path-opt with the selected GSM/DMF method between each adjacent pair and concatenate the "
-        "segments (default; no path_search). Use --refine-path to run recursive "
+        "By default, run a single-pass path-opt with the selected GSM/DMF method between each adjacent pair and "
+        "concatenate the segments. Use --refine-path to run recursive "
         "path-search on the full ordered series: it proposes multistep reaction paths and "
         "also refines a single-step MEP, which can improve a poor HEI or TS estimate."
     ),
@@ -4561,8 +4554,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Write mep_w_ref/hei_w_ref coordinate composites for inspection in "
-        "recursive --refine-path mode. Requires -c/--center and PDB/mmCIF input."
+        "Write the MEP and HEI merged into the full input (mep_w_ref/hei_w_ref) "
+        "in --refine-path mode. Requires -c/--center and PDB/mmCIF input."
     ),
 )
 @click.option(
@@ -4603,8 +4596,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF MEP stage: "
-        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset."
+        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float."
     ),
 )
 @click.option(
@@ -4654,13 +4646,13 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "preopt",
     default=True,
     show_default=True,
-    help="If True, run initial single-structure optimizations of the active site model inputs.",
+    help="Run initial single-structure optimizations of the active site model inputs.",
 )
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="Common MLIP Hessian calculation mode forwarded to tsopt, irc and freq.",
+    help="How the backend computes the Hessian in tsopt, irc and freq.",
 )
 # ===== Post-processing toggles =====
 @click.option(
@@ -4669,7 +4661,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "TS optimization + IRC per reactive segment (or TSOPT-only mode for single-structure), "
+        "Run TS optimization and IRC per reactive segment (or TSOPT-only mode for a single structure) "
         "and build energy diagrams."
     ),
 )
@@ -4721,7 +4713,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "flatten",
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RS-P-RFO); --no-flatten forces flatten_max_iter=0.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt; --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
     "--skip-final-freq/--no-skip-final-freq",
@@ -4729,10 +4721,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Skip terminal PHVA/frequency analysis in tsopt. The TS structure is "
-        "retained with unverified saddle order, and all skips IRC and the later "
-        "stages of that segment because no imaginary reaction direction can be "
-        "validated; other segments continue."
+        "Skip the final PHVA/frequency analysis in tsopt. The TS structure is "
+        "retained with unverified saddle order, and IRC and the later stages of "
+        "that segment are skipped; other segments continue."
     ),
 )
 @click.option(
@@ -4741,7 +4732,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Opt in to rejecting uphill RFO trials during post-IRC endpoint "
+        "Reject uphill RFO steps during post-IRC endpoint "
         "re-optimization only (tolerance: 1e-4 Hartree). Does not affect "
         "TS optimization or path search."
     ),
@@ -4967,7 +4958,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "scan_preopt_override",
     default=None,
     show_default="inherits --preopt",
-    help="Override scan --preopt flag. Inherits from --preopt when omitted.",
+    help="Override scan --preopt flag.",
 )
 @click.option(
     "--scan-endopt/--no-scan-endopt",
@@ -4982,8 +4973,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "Reference PDB/mmCIF for topology when -i provides XYZ inputs. "
-        "Enables topology-aware PDB/mmCIF output conversion in TSOPT-only, scan, and path_search pipelines."
+        "Reference PDB/mmCIF for topology when -i provides XYZ/GJF inputs. "
+        "Enables PDB/mmCIF output conversion."
     ),
 )
 @add_coord_type_option(choices=("cart", "dlc"))

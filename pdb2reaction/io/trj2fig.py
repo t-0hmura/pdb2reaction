@@ -370,8 +370,8 @@ def run_trj2fig(
     multiple=True,
     default=(),
     type=click.Path(dir_okay=False, path_type=Path),
-    help="Output file(s). You can repeat -o and/or list extra filenames after options "
-         "(.png/.jpg/.jpeg/.html/.svg/.pdf/.csv). If nothing is given, defaults to energy.png.",
+    help="Output file(s) (.png/.jpg/.jpeg/.html/.svg/.pdf/.csv). You can repeat -o and/or "
+         "list extra filenames after options. Defaults to energy.png.",
 )
 @click.argument(
     "extra_outs",
@@ -426,7 +426,7 @@ def run_trj2fig(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to the output directory.",
+    help="Write result.json to the output directory.",
 )
 @click.pass_context
 def cli(

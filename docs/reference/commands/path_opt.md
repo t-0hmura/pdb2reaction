@@ -8,7 +8,7 @@ Usage: pdb2reaction path-opt [OPTIONS]
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+optimizer cycle tables,
-                                  per-stage timing, VRAM, deliverable paths;
+                                  per-stage timing, VRAM, output paths;
                                   3=everything (full config blocks, per-file
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
@@ -26,10 +26,10 @@ Options:
                                   YAML calc.charge, or a .gjf input gives it.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -58,18 +58,16 @@ Options:
                                   MEP stage.  [default: (300); x>=1]
   --dmf-max-iterations, --max-cycles-dmf INTEGER RANGE
                                   Maximum IPOPT iterations for the DMF MEP
-                                  stage. This is a solver iteration count, not a
-                                  string-optimizer cycle count.  [default:
-                                  (3000); x>=1]
+                                  stage.  [default: (3000); x>=1]
   --climb / --no-climb            Enable the GSM climbing-image search after
-                                  path growth (accepted but unused by DMF).
-                                  [default: climb]
+                                  path growth (ignored by DMF).  [default:
+                                  climb]
   --opt-mode [grad|hess]          Single-structure optimizer for endpoint
                                   preoptimization: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
   --dump / --no-dump              Write GSM/single-optimizer trajectory and
-                                  restart data (accepted but unused by DMF).
-                                  [default: no-dump]
+                                  restart data (ignored by DMF).  [default: no-
+                                  dump]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
@@ -86,8 +84,8 @@ Options:
                                   optimizer.  [default: (gau_loose)]
   --dmf-tol, --thresh-dmf TEXT    IPOPT dual-infeasibility tolerance for the DMF
                                   path optimizer: tight (0.04) | middle (0.10) |
-                                  loose (0.20) or a positive float. This is not
-                                  a Gaussian preset.  [default: (tight)]
+                                  loose (0.20) or a positive float.  [default:
+                                  (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -96,7 +94,7 @@ Options:
                                   config]
   --dry-run / --no-dry-run        Validate options and inputs without running
                                   path optimization.  [default: no-dry-run]
-  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+  --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   --preopt / --no-preopt          Preoptimize each endpoint via the selected
                                   single-structure optimizer (LBFGS/RFO) before
@@ -107,8 +105,7 @@ Options:
                                   preoptimization pass.  [default: (100000);
                                   x>=1]
   --fix-ends / --no-fix-ends      Fix input endpoints during GSM path
-                                  optimization (accepted but unused by DMF).
-                                  [default: fix-ends]
+                                  optimization.  [default: fix-ends]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
@@ -127,11 +124,10 @@ Options:
   --coord-type [cart|dlc]         Optimization coordinate system.  [default:
                                   (cart)]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
@@ -143,20 +139,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -170,10 +165,10 @@ Options:
                                   PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the

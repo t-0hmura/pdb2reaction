@@ -215,8 +215,8 @@ def _result_calculator_fields(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "If provided, skip the 3D scan and read a precomputed surface.csv from this path. "
-        "When used, -i/--input and --scan-lists are optional."
+        "Skip the 3D scan and plot a precomputed surface.csv; "
+        "-i/--input and --scan-lists are then optional."
     ),
 )
 @add_solvent_xtb_cmd_option()
@@ -225,7 +225,7 @@ def _result_calculator_fields(
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default=OUT_DIR_SCAN3D,
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0,k=0).",
-    dump_help="Write inner d3 scan trajectories per (d1,d2) as TRJ under result_scan3d/grid/.",
+    dump_help="Write the inner-loop (d3) trajectory for each (d1,d2) pair under <out-dir>/grid/.",
     max_step_help="Maximum scanned distance change per step [Å].",
 )
 @click.option(
@@ -233,7 +233,7 @@ def _result_calculator_fields(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
@@ -242,7 +242,7 @@ def _result_calculator_fields(
     show_default=True,
     help=(
         "Resolve and validate options (input, charge/spin parity, "
-        "--scan-lists parse) and print the planned scan, then exit "
+        "--scan-lists) and print the planned scan, then exit "
         "without running any optimization."
     ),
 )

@@ -123,7 +123,7 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "trj2fig": ("pdb2reaction.io.trj2fig", "cli", "Plot energy profile from trajectory."),
     "add-elem-info": ("pdb2reaction.domain.add_elem_info", "cli", "Repair/add PDB element columns."),
     "dft": ("pdb2reaction.workflows.dft", "cli", "Run single-point DFT."),
-    "sp": ("pdb2reaction.workflows.sp", "cli", "Run single-point MLIP energy + forces."),
+    "sp": ("pdb2reaction.workflows.sp", "cli", "Run single-point energy + forces."),
     "scan2d": ("pdb2reaction.workflows.scan2d", "cli", "Run a 2D coordinate scan."),
     "scan3d": ("pdb2reaction.workflows.scan3d", "cli", "Run a 3D coordinate scan."),
     "extract": ("pdb2reaction.workflows.extract", "cli", "Extract an active site model."),
@@ -703,9 +703,9 @@ def _verbose_help(name: str | None) -> str:
     description never claims optimizer cycle tables for non-optimizer commands
     (extract, sp, freq, dft, file IO, analysis)."""
     if name in _OPTIMIZER_SUBCOMMANDS:
-        level2 = "optimizer cycle tables, per-stage timing, VRAM, deliverable paths"
+        level2 = "optimizer cycle tables, per-stage timing, VRAM, output paths"
     else:
-        level2 = "detailed step logging and deliverable paths"
+        level2 = "detailed step logging and output paths"
     return (
         "Console verbosity 0-3 (default 2). 0=silent; 1=milestones only; "
         f"2=+{level2}; "

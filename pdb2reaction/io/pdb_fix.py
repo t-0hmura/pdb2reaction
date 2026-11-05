@@ -482,8 +482,8 @@ def _run_fix_altloc(
 @click.command(
     name="fix-altloc",
     help=(
-        "Blank PDB altLoc column (col 17) without shifting, and select one "
-        "coherent label per residue by highest mean occupancy, then earliest appearance."
+        "Keep one altLoc per residue (highest mean occupancy, then earliest "
+        "appearance) and blank the altLoc column (col 17)."
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
 )
@@ -503,7 +503,7 @@ def _run_fix_altloc(
     "--recursive/--no-recursive",
     default=False,
     show_default=True,
-    help="When input is a directory, process *.pdb recursively (including subdirectories).",
+    help="When input is a directory, process *.pdb recursively.",
 )
 @click.option(
     "--inplace/--no-inplace",
@@ -521,7 +521,7 @@ def _run_fix_altloc(
     "--force/--no-force",
     default=False,
     show_default=True,
-    help="Process files even if no altLoc is detected (default: skip files without altLoc).",
+    help="Process files even if no altLoc is detected.",
 )
 def cli(
     input_path: Path,

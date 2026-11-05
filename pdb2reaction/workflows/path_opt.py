@@ -686,7 +686,7 @@ def _optimize_single(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -765,16 +765,13 @@ def _optimize_single(
     type=click.IntRange(min=1),
     default=None,
     show_default="3000",
-    help=(
-        "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
-        "iteration count, not a string-optimizer cycle count."
-    ),
+    help="Maximum IPOPT iterations for the DMF MEP stage.",
 )
 @click.option(
     "--climb/--no-climb",
     default=True,
     show_default=True,
-    help="Enable the GSM climbing-image search after path growth (accepted but unused by DMF).",
+    help="Enable the GSM climbing-image search after path growth (ignored by DMF).",
 )
 @click.option(
     "--opt-mode",
@@ -787,7 +784,7 @@ def _optimize_single(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Write GSM/single-optimizer trajectory and restart data (accepted but unused by DMF).",
+    help="Write GSM/single-optimizer trajectory and restart data (ignored by DMF).",
 )
 @click.option(
     "--convert-files/--no-convert-files",
@@ -837,8 +834,7 @@ def _optimize_single(
     show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
-        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset."
+        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float."
     ),
 )
 @click.option(
@@ -867,7 +863,7 @@ def _optimize_single(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--preopt/--no-preopt",
@@ -895,7 +891,7 @@ def _optimize_single(
     "--fix-ends/--no-fix-ends",
     default=True,
     show_default=True,
-    help="Fix input endpoints during GSM path optimization (accepted but unused by DMF).",
+    help="Fix input endpoints during GSM path optimization.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")

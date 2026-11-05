@@ -2184,7 +2184,7 @@ def _validate_reference_mode_optimizer(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -2229,7 +2229,7 @@ def _validate_reference_mode_optimizer(
     "flatten",
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop (grad: dimer loop, hess: post-RS-P-RFO).",
+    help="Enable the extra-imaginary-mode flattening loop.",
 )
 @click.option(
     "--opt-mode",
@@ -2284,11 +2284,10 @@ def _validate_reference_mode_optimizer(
     default=False,
     show_default=True,
     help=(
-        "Skip the terminal PHVA/frequency analysis after convergence (a plateau "
+        "Skip the final PHVA/frequency analysis after convergence (a plateau "
         "stop still runs it); RS-P-RFO/RS-I-RFO/TRIM also skip --flatten, which "
         "needs it. Standalone tsopt retains the final structure with unverified "
-        "saddle order; all skips IRC and the later stages of that segment "
-        "because no imaginary direction can be validated."
+        "saddle order; 'all' skips IRC and the later stages of that segment."
     ),
 )
 @click.option(
@@ -2314,13 +2313,13 @@ def _validate_reference_mode_optimizer(
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins.",
+    help="How the backend computes the Hessian.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")

@@ -382,14 +382,14 @@ def _build_scan_context(
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default=OUT_DIR_SCAN2D,
     baseline_help="Reference for relative energy (kcal/mol): 'min' or 'first' (i=0,j=0).",
-    dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
+    dump_help="Write the inner-loop trajectory for each d1 value under <out-dir>/grid/.",
 )
 @click.option(
     "--out-json/--no-out-json",
     "out_json",
     default=False,
     show_default=True,
-    help="Write machine-readable result.json to out_dir.",
+    help="Write result.json to the output directory.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
@@ -398,7 +398,7 @@ def _build_scan_context(
     show_default=True,
     help=(
         "Resolve and validate options (input, charge/spin parity, "
-        "--scan-lists parse) and print the planned scan, then exit "
+        "--scan-lists) and print the planned scan, then exit "
         "without running any optimization."
     ),
 )

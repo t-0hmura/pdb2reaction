@@ -3,13 +3,13 @@
 ```text
 Usage: pdb2reaction sp [OPTIONS]
 
-  Compute a single-point MLIP energy + forces (and optionally Hessian).
+  Compute single-point energy and forces (and optionally the Hessian).
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+detailed step logging
-                                  and deliverable paths; 3=everything (full
-                                  config blocks, per-file paths, DEBUG logging).
+                                  and output paths; 3=everything (full config
+                                  blocks, per-file paths, DEBUG logging).
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
@@ -17,10 +17,10 @@ Options:
                                   [required]
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -28,14 +28,14 @@ Options:
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
   --hess / --no-hess              Also compute a Hessian and save it to
-                                  hessian.npy (active block when atoms are
+                                  hessian.npy (movable atoms only when atoms are
                                   frozen).  [default: no-hess]
   --hessian-calc-mode [analytical|finitedifference]
-                                  Hessian backend when --hess is set.
+                                  Hessian calculation method when --hess is set.
                                   FiniteDifference is the default for every
-                                  backend; UMA, ORB, MACE, and AIMNet2 also
-                                  support an explicit Analytical request.
-                                  [default: (FiniteDifference)]
+                                  backend; UMA, ORB, MACE, AIMNet2, and DFT also
+                                  support Analytical.  [default:
+                                  (FiniteDifference)]
   --config FILE                   YAML config file with sections (calc:, geom:,
                                   …).
   --show-config / --no-show-config
@@ -44,7 +44,7 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the plan without
                                   running the calculation.  [default: no-dry-
                                   run]
-  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+  --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
@@ -70,11 +70,10 @@ Options:
                                   Spin multiplicity (2S+1).  [default: (1);
                                   x>=1]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
@@ -86,20 +85,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -113,10 +111,10 @@ Options:
                                   PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the

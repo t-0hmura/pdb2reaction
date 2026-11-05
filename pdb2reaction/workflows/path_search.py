@@ -2071,7 +2071,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     required=True,
-    help="Two or more PDB, mmCIF, XYZ, or GJF structures in reaction order. Repeat -i/--input for each path.",
+    help="Two or more PDB, mmCIF, XYZ, or GJF structures in reaction order. Repeat -i/--input for each file.",
 )
 @click.option(
     "--mep-mode",
@@ -2094,9 +2094,8 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     show_default="peak for gsm, minima for dmf",
     help=(
-        "Refinement seed selection around the highest-energy image: "
-        "'peak' uses HEI±1, 'minima' uses the nearest local minima in each direction. "
-        "Defaults to peak for gsm and minima for dmf when omitted."
+        "Refinement seed selection around the highest-energy image (HEI): "
+        "'peak' uses HEI±1, 'minima' uses the nearest local minima in each direction."
     ),
 )
 @click.option(
@@ -2117,7 +2116,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (needs fairchem-core[ray]). With UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--uma-workers-per-node",
@@ -2146,7 +2145,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.IntRange(min=1),
     default=None,
     show_default="1 (or the .gjf template value)",
-    help="Spin multiplicity (2S+1; inherits from a .gjf template when available).",
+    help="Spin multiplicity (2S+1).",
 )
 @click.option(
     "--freeze-links/--no-freeze-links",
@@ -2192,8 +2191,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
 @click.option("--dmf-max-iterations", "--max-cycles-dmf", "max_cycles_dmf", type=click.IntRange(min=1), default=None, show_default="3000",
-              help=("Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
-                    "iteration count, not a string-optimizer cycle count."))
+              help="Maximum IPOPT iterations for the DMF MEP stage.")
 @click.option(
     "--climb/--no-climb",
     default=True,
@@ -2264,8 +2262,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
-        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset."
+        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float."
     ),
 )
 @click.option(
@@ -2294,7 +2291,7 @@ def _merge_final_and_write(final_images: List[Any],
     "preopt",
     default=True,
     show_default=True,
-    help="If True, run initial single-structure optimizations of inputs."
+    help="Run initial single-structure optimizations of the inputs."
 )
 @click.option(
     "--align/--no-align",
@@ -2329,7 +2326,6 @@ def _merge_final_and_write(final_images: List[Any],
     default=None,
     help=("Pocket reference PDB/mmCIF files used to write the PDB outputs for XYZ/GJF inputs "
           "and for the full-system merge. "
-          "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
           "Must match the number and order of --input.")
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",

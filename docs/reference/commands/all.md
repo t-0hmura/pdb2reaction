@@ -4,30 +4,28 @@
 Usage: pdb2reaction all [OPTIONS]
 
   Run active site model extraction → optional staged scan → MEP search in one
-  run. If exactly one input is provided: (a) with --scan-lists, run staged scan
-  on the active site model (or full structure when extraction is skipped) and
-  use stage results as inputs for path-opt (path_search with --refine-path); (b)
-  with --tsopt and no --scan-lists, run TSOPT-only mode.
+  command. If exactly one input is provided: (a) with --scan-lists, run staged
+  scan on the active site model (or full structure when extraction is skipped)
+  and use stage results as inputs for the MEP search; (b) with --tsopt and no
+  --scan-lists, run TSOPT-only mode.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+optimizer cycle tables,
-                                  per-stage timing, VRAM, deliverable paths;
+                                  per-stage timing, VRAM, output paths;
                                   3=everything (full config blocks, per-file
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Two or more **full structures**
+  -i, --input FILE                Two or more full structures
                                   (PDB/mmCIF/XYZ/GJF) in reaction order
                                   (reactant [intermediates ...] product), or a
-                                  single **full structure** (with --scan-lists
-                                  or with --tsopt). Extraction (-c/--center)
-                                  accepts PDB/mmCIF. mmCIF is processed through
-                                  an internal PDB bridge and emitted again as
-                                  mmCIF; oversized PDBs use the same safe
-                                  bridge. Pass multiple files after one
-                                  -i/--input, or repeat -i/--input for each
-                                  file.  [required]
+                                  single full structure (with --scan-lists or
+                                  with --tsopt). Extraction (-c/--center)
+                                  accepts PDB/mmCIF. mmCIF and oversized PDB
+                                  inputs give mmCIF outputs. Pass multiple files
+                                  after one -i/--input, or repeat -i/--input for
+                                  each file.  [required]
   -c, --center TEXT               Extraction centers (normally substrate +
                                   catalytic residues): a PDB/mmCIF path, a
                                   residue-ID list like '123,124' or
@@ -35,17 +33,16 @@ Options:
                                   'A:123A'), a residue-name list like 'GPP,SAM',
                                   or chain-qualified 'A:SAM' / 'A:SAM:123'. Each
                                   match starts radius expansion. When omitted,
-                                  extraction is skipped and the **full input
-                                  structure(s)** are used directly as active
-                                  site models.
-  -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
-                                  [default: result_all]
-  -r, --radius FLOAT RANGE        Inclusion cutoff (Å) around center atoms. Zero
-                                  is accepted and evaluated internally as 0.001
-                                  Å (effectively off for ordinary radius-based
-                                  neighbors).  [default: 2.6; x>=0.0]
-  --radius-het2het FLOAT RANGE    Independent hetero–hetero cutoff (Å) for
-                                  non‑C/H pairs.  [default: 0.0; x>=0.0]
+                                  extraction is skipped and the full input
+                                  structure(s) are used directly as active site
+                                  models.
+  -o, --out-dir DIRECTORY         Top-level output directory.  [default:
+                                  result_all]
+  -r, --radius FLOAT RANGE        Inclusion cutoff (Å) around center atoms. 0
+                                  disables radius-based expansion.  [default:
+                                  2.6; x>=0.0]
+  --radius-het2het FLOAT RANGE    Independent hetero-hetero cutoff (Å) for
+                                  non-C/H pairs.  [default: 0.0; x>=0.0]
   --include-h2o / --no-include-h2o
                                   Include waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL)
                                   in the active site model.  [default:
@@ -83,16 +80,15 @@ Options:
                                   only. An explicit -q/--charge has highest
                                   priority over either derived value and emits a
                                   warning.
-  -q, --charge INTEGER            Total system charge. This explicit value has
-                                  highest priority over extractor/workflow-
-                                  derived charge; a mismatch emits a warning.
-                                  Omit it to use automatic charge derivation.
+  -q, --charge INTEGER            Total system charge. Overrides the derived
+                                  charge; a mismatch emits a warning. Omit it to
+                                  use automatic charge derivation.
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -147,9 +143,7 @@ Options:
                                   MEP stage.  [default: (300); x>=1]
   --dmf-max-iterations, --max-cycles-dmf INTEGER RANGE
                                   Maximum IPOPT iterations for the DMF MEP
-                                  stage. This is a solver iteration count, not a
-                                  string-optimizer cycle count.  [default:
-                                  (3000); x>=1]
+                                  stage.  [default: (3000); x>=1]
   --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: climb]
@@ -162,34 +156,29 @@ Options:
                                   mode when explicitly provided; otherwise falls
                                   back to the default ('hess' = RS-P-RFO).
                                   [default: hess]
-  --dump / --no-dump              Dump GSM/MEP trajectories. An explicit parent
-                                  toggle is forwarded to path-search/path-opt
-                                  and scan/tsopt; when omitted, child
-                                  YAML/defaults apply. When --thermo is enabled,
-                                  freq always retains thermoanalysis.yaml
-                                  because the composite workflow consumes that
-                                  file; --no-dump does not suppress it.
-                                  [default: no-dump]
+  --dump / --no-dump              Dump trajectories from the MEP, scan and tsopt
+                                  stages; when omitted, each stage's
+                                  YAML/defaults apply. With --thermo, freq
+                                  always keeps thermoanalysis.yaml.  [default:
+                                  no-dump]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: convert-files]
   --refine-path / --no-refine-path
-                                  Run a single-pass path-opt with the selected
-                                  GSM/DMF method between each adjacent pair and
-                                  concatenate the segments (default; no
-                                  path_search). Use --refine-path to run
-                                  recursive path-search on the full ordered
-                                  series: it proposes multistep reaction paths
-                                  and also refines a single-step MEP, which can
-                                  improve a poor HEI or TS estimate.  [default:
-                                  no-refine-path]
+                                  By default, run a single-pass path-opt with
+                                  the selected GSM/DMF method between each
+                                  adjacent pair and concatenate the segments.
+                                  Use --refine-path to run recursive path-search
+                                  on the full ordered series: it proposes
+                                  multistep reaction paths and also refines a
+                                  single-step MEP, which can improve a poor HEI
+                                  or TS estimate.  [default: no-refine-path]
   --write-ref-merge / --no-write-ref-merge
-                                  Write mep_w_ref/hei_w_ref coordinate
-                                  composites for inspection in recursive
-                                  --refine-path mode. Requires -c/--center and
-                                  PDB/mmCIF input.  [default: no-write-ref-
-                                  merge]
+                                  Write the MEP and HEI merged into the full
+                                  input (mep_w_ref/hei_w_ref) in --refine-path
+                                  mode. Requires -c/--center and PDB/mmCIF
+                                  input.  [default: no-write-ref-merge]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
                                   optimizations and scan relaxations. The MEP
@@ -204,8 +193,8 @@ Options:
                                   (gau_loose)]
   --dmf-tol, --thresh-dmf TEXT    IPOPT dual-infeasibility tolerance for the DMF
                                   MEP stage: tight (0.04) | middle (0.10) |
-                                  loose (0.20) or a positive float. This is not
-                                  a Gaussian preset.  [default: (tight)]
+                                  loose (0.20) or a positive float.  [default:
+                                  (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --resume / --no-resume          Resume from the first unfinished segment using
@@ -226,16 +215,16 @@ Options:
                                   electron parity; no computational stage or
                                   persistent output is produced.  [default: no-
                                   dry-run]
-  --preopt / --no-preopt          If True, run initial single-structure
-                                  optimizations of the active site model inputs.
-                                  [default: preopt]
+  --preopt / --no-preopt          Run initial single-structure optimizations of
+                                  the active site model inputs.  [default:
+                                  preopt]
   --hessian-calc-mode [finitedifference|analytical]
-                                  Common MLIP Hessian calculation mode forwarded
-                                  to tsopt, irc and freq.  [default:
-                                  (FiniteDifference)]
-  --tsopt / --no-tsopt            TS optimization + IRC per reactive segment (or
-                                  TSOPT-only mode for single-structure), and
-                                  build energy diagrams.  [default: no-tsopt]
+                                  How the backend computes the Hessian in tsopt,
+                                  irc and freq.  [default: (FiniteDifference)]
+  --tsopt / --no-tsopt            Run TS optimization and IRC per reactive
+                                  segment (or TSOPT-only mode for a single
+                                  structure) and build energy diagrams.
+                                  [default: no-tsopt]
   --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
                                   Use the MEP tangent at the highest-energy
                                   image to choose which Hessian mode RS-P-RFO
@@ -256,23 +245,20 @@ Options:
                                   paths are resolved against the default).
                                   [default: (<segment>/ts)]
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
-                                  loop in tsopt (grad: dimer loop, hess: post-
-                                  RS-P-RFO); --no-flatten forces
+                                  loop in tsopt; --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
   --skip-final-freq / --no-skip-final-freq
-                                  Skip terminal PHVA/frequency analysis in
+                                  Skip the final PHVA/frequency analysis in
                                   tsopt. The TS structure is retained with
-                                  unverified saddle order, and all skips IRC and
-                                  the later stages of that segment because no
-                                  imaginary reaction direction can be validated;
-                                  other segments continue.  [default: no-skip-
-                                  final-freq]
+                                  unverified saddle order, and IRC and the later
+                                  stages of that segment are skipped; other
+                                  segments continue.  [default: no-skip-final-
+                                  freq]
   --reject-uphill / --no-reject-uphill
-                                  Opt in to rejecting uphill RFO trials during
-                                  post-IRC endpoint re-optimization only
-                                  (tolerance: 1e-4 Hartree). Does not affect TS
-                                  optimization or path search.  [default: no-
-                                  reject-uphill]
+                                  Reject uphill RFO steps during post-IRC
+                                  endpoint re-optimization only (tolerance: 1e-4
+                                  Hartree). Does not affect TS optimization or
+                                  path search.  [default: no-reject-uphill]
   --stop-plateau / --no-stop-plateau
                                   Stop when the energy stops changing while the
                                   convergence criteria are still unmet, and
@@ -359,28 +345,25 @@ Options:
                                   Override scan relaxation max cycles per step.
                                   [default: (100000); x>=1]
   --scan-preopt / --no-scan-preopt
-                                  Override scan --preopt flag. Inherits from
-                                  --preopt when omitted.  [default: (inherits
-                                  --preopt)]
+                                  Override scan --preopt flag.  [default:
+                                  (inherits --preopt)]
   --scan-endopt / --no-scan-endopt
                                   Override scan --endopt flag.  [default:
                                   (False)]
   --ref-pdb FILE                  Reference PDB/mmCIF for topology when -i
-                                  provides XYZ inputs. Enables topology-aware
-                                  PDB/mmCIF output conversion in TSOPT-only,
-                                  scan, and path_search pipelines.
+                                  provides XYZ/GJF inputs. Enables PDB/mmCIF
+                                  output conversion.
   --coord-type [cart|dlc]         Optimization coordinate system.  [default:
                                   (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles.
                                   [default: (100); x>=1]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only. --precision-post overrides
-                                  it for TSOPT, IRC, endpoint optimization and
-                                  freq.  [default: (per backend: uma fp32; orb,
-                                  mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only. --precision-post overrides it for
+                                  TSOPT, IRC, endpoint optimization and freq.
+                                  [default: (per backend: uma fp32; orb, mace
+                                  fp64)]
   --precision-post [tf32|fp32|fp64]
                                   MLIP precision for TSOPT, IRC, the post-IRC
                                   endpoint optimizations and freq. Unset uses
@@ -397,20 +380,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -419,10 +401,10 @@ Options:
                                   instead; use this only for an intentionally
                                   nonstandard electron count.
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the

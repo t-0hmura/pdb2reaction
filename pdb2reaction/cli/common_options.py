@@ -151,7 +151,7 @@ def add_dft_calculator_options(
             default=None,
             expose_value=False,
             callback=_capture_dft_option,
-            help="Load/save the optional structure-bound PySCF checkpoint at PATH.",
+            help="Load/save the optional structure-bound PySCF checkpoint.",
         )(func)
         func = click.option(
             "--save-scf-checkpoint/--no-save-scf-checkpoint",
@@ -159,7 +159,7 @@ def add_dft_calculator_options(
             show_default="disabled",
             expose_value=False,
             callback=_capture_dft_option,
-            help="Persist a structure-bound PySCF checkpoint (default: disabled).",
+            help="Save a structure-bound PySCF checkpoint.",
         )(func)
         if include_engine:
             func = click.option(
@@ -294,8 +294,7 @@ def add_precision_option(*, post_option: bool = False) -> Callable[[Callable], C
     ``--precision-post`` (:func:`add_precision_post_option`).
     """
     help_text = (
-        "MLIP backend precision: tf32, fp32 (IEEE) or fp64. Unset "
-        "defaults per backend (uma: fp32; orb, mace: fp64). tf32 uses "
+        "MLIP backend precision: tf32, fp32 (IEEE) or fp64. tf32 uses "
         "TF32 matmul for speed (uma, orb only); avoid it for Hessians. "
         "aimnet2: fp32 only."
     )
@@ -413,8 +412,7 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
             show_default="get_calculator",
             help=(
                 "Name of the callable in --calc-file that returns an ASE "
-                "Calculator (or a module-level Calculator instance). "
-                "CLI overrides config YAML; otherwise defaults to get_calculator."
+                "Calculator (or a module-level Calculator instance)."
             ),
         )(func)
         func = click.option(
@@ -425,7 +423,7 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
             help=(
                 "Python file exposing get_calculator(...) -> an ASE Calculator, "
                 "used as the energy/gradient backend (overrides --backend). "
-                "Couples GFN-xTB / DFTB+ / any ASE engine. See --calc-file-func-name."
+                "Works with GFN-xTB, DFTB+ or any ASE engine. See --calc-file-func-name."
             ),
         )(func)
         return func
@@ -488,7 +486,7 @@ def add_deterministic_option() -> Callable[[Callable], Callable]:
             help=(
                 "Make repeated runs on the same software versions and hardware "
                 "give identical results (PyTorch deterministic algorithms). "
-                "Slower; raises for detected unsupported ops; custom calculators "
+                "Slower; raises an error on unsupported ops; custom calculators "
                 "are outside its scope."
             ),
         )(func)

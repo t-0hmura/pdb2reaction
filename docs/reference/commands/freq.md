@@ -3,14 +3,14 @@
 ```text
 Usage: pdb2reaction freq [OPTIONS]
 
-  Vibrational frequency analysis and mode writer (+ default thermochemistry
-  summary).
+  Vibrational frequency analysis with mode trajectories and a thermochemistry
+  summary.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
                                   1=milestones only; 2=+detailed step logging
-                                  and deliverable paths; 3=everything (full
-                                  config blocks, per-file paths, DEBUG logging).
+                                  and output paths; 3=everything (full config
+                                  blocks, per-file paths, DEBUG logging).
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
@@ -18,10 +18,10 @@ Options:
                                   .xyz, .gjf, ...).  [required]
   --uma-workers, --workers INTEGER
                                   MLIP predictor workers; >1 spawns a parallel
-                                  predictor (needs fairchem-core[ray]). NOTE:
-                                  with UMA, workers>1 plus an explicit
-                                  Analytical Hessian request is an error; use
-                                  workers=1 or FiniteDifference.  [default: 1]
+                                  predictor (needs fairchem-core[ray]). With
+                                  UMA, workers>1 plus an explicit Analytical
+                                  Hessian request is an error; use workers=1 or
+                                  FiniteDifference.  [default: 1]
   --uma-workers-per-node, --workers-per-node INTEGER
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -37,7 +37,7 @@ Options:
                                   convert-files]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
-  --max-write INTEGER             How many modes to export (after sorting per
+  --max-write INTEGER             How many modes to export (after sorting by
                                   --sort).  [default: 10]
   --amplitude-ang FLOAT           Mode-trajectory amplitude (Å) used for both
                                   _trj.xyz and .pdb.  [default: 0.8]
@@ -69,17 +69,15 @@ Options:
                                   (Cartesian, Hartree/bohr^2; movable atoms only
                                   when atoms are frozen) for '--read-hess' in
                                   freq, tsopt, or irc, or for other programs.
-  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+  --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   --hessian-calc-mode [finitedifference|analytical]
-                                  How the ML backend computes the Hessian (can
-                                  also be set via YAML).  [default:
-                                  (FiniteDifference)]
-  --hess-device [auto|cuda|cpu]   Device for post-evaluation Hessian placement
-                                  and diagonalization (auto/cuda/cpu). Use 'cpu'
-                                  to move the evaluated Hessian off GPU before
-                                  diagonalization. The calculator itself still
-                                  runs on its own device.  [default: auto]
+                                  How the backend computes the Hessian.
+                                  [default: (FiniteDifference)]
+  --hess-device [auto|cuda|cpu]   Device used to store and diagonalize the
+                                  Hessian. Use 'cpu' to offload diagonalization
+                                  from the GPU (does not affect the calculator
+                                  device).  [default: auto]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
@@ -105,11 +103,10 @@ Options:
                                   Spin multiplicity (2S+1).  [default: (1);
                                   x>=1]
   --precision [tf32|fp32|fp64]    MLIP backend precision: tf32, fp32 (IEEE) or
-                                  fp64. Unset defaults per backend (uma: fp32;
-                                  orb, mace: fp64). tf32 uses TF32 matmul for
-                                  speed (uma, orb only); avoid it for Hessians.
-                                  aimnet2: fp32 only.  [default: (per backend:
-                                  uma fp32; orb, mace fp64)]
+                                  fp64. tf32 uses TF32 matmul for speed (uma,
+                                  orb only); avoid it for Hessians. aimnet2:
+                                  fp32 only.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
@@ -121,20 +118,19 @@ Options:
                                   [default: (the selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
-                                  backend (overrides --backend). Couples GFN-xTB
-                                  / DFTB+ / any ASE engine. See --calc-file-
+                                  backend (overrides --backend). Works with GFN-
+                                  xTB, DFTB+ or any ASE engine. See --calc-file-
                                   func-name.
   --calc-factory, --calc-file-func-name TEXT
                                   Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance). CLI overrides config
-                                  YAML; otherwise defaults to get_calculator.
-                                  [default: (get_calculator)]
+                                  Calculator instance).  [default:
+                                  (get_calculator)]
   --deterministic / --no-deterministic
                                   Make repeated runs on the same software
                                   versions and hardware give identical results
                                   (PyTorch deterministic algorithms). Slower;
-                                  raises for detected unsupported ops; custom
+                                  raises an error on unsupported ops; custom
                                   calculators are outside its scope.  [default:
                                   no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
@@ -148,10 +144,10 @@ Options:
                                   PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
-                                  Persist a structure-bound PySCF checkpoint
-                                  (default: disabled).  [default: (disabled)]
+                                  Save a structure-bound PySCF checkpoint.
+                                  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
-                                  checkpoint at PATH.
+                                  checkpoint.
   --scf-stepwise-grid / --no-scf-stepwise-grid
                                   Converge the first SCF on a coarse grid, then
                                   on the final grid (later SCFs reuse the
