@@ -82,7 +82,7 @@ def validate_resume_identity(
     if not isinstance(recorded, Mapping):
         raise click.UsageError(
             "This output predates verified segment resume. Run the MEP once with "
-            "this version before using --resume-segment."
+            "this version before resuming."
         )
     if recorded.get("schema_version") != SCHEMA_VERSION:
         raise click.UsageError("Unsupported segment-resume metadata version.")
@@ -104,7 +104,7 @@ def validate_resume_identity(
     ):
         if recorded.get(key) != current.get(key):
             raise click.UsageError(
-                f"--resume-segment cannot reuse the saved MEP because {key} changed. "
+                f"The run cannot reuse the saved MEP because {key} changed. "
                 "Repeat the original path/extraction/calculator settings and change only "
                 "post-processing options."
             )
@@ -134,7 +134,7 @@ def validate_resume_post_precision(
     )
     if recorded != current:
         raise click.UsageError(
-            f"--resume-segment {int(segment)} cannot keep the results of the earlier "
+            f"Resuming at segment {int(segment)} cannot keep the results of the earlier "
             f"segments because the post-processing precision changed ({recorded} in the "
             f"saved run, {current} now). Repeat --precision-post {recorded}, or use "
             "--resume-segment 1 to recompute every segment."

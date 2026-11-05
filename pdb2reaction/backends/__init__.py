@@ -188,7 +188,8 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
         if val == "tf32":
             raise BackendError(
                 f"--precision tf32 is not supported by backend {backend!r}: "
-                f"it has no TF32 mode. Use --precision fp32 or fp64."
+                f"it has no TF32 mode. Use --precision "
+                f"{'fp32 or fp64' if backend in _PRECISION_DISPATCH['fp64'] else 'fp32'}."
             )
         calc_cfg["precision"] = val
         return
