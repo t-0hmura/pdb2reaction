@@ -70,7 +70,9 @@ time for speed and needs a C compiler (`gcc`) even without `--compile`; with
 Image export (PNG, JPEG, SVG, PDF) needs the operating-system libraries of the Chrome that
 `plotly_get_chrome -y` downloads. Use the existing compiler; check with
 `${CC:-gcc} --version` (`${CXX:-g++} --version` for C++).
-If a compiler or CUDA build component is missing or unsupported, run:
+If gcc or CUDA is missing, load them from the system (on HPC,
+`module load gcc <CUDA_MODULE>`). If the system has no C compiler or CUDA, or
+you do not want to use them, install both into the env instead:
 
 ```bash
 conda install -c conda-forge -y cuda-nvcc
@@ -169,7 +171,7 @@ installed. An `ImportError` points to that backend's section in
 | `huggingface_hub.errors.GatedRepoError`, `401`, or `403` on UMA load | License not accepted or not logged in | Accept the license on `facebook/UMA`, run `hf auth login`, confirm with `hf auth whoami`; on HPC, compute nodes must be able to write the model cache (`$FAIRCHEM_CACHE_DIR`, default `~/.cache/fairchem`) |
 | `gpu4pyscf` import fails on aarch64 | The PyPI wheel is x86_64 only | Build GPU4PySCF from source or run with `--dft-engine cpu` |
 | `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` or `No module named 'dmf'` | `cyipopt` missing, or `pydmf` lacks its GPU part | Recreate the env with `cyipopt` and PyTorch from conda-forge ([Install order](#install-order)); if the import still fails, `pip install 'pydmf[torch]'` |
-| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Install `cuda-nvcc` and reactivate the environment: [System packages](#system-packages) |
+| `Missing system prerequisite: C compiler (gcc).` or `C++ compiler (g++).`; a PyTorch error `Failed to find C compiler` or `No working C++ compiler found` | No compiler on `PATH`; UMA on a GPU, and UMA and ORB with `--compile`, compile code at run time for speed | Load gcc and CUDA (`module load`) or install `cuda-nvcc`: [System packages](#system-packages) |
 | Plot export fails (`Missing system prerequisite: Chrome for PNG export.`), or `path-search` / `all` finish without the diagram PNG | No headless Chrome for Plotly, or an operating-system library it needs is missing | `plotly_get_chrome -y`, then the libraries in [System packages](#system-packages) |
 | `RuntimeError: CUDA out of memory` during `freq` | Hessian too large for VRAM | Keep the default `FiniteDifference` Hessian, use a smaller model with `--backend-model`, or a larger GPU ([freq](../pdb2reaction-cli/freq.md)) |
 

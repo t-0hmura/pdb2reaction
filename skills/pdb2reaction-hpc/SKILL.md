@@ -29,11 +29,10 @@ in one script.
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# Prebuilt PyTorch/backend wheels need a compatible NVIDIA driver, not a local
-# CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so
-# gcc must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none,
-# run in the env: conda install -c conda-forge -y cuda-nvcc
-# Load <CUDA_MODULE> as well only for a source build.
+# UMA on a GPU compiles code at run time for speed, so it needs gcc and CUDA
+# (on a CPU, --compile needs g++). Load the site's modules, or install both in
+# the env with: conda install -c conda-forge -y cuda-nvcc
+module load gcc <CUDA_MODULE>
 # - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
 #   single-node jobs.
 # Replace every placeholder used by the selected runtime.
@@ -89,10 +88,10 @@ Use the same body as above, but replace the Torque resource line with:
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-# Prebuilt wheels need no CUDA module. UMA on a GPU compiles code at run time for
-# speed, so gcc must be on PATH (on a CPU, --compile needs g++ too); if the compute node
-# has none:
-# conda install -c conda-forge -y cuda-nvcc   (module load <CUDA_MODULE> only for a source build)
+# UMA on a GPU compiles code at run time for speed, so it needs gcc and CUDA
+# (on a CPU, --compile needs g++). Load the site's modules, or install both in
+# the env with: conda install -c conda-forge -y cuda-nvcc
+module load gcc <CUDA_MODULE>
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 set +u    # conda's activate scripts read unset variables
 source "$(conda info --base)/etc/profile.d/conda.sh"

@@ -32,7 +32,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Without `-v 3`, FAIR-Chem's inference-settings line and choreographer's `Resorting to unclean kill browser.` are no longer shown.
 - Colab notebook: the GUI fits the visible pane from 721 px wide, and Mol* clicks keep the camera.
 - ORB and MACE are installed after removing `fairchem-core`; MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
-- Docs and skills use existing compilers and recommend `conda install -c conda-forge cuda-nvcc` only for missing or unsupported build tools.
+- Docs, skills and error messages use existing compilers; for a missing compiler or CUDA, they suggest loading gcc and CUDA with `module load` or installing `cuda-nvcc` with conda.
 - Docs, skills and CLI help: wrong statements are corrected, unclear passages reworded, and ORB is installed in its own environment.
 
 ### Fixed

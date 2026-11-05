@@ -68,11 +68,10 @@ conda install -c nvidia cuda-toolkit=<MAJOR.MINOR>   # or inside the conda env
 nvcc --version
 ```
 
-Add a CUDA module to PBS or SLURM jobs only when a locally built extension
-needs it; with prebuilt wheels, a module adds a second CUDA runtime.
-UMA on a GPU also needs a C compiler on `PATH` at run time, as does `--compile` (`g++` on a CPU); that is a
-system package, separate from the CUDA toolkit
-([System packages](SKILL.md#system-packages)).
+UMA on a GPU also needs gcc on `PATH` at run time, as does `--compile` (`g++`
+on a CPU), and with the conda-forge PyTorch also the CUDA headers. In PBS or
+SLURM jobs, load the site's gcc and CUDA modules, or install `cuda-nvcc` in the
+env ([System packages](SKILL.md#system-packages)).
 OpenMPI is unrelated to CUDA and is needed only for the site's multi-node Ray
 setup.
 
@@ -501,7 +500,7 @@ Reading the report:
 | `<NCPU>` | CPU budget sized from measured CPU-side work and xTB or DFT threading, not the whole node by default |
 | `<NGPU>` | GPUs the backend and workflow can use; usually 1 unless a tested UMA worker setup is used |
 | `<MEM>` | Measured peak RAM plus headroom, within node capacity |
-| `<CUDA_MODULE>` | Empty for prebuilt wheels; for a source build only, the exact module from `module avail` with its compiler |
+| `<CUDA_MODULE>` | The exact CUDA module from `module avail`, loaded with gcc; not needed when the env has `cuda-nvcc` |
 | `<YOUR_ENV>` | The conda env that imported pdb2reaction |
 | `<HH:MM:SS>` | Estimated walltime, capped by the queue limit |
 

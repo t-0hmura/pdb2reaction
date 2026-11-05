@@ -18,9 +18,9 @@ This page shows one-GPU job scripts for PBS and Slurm, followed by a PBS script 
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
-# For a source-built extension, also: module load <CUDA_MODULE>
+# UMA on a GPU compiles code at run time for speed, so it needs gcc and CUDA (on a CPU, --compile needs g++).
+# Load the cluster's modules (names from `module avail`), or install both with: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate <your-env>
@@ -63,9 +63,9 @@ On PBS Pro, replace the resource line with:
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 
-# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
-# For a source-built extension, also: module load <CUDA_MODULE>
+# UMA on a GPU compiles code at run time for speed, so it needs gcc and CUDA (on a CPU, --compile needs g++).
+# Load the cluster's modules (names from `module avail`), or install both with: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate <your-env>
@@ -113,9 +113,9 @@ source /etc/profile.d/modules.sh
 module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # change to the installed environment
 module load ompi                             # site module required by this MPI/Ray template
-# Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
-# For a source-built extension, also: module load <CUDA_MODULE>
+# UMA on a GPU compiles code at run time for speed, so it needs gcc and CUDA (on a CPU, --compile needs g++).
+# Load the cluster's modules (names from `module avail`), or install both with: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate "${P2R_CONDA_ENV}"

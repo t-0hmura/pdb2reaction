@@ -18,9 +18,9 @@ PBS と Slurm の GPU 1 つのジョブスクリプトに続けて、Ray で複�
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
-# 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate <your-env>
@@ -63,9 +63,9 @@ PBS Pro では、リソースの行を次に置き換えます。
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 
-# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
-# 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate <your-env>
@@ -113,9 +113,9 @@ source /etc/profile.d/modules.sh
 module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # インストールした環境の名前に変える
 module load ompi                             # この MPI/Ray のテンプレートに必要な計算機のモジュール
-# ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
-# 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
+module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate "${P2R_CONDA_ENV}"

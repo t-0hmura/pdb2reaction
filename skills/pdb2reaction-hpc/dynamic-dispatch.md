@@ -13,8 +13,8 @@ terminated after publishing output but before its completion marker may run agai
 Fill `<N_NODES>`, `<NCPU>`, `<NGPU>`, `<MEM>`, `<HH:MM:SS>`, and
 `<YOUR_QUEUE>` as in [the environment probe](../pdb2reaction-install/backends.md#probe-the-compute-environment). Set the shell defaults
 `TASK_LIST_FILE`, `CONDA_SH`, and `P2R_CONDA_ENV` below to the verified local
-values. Leave `CUDA_MODULE` empty for prebuilt wheels; set it only when a
-locally built extension requires the site's toolkit module.
+values. Set `CUDA_MODULE` to the site's CUDA module; the worker loads it with
+gcc. Leave it empty when the env has `cuda-nvcc`.
 
 ## State model
 
@@ -113,7 +113,7 @@ TASK_LIST="${STATE_DIR}/tasks.txt"
 LOCK_FILE="${STATE_DIR}/lock"
 
 if command -v module >/dev/null && [[ -n "${CUDA_MODULE}" ]]; then
-    module load "${CUDA_MODULE}"
+    module load gcc "${CUDA_MODULE}"
 fi
 set +u    # conda's activate scripts read unset variables
 source "${CONDA_SH}"
