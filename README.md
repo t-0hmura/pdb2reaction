@@ -46,7 +46,7 @@ Without `-c`, the input structures are used as they are; set the total charge wi
 
 ## Installation
 
-Requirements: Linux, Python 3.12 (recommended) or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel that matches your driver/GPU (`cu130` recommended). UMA on a GPU also needs a C compiler (`gcc`), as does `--compile` (`g++` on a CPU), and image export (PNG, JPEG, SVG, PDF) needs the OS libraries of Chrome: install them as in [System prerequisites](docs/installation.md#system-prerequisites). Details: [docs/installation.md](docs/installation.md).
+Requirements: Linux, Python 3.12 (recommended) or 3.13, and an NVIDIA GPU with the official PyTorch 2.13 CUDA wheel for your driver (`cu130` recommended). UMA on a GPU and `--compile` need a compiler, and image export needs Chrome's OS libraries: see [System prerequisites](docs/installation.md#system-prerequisites).
 
 ```bash
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
@@ -178,7 +178,6 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
 ## Known limitations
 
-- **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
 - **DFT** is practical up to about **500 atoms for a single point** and about **300 atoms for an optimization** on an HPC GPU, and up to about **200 atoms on a consumer GPU** (ωB97M-V/def2-SVP, the default; from experience).
 - **MACE and ORB need fp64** (`--precision fp64`, their default); with MACE in fp32 or ORB in tf32, extra imaginary modes appear more often. fp64 is slow on consumer GPUs: on HPC GPUs, ORB in fp64 is very cost-effective, and on a consumer GPU, UMA in fp32 gives the best balance.
 - **CPU-only execution** is supported but usually **much slower than GPU**.

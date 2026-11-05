@@ -18,7 +18,7 @@ PBS と Slurm の GPU 1 つのジョブスクリプトに続けて、Ray で複�
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る。
 # 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
 module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
@@ -63,7 +63,7 @@ PBS Pro では、リソースの行を次に置き換えます。
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 
-# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る。
 # 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
 module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
@@ -113,7 +113,7 @@ source /etc/profile.d/modules.sh
 module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # インストールした環境の名前に変える
 module load ompi                             # この MPI/Ray のテンプレートに必要な計算機のモジュール
-# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る（CPU で --compile を付けるときは g++）。
+# GPU での UMA は実行時に高速化のためコンパイルをするので、gcc と CUDA が要る。
 # 計算機のモジュール（名前は `module avail` で確認）を読み込むか、両方を入れる: conda install -c conda-forge cuda-nvcc
 module load gcc <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む

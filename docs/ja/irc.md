@@ -80,7 +80,7 @@ IRC が収束しなくても、端点を `opt` で最適化して狙った R と
 | 経路に沿って変わる結合 | `result.json` の `bond_changes`（`finished_first` から `finished_last` への `formed` と `broken`） |
 | どちらの端が R でどちらが P か | `finished_first.xyz` と `finished_last.xyz` を [`opt`](opt.md) で最適化し、意図した R と P と比べる。first / last の順では決まらない |
 
-`result.json` の `scientific_status` の `success`（終了コード 0）は、各分岐の止まり方によらず、積分がエラーなく終わったことを示します。`irc` は端点を判定しないので、端点が狙った R と P かは自分で確かめてください。
+`result.json` の `scientific_status` の `success`（終了コード 0）は、各分岐の止まり方によらず、積分がエラーなく終わったことを示します。
 
 端点が意図した R と P でないときは、{ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 

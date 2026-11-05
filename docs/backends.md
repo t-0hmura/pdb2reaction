@@ -62,22 +62,13 @@ models the parentheses read `UMA / UMA-S-1.2.1 (OMol)`,
 `--precision tf32|fp32|fp64` sets the floating-point precision of MLIP
 inference. `fp32` is IEEE single precision and `fp64` double precision on every
 backend. `tf32` keeps tensors in float32 but runs matrix multiplications in TF32
-on NVIDIA GPUs (Ampere or newer): faster, and less precise. The value is passed
-to UMA `precision`, ORB `precision` (`tf32` → `float32-high`, `fp32` →
-`float32-highest`, `fp64` → `float64`), and MACE `default_dtype`. MACE and
+on NVIDIA GPUs (Ampere or newer): faster, and less precise. MACE and
 AIMNet2 have no TF32 mode, so `tf32` stops with an error; AIMNet2 has no
 precision setting, so `fp32` changes nothing. In `all`, `--precision-post` sets
 the precision of TS optimization, IRC, the endpoint optimizations and freq;
 unset, they use `--precision`.
 
-When `--precision` is not given, each backend takes its own default:
-
-| backend | default | why |
-|---------|---------|-----|
-| `uma` | fp32 | IEEE FP32 with TF32 off, regardless of the default of the installed fairchem-core. |
-| `orb` | fp64 | `--precision tf32` selects ORB's `float32-high` (TF32) mode. |
-| `mace` | fp64 | MACE ships `default_dtype="float64"` upstream. |
-| `aimnet2` | fp32 | No precision knob. |
+When `--precision` is not given, UMA and AIMNet2 run in fp32 and ORB and MACE in fp64.
 
 Which value to choose depends on the purpose:
 
@@ -163,9 +154,7 @@ xTB is not installed with `pdb2reaction`; install it with `conda install -c cond
 Each correction runs xTB twice (in solvent and in vacuum), so about 200–300
 atoms is a practical maximum rather than a hard limit; benchmark the actual
 system and hardware. The option models a named bulk solvent, so on an enzyme
-cluster use it only when that environment is justified. When you compare a
-solution barrier with a cluster barrier, keep the reacting species, charge,
-multiplicity, backend and model, and energy references the same.
+cluster use it only when that environment is justified.
 
 ## DFT backend
 
@@ -267,7 +256,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | Function | Description |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | Create a pysisyphus-compatible MLIP calculator. Accepted kwargs are backend-specific; keys the selected backend does not accept are dropped with a warning, except UMA keys (such as `task_name` or `max_neigh`), which other backends drop without one. Direct Python `freeze_atoms` indices are 0-based (CLI/YAML convert their 1-based values). |
+| `create_calculator(backend="uma", **kwargs)` | Create a pysisyphus-compatible MLIP calculator. Accepted kwargs are backend-specific; keys the selected backend does not accept are dropped. |
 | `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible calculator. Accepted kwargs are backend-specific, and unsupported keys are dropped without a warning. The UMA/ORB/MACE calculators read charge and spin for each frame from `atoms.info`; AIMNet2 takes `charge`/`spin` as constructor arguments instead. |
 
 ```python
@@ -284,11 +273,8 @@ calc = create_calculator(
 
 ```
 
-The returned calculator implements the pysisyphus calculator interface:
-`get_energy`, `get_forces`, and `get_hessian` accept
-`(atoms: List[str], coords: np.ndarray)` where coords are in **Bohr** and return
-dicts with `"energy"` (hartree), `"forces"` (hartree/bohr), and `"hessian"`
-(hartree/bohr²). Frozen atoms get zero forces, and the Hessian is either the
+The returned calculator has the same interface and units as `UMACalculator`
+above. Frozen atoms get zero forces, and the Hessian is either the
 block of the movable atoms (`return_partial_hessian=True`) or the full matrix
 with the frozen rows and columns set to zero.
 
@@ -369,18 +355,13 @@ To add a built-in backend with its own `--backend` name, follow recipe 3.2
   checkpoints run the fast path with TF32. FAIR-Chem logs
   `Running in a reduced-precision mode` for every tf32 run on a GPU.
 - AIMNet2 supports neither `--precision fp64` nor `--deterministic`; both stop
-  the run with an error. AIMNet2 casts its model inputs to float32, and it
-  computes forces with its own CUDA code outside PyTorch's deterministic mode,
-  so its forces are not bit-reproducible (the energy is). When you need
-  repeatable runs, use UMA, ORB, or MACE with `--deterministic` and run twice in
-  the same environment to compare.
+  the run with an error.
 
 (workers-analytical-error)=
 - With UMA, `--uma-workers` above 1 cannot be combined with
   `--hessian-calc-mode Analytical`: the run stops with an error because the
   parallel predictor has no autograd model. Use `--uma-workers 1` for an
   analytical Hessian, or `FiniteDifference` with several workers.
-- Model precision and Hessian precision are separate settings. Energies and forces are always returned in float64, and the Hessian is assembled in float64 by default; `calc.hessian_double: false` returns it in the model's native dtype (typically float32). With `--precision fp64`, the Hessian is always float64: a `hessian_double: false` in the config is overridden with a warning.
 - For CI jobs or the Python API `create_calculator`, the environment variable `PDB2REACTION_STRICT_DETERMINISTIC=1` turns on the same mode as `--deterministic`.
 
 ## See Also

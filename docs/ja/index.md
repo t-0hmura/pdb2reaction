@@ -108,7 +108,7 @@ orphan: true
 
 ### ソフトウェア
 - Python 3.12（推奨）または 3.13
-- CPU 版または CUDA 対応の PyTorch。ビルド済みの wheel は CUDA ランタイムを含むので、手元の CUDA toolkit は通常は不要です（ソースからビルドするときだけ必要です）
+- CPU 版または CUDA 対応の PyTorch。GPU での UMA は実行時に gcc と CUDA も要ります
 
 セットアップは [インストール](installation.md) を参照してください。
 

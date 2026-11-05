@@ -57,7 +57,7 @@ If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cud
 
 `pip install pdb2reaction` does not install a compiler or the libraries Chrome needs. A workstation usually has them; a minimal container or a bare cluster node often does not.
 
-- **A compiler for UMA and `--compile`.** On a GPU, UMA compiles code at run time for speed (PyTorch builds GPU kernels with Triton), so it needs a C compiler (`gcc`) even without `--compile`. With `--compile`, UMA and ORB also compile the model: a GPU run needs a C compiler, and a CPU run needs a C++ compiler (`g++`).
+- **A compiler for UMA and `--compile`.** UMA on a GPU and `--compile` on a GPU need a C compiler (`gcc`); `--compile` on a CPU needs a C++ compiler (`g++`).
 - **Libraries for Chrome.** PNG, JPEG, SVG and PDF figures (`energy-diagram`, `trj2fig`, and the diagrams of `all`) are drawn by headless Chrome, which `plotly_get_chrome -y` downloads. Chrome loads the operating-system libraries below.
 
 Ubuntu/Debian (on Ubuntu 22.04 and Debian 12, write `libasound2` instead of `libasound2t64`; drop `sudo` if you are root):
@@ -81,7 +81,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 Use the existing compiler. If gcc or CUDA is missing, load them from the system (on HPC, for example with `module load`). If the system has no C compiler or CUDA, or you do not want to use them, `conda install -c conda-forge cuda-nvcc` installs both into the environment; reactivate the environment afterwards. On HPC, ask the administrator for any missing Chrome libraries.
 
-If a compiler or CUDA is missing, the command stops and prints `Missing system prerequisite:` followed by these two options. If a Chrome library is missing, `energy-diagram` and `trj2fig` stop the same way, while `all`, `path-search` and `scan2d` print a one-line warning and skip only their PNG files.
+If a compiler or CUDA is missing, the command stops and prints `Missing system prerequisite:` followed by these two options.
 
 (step-by-step-installation)=
 ## Step-by-step installation
@@ -108,7 +108,7 @@ If you prefer to build the environment piece by piece:
     ```
 
 3. **Install cyipopt, xTB, and PyTorch from conda-forge**
-    Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search or the xTB solvent correction (`--solvent`); this step also installs PyTorch, so skip step 4. You can skip this step if you only use GSM without `--solvent`. If `--mep-mode dmf` still stops with an import error, see {ref}`Installation / environment <installation-environment-problems>`.
+    Needed only for DMF (`--mep-mode dmf`) or the xTB solvent correction (`--solvent`); it also installs PyTorch.
 
     ```bash
     conda install -c conda-forge cyipopt xtb "pytorch=2.13.0=cuda130*"   # cuda129 if nvidia-smi shows CUDA below 13.0
@@ -123,7 +123,7 @@ If you prefer to build the environment piece by piece:
     ```
 
     The official 2.13.0 matrix also provides `cu126`, `cu132`, and `cpu`.
-    Choose the wheel as described in Quick install above, then check GPU access in step 8. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
+    See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
@@ -134,7 +134,7 @@ If you prefer to build the environment piece by piece:
 
     The compiler that UMA and `--compile` need and the libraries Chrome needs are system packages: see {ref}`System prerequisites <system-prerequisites>`.
 
-    On aarch64, the `warp-lang` 1.18.0 wheel, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0` (`nvalchemi-toolkit-ops` needs 1.13.0 or newer).
+    On aarch64, the `warp-lang` 1.18.0 wheel, which UMA loads through `fairchem-core`, needs glibc 2.35 and stops the import with `GLIBC_2.35' not found` on older systems (`ldd --version`); there, install `warp-lang==1.17.0`.
 
 6. **Log in to Hugging Face Hub (UMA model)**
 
@@ -153,7 +153,7 @@ If you prefer to build the environment piece by piece:
 
     pdb2reaction uses UMA by default. For another backend, install its package and select it with `-b/--backend` (for example, `-b orb`):
 
-    **ORB**: `orb-models` pins `nvalchemi-toolkit-ops<0.4`, which conflicts with UMA's `fairchem-core`. Install ORB in a separate conda environment, as for MACE below, and keep UMA in the main one. ORB needs Python 3.12: `orb-models` pins `dm-tree==0.1.8`, which has no Python 3.13 wheel. You may change the environment name `orb-env`. Pick the PyTorch wheel as in step 4.
+    **ORB**: `orb-models` conflicts with UMA's `fairchem-core`; install it in a separate Python 3.12 environment. Pick the PyTorch wheel as in step 4.
 
     ```bash
     conda create -n orb-env -c conda-forge python=3.12
@@ -169,7 +169,7 @@ If you prefer to build the environment piece by piece:
     pip install "pdb2reaction[aimnet]"
     ```
 
-    **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. You may change the environment name `mace-env`. Pick the PyTorch wheel as in step 4.
+    **MACE**: `mace-torch` pins `e3nn==0.4.4`, which conflicts with UMA's `fairchem-core`, so install it in a separate conda environment. Pick the PyTorch wheel as in step 4.
 
     ```bash
     conda create -n mace-env -c conda-forge python=3.12

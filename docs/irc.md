@@ -80,7 +80,7 @@ Even if the IRC does not converge, the result is usable when the endpoints, opti
 | Bonds that change along the path | `bond_changes` in `result.json` (`formed` and `broken`, from `finished_first` to `finished_last`) |
 | Which end is R and which is P | Optimize `finished_first.xyz` and `finished_last.xyz` with [`opt`](opt.md) and compare them with the intended R and P. The order first / last does not decide it |
 
-`result.json` records the outcome as `scientific_status`: `success` (exit code 0) means that the integration ran without an error, regardless of how each branch stopped. `irc` does not judge the endpoints; whether they are the intended R and P is for you to check.
+`result.json` records the outcome as `scientific_status`: `success` (exit code 0) means that the integration ran without an error, regardless of how each branch stopped.
 
 If the endpoints are not the intended R and P, see {ref}`When the TS search fails <ts-search-fails>`.
 

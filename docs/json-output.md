@@ -84,12 +84,10 @@ When a run stops on an exception after the output directory is set up,
 point, see [Notes](#notes).
 
 When an optimization ends without converging, `result.json` records
-`"optimization_status": "not_converged"`. Optimizer results include the final
-force/step or cycle fields that apply; DFT omits the fields it does not have.
-For what to change before a retry, see
+`"optimization_status": "not_converged"`. For what to change before a retry, see
 {ref}`Troubleshooting › Calculation / convergence <calculation-convergence-problems>`.
 
-An optimizer may also report `"optimization_status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the force/step convergence criteria remained unmet. A stall is a kind of non-convergence, never `converged`; `stop_reason` records why the run stopped.
+An optimizer may also report `"optimization_status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the force/step convergence criteria remained unmet. `stop_reason` records why the run stopped.
 
 ## Subcommand schemas
 
@@ -450,7 +448,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 |-------|------|-------------|
 | `execution_status` / `scientific_status` | string / string | Execution completeness and completion of requested numerical/calculation stages. |
 | `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
-| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` with endpoint-specific `failures`, or `endpoint_not_converged`). Rendered in `summary.log` as `Pipeline stop`, except that a `before_irc` stop of a segment of a path is shown as `Stopped before IRC` (see `stopped_segments`); a TS-only stop is not in `stopped_segments`. `endpoint_not_converged` is written only in `post_segments[].pipeline_stop`: an endpoint optimization of that segment did not converge, so its freq and DFT were skipped, and the other segments are still processed. |
+| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (the first segment that stopped: a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` with endpoint-specific `failures`, or `endpoint_not_converged`). A TS-only stop is not in `stopped_segments`. `endpoint_not_converged` is written only in `post_segments[].pipeline_stop`: an endpoint optimization of that segment did not converge, so its freq and DFT were skipped, and the other segments are still processed. |
 | `stopped_segments` | object[] \| absent | Every segment that stopped before IRC (`stage`, `segment`, `reason`); the other segments are still processed. Rendered in `summary.log` as `Stopped before IRC`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed stage identifiers. |
 | `scan` | object \| absent | Preliminary scan status, stage outcomes and diagnostics in scan-seeded `all` runs. |
@@ -538,7 +536,6 @@ jq '.post_segments[] | {index, barrier_kcal: .mlip.barrier_kcal}' result_all/sum
 - A run that fails while the CLI options or the input are being checked (before the output directory is set up) can stop without writing any JSON. Treat a nonzero exit code as a failure, and read stderr or the job log for the message.
 - `all` and `path-search` write `summary.json` only once the run reaches its summary step, so an early input error leaves no file.
 - The per-command sections also have their own `backend` / `model` fields. Scripts that read several commands should use `mlip_backend` / `mlip_model` / `mlip_precision`, which mean the same thing in every command.
-- [How the IRC stopped](irc.md#judging-the-irc) does not affect `scientific_status`: a standalone `irc` reports `success` when the integration finishes, even when it ends at `--max-cycles`, and `all` judges the TS and endpoint optimizations.
 
 ## See Also
 

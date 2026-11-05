@@ -73,9 +73,9 @@ cat result_opt/result.json | python -m json.tool
 
 出力ディレクトリを用意した後に例外で実行が止まった場合は、`--out-json` が無くても `"execution_status": "failed"` と `"error_type"` を含む `result.json` と `summary.json` を書き出します。それより前の失敗は[使用上の注意点](#使用上の注意点)を参照してください。
 
-最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。オプティマイザの結果には該当する最終の力/ステップやサイクルの欄が入り、DFT は持たない欄を出しません。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
+最適化が収束せずに終わった場合、`result.json` には `"optimization_status": "not_converged"` が記録されます。再実行の前に何を変えるかは、{ref}`トラブルシューティングの計算 / 収束の問題 <ja-calculation-convergence-problems>` を参照してください。
 
-オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定したサイクル数にわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。停滞は未収束の一種で、`converged` にはなりません。止まった理由は `stop_reason` に記録されます。
+オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、力/ステップの収束基準を満たさないまま、設定したサイクル数にわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。止まった理由は `stop_reason` に記録されます。
 
 ## サブコマンド別スキーマ
 
@@ -422,7 +422,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 |-----------|------|------|
 | `execution_status` / `scientific_status` | string / string | 実行が完了したかと、指定した計算の段がすべて完了したか。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
-| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`、または `endpoint_not_converged`）。`summary.log` では `Pipeline stop`。ただし経路のセグメントの `before_irc` の停止は `Stopped before IRC`（`stopped_segments` を参照）と表示し、TS-only の停止は `stopped_segments` に入らない。`endpoint_not_converged` は `post_segments[].pipeline_stop` にだけ書く。そのセグメントの端点の最適化が収束しなかったので freq と DFT を行わず、ほかのセグメントは処理を続ける |
+| `pipeline_stop` | object \| なし | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（最初に止まったセグメントの TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`、または `endpoint_not_converged`）。TS-only の停止は `stopped_segments` に入らない。`endpoint_not_converged` は `post_segments[].pipeline_stop` にだけ書く。そのセグメントの端点の最適化が収束しなかったので freq と DFT を行わず、ほかのセグメントは処理を続ける |
 | `stopped_segments` | object[] \| なし | IRC の前で止まったすべてのセグメント（`stage`・`segment`・`reason`）。ほかのセグメントは処理を続ける。`summary.log` では `Stopped before IRC` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `scan` | object \| なし | scan を初期経路に使う `all` の、前段の scan の状態・各段階の結果・診断。 |
@@ -510,7 +510,6 @@ jq '.post_segments[] | {index, barrier_kcal: .mlip.barrier_kcal}' result_all/sum
 - CLI のオプションや入力を確かめている段階（出力ディレクトリを用意する前）で失敗すると、JSON を書かずに止まることがあります。0 以外の終了コードは失敗として扱い、標準エラー出力かジョブログでメッセージを確認してください。
 - `all` と `path-search` は要約の段に着いてから `summary.json` を書くため、早い段階の入力エラーではファイルが残りません。
 - コマンドごとの節にも、それぞれの `backend` / `model` 欄があります。複数のコマンドの結果を読むスクリプトでは、どのコマンドでも同じ意味の `mlip_backend` / `mlip_model` / `mlip_precision` を使ってください。
-- [IRC がどう止まったか](irc.md#irc-の成否の判定)は `scientific_status` に入りません。単体の `irc` は、積分が終われば `--max-cycles` に達した場合も `success` で、`all` は TS と端点の最適化から判定します。
 
 ## 関連ドキュメント
 

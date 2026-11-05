@@ -58,7 +58,7 @@ The optimized R, TS, and P are written to `result_all/segments/seg_01/`.
 
 After a process stops, repeat the original command with the same `--out-dir` and add `--resume`. It keeps finished segments and restarts the first unfinished segment from its saved HEI.
 
-To redo the post-processing from segment N, repeat the original command with the same inputs, extraction, path, and calculator options and the same `--out-dir`, and add `--resume-segment N`. Post-processing options such as `--tsopt-max-cycles` may change, but `--precision-post` may not: the segments before N keep their results, so the run stops when the post-processing precision differs. To change it, resume from segment 1.
+To redo the post-processing from segment N, repeat the original command with the same inputs, extraction, path, and calculator options and the same `--out-dir`, and add `--resume-segment N`. Post-processing options other than `--precision-post`, such as `--tsopt-max-cycles`, may change.
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -101,7 +101,7 @@ Full structure(s) (PDB / mmCIF / XYZ / GJF)
 | Not converged (cycle limit or `--stop-plateau`), or the final Hessian skipped with `--skip-final-freq` | Stops before IRC. |
 | The final Hessian fails with an error | Stops the whole run (`execution_status` `failed`, exit 1); no later segment is processed. |
 
-A segment that stops before IRC skips IRC and the later stages, and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `summary.json` keeps the first stop in `pipeline_stop` and lists every stopped segment in `stopped_segments`. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
+A segment that stops before IRC skips IRC and the later stages, and the result is not `success`; its TS files stay in `segments/seg_NN/ts/`. The other segments are still post-processed. `irc_plot_all.png` is drawn only when every segment has an IRC. The full table of how a TS optimization can end is in [`tsopt` → Reading the TS result](tsopt.md#reading-the-ts-result).
 
 If one endpoint optimization does not converge, the result is `partial`, that segment skips the frequency and DFT stages, and the other segments are still post-processed; `segments/seg_NN/endpoint_opt/` is kept for inspection. If an endpoint optimization fails with an error, the error is written to `segments/seg_NN/endpoint_opt/failure.json`, and that segment stops before the frequency and DFT stages; the TS and IRC structures are kept.
 

@@ -58,7 +58,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 プロセス停止後は、元のコマンドに `--resume` を付け、同じ `--out-dir` で再開します。完了したセグメントは保持し、最初の未完了セグメントを保存済みの HEI からやり直します。
 
-セグメント N から後処理をやり直すときは、元のコマンドと同じ入力・抽出・経路・計算バックエンドのオプションと同じ `--out-dir` を指定し、`--resume-segment N` を足してください。`--tsopt-max-cycles` などの後処理のオプションは変えられますが、`--precision-post` は変えられません。N より前のセグメントは前回の結果をそのまま使うため、後処理の精度が違うとエラーで止まります。精度を変えるときはセグメント 1 からやり直してください。
+セグメント N から後処理をやり直すときは、元のコマンドと同じ入力・抽出・経路・計算バックエンドのオプションと同じ `--out-dir` を指定し、`--resume-segment N` を足してください。`--precision-post` 以外の後処理のオプション（`--tsopt-max-cycles` など）は変えられます。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
@@ -101,7 +101,7 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
 | 未収束（サイクル上限か `--stop-plateau`）、`--skip-final-freq`（最後の Hessian を省く） | IRC の前で止まります。 |
 | 最後の Hessian がエラーで失敗 | 実行全体が止まり（`execution_status` が `failed`、終了コード 1）、後のセグメントは処理しません。 |
 
-IRC の前で止まったセグメントは IRC とその後の段を行わず、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残ります。ほかのセグメントは後処理を続けます。`summary.json` は最初の停止を `pipeline_stop` に残し、止まったセグメントすべてを `stopped_segments` に列挙します。`irc_plot_all.png` は全セグメントに IRC があるときだけ描きます。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
+IRC の前で止まったセグメントは IRC とその後の段を行わず、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残ります。ほかのセグメントは後処理を続けます。`irc_plot_all.png` は全セグメントに IRC があるときだけ描きます。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
 
 片方の端点の最適化が収束しない場合、結果は `partial` になり、そのセグメントは振動数と DFT の段を行いません。ほかのセグメントは後処理を続けます。`segments/seg_NN/endpoint_opt/` は確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
 

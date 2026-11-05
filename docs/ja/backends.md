@@ -41,16 +41,9 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 (ja-precision-by-gpu-class)=
 ### 精度（precision）
 
-`--precision tf32|fp32|fp64` は、MLIP の推論の浮動小数点精度を決めます。`fp32` はどのバックエンドでも IEEE の単精度、`fp64` は倍精度です。`tf32` はテンソルを float32 のまま持ち、NVIDIA の GPU（Ampere 以降）で行列積だけを TF32 で計算します。速くなる代わりに精度が下がります。値は UMA の `precision`、ORB の `precision`（`tf32` → `float32-high`、`fp32` → `float32-highest`、`fp64` → `float64`）、MACE の `default_dtype` に渡されます。MACE と AIMNet2 には TF32 のモードがなく、`tf32` はエラーで止まります。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。`all` では、TS 最適化・IRC・端点の最適化・freq の精度を `--precision-post` で決め、指定しなければ `--precision` に従います。
+`--precision tf32|fp32|fp64` は、MLIP の推論の浮動小数点精度を決めます。`fp32` はどのバックエンドでも IEEE の単精度、`fp64` は倍精度です。`tf32` はテンソルを float32 のまま持ち、NVIDIA の GPU（Ampere 以降）で行列積だけを TF32 で計算します。速くなる代わりに精度が下がります。MACE と AIMNet2 には TF32 のモードがなく、`tf32` はエラーで止まります。AIMNet2 には精度の設定がなく、`fp32` を指定しても何も変わりません。`all` では、TS 最適化・IRC・端点の最適化・freq の精度を `--precision-post` で決め、指定しなければ `--precision` に従います。
 
-`--precision` を指定しないときは、バックエンドごとのデフォルト値を使います。
-
-| バックエンド | デフォルト値 | 理由 |
-|---------|------|------|
-| `uma` | fp32 | インストールした fairchem-core の既定によらず、TF32 を使わない IEEE の FP32 です。 |
-| `orb` | fp64 | ORB の `float32-high`（TF32）は `--precision tf32` で選びます。 |
-| `mace` | fp64 | MACE は上流で `default_dtype="float64"` をデフォルトにしています。 |
-| `aimnet2` | fp32 | 精度の設定がありません。 |
+`--precision` を指定しないときは、UMA と AIMNet2 は fp32、ORB と MACE は fp64 で計算します。
 
 どの値を選ぶかは目的で決めます。
 
@@ -110,7 +103,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネルギー `E_xTB(solvent) - E_xTB(vacuum)` と、それに対応する力と Hessian の差を MLIP のポテンシャル面に足します。主な用途は小分子の溶液中の計算です。`--solvent-model` で `alpb`（デフォルト）か `cpcmx` を選びます。`--solvent-xtb-cmd` には追加の引数を含めた xTB のコマンドを渡せます。xTB の SCC（自己無撞着電荷）の反復が収束しないときは、`'xtb --etemp 1000'` のように指定してください。xTB は `pdb2reaction` と一緒には入らないので、`conda install -c conda-forge xtb` で導入してください。
 
-補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は指定したバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。溶液中の障壁とクラスターの障壁を比べるときは、反応する化学種、電荷、多重度、バックエンドとモデル、エネルギーの基準をそろえてください。
+補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は指定したバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。
 
 ## DFT バックエンド
 
@@ -184,7 +177,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | pysisyphus 用の MLIP calculator を作ります。受け付ける kwargs はバックエンドごとに違い、選んだバックエンドが受け付けないキーは警告を出して捨てます。ただし UMA 用のキー（`task_name`、`max_neigh` など）は、ほかのバックエンドでは警告なしに捨てます。Python から直接渡す `freeze_atoms` の番号は 0 始まりです（CLI と YAML は 1 始まりの値を変換します）。 |
+| `create_calculator(backend="uma", **kwargs)` | pysisyphus 用の MLIP calculator を作ります。受け付ける kwargs はバックエンドごとに違い、選んだバックエンドが受け付けないキーは捨てられます。 |
 | `create_ase_calculator(backend="uma", **kwargs)` | ASE 用の calculator を作ります。受け付ける kwargs はバックエンドごとに違い、使えないキーは警告なしに捨てられます。UMA・ORB・MACE の calculator は構造ごとの電荷とスピンを `atoms.info` から読み、AIMNet2 は `charge`・`spin` を作るときの引数で受け取ります。 |
 
 ```python
@@ -201,7 +194,7 @@ calc = create_calculator(
 
 ```
 
-返される calculator は pysisyphus の calculator の形を持ちます。`get_energy`、`get_forces`、`get_hessian` は `(atoms: List[str], coords: np.ndarray)` を受け取り、coords は **Bohr** 単位です。戻り値は `"energy"`（Hartree）、`"forces"`（Hartree/Bohr）、`"hessian"`（Hartree/Bohr²）を持つ dict です。固定原子の力は 0 になり、Hessian は動ける原子のブロック（`return_partial_hessian=True`）か、固定原子の行と列を 0 にした全体の行列です。
+返される calculator のインターフェースと単位は、上の `UMACalculator` と同じです。固定原子の力は 0 になり、Hessian は動ける原子のブロック（`return_partial_hessian=True`）か、固定原子の行と列を 0 にした全体の行列です。
 
 (ja-configuration-reference)=
 ### 設定の一覧
@@ -266,11 +259,10 @@ pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF�
 
 - `--precision tf32` と、ORB・MACE の `--precision fp32` はスクリーニング専用です。有限差分 Hessian のノイズが増えるので、結果を使う前に n_imag を確かめてください。
 - UMA の `--precision tf32` は、インストールした fairchem-core に UMA Nitro があれば（`uma-s-1p2p1` 系の checkpoint、ワーカー 1 つ）それで計算します。ほかの checkpoint は TF32 の速い経路で計算します。GPU での tf32 の計算では、FAIR-Chem がいつも `Running in a reduced-precision mode` と出力します。
-- AIMNet2 は `--precision fp64` にも `--deterministic` にも対応せず、どちらもエラーで止まります。AIMNet2 はモデルへの入力を float32 にし、力を PyTorch の決定論的モードの外にある独自の CUDA のコードで計算するので、力はビット単位で再現しません（エネルギーは再現します）。繰り返しの計算を一致させたいときは、UMA、ORB、MACE のいずれかで `--deterministic` を付け、同じ環境で 2 回実行して比べてください。
+- AIMNet2 は `--precision fp64` にも `--deterministic` にも対応せず、どちらもエラーで止まります。
 
 (ja-workers-analytical-error)=
 - UMA で `--uma-workers` を 2 以上にすると、`--hessian-calc-mode Analytical` とは併用できず、エラーで止まります。並列の予測器は autograd のモデルを持たないためです。解析 Hessian には `--uma-workers 1` を、複数のワーカーには `FiniteDifference` を使ってください。
-- モデルの精度と Hessian の精度は別の設定です。エネルギーと力は常に float64 で返り、Hessian もデフォルトでは float64 で組み立てます。`calc.hessian_double: false` にすると、モデル本来の dtype（通常は float32）で返します。`--precision fp64` のときは Hessian も常に float64 になり、設定ファイルの `hessian_double: false` は警告を出して上書きされます。
 - CI のジョブや Python API の `create_calculator` では、環境変数 `PDB2REACTION_STRICT_DETERMINISTIC=1` で `--deterministic` と同じモードになります。
 
 ## 関連ドキュメント

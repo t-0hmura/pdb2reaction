@@ -57,7 +57,7 @@ plotly_get_chrome -y
 
 `pip install pdb2reaction` では、コンパイラと Chrome が使うライブラリは入りません。ワークステーションには通常ありますが、最小構成のコンテナや素のクラスターノードにはないことが多いです。
 
-- **UMA と `--compile` 用のコンパイラ:** GPU では、UMA は実行時に高速化のためコンパイルをします（PyTorch が Triton で GPU のカーネルを作ります）。そのため `--compile` を付けなくても C コンパイラ（`gcc`）が要ります。`--compile` を付けると UMA と ORB はモデルもコンパイルするので、GPU では C コンパイラ、CPU では C++ コンパイラ（`g++`）が要ります。
+- **UMA と `--compile` 用のコンパイラ:** GPU で UMA を使うときと、GPU で `--compile` を付けるときは、C コンパイラ（`gcc`）が要ります。CPU で `--compile` を付けるときは、C++ コンパイラ（`g++`）が要ります。
 - **Chrome 用のライブラリ:** PNG・JPEG・SVG・PDF の図（`energy-diagram`、`trj2fig`、`all` の図）はヘッドレス Chrome で描きます。`plotly_get_chrome -y` でダウンロードした Chrome は、下の OS のライブラリを読み込みます。
 
 Ubuntu/Debian（Ubuntu 22.04 と Debian 12 では `libasound2t64` の代わりに `libasound2` と書きます。root なら `sudo` は不要）:
@@ -81,7 +81,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 既存のコンパイラを使います。gcc や CUDA が無い場合は、システムのものを読み込んでください（HPC では `module load` など）。システムに C コンパイラや CUDA が無い場合や使わない場合は、`conda install -c conda-forge cuda-nvcc` で両方を環境に入れられます（入れた後に環境を再度 activate してください）。HPC で Chrome のライブラリが足りない場合は管理者に依頼してください。
 
-コンパイラや CUDA が足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けてこの 2 つの方法を表示します。Chrome のライブラリが足りないときは、`energy-diagram` と `trj2fig` は同じように止まり、`all`・`path-search`・`scan2d` は 1 行で知らせ、PNG の作成だけを省いて続けます。
+コンパイラや CUDA が足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けてこの 2 つの方法を表示します。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -106,7 +106,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
     ```
 
 3. **cyipopt・xTB・PyTorch を conda-forge からインストール**
-    `--mep-mode dmf`（DMF 法）で MEP を探索するときと、xTB の溶媒補正（`--solvent`）を使うときに必要です。この手順で PyTorch も入るので、手順 4 は飛ばします。GSM のみを使い `--solvent` も使わない場合はスキップできます。この手順の後も `--mep-mode dmf` がインポートのエラーで止まるときは、{ref}`インストール / 環境の問題 <ja-installation-environment-problems>` を参照してください。
+    DMF（`--mep-mode dmf`）か xTB の溶媒補正（`--solvent`）を使うときだけ必要です。PyTorch も入ります。
 
     ```bash
     conda install -c conda-forge cyipopt xtb "pytorch=2.13.0=cuda130*"   # nvidia-smi の CUDA が 13.0 より小さいなら cuda129
@@ -120,7 +120,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
     pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
     ```
 
-    PyTorch 2.13.0 の公式 wheel には `cu126`、`cu132`、`cpu` もあります。上の最短のインストールにある `nvidia-smi` の見方で wheel を選び、手順 8 で GPU が使えるかを確かめてください。[PyTorch の版の対応表](https://pytorch.org/get-started/previous-versions/) を参照してください。
+    PyTorch 2.13.0 の公式 wheel には `cu126`、`cu132`、`cpu` もあります。[PyTorch の版の対応表](https://pytorch.org/get-started/previous-versions/) を参照してください。
 
 5. **`pdb2reaction` 本体と可視化用 Chrome をインストール**
 
@@ -131,7 +131,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
     GPU での UMA と `--compile` が使うコンパイラと、Chrome が使うライブラリはシステムのパッケージです: {ref}`システムの前提パッケージ <ja-system-prerequisites>` を参照してください。
 
-    aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください（`nvalchemi-toolkit-ops` には 1.13.0 以上が必要です）。
+    aarch64 では、UMA が `fairchem-core` を通して読み込む `warp-lang` 1.18.0 の wheel が glibc 2.35 を必要とし、それより古いシステム（`ldd --version` で確認できます）では import が `GLIBC_2.35' not found` で止まります。その場合は `warp-lang==1.17.0` をインストールしてください。
 
 6. **Hugging Face Hub (UMA モデル) にログイン**
 
@@ -150,7 +150,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する追加パッケージを導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
-    **ORB**: `orb-models` は `nvalchemi-toolkit-ops<0.4` に固定しているので、UMA の `fairchem-core` と競合します。下の MACE と同じく別の conda 環境に入れ、UMA は元の環境で使います。ORB は Python 3.12 でだけ使えます（`orb-models` が固定する `dm-tree==0.1.8` に Python 3.13 用の wheel がないためです）。環境の名前 `orb-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
+    **ORB**: `orb-models` は UMA の `fairchem-core` と競合するので、別の Python 3.12 の環境に入れます。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
     conda create -n orb-env -c conda-forge python=3.12
@@ -166,7 +166,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
     pip install "pdb2reaction[aimnet]"
     ```
 
-    **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。環境の名前 `mace-env` は変えても構いません。PyTorch の wheel は手順 4 と同じように選びます。
+    **MACE**: `mace-torch` が要求する `e3nn==0.4.4` が UMA の `fairchem-core` と衝突するので、別の conda 環境に入れます。PyTorch の wheel は手順 4 と同じように選びます。
 
     ```bash
     conda create -n mace-env -c conda-forge python=3.12
