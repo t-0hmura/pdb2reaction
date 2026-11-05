@@ -46,7 +46,7 @@ from pdb2reaction.workflows.align_freeze import (
     align_and_refine_sequence_inplace,
     alignment_failed_pair_indices,
 )
-from pdb2reaction.backends import create_calculator
+from pdb2reaction.backends import create_calculator, fp64_rerun_available
 from pdb2reaction.core.defaults import (
     FREQ_KW,
     GEOM_KW_DEFAULT,
@@ -382,6 +382,10 @@ def _emit_final_summary(
                         ),
                         flatten=bool(
                             summary.get("flatten", summary_config.get("flatten"))
+                        ),
+                        suggest_fp64=fp64_rerun_available(
+                            summary.get("mlip_backend"),
+                            summary.get("mlip_precision_post"),
                         ),
                     ),
                     narrative=True,

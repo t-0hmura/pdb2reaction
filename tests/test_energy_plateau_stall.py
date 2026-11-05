@@ -301,7 +301,17 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
     )
     assert converged_higher_order == (
         "[tsopt] WARNING: Higher-order stationary point (n_imag=2, n_negative=2). "
-        "Try --flatten or all --refine-path."
+        "Try --flatten."
+    )
+    assert _tsopt_terminal_outcome_message(
+        numerically_converged=True,
+        hessian_ready=True,
+        n_imaginary_modes=2,
+        n_negative_modes=2,
+        suggest_fp64=True,
+    ) == (
+        "[tsopt] WARNING: Higher-order stationary point (n_imag=2, n_negative=2). "
+        "Try --flatten or --precision fp64."
     )
 
     converged_minimum = _tsopt_terminal_outcome_message(

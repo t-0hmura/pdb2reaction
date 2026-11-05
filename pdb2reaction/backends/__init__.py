@@ -156,6 +156,14 @@ _BACKEND_DEFAULT_PRECISION: Dict[str, str] = {
 }
 
 
+def fp64_rerun_available(backend: Any, precision: Any) -> bool:
+    """Whether a run below fp64 can be repeated in fp64 (UMA, ORB and MACE)."""
+    return (
+        str(backend or "").lower() in _PRECISION_DISPATCH["fp64"]
+        and str(precision or "").lower() in ("tf32", "fp32")
+    )
+
+
 def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> None:
     """Route the unified ``--precision`` CLI value into backend-specific kwargs.
 

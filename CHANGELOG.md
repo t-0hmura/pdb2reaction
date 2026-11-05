@@ -34,6 +34,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - ORB and MACE are installed after removing `fairchem-core`; MACE uses the latest `mace-torch`; MACE-POLAR-1 needs `pip install 'mace-torch[polar]>=0.3.17'`.
 - Docs, skills and error messages use existing compilers; for a missing compiler or CUDA, they suggest loading gcc and CUDA with `module load` or installing `cuda-nvcc` with conda.
 - Docs, skills and CLI help: wrong statements are corrected, unclear passages reworded, and ORB is installed in its own environment.
+- For a TS with more than one imaginary mode, the hint suggests `--flatten` or a rerun in fp64 (`--precision-post fp64` for `all`, `--precision fp64` for `tsopt`, when the backend runs below fp64); `--refine-path` is suggested only when no imaginary mode is found.
 
 ### Fixed
 

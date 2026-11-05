@@ -48,6 +48,7 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignor
 from pdb2reaction.backends import (
     BackendError,
     create_calculator,
+    fp64_rerun_available,
     normalize_hessian_calc_mode,
 )
 from pdb2reaction.core.defaults import (
@@ -994,6 +995,7 @@ def _tsopt_terminal_outcome_message(
     n_imaginary_modes: Optional[int],
     n_negative_modes: Optional[int] = None,
     stalled: bool = False,
+    suggest_fp64: bool = False,
 ) -> str:
     """Return one concise terminal verdict."""
 
@@ -1005,19 +1007,24 @@ def _tsopt_terminal_outcome_message(
         return "[tsopt] Converged; terminal PHVA is unavailable."
 
     n_imaginary = int(n_imaginary_modes)
+    higher_order_hint = (
+        "Try --flatten or --precision fp64."
+        if suggest_fp64
+        else "Try --flatten."
+    )
     if n_imaginary == 1:
         return "[tsopt] Converged (n_imag=1)."
     if n_imaginary > 1:
         return (
             f"[tsopt] WARNING: Higher-order stationary point "
             f"(n_imag={n_imaginary}, n_negative={n_negative_modes}). "
-            "Try --flatten or all --refine-path."
+            f"{higher_order_hint}"
         )
     if n_imaginary == 0:
         return "[tsopt] No imaginary mode detected. Try all --refine-path."
     return (
         f"[tsopt] WARNING: Higher-order stationary point (n_imag={n_imaginary}). "
-        "Try --flatten or all --refine-path."
+        f"{higher_order_hint}"
     )
 
 
@@ -3993,6 +4000,9 @@ def cli(
                 getattr(_terminal_optimizer, "is_converged", False)
             )
             _tsopt_failed = not _terminal_numerically_converged
+            from pdb2reaction.core.utils import calculator_provenance
+
+            _run_provenance = calculator_provenance(calc_cfg)
             click.echo(
                 _tsopt_terminal_outcome_message(
                     numerically_converged=_terminal_numerically_converged,
@@ -4000,6 +4010,10 @@ def cli(
                     n_imaginary_modes=_terminal_n_imaginary,
                     n_negative_modes=_terminal_n_negative,
                     stalled=bool(getattr(_terminal_optimizer, "is_stalled", False)),
+                    suggest_fp64=fp64_rerun_available(
+                        _run_provenance.get("mlip_backend"),
+                        _run_provenance.get("mlip_precision"),
+                    ),
                 ),
                 err=_tsopt_failed,
             )
