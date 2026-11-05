@@ -29,8 +29,9 @@ when `pdb2reaction --version` prints the version and the smoke check in
    SVG, PDF). The bundled `pysisyphus` and `thermoanalysis` come with it; do not
    install them separately.
 5. Accept the UMA license on Hugging Face and log in (see [UMA](backends.md#uma)).
-6. Add optional backends. MACE needs its own env
-   ([MACE](backends.md#mace-separate-environment)); `xtb` comes from conda-forge
+6. Add optional backends. ORB and MACE each need their own env
+   ([ORB](backends.md#orb-separate-environment),
+   [MACE](backends.md#mace-separate-environment)); `xtb` comes from conda-forge
    ([xTB](backends.md#xtb-solvent-correction)).
 
 ```bash
@@ -67,8 +68,7 @@ Install ORB and MACE directly in separate environments (see [Choose a backend](#
 container or cluster node often lacks both. On a GPU, UMA compiles code at run
 time for speed and needs a C compiler (`gcc`) even without `--compile`; with
 `--compile`, UMA and ORB need a C compiler on a GPU and a C++ compiler (`g++`) on a CPU.
-Image export (PNG, JPEG, SVG, PDF) needs the operating-system libraries of the Chrome that
-`plotly_get_chrome -y` downloads. Use the existing compiler; check with
+Use the existing compiler; check with
 `${CC:-gcc} --version` (`${CXX:-g++} --version` for C++).
 If gcc or CUDA is missing, load them from the system (on HPC,
 `module load gcc <CUDA_MODULE>`). If the system has no C compiler or CUDA, or
@@ -79,7 +79,10 @@ conda install -c conda-forge -y cuda-nvcc
 conda activate <YOUR_ENV>
 ```
 
-Then rerun the command. On HPC, ask the administrator for missing Chrome libraries.
+Then rerun the command.
+
+Image export (PNG, JPEG, SVG, PDF) needs the operating-system libraries of the Chrome that
+`plotly_get_chrome -y` downloads. On HPC, ask the administrator for missing Chrome libraries.
 The Chrome libraries are, for Ubuntu/Debian (Ubuntu 22.04 and
 Debian 12: `libasound2` instead of `libasound2t64`):
 

@@ -105,7 +105,7 @@ itself establish the intended elementary reaction: confirm it with `irc`.
 - **Stopped by the scheduler.** A run ended by walltime, a node failure, or
   cancellation is unfinished, not a convergence failure: it prints no
   `[tsopt]` verdict line and reports no n_imag. Do not count the candidate as
-  one that does not converge or change the method for it; rerun with more
+  non-convergent or change the method for it; rerun with more
   walltime, or resume `all` ([all.md](all.md#resume)).
 - **RS-P-RFO stops with a `ValueError`.** `RS-P-RFO exhausted its micro
   cycles outside the trust radius.`, `RS-P-RFO alpha update is not finite and
@@ -123,13 +123,13 @@ itself establish the intended elementary reaction: confirm it with `irc`.
   MEP before enabling it.
 - **Precision.** Curvature is precision-sensitive on every backend. Keep the
   backend's precision (UMA fp32, ORB and MACE fp64 by default), inspect the
-  actual mode, and check the final Hessian and IRC rather than ranking a saddle
+  actual mode, and check the final Hessian and IRC rather than judging a saddle
   by optimizer convergence alone. Use standalone `freq` for more analysis.
 - **`--ref-mode`.** This advanced option gives a Cartesian 3N reaction direction
   for choosing the initial root and tracking overlap. `all` supplies it from
   the MEP; with `all --no-tsopt-from-mep-tan`, its TS optimization chooses
   from the Hessian modes of the starting structure. Ordinary standalone `tsopt` runs should omit
-  it. Do not add it because a run is difficult; it is not a convergence switch.
+  it. Do not add it just because a run is difficult; it is not a convergence switch.
   Supply it only when an external path gives a deliberate non-zero direction.
 - **Frozen atoms.** With frozen atoms, the Hessian covers the movable atoms
   and only rigid motions that keep every frozen atom in place are removed. This

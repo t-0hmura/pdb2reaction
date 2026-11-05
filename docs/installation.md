@@ -81,7 +81,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 Use the existing compiler. If gcc or CUDA is missing, load them from the system (on HPC, for example with `module load`). If the system has no C compiler or CUDA, or you do not want to use them, `conda install -c conda-forge cuda-nvcc` installs both into the environment; reactivate the environment afterwards. On HPC, ask the administrator for any missing Chrome libraries.
 
-If a compiler or CUDA is missing, the command stops and prints `Missing system prerequisite:` followed by these two options.
+If a compiler or CUDA is missing, `pdb2reaction` stops and prints `Missing system prerequisite:` followed by these two options.
 
 (step-by-step-installation)=
 ## Step-by-step installation
@@ -214,7 +214,7 @@ If you prefer to build the environment piece by piece:
 
 **GPU / CUDA.** An NVIDIA GPU whose driver supports the chosen wheel (see Quick install); newer GPU architectures may need a newer wheel. CPU-only execution works but is usually much slower.
 
-**VRAM, RAM, and disk.** Memory grows with the model, the atom count, and the Hessian mode, and the disk holds the environment, the model weights, and the trajectories and Hessians. As a rough guide for a Hessian with the default UMA model, the default finite-difference Hessian (`FiniteDifference`) fits about 900 atoms in 8 GB, 2,000 in 16 GB, 3,000 in 24 GB, and 10,000 in 96 GB of VRAM, and an analytical Hessian (`Analytical`) about 200, 400, 600, and 1,500 atoms. Even when the model fits in VRAM, above about 1,000 atoms each Hessian takes an hour or more, and a full mechanism study takes longer. For a very large system, run one representative calculation on the target node and watch the peak use.
+**VRAM, RAM, and disk.** Memory depends on the model, the atom count, and the Hessian mode, and the disk holds the environment, the model weights, and the trajectories and Hessians. As a rough guide for a Hessian with the default UMA model, the default finite-difference Hessian (`FiniteDifference`) fits about 900 atoms in 8 GB, 2,000 in 16 GB, 3,000 in 24 GB, and 10,000 in 96 GB of VRAM, and an analytical Hessian (`Analytical`) about 200, 400, 600, and 1,500 atoms. Even when the model fits in VRAM, above about 1,000 atoms each Hessian takes an hour or more, and a full mechanism study takes longer. For a very large system, run one representative calculation on the target node and watch the peak use.
 
 ## Next steps
 

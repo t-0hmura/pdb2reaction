@@ -72,7 +72,7 @@
 
 - **症状**：切り出したモデルが想定より小さい、または触媒残基が含まれない。
 - **原因**：この部位には半径 `-r/--radius`（デフォルト 2.6 Å）が小さすぎる、または `--exclude-backbone` で削りすぎた。
-- **対処**：`--radius` を大きくするか（例：2.6 → 3.5 Å）、残基を足してください。`--selected-resn 'A:TYR:44'` は少なくともその側鎖を足し、`-c` に足すと、`-r` が 0 より大きければ残基が丸ごと残ります。詳しくは {ref}`モデルを広げる <ja-model-setup-larger>` と [残基セレクタ](cli-conventions.md#残基セレクタ) にあります。`--exclude-backbone` を付けていて削りすぎる場合は、`--no-exclude-backbone` を渡してください。
+- **対処**：`--radius` を大きくするか（例：2.6 → 3.5 Å）、残基を足してください。`--selected-resn 'A:TYR:44'` は少なくともその側鎖を足し、その残基を `-c` に足すと、`-r` が 0 より大きければ残基が丸ごと残ります。詳しくは {ref}`モデルを広げる <ja-model-setup-larger>` と [残基セレクタ](cli-conventions.md#残基セレクタ) にあります。`--exclude-backbone` を付けていて削りすぎる場合は、`--no-exclude-backbone` を渡してください。
 
 ### エネルギーや障壁がモデルの大きさで変わる
 
@@ -120,7 +120,7 @@
 | UMA のダウンロードに失敗する（`huggingface_hub.errors.GatedRepoError`、`401`、`403`） | Hugging Face にログインしていない、または UMA モデルのライセンスに同意していない | マシンごとに一度 `hf auth login` を実行し、Hugging Face の UMA モデルのページでライセンスに同意してください。HPC では、計算ノードからモデルのキャッシュ（`$FAIRCHEM_CACHE_DIR`、デフォルトは `~/.cache/fairchem`）に書き込めるかを確かめます。インターネットに接続できない計算ノードでは、同じ環境と、共有ファイルシステム上の同じ `$FAIRCHEM_CACHE_DIR` を使い、ログインノードで各モデルを 1 回取得してから（例: `python -c "from fairchem.core import pretrained_mlip; pretrained_mlip.get_predict_unit('uma-s-1p2p1', device='cpu')"`）、ジョブスクリプトで `export HF_HUB_OFFLINE=1` を設定します |
 | `ORB backend requires orb-models and torch`、`AIMNet2 backend requires torch and aimnet`、`Could not import mace.calculators because mace-torch is not installed` | バックエンドのパッケージがこの環境に入っていない | ORB：別の環境で `pip uninstall fairchem-core && pip install orb-models`。AIMNet2：`pip install "pdb2reaction[aimnet]"`。MACE：別の環境（次の行） |
 | `e3nn` / `fairchem-core` のインポートの競合 | UMA の環境に MACE を入れた。`mace-torch` は `e3nn==0.4.4` に固定し、`fairchem-core` は `e3nn>=0.5` を必要とする | MACE 専用の conda 環境を使ってください：`pip uninstall fairchem-core && pip install mace-torch` |
-| 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | import のエラーが名指ししたパッケージを直してください。 |
+| 追加パッケージを入れても ORB のインポートに失敗する | 環境の中のパッケージが `orb-models` と競合している | import のエラーに表示されたパッケージを直してください。 |
 | `torch.cuda.is_available()` が `False`、またはインポート時に CUDA の実行時エラー | PyTorch のビルドが計算ノードの GPU・ドライバに合っていない | `nvidia-smi`、`python -m torch.utils.collect_env`、`python -m pip check` で、割り当てられた GPU、入っている wheel、ドライバを確かめてください。真偽値だけでは原因は分かりません。`nvidia-smi` が示す `CUDA Version` はドライバが扱える最も新しい CUDA です。それ以下の CUDA の wheel（`cu126`、`cu130`、`cu132`）を入れてください。ローカルの CUDA toolkit は要りません |
 | `--mep-mode dmf` が `DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2` で止まる、または `No module named 'dmf'` | `cyipopt` が無い | {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 2〜3 のとおり、cyipopt と PyTorch を conda-forge から入れて環境を作ってください。`pydmf` は `pdb2reaction` と一緒に入ります |
 | `Missing system prerequisite: C compiler (gcc).`、`C++ compiler (g++).` または `CUDA build tools.`（PyTorch のエラー `Failed to find C compiler`、`No working C++ compiler found`） | `PATH` 上にコンパイラが無い、または CUDA のヘッダーや `ptxas` が無い。GPU での UMA と、`--compile` を付けた UMA と ORB は実行時に高速化のためコンパイルをします | `module load` などでシステムの gcc と CUDA を読み込むか、`conda install -c conda-forge cuda-nvcc` を実行して環境を再度 activate してから、再実行してください |

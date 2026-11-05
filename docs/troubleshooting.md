@@ -204,7 +204,7 @@ An IRC that stops before it converges is still usable when the endpoint optimiza
 (troubleshooting-gpu-memory)=
 ## GPU memory (VRAM) requirements
 
-VRAM depends on the MLIP model, precision, Hessian mode, and frozen atoms, not on the atom count alone, so measure a representative pilot with the same setup. On `torch.cuda.OutOfMemoryError`, try the following in order:
+VRAM depends on the MLIP model, precision, Hessian mode, and frozen atoms, not on the atom count alone, so measure it in a representative pilot with the same setup. On `torch.cuda.OutOfMemoryError`, try the following in order:
 
 1. Keep or switch to the default `--hessian-calc-mode FiniteDifference`; an analytical Hessian normally has a larger memory peak.
 2. Lower `--max-nodes`, or use a smaller MLIP model (`--backend-model`). In `opt` and `scan`, keep {ref}`--opt-mode grad <opt-mode-semantics>` (L-BFGS, no Hessian) instead of `hess`.

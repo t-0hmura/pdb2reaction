@@ -121,7 +121,7 @@ dominate. Use the stages below to construct a measured budget:
 | Stage | Pilot measurement | Scaling risk |
 |---|---|---|
 | `extract` | Run once locally/login node if site policy allows | Mostly file parsing; usually minor |
-| `path-search` / `path-opt` | Pilot one representative segment | Nodes × cycles × recursive segment count; convergence is nonlinear |
+| `path-search` / `path-opt` | Pilot one representative segment | Path nodes × cycles × recursive segment count; convergence is nonlinear |
 | `tsopt` | Pilot the chosen optimizer on one candidate | Hessian builds/rebuilds and recovery branches dominate |
 | `irc` | Pilot both directions | Each direction has its own cycle cap and may stop differently |
 | `freq` | Time one Hessian with the production mode | Dense matrix memory grows quadratically with active degrees of freedom |

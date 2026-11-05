@@ -81,7 +81,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 既存のコンパイラを使います。gcc や CUDA が無い場合は、システムのものを読み込んでください（HPC では `module load` など）。システムに C コンパイラや CUDA が無い場合や使わない場合は、`conda install -c conda-forge cuda-nvcc` で両方を環境に入れられます（入れた後に環境を再度 activate してください）。HPC で Chrome のライブラリが足りない場合は管理者に依頼してください。
 
-コンパイラや CUDA が足りないときは、コマンドが止まり、`Missing system prerequisite:` に続けてこの 2 つの方法を表示します。
+コンパイラや CUDA が足りないときは、`pdb2reaction` が止まり、`Missing system prerequisite:` に続けてこの 2 つの方法を表示します。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -208,9 +208,9 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 
 **OS:** Linux、または Windows の WSL。
 
-**GPU / CUDA:** 選んだ wheel に対応するドライバーの NVIDIA GPU（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
+**GPU / CUDA:** NVIDIA GPU と、選んだ wheel に対応するドライバー（最短のインストールを参照）。新しい GPU アーキテクチャでは新しい wheel が必要なことがあります。CPU のみでも実行できますが、通常は大幅に遅くなります。
 
-**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式とともに増え、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間以上かかり、反応機構解析の全体の時間が長くなります。巨大な系を扱う場合は、代表的な計算を 1 つ対象の計算ノードで実行し、最大使用量を見てください。
+**VRAM・RAM・ディスク:** メモリはモデル、原子数、Hessian の計算方式によって変わり、ディスクには環境、モデルの重み、軌跡と Hessian が入ります。デフォルトの UMA で Hessian を計算するときの VRAM のおおよその目安は、デフォルトの有限差分（`FiniteDifference`）で 8 GB に約 900 原子、16 GB に約 2,000 原子、24 GB に約 3,000 原子、96 GB に約 1 万原子、解析 Hessian（`Analytical`）で 8 GB に約 200 原子、16 GB に約 400 原子、24 GB に約 600 原子、96 GB に約 1,500 原子です。VRAM に収まっても、1,000 原子を超えると Hessian 1 回に 1 時間以上かかり、反応機構解析の全体の時間が長くなります。巨大な系を扱う場合は、代表的な計算を 1 つ対象の計算ノードで実行し、最大使用量を見てください。
 
 ## 次のステップ
 

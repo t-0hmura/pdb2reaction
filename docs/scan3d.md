@@ -158,7 +158,7 @@ See the [generated CLI reference](reference/commands/scan3d.md) for every option
 
 * **Three ranges in one literal**: `-s` takes exactly three ranges, in one inline literal or under `pairs:` in a YAML/JSON file. For staged scans, use [`scan`](scan.md).
 * **PDB with chains**: the {ref}`positional form <scan-list-spec>` `A:SAM:320:CS1` picks one atom without ambiguity.
-* **Grid size**: the number of relaxations is the product of the three axis lengths and grows quickly (567 for example 1). Start with a larger `--max-step-size` or narrower ranges.
+* **Grid size**: the number of grid points is the product of the three axis lengths and grows quickly (567 for example 1). Start with a larger `--max-step-size` or narrower ranges.
 * **`--baseline first`**: zero is put at point `(i, j, k) = (0, 0, 0)` when it is usable; otherwise the run prints `[baseline] 'first' requested but no eligible (i=0,j=0,k=0); using eligible minimum instead.` and uses the lowest usable point.
 * **Cap hydrogens**: `--freeze-links` (default on) fixes the parent atoms of the {ref}`cap hydrogens <link-hydrogen-and-frozen-atoms>` of an extracted cluster.
 * **Check the spec without computing**: `--dry-run` reads the input, the charge and spin, and `-s`, prints the plan, and exits without any optimization. With `--csv`, it checks only the options.

@@ -130,7 +130,7 @@ cat result_opt/result.json | python -m json.tool
 | `optimization_status` | string | 数値オプティマイザの結果: `"converged"` / `"not_converged"` / `"stalled"`。鞍点次数とは独立 |
 | `saddle_validation` | string | 終端の厳密な PHVA（部分 Hessian 振動解析）による `"first_order"` / `"higher_order"` / `"no_imaginary"` / `"unavailable"` |
 | `hessian_status` | string | `"completed"` / `"failed"` / `"skipped"` / `"unavailable"`。失敗理由は`hessian_error` |
-| `reaction_mode_index` | int\|null | `all` が IRC でたどる虚振動の、PHVA の振動数の一覧での 0 始まりの番号。オプティマイザが追ったモードが虚振動ならそのモード、そうでなければ最も低い虚振動です。どちらかは `reaction_mode_source`（`"mep-reference-overlap"` / `"lowest-imaginary"`）に入ります。虚振動が無ければ `null` |
+| `reaction_mode_index` | int\|null | PHVA の振動数の一覧で、`all` が IRC でたどる虚振動の番号（0 始まり）。オプティマイザが追ったモードが虚振動ならそのモード、そうでなければ最も低い虚振動です。どちらを選んだかは `reaction_mode_source`（`"mep-reference-overlap"` / `"lowest-imaginary"`）に入ります。虚振動が無ければ `null` |
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `n_negative_modes` | int\|null | 大きさを問わない負の振動数の数（閾値以内も含む）。`n_imaginary_modes` と並べて見る診断用の値で、PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` または `[]` |
@@ -144,7 +144,7 @@ cat result_opt/result.json | python -m json.tool
 | `safeguards` | object | 厳密な鞍点の確認、最後に追ったモードの番号と重なり、止まった理由と、指定したときだけ働くモードの消失・回復の処理の記録。これらの回復の処理はデフォルトでは無効 |
 | `rigid_projection` | object | 剛体モードと厳密な Hessian の記録。[剛体モードの射影の記録](#剛体モードの射影の記録)を参照 |
 
-`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束した実行が `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ欄を持ちますが、`safeguards` はありません。
+`files` には `imaginary_mode_files`（vib ファイルの一覧）と `hessian_npy`（`--dump-hess` のファイルの絶対パス）が入ることがあります。TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます。このとき `saddle_validation: "first_order"`、`n_imaginary_modes: 1` です。最後の PHVA は、オプティマイザが収束したときと、エネルギープラトーで止まったとき（`stalled`）に実行します。それ以外はスキップとして記録します。`optimization_status` と `saddle_validation` は独立なので、収束しても `saddle_validation: "higher_order"` で終わることがあり、これは一次の TS ではありません。`all` が IRC に進む条件は [tsopt の TS の判定](tsopt.md#ts-の判定) を参照してください。Dimer の結果も同じ欄を持ちますが、`safeguards` はありません。
 
 ### `freq`
 

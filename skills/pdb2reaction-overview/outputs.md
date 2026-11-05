@@ -80,7 +80,7 @@ These block names never change with the backend: `mlip`, `gibbs_mlip`, `dft`, an
 - Report `segments/seg_NN/{reactant,ts,product}.*`: the optimized TS, and the IRC ends after endpoint optimization.
 - `segments/seg_NN/` exists only for reactive segments, and NN is `segments[].index`, so after `--refine-path` the list can start at `seg_02` or skip numbers. List `segments/` or read `post_segments[].index` instead of assuming `seg_01`, take the barrier TS from the segment in `rate_limiting_step.segment` (not `post_segments[0]`), and copy R, TS, and P of one segment together.
 - In Endpoint and Scan-list modes, the IRC ends are matched to the MEP's left and right states by bond pattern, then RMSD.
-- In TS-only mode, the higher-energy IRC end is named the reactant (the left end on an exact tie). This names the direction, not the chemical direction of the reaction; `endpoint_assignment` records `chemical_direction_known: false`. The barrier from P is `barrier_kcal − delta_kcal`.
+- In TS-only mode, the higher-energy IRC end is named the reactant (the left end on an exact tie). The names do not indicate the chemical direction of the reaction; `endpoint_assignment` records `chemical_direction_known: false`. The barrier from P is `barrier_kcal − delta_kcal`.
 - The raw IRC ends before optimization are in `segments/seg_NN/structures/{reactant,product}_irc.*`; use them only to debug a difference between the IRC and the endpoint optimization.
 - `bond_changes` comes from the MEP ends in Endpoint and Scan-list modes, and from the optimized R and P in TS-only mode.
 

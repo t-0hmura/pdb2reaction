@@ -118,7 +118,7 @@ Each calculation command writes to its own directory, `./result_<command>/` by d
 An `all` run writes the main outputs of the stages it runs to `./result_all/`:
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
-- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for mmCIF input or very large PDB) — the merged reaction path in MEP/scan-list modes
+- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for mmCIF input or very large PDB) — the merged reaction path in Endpoint and Scan-list modes
 - `energy_diagram_MEP.png` — MEP energy diagram
 - `summary.log` / `summary.json`
 

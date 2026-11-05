@@ -8,7 +8,7 @@ This pattern requires `pbsdsh`, a shared directory visible at the same path on
 every node, and a filesystem on which `flock` is reliable. Confirm all three
 site-specific assumptions first. Each task's `run.sh` must be **idempotent** or
 publish outputs atomically: recovery is deliberately at-least-once, so a task
-terminated after publishing output but before its completion marker may run again.
+terminated after publishing output but before writing its completion marker may run again.
 
 Fill `<N_NODES>`, `<NCPU>`, `<NGPU>`, `<MEM>`, `<HH:MM:SS>`, and
 `<YOUR_QUEUE>` as in [the environment probe](../pdb2reaction-install/backends.md#probe-the-compute-environment). Set the shell defaults

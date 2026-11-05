@@ -103,7 +103,7 @@ N より前のセグメントはそのまま残し、セグメント N 以降の
 
 IRC の前で止まったセグメントは IRC とその後の段を行わず、結果は `success` になりません。TS のファイルは `segments/seg_NN/ts/` に残ります。ほかのセグメントは後処理を続けます。`irc_plot_all.png` は全セグメントに IRC があるときだけ描きます。TS 最適化の終わり方の一覧は [`tsopt` の「TS の判定」](tsopt.md#ts-の判定) にあります。
 
-片方の端点の最適化が収束しない場合、結果は `partial` になり、そのセグメントは振動数と DFT の段を行いません。ほかのセグメントは後処理を続けます。`segments/seg_NN/endpoint_opt/` は確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
+端点の最適化が収束しない場合、結果は `partial` になり、そのセグメントは振動数と DFT の段を行いません。ほかのセグメントは後処理を続けます。`segments/seg_NN/endpoint_opt/` は確認用に残します。端点の最適化がエラーで失敗した場合は、エラーを `segments/seg_NN/endpoint_opt/failure.json` に記録し、そのセグメントは振動数と DFT の段の前で止まります。TS と IRC の構造は残ります。
 
 ---
 
@@ -116,7 +116,7 @@ TS 最適化が成功すると、反応モードの虚振動が 1 つ出ます�
 * **端末**: 各 TS 最適化は、虚振動 1 つで収束すると `[Imaginary modes] n=1 (...)` を出します。`====== Pipeline summary ======` の下に `Execution status:` と `Scientific status:` が出ます。結果が `success` でないときは、`RESULT WARNING:` の行に理由が出ます。
 * **`summary.log`**: ヘッダーに `Pipeline mode`（`MEP`、`Scan`、`TS-only`）と 2 つのステータスが出ます。[1] は MEP の概要、[2] は各セグメントの MEP 上の障壁 ΔE‡・反応エネルギー ΔE・結合の変化、[3] は各セグメントの後処理で、`TS imaginary freq:` の下に n_imag が出ます。[4] はエネルギー図の表、[5] は出力のツリーです。
 * **`summary.json`**: `scientific_status` には `success`・`partial`・`failed` のいずれかが、`scientific_status_reasons` にはその[理由](json-output.md#実行の完了と指定した段の完了)が入ります。各 TS の n_imag は `post_segments[].tsopt.n_imaginary_modes` です。
-  * **`summary.json` の障壁**: `--tsopt` のとき、各セグメントの障壁は `post_segments[].mlip.barrier_kcal` で、最適化した TS と R の MLIP のエネルギー差です。`--thermo` と `--dft` のときは、同じ `barrier_kcal` が `gibbs_mlip`・`dft`・`gibbs_dft_mlip` の下にもあります。`segments[].barrier_kcal` は TS 最適化の前の MEP 上の障壁で、TS-only モードでは TS − R です。
+  * **`summary.json` の障壁**: `--tsopt` のとき、各セグメントの障壁は `post_segments[].mlip.barrier_kcal` で、最適化した TS と R の MLIP のエネルギー差です。`--thermo` と `--dft` のときは、`barrier_kcal` が `gibbs_mlip`・`dft`・`gibbs_dft_mlip` の下にもあります。`segments[].barrier_kcal` は TS 最適化の前の MEP 上の障壁で、TS-only モードでは TS − R です。
 
 `success` は、指定した段がすべて収束したことを示し、`--tsopt` のときはすべての TS が n_imag = 1 であることも意味します。端点が狙った R と P かは自分で確かめてください。`summary.log` の [2] の結合の変化と、`segments/seg_NN/reactant.*`・`product.*` の構造を、狙った R と P と比べます。n_imag が 1 でないときや、端点が狙いと違うときは {ref}`TS が得られないとき <ja-ts-search-fails>` を参照してください。
 

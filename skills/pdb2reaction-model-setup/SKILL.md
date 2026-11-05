@@ -38,7 +38,7 @@ names, and atom names; `extract` writes that `.cif` automatically. Report
 residues from the `.cif`, not from the `.pdb`.
 
 An XYZ passed to a command that needs residue context, such as
-`-l 'GLU:-1'`, needs `--ref-pdb` pointing to a PDB or mmCIF with the same atoms.
+`-l 'SAM:1'`, needs `--ref-pdb` pointing to a PDB or mmCIF with the same atoms.
 `sp` has no `--ref-pdb`: give it the PDB or mmCIF directly, or an XYZ with
 explicit `-q` and `-m`.
 
@@ -205,7 +205,7 @@ so it is not a preview.
 
 DFT optimization is practical up to roughly 300 atoms (N + M). Remove main chains except between peptide-bonded `-c` residues (`--exclude-backbone`) or remove waters (`--no-include-h2o`); keep only chosen residues with `-r 0 --selected-resn` (disulfide partners and a proline's N-side neighbor still join); or trim an extracted PDB by hand and run `all` without `-c`, with `-q` or `-l`. Freezing distant atoms with `--freeze-atoms` makes `freq` a PHVA on the movable block, and the UMA finite-difference Hessian displaces only movable atoms.
 
-Each removal changes the charge. Delete the cap H of removed residues, or the run stops with `isolated LKH/HL`; a model built without `extract` has no cap H, so freeze its boundary with `--freeze-atoms`, and regenerate those indices after re-extraction (`all` with `-c` numbers the original input). If `freq` runs out of CUDA memory, keep the default `--hessian-calc-mode FiniteDifference` or shrink the movable region. DFT cost does not follow atom count; time one structure before a batch.
+Each removal changes the charge. Delete the cap H of removed residues, or the run stops with `isolated LKH/HL`; a model built without `extract` has no cap H, so freeze its boundary with `--freeze-atoms`, and regenerate those indices after re-extraction (`all -c` expects indices of the original input). If `freq` runs out of CUDA memory, keep the default `--hessian-calc-mode FiniteDifference` or shrink the movable region. DFT cost does not follow atom count; time one structure before a batch.
 
 `--exclude-backbone` also changes which residues join: an amino acid enters only through a side-chain atom within `-r` (or `--radius-het2het`), so a residue that touches a center only through its backbone N–H or C=O, such as an oxyanion hole, is left out. An amino-acid center not peptide-bonded to another center keeps only its side chain, capped at CB (Pro and Hyp keep the ring), and a lone Gly center keeps no atoms (`[extract] Center residue(s) … keep no atoms`). Put such a residue in `-c` with its peptide-bonded neighbor, or drop `--exclude-backbone`.
 

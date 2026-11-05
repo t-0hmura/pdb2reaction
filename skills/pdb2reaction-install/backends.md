@@ -123,7 +123,7 @@ it is not a documented PyTorch control. A source-built extension that needs a
 toolkit path must use the toolkit it was built with.
 
 CPU only: install from the `cpu` index. MLIP backends run on CPU but usually
-much slower; measure a representative structure. DFT does not fall back to CPU:
+much slower; benchmark a representative structure. DFT does not fall back to CPU:
 with the default `--dft-engine gpu`, a GPU failure stops the run, so pass
 `--dft-engine cpu` explicitly.
 
