@@ -19,7 +19,7 @@ set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: module load <COMPILER_MODULE>
+# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
 # For a source-built extension, also: module load <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -64,7 +64,7 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 
 # Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: module load <COMPILER_MODULE>
+# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
 # For a source-built extension, also: module load <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -114,7 +114,7 @@ module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # change to the installed environment
 module load ompi                             # site module required by this MPI/Ray template
 # Prebuilt PyTorch wheels need no CUDA toolkit module. UMA on a GPU compiles code at run time for speed, so gcc
-# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: module load <COMPILER_MODULE>
+# must be on PATH (on a CPU, --compile needs g++ too). If the compute node has none: conda install -c conda-forge cuda-nvcc
 # For a source-built extension, also: module load <CUDA_MODULE>
 set +u                                       # conda's activate scripts read unset variables
 source ~/apps/miniconda3/etc/profile.d/conda.sh
@@ -297,7 +297,7 @@ Choose precision by backend and purpose, then measure its cost on the allocated 
 
 ## Notes
 
-* **One node**: the job script only runs the `pdb2reaction` command, as in the one-GPU scripts above: the default `--uma-workers 1` uses one GPU, and `--uma-workers N --uma-workers-per-node N` uses N GPUs of that node. The Ray script is only for runs over several nodes.
+* **One node**: the job script only runs the `pdb2reaction` command, as in the one-GPU scripts above: the default `--uma-workers 1` uses one GPU, and `--uma-workers N --uma-workers-per-node N` uses N GPUs of that node.
 * **Ray cluster not ready**: if the Ray cluster does not come up, the script stops with exit code 2 before `opt` starts.
 * **Analytical Hessian needs one worker**: with `--uma-workers` above 1, the analytical Hessian is not available, and `--hessian-calc-mode Analytical` stops with an error. Use `--uma-workers 1`, or the `FiniteDifference` Hessian.
 * **Only UMA uses workers**: with ORB / MACE / AIMNet2, `workers` / `workers_per_node` values other than 1 are ignored with a warning.

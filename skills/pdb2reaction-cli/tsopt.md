@@ -106,7 +106,7 @@ itself establish the intended elementary reaction: confirm it with `irc`.
   cancellation is unfinished, not a convergence failure: it prints no
   `[tsopt]` verdict line and reports no n_imag. Do not count the candidate as
   one that does not converge or change the method for it; rerun with more
-  walltime, or resume `all` ([all.md](all.md#resume-a-failed-segment)).
+  walltime, or resume `all` ([all.md](all.md#resume)).
 - **RS-P-RFO stops with a `ValueError`.** `RS-P-RFO exhausted its micro
   cycles outside the trust radius.`, `RS-P-RFO alpha update is not finite and
   positive.`, and `RS-P-RFO combined step exceeds the trust radius.` are

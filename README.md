@@ -69,7 +69,7 @@ hf auth login                               # interactive
 | `[aimnet]` | AIMNet2 MLIP backend (`-b aimnet2`) — *not* HF-gated |
 | `[dft]` / `[dft-cuda12]` | DFT calculator and standalone command with native CUDA 13 / CUDA 12 GPU4PySCF |
 
-The MACE backend (`-b mace`) does not install into the same environment as UMA; create a dedicated environment as described in [docs/installation.md](docs/installation.md).
+The ORB (`-b orb`) and MACE (`-b mace`) backends do not install into the same environment as UMA; create a dedicated environment as described in [docs/installation.md](docs/installation.md).
 
 CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chromium, and HPC job-script templates: [docs/installation.md](docs/installation.md) and [docs/hpc-example.md](docs/hpc-example.md).
 

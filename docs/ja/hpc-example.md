@@ -19,7 +19,7 @@ set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
 # 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -64,7 +64,7 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 
 # ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
 # 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -114,7 +114,7 @@ module purge
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # インストールした環境の名前に変える
 module load ompi                             # この MPI/Ray のテンプレートに必要な計算機のモジュール
 # ビルド済みの PyTorch の wheel なら CUDA toolkit のモジュールは不要。GPU での UMA は実行時に高速化のためコンパイルをするので、
-# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: module load <COMPILER_MODULE>
+# gcc が PATH に必要（CPU で --compile を付けるときは g++ も）。計算ノードになければ: conda install -c conda-forge cuda-nvcc
 # 拡張をソースからビルドするときは、さらに: module load <CUDA_MODULE>
 set +u                                       # conda の activate スクリプトは未設定の変数を読む
 source ~/apps/miniconda3/etc/profile.d/conda.sh
@@ -297,7 +297,7 @@ pdb2reaction は、最適化の各ステップ、経路の各イメージ、有�
 
 ## 使用上の注意点
 
-* **1 ノードのジョブ**: ジョブスクリプトは、上の GPU 1 つの例のように `pdb2reaction` のコマンドを実行するだけで、GPU 1 つならデフォルトの `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。Ray のスクリプトは、複数のノードで動かすときだけ使います。
+* **1 ノードのジョブ**: ジョブスクリプトは、上の GPU 1 つの例のように `pdb2reaction` のコマンドを実行するだけで、GPU 1 つならデフォルトの `--uma-workers 1` のまま、そのノードの GPU を N 個使うなら `--uma-workers N --uma-workers-per-node N` を付けます。
 * **Ray のクラスターが立ち上がらないとき**: `opt` を始める前に終了コード 2 で止まります。
 * **解析 Hessian はワーカー 1 つで使います**: `--uma-workers` を 2 以上にすると解析 Hessian は使えず、`--hessian-calc-mode Analytical` はエラーで止まります。`--uma-workers 1` にするか、`FiniteDifference` の Hessian を使ってください。
 * **ワーカーを使うのは UMA だけです**: ORB / MACE / AIMNet2 では、1 以外の `workers` / `workers_per_node` は警告を出して無視されます。
