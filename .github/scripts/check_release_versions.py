@@ -195,7 +195,7 @@ def check_ci_torch_pin() -> list[str]:
 
 
 def check_pyproject_metadata() -> list[str]:
-    """Dependency floors, the ORB and DFT extras, the Python range and the torch,
+    """Dependency floors, the DFT extra, the Python range and the torch,
     numpy and fairchem ranges that the runtime APIs require."""
     import tomllib
 
@@ -215,16 +215,6 @@ def check_pyproject_metadata() -> list[str]:
             errors.append(f"{name}: dependencies must contain {pin!r}")
     if extras.get("aimnet") != ["aimnet>=0.2.0"]:
         errors.append(f"{name}: the aimnet extra must be ['aimnet>=0.2.0']")
-
-    orb = [Requirement(value) for value in extras.get("orb", [])]
-    if len(orb) != 1 or orb[0].marker is not None or orb[0].name != "orb-models":
-        errors.append(f"{name}: the orb extra must be one unconditional orb-models requirement")
-    else:
-        specifier = orb[0].specifier
-        if "0.7.0" not in specifier or "0.8.0" not in specifier:
-            errors.append(f"{name}: the orb extra must allow the OrbMol-v2 releases 0.7.0 and 0.8.0")
-        if "0.5.5" in specifier or "0.6.99" in specifier:
-            errors.append(f"{name}: the orb extra must exclude orb-models before 0.7.0")
 
     python = SpecifierSet(project["requires-python"])
     for version, supported in (
