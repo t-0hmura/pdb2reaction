@@ -164,7 +164,7 @@ cluster use it only when that environment is justified.
 every energy and force with PySCF/GPU4PySCF. The separate `pdb2reaction dft`
 command gives single points with population analysis. Low-memory mode, CPU
 threads and host RAM, and SCF checkpoints are described in
-[Refine an MLIP TS with DFT](dft-backend.md).
+[Validate the MLIP TS structure with DFT](dft-backend.md).
 
 (backends-custom-calculator)=
 ## Custom backend — bring your own ASE Calculator (`--calc-file`)
@@ -368,6 +368,6 @@ To add a built-in backend with its own `--backend` name, follow recipe 3.2
 
 - [Architecture](architecture.md) — directory map and dependency direction.
 - [HPC example](hpc-example.md) — PBS + Open MPI + Ray template for scaling `workers` / `workers_per_node` across nodes.
-- [Refine an MLIP TS with DFT](dft-backend.md) — DFT settings, memory, and checkpoints.
+- [Validate the MLIP TS structure with DFT](dft-backend.md) — DFT settings, memory, and checkpoints.
 - [Troubleshooting](troubleshooting.md) — detailed troubleshooting guide.
 - [opt](opt.md), [path-opt](path-opt.md), [all](all.md) — commands that run on the selected backend.

@@ -2,7 +2,7 @@
 
 `dft` サブコマンドは、1 つの構造に対して GPU4PySCF（GPU）または PySCF（CPU）で **DFT（密度汎関数理論）一点計算**を行います。**エネルギー**と、Mulliken・meta-Löwdin・IAO（内在的原子軌道）のポピュレーション解析による**原子電荷**を出力します。デフォルトの手法は ωB97M-V/def2-svp です。DFT 用の追加パッケージが必要です。[詳細なインストール手順](installation.md#詳細なインストール手順)の手順 7 を参照してください。
 
-`all --dft` は MLIP（機械学習原子間ポテンシャル）で求めた反応物（R）・遷移状態（TS）・生成物（P）に DFT 一点計算を行います。`-b dft` はコマンドのすべての計算を DFT で行います。違いは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
+`all --dft` は MLIP（機械学習原子間ポテンシャル）で求めた反応物（R）・遷移状態（TS）・生成物（P）に DFT 一点計算を行います。`-b dft` はコマンドのすべての計算を DFT で行います。違いは [MLIP での TS 構造を DFT で検証する](dft-backend.md) を参照してください。
 
 ---
 
@@ -130,7 +130,7 @@ result_dft/
 
 ## 関連ドキュメント
 
-* [MLIP の TS を DFT で確かめる](dft-backend.md) — ワークフローでの `-b dft` と `--dft`、DFT の設定、GPU メモリ
+* [MLIP での TS 構造を DFT で検証する](dft-backend.md) — ワークフローでの `-b dft` と `--dft`、DFT の設定、GPU メモリ
 * [sp](sp.md) — `-b dft` を含む任意のバックエンドでの一点エネルギーと力
 * [all](all.md) — 一気通貫ワークフロー。`--dft` で R・TS・P に DFT 一点計算を追加
 * [MLIP バックエンド](backends.md) — バックエンドの選び方

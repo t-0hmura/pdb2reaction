@@ -1,4 +1,4 @@
-# Refine an MLIP TS with DFT
+# Validate the MLIP TS structure with DFT
 
 Once MLIP has found a reasonable pathway, pdb2reaction can take its TS straight into a DFT TS optimization. It runs the TS optimization → IRC → endpoint optimization → frequency workflow with GPU-accelerated DFT through GPU4PySCF.
 

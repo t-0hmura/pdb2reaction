@@ -65,7 +65,7 @@ DFT optimization is practical up to roughly 300 atoms. For `1.R.pdb` alone with 
 - **`-r 0 --selected-resn`** adds no residues by distance: the model holds the `-c` residues and the residues you list. In the bundled example, residues 44, 63, and 186 are the three closest to the methyl carbon of SAM (CS1); for your own system, pick the residues that take part in the reaction.
 - **By hand**: delete residues in PyMOL or another viewer, save the file, and use it as in [Use a model you built yourself](#use-a-model-you-built-yourself).
 
-`all` takes the same options, so the MLIP search can run on the small model from the start; see example 1 of [Refine an MLIP TS with DFT](dft-backend.md#examples). Removing residues changes the charge, so check the log each time.
+`all` takes the same options, so the MLIP search can run on the small model from the start; see example 1 of [Validate the MLIP TS structure with DFT](dft-backend.md#examples). Removing residues changes the charge, so check the log each time.
 
 ## Make the model larger
 
@@ -164,7 +164,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 \
 - [`scan`](scan.md) — staged scans with restraints
 - [`freq`](freq.md) — PHVA and rigid modes with frozen atoms
 - [Tips for studying reaction mechanisms](mechanism-tips.md) — when to enlarge the model
-- [Refine an MLIP TS with DFT](dft-backend.md) — keeping the model small enough for DFT
+- [Validate the MLIP TS structure with DFT](dft-backend.md) — keeping the model small enough for DFT
 - [Common options and selectors](cli-conventions.md) — residue and atom selectors
 - [YAML Reference](yaml-reference.md) — `geom.freeze_atoms` and the other settings
 - [Troubleshooting](troubleshooting.md) — extraction errors

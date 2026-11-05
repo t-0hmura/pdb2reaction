@@ -97,21 +97,23 @@ _FONTS = {
 # each, _static/icons/<p2r_icon_set>/); each stage takes its colour from the palette above.
 # pages[0] is the page a stage links to; commands not listed here stay neutral.
 p2r_pipeline = [
-    {'id': 'prep', 'en': 'Preparing the input', 'ja': '入力の準備',
-     'pages': ['extract', 'fix-altloc', 'add-elem-info'], 'color': 'navy', 'icon': 'extract'},
+    {'id': 'prep', 'en': 'Building the model', 'ja': 'モデルの構築',
+     'pages': ['extract'], 'color': 'navy', 'icon': 'extract'},
     # Scan comes right before the MEP search; only the Scan-list mode goes through it.
     {'id': 'scan', 'en': 'Scan', 'ja': 'スキャン',
      'pages': ['scan', 'scan2d', 'scan3d'], 'color': 'scan', 'icon': 'scan'},
-    {'id': 'path', 'en': 'Building the path', 'ja': '経路の作成',
+    # \u200b (zero-width space) and \u00a0 (no-break space) set where the Japanese labels may wrap
+    # in the narrow strip columns (word-break: keep-all).
+    {'id': 'path', 'en': 'Optimizing the reaction path', 'ja': '反応経路の\u200b最適化',
      'pages': ['path-opt', 'path-search'], 'color': 'green', 'icon': 'mep'},
     {'id': 'ts', 'en': 'Optimizing the TS', 'ja': 'TS の最適化',
      'pages': ['tsopt'], 'color': 'violet', 'icon': 'tsopt'},
-    {'id': 'irc', 'en': 'Following the IRC', 'ja': 'IRC の追跡',
+    {'id': 'irc', 'en': 'IRC calculation', 'ja': 'IRC 計算',
      'pages': ['irc'], 'color': 'teal', 'icon': 'irc'},
-    # \u00ad (soft hyphen) lets the narrow strip column break it as "Thermo-chemistry".
-    {'id': 'thermo', 'en': 'Thermo\u00adchemistry', 'ja': '熱化学',
+    # \u00ad (soft hyphen) lets the narrow strip column break it as "Thermo-chemical".
+    {'id': 'thermo', 'en': 'Thermo\u00adchemical analysis', 'ja': '熱化学解析',
      'pages': ['freq'], 'color': 'orange', 'icon': 'thermo'},
-    {'id': 'dft', 'en': 'DFT', 'ja': 'DFT',
+    {'id': 'dft', 'en': 'DFT single point', 'ja': 'DFT での 1\u00a0点計算',
      'pages': ['dft'], 'color': 'rose', 'icon': 'dft'},
 ]
 # Stage icon set: the folder under _static/icons/ (u50 = every line drawn 5.0 units

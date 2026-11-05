@@ -515,4 +515,4 @@ the placeholder values.
 - [pdb2reaction-hpc](../pdb2reaction-hpc/SKILL.md): job scripts that use the placeholders above.
 - [tsopt](../pdb2reaction-cli/tsopt.md) and [freq](../pdb2reaction-cli/freq.md): Hessian mode and TS checks per backend.
 - [dft](../pdb2reaction-cli/dft.md): the `dft` command and DFT//MLIP single points.
-- Docs: [Installation](../../docs/installation.md), [MLIP Backends](../../docs/backends.md), [Refine an MLIP TS with DFT](../../docs/dft-backend.md).
+- Docs: [Installation](../../docs/installation.md), [MLIP Backends](../../docs/backends.md), [Validate the MLIP TS structure with DFT](../../docs/dft-backend.md).

@@ -255,7 +255,7 @@ pdb2reaction all -i mutant_R.pdb mutant_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' 
 * [irc](irc.md) — IRC from a TS
 * [freq](freq.md) — vibrational analysis and thermochemistry
 * [dft](dft.md) — DFT single points
-* [Refine an MLIP TS with DFT](dft-backend.md) — `-b dft` and `--dft`
+* [Validate the MLIP TS structure with DFT](dft-backend.md) — `-b dft` and `--dft`
 * [Tips for studying reaction mechanisms](mechanism-tips.md) — splitting the reaction, checking the TS, and what to try when it fails
 * [Troubleshooting](troubleshooting.md) — what to do when a run fails
 * [Getting Started](getting-started.md) — the shortest run and what to read next

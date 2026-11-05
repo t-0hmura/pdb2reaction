@@ -95,11 +95,11 @@ If the TS is still not found, see {ref}`Check the TS <mechanism-check-ts>` and {
 * **Imaginary modes at R or P**: thermochemistry is computed even when R or P keeps an imaginary mode, and that mode is left out of ZPE and G. Check the mode before treating the structure as a minimum.
 * **When IRC runs**: `all` goes on to IRC only when the TS optimization converged, its final Hessian finished, and n_imag ≥ 1. With n_imag ≥ 2 the IRC follows one imaginary mode as a diagnostic; it does not make the structure a first-order saddle point.
 * **More `tsopt` settings**: for `--opt-mode`, `--max-cycles`, and Hessian options, run [`tsopt`](tsopt.md) on its own. `pdb2reaction all --help-advanced` lists every option of `all`.
-* **DFT**: to optimize the TS itself with DFT, and for the DFT extra and GPU memory, see [Refine an MLIP TS with DFT](dft-backend.md).
+* **DFT**: to optimize the TS itself with DFT, and for the DFT extra and GPU memory, see [Validate the MLIP TS structure with DFT](dft-backend.md).
 
 ## Next steps
 
-- [Refine an MLIP TS with DFT](dft-backend.md): refine and check the TS with DFT
+- [Validate the MLIP TS structure with DFT](dft-backend.md): refine and check the TS with DFT
 - [Tips for studying reaction mechanisms](mechanism-tips.md): check the TS, and what to try when the TS search fails
 - [`tsopt`](tsopt.md), [`irc`](irc.md), [`freq`](freq.md): run each stage on its own
 - [Quickstart: `pdb2reaction all`](quickstart-all.md): build an MEP from R and P

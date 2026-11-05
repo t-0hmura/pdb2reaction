@@ -184,7 +184,7 @@ calc:
    with_solvent: {}
 ```
 
-`backend: dft` は、上の `calc.dft` ブロックの設定で、エネルギー・力・Hessian をすべて DFT（PySCF または GPU4PySCF）で計算します。詳しくは [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。後述の最上位の [`dft` セクション](#ja-dft-section) は、別の `dft` コマンド（`all --dft` でも実行される）の設定です。どちらも同じ SCF のキー（`conv_tol`・`max_cycle`・`grid_level` など）を受け付け、`save_scf_checkpoint` と `checkpoint_path` は `calc.dft` だけにあります。`hessian_calc_mode: Analytical` は有限変位の誤差を避けられますが、計算時間とメモリはバックエンドと系によって変わるので、先に自分の系で試してください。`charge` と `spin` が CLI や `.gjf` テンプレートとどう組み合わさるかは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
+`backend: dft` は、上の `calc.dft` ブロックの設定で、エネルギー・力・Hessian をすべて DFT（PySCF または GPU4PySCF）で計算します。詳しくは [MLIP での TS 構造を DFT で検証する](dft-backend.md) を参照してください。後述の最上位の [`dft` セクション](#ja-dft-section) は、別の `dft` コマンド（`all --dft` でも実行される）の設定です。どちらも同じ SCF のキー（`conv_tol`・`max_cycle`・`grid_level` など）を受け付け、`save_scf_checkpoint` と `checkpoint_path` は `calc.dft` だけにあります。`hessian_calc_mode: Analytical` は有限変位の誤差を避けられますが、計算時間とメモリはバックエンドと系によって変わるので、先に自分の系で試してください。`charge` と `spin` が CLI や `.gjf` テンプレートとどう組み合わさるかは {ref}`電荷の指定 <ja-charge-specification>` を参照してください。
 
 ---
 

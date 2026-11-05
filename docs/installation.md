@@ -185,7 +185,7 @@ If you prefer to build the environment piece by piece:
     pip install "pdb2reaction[dft]"
     ```
 
-    For when to use DFT and how to check an MLIP TS with it, see [Refine an MLIP TS with DFT](dft-backend.md).
+    For when to use DFT and how to check an MLIP TS with it, see [Validate the MLIP TS structure with DFT](dft-backend.md).
 
 8. **Verify installation**
 
@@ -222,7 +222,7 @@ If you prefer to build the environment piece by piece:
 - [Quickstart: `pdb2reaction all`](quickstart-all.md) — build an MEP from R and P
 - [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md) — build a path from one structure
 - [Quickstart: TS-only mode](quickstart-tsopt.md) — optimize and check a TS candidate
-- [Refine an MLIP TS with DFT](dft-backend.md) — refine and check the TS with DFT
+- [Validate the MLIP TS structure with DFT](dft-backend.md) — refine and check the TS with DFT
 - [Common options and selectors](cli-conventions.md) — shared options, and how to specify residues and atoms
 - [HPC example](hpc-example.md) — job scripts for one GPU, and for UMA workers over several GPU nodes
 - [Troubleshooting](troubleshooting.md) — common errors and what to try

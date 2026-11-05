@@ -184,7 +184,7 @@ calc:
    with_solvent: {}
 ```
 
-`backend: dft` computes energies, forces, and Hessians with DFT (PySCF or GPU4PySCF) through the `calc.dft` block above; see [Refine an MLIP TS with DFT](dft-backend.md). The top-level [`dft` section](#dft-section) configures the separate `dft` command (also run by `all --dft`). Both take the same SCF keys (`conv_tol`, `max_cycle`, `grid_level`, …); `save_scf_checkpoint` and `checkpoint_path` exist only in `calc.dft`. `hessian_calc_mode: Analytical` avoids the finite-displacement error, but its time and memory depend on the backend and system, so try it on your system first. For how `charge` and `spin` combine with the CLI and `.gjf` templates, see {ref}`Charge specification <charge-specification>`.
+`backend: dft` computes energies, forces, and Hessians with DFT (PySCF or GPU4PySCF) through the `calc.dft` block above; see [Validate the MLIP TS structure with DFT](dft-backend.md). The top-level [`dft` section](#dft-section) configures the separate `dft` command (also run by `all --dft`). Both take the same SCF keys (`conv_tol`, `max_cycle`, `grid_level`, …); `save_scf_checkpoint` and `checkpoint_path` exist only in `calc.dft`. `hessian_calc_mode: Analytical` avoids the finite-displacement error, but its time and memory depend on the backend and system, so try it on your system first. For how `charge` and `spin` combine with the CLI and `.gjf` templates, see {ref}`Charge specification <charge-specification>`.
 
 ---
 

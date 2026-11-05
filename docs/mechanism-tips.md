@@ -96,7 +96,7 @@ The other remedies (precision, coordinate type) are in [`tsopt` → Wrong imagin
 - **Stage order**: the stages set the order of the structures passed to the MEP search (R → end of stage 1 → end of stage 2 …). Another order gives another path, so run the proposed order and its reverse, or every plausible order for three or more stages, and compare the energy diagrams.
 - **Stepwise or concerted**: run it stepwise and check whether the intermediate bond state survives an unbiased optimization once the restraints are released (`--scan-endopt`). If it relaxes back, the concerted path fits better. If a concerted run splits into two segments with `--refine-path` and passes through the same intermediate, the stepwise path fits better.
 - **Model**: when the IRC endpoints are not the intended ones, or a residue that takes part (H acceptor, water, partner chain) is not wholly in the model, [enlarge the model](model-setup.md).
-- **DFT**: to check a candidate TS with DFT, see [Refine an MLIP TS with DFT](dft-backend.md).
+- **DFT**: to check a candidate TS with DFT, see [Validate the MLIP TS structure with DFT](dft-backend.md).
 
 (mechanism-barrier)=
 ## Read the barrier
@@ -123,6 +123,6 @@ The other remedies (precision, coordinate type) are in [`tsopt` → Wrong imagin
 - [irc](irc.md) — following the reaction mode to R and P
 - [freq](freq.md) — counting imaginary modes
 - [Building the cluster model](model-setup.md) — checking and enlarging the active-site model
-- [Refine an MLIP TS with DFT](dft-backend.md) — DFT checks of a candidate TS
+- [Validate the MLIP TS structure with DFT](dft-backend.md) — DFT checks of a candidate TS
 - [Troubleshooting](troubleshooting.md) — errors and convergence problems
 - [Common options and selectors](cli-conventions.md) — atom selectors for `-s`

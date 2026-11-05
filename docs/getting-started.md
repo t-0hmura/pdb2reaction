@@ -156,7 +156,7 @@ The results depend strongly on the starting structure and on how the model is bu
 
 MD of the whole system with an MLIP, or ML/MM MD, also shows the dynamics of the whole enzyme. These MD runs cost more than cluster-model or ML/MM calculations on the potential energy surface, so a good approach is to run them after `pdb2reaction` has confirmed the mechanism.
 
-MLIPs are a fairly new technology, so for a purely computational paper, DFT calculations will probably still be expected for a while. `pdb2reaction` also has a DFT backend, so everything up to checking an MLIP TS with DFT stays within one tool (see [Refine an MLIP TS with DFT](dft-backend.md)). Give it a try.
+MLIPs are a fairly new technology, so for a purely computational paper, DFT calculations will probably still be expected for a while. `pdb2reaction` also has a DFT backend, so everything up to checking an MLIP TS with DFT stays within one tool (see [Validate the MLIP TS structure with DFT](dft-backend.md)). Give it a try.
 
 ---
 

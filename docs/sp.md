@@ -66,7 +66,7 @@ The backend is called once at the input geometry. `sp` prints the energy and the
 | `-q, --charge` | integer | `None` | Total charge. Required unless `-l`, YAML `calc.charge`, or a `.gjf` input gives it |
 | `-m, --multiplicity` | integer | `1` | Spin multiplicity (2S+1); a `.gjf` input supplies its own |
 | `-l, --ligand-charge` | text | `None` | Per-residue formal charges (e.g. `'SAM:1,GPP:-3'`) or one total ligand charge. Needs PDB/mmCIF input |
-| `-b, --backend` | text | `uma` | Calculator (`uma`, `orb`, `mace`, `aimnet2`, `dft`); for the `-b dft` settings see [Refine an MLIP TS with DFT](dft-backend.md) |
+| `-b, --backend` | text | `uma` | Calculator (`uma`, `orb`, `mace`, `aimnet2`, `dft`); for the `-b dft` settings see [Validate the MLIP TS structure with DFT](dft-backend.md) |
 | `--hess/--no-hess` | flag | `False` | Also compute the Hessian and write `hessian.npy` |
 | `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | Hessian method (finite difference / analytical); used with `--hess` |
 | `--freeze-atoms` | text | `None` | Atoms to freeze (1-based, comma-separated, e.g. `'1,3,5'`) |
@@ -97,5 +97,5 @@ See the [generated CLI reference](reference/commands/sp.md) for every option.
 * [freq](freq.md) — vibrational analysis and thermochemistry
 * [dft](dft.md) — DFT single point with atomic charges
 * [MLIP Backends](backends.md) — choosing a backend, and the Hugging Face login that UMA needs
-* [Refine an MLIP TS with DFT](dft-backend.md) — `-b dft` settings and GPU memory
+* [Validate the MLIP TS structure with DFT](dft-backend.md) — `-b dft` settings and GPU memory
 * [Troubleshooting](troubleshooting.md) — what to do when a run fails

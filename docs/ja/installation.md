@@ -182,7 +182,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
     pip install "pdb2reaction[dft]"
     ```
 
-    DFT を使う場面と、MLIP の TS を DFT で確かめる方法は [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
+    DFT を使う場面と、MLIP の TS を DFT で確かめる方法は [MLIP での TS 構造を DFT で検証する](dft-backend.md) を参照してください。
 
 8. **インストールの確認**
 
@@ -218,7 +218,7 @@ sudo dnf install -y alsa-lib at-spi2-atk at-spi2-core atk ca-certificates cairo 
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md) — R と P から MEP を作る
 - [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md) — 1 つの構造から経路を作る
 - [クイックスタート: TS-only モード](quickstart-tsopt.md) — TS 候補を最適化して確かめる
-- [MLIP の TS を DFT で確かめる](dft-backend.md) — TS を DFT で精密化して確かめる
+- [MLIP での TS 構造を DFT で検証する](dft-backend.md) — TS を DFT で精密化して確かめる
 - [共通オプションと残基・原子の指定](cli-conventions.md) — 共通のオプションと、残基・原子の指定の書き方
 - [HPC 実行例](hpc-example.md) — GPU 1 つ用のジョブスクリプトと、UMA のワーカーを複数の GPU ノードに広げるジョブスクリプト
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと試すこと

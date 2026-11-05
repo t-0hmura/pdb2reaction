@@ -66,7 +66,7 @@ result_all/
 
 ## 使用上の注意点
 
-* **DFT と GPU のメモリ**: `--dft` には DFT 用の追加パッケージが要ります。その導入と GPU メモリについては [MLIP の TS を DFT で確かめる](dft-backend.md#使用上の注意点) の使用上の注意点を参照してください。
+* **DFT と GPU のメモリ**: `--dft` には DFT 用の追加パッケージが要ります。その導入と GPU メモリについては [MLIP での TS 構造を DFT で検証する](dft-backend.md#使用上の注意点) の使用上の注意点を参照してください。
 * **`summary.json` の障壁**: `segments[].barrier_kcal` は TS 最適化の前の、MEP の上の障壁です。`--tsopt` を付けると、最適化した TS と端点から求めた障壁が `post_segments[].mlip.barrier_kcal` に入り、`--thermo` で `post_segments[].gibbs_mlip.barrier_kcal`、`--dft` で `post_segments[].dft.barrier_kcal` が加わります。
 * **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` は、すべてのセグメントにそろっている最も高いレベル（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で比べた、最大の障壁です。使ったレベルは `rate_limiting_step.method` に入ります。
 
@@ -76,7 +76,7 @@ result_all/
 - [クイックスタート: TS-only モード](quickstart-tsopt.md): 手元の TS 候補を最適化して確かめる
 - [クラスターモデルの組み方](model-setup.md): モデルを削る、残基が足りないときに広げる
 - [反応機構を調べるコツ](mechanism-tips.md): 計算の計画と、TS が得られないときに試すこと
-- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で精密化して確かめる
+- [MLIP での TS 構造を DFT で検証する](dft-backend.md): TS を DFT で精密化して確かめる
 - [`all`](all.md): オプションの説明。`pdb2reaction all --help-advanced` でも見られます
 - [JSON 出力の一覧](json-output.md): `summary.json` の欄
 - [トラブルシューティング](troubleshooting.md): エラーメッセージや症状から対処を探す

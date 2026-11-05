@@ -2,7 +2,7 @@
 
 `dft` runs a **DFT (density functional theory) single point** on one structure with GPU4PySCF (GPU) or PySCF (CPU). It reports the **energy** and **atomic charges** from Mulliken, meta-Löwdin, and IAO (intrinsic atomic orbital) population analyses. The default method is ωB97M-V/def2-svp. It needs the DFT extra; see step 7 of [Step-by-step installation](installation.md#step-by-step-installation).
 
-`all --dft` runs DFT single points on the reactant (R), transition state (TS), and product (P) of an MLIP (machine-learning interatomic potential) run. `-b dft` uses DFT for every calculation of a command; see [Refine an MLIP TS with DFT](dft-backend.md).
+`all --dft` runs DFT single points on the reactant (R), transition state (TS), and product (P) of an MLIP (machine-learning interatomic potential) run. `-b dft` uses DFT for every calculation of a command; see [Validate the MLIP TS structure with DFT](dft-backend.md).
 
 ---
 
@@ -130,7 +130,7 @@ See the [generated CLI reference](reference/commands/dft.md) for every option.
 
 ## See also
 
-* [Refine an MLIP TS with DFT](dft-backend.md) — `-b dft` and `--dft` in a workflow, DFT settings, and GPU memory
+* [Validate the MLIP TS structure with DFT](dft-backend.md) — `-b dft` and `--dft` in a workflow, DFT settings, and GPU memory
 * [sp](sp.md) — single-point energy and forces with any backend, including `-b dft`
 * [all](all.md) — the full workflow; `--dft` adds DFT single points on R, TS, and P
 * [MLIP Backends](backends.md) — choosing a backend

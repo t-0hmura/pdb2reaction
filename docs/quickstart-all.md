@@ -66,7 +66,7 @@ For how `all` judges each stage, see [Reading the run status](all.md#reading-the
 
 ## Notes
 
-* **DFT and GPU memory**: `--dft` needs the DFT extra; for its installation and GPU memory, see the Notes of [Refine an MLIP TS with DFT](dft-backend.md#notes).
+* **DFT and GPU memory**: `--dft` needs the DFT extra; for its installation and GPU memory, see the Notes of [Validate the MLIP TS structure with DFT](dft-backend.md#notes).
 * **Barriers in `summary.json`**: `segments[].barrier_kcal` is the barrier on the MEP, before TS optimization. With `--tsopt`, `post_segments[].mlip.barrier_kcal` is the barrier from the optimized TS and endpoints; `--thermo` adds `post_segments[].gibbs_mlip.barrier_kcal` and `--dft` adds `post_segments[].dft.barrier_kcal`.
 * **`rate_limiting_step`**: `rate_limiting_step.barrier_kcal` is the highest barrier among the segments, compared at the highest level that every segment has (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`); `rate_limiting_step.method` names that level.
 
@@ -76,7 +76,7 @@ For how `all` judges each stage, see [Reading the run status](all.md#reading-the
 - [Quickstart: TS-only mode](quickstart-tsopt.md): optimize and check a TS candidate you already have
 - [Building the cluster model](model-setup.md): trim the model, or extend it when residues are missing
 - [Tips for studying reaction mechanisms](mechanism-tips.md): plan the calculations, and what to try when the TS search fails
-- [Refine an MLIP TS with DFT](dft-backend.md): refine and check the TS with DFT
+- [Validate the MLIP TS structure with DFT](dft-backend.md): refine and check the TS with DFT
 - [`all`](all.md): option descriptions (also `pdb2reaction all --help-advanced`)
 - [JSON Output Reference](json-output.md): the fields of `summary.json`
 - [Troubleshooting](troubleshooting.md): find an error message or symptom and its fix

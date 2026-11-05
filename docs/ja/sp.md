@@ -66,7 +66,7 @@ PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCI
 | `-q, --charge` | 整数 | `None` | 系全体の総電荷。`-l`、YAML の `calc.charge`、`.gjf` 入力のどれも無ければ必須 |
 | `-m, --multiplicity` | 整数 | `1` | スピン多重度（2S+1）。`.gjf` 入力ではファイルの値を使用 |
 | `-l, --ligand-charge` | 文字列 | `None` | 残基ごとの形式電荷（例: `'SAM:1,GPP:-3'`）またはリガンドの総電荷。PDB/mmCIF 入力が必要 |
-| `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`）。`-b dft` の設定は [MLIP の TS を DFT で確かめる](dft-backend.md) を参照 |
+| `-b, --backend` | 文字列 | `uma` | 計算バックエンド（`uma`, `orb`, `mace`, `aimnet2`, `dft`）。`-b dft` の設定は [MLIP での TS 構造を DFT で検証する](dft-backend.md) を参照 |
 | `--hess/--no-hess` | フラグ | `False` | Hessian も計算して `hessian.npy` に書き出す |
 | `--hessian-calc-mode` | `FiniteDifference` / `Analytical` | `FiniteDifference` | Hessian の計算法（有限差分 / 解析的）。`--hess` と併用 |
 | `--freeze-atoms` | 文字列 | `None` | 固定する原子インデックス（1 始まり、カンマ区切り: 例 `'1,3,5'`） |
@@ -97,5 +97,5 @@ PDB・mmCIF・XYZ・GJF を読み込みます。電荷は `-q`、`-l`（PDB/mmCI
 * [freq](freq.md) — 振動解析と熱化学
 * [dft](dft.md) — 原子電荷も出す DFT 一点計算
 * [MLIP バックエンド](backends.md) — バックエンドの選び方と、UMA に要る Hugging Face へのログイン
-* [MLIP の TS を DFT で確かめる](dft-backend.md) — `-b dft` の設定と GPU メモリ
+* [MLIP での TS 構造を DFT で検証する](dft-backend.md) — `-b dft` の設定と GPU メモリ
 * [トラブルシューティング](troubleshooting.md) — 実行に失敗したときの対処

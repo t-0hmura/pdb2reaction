@@ -107,7 +107,7 @@ MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネ�
 
 ## DFT バックエンド
 
-`sp`、`opt`、`tsopt`、`irc`、`freq`、`scan`、`scan2d`、`scan3d`、`path-opt`、`path-search`、`all` は `-b dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`（デフォルトは `wb97m-v/def2-svp` と `gpu`）を受け付け、すべてのエネルギーと力を PySCF/GPU4PySCF で計算します。ポピュレーション解析付きの一点計算には、別の `pdb2reaction dft` コマンドがあります。低メモリモード、CPU のスレッド数とホスト RAM、SCF のチェックポイントは [MLIP の TS を DFT で確かめる](dft-backend.md) にあります。
+`sp`、`opt`、`tsopt`、`irc`、`freq`、`scan`、`scan2d`、`scan3d`、`path-opt`、`path-search`、`all` は `-b dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`（デフォルトは `wb97m-v/def2-svp` と `gpu`）を受け付け、すべてのエネルギーと力を PySCF/GPU4PySCF で計算します。ポピュレーション解析付きの一点計算には、別の `pdb2reaction dft` コマンドがあります。低メモリモード、CPU のスレッド数とホスト RAM、SCF のチェックポイントは [MLIP での TS 構造を DFT で検証する](dft-backend.md) にあります。
 
 (ja-backends-custom-calculator)=
 ## カスタムバックエンド — 任意の ASE Calculator を使う（`--calc-file`）
@@ -269,6 +269,6 @@ pysisyphus を使う構造と経路の段は `create_calculator(...)` を、DMF�
 
 - [アーキテクチャ](architecture.md)：ディレクトリの構成と依存の向き
 - [HPC 実行例](hpc-example.md)：PBS、Open MPI、Ray で `workers`・`workers_per_node` を複数のノードに広げるテンプレート
-- [MLIP の TS を DFT で確かめる](dft-backend.md)：DFT の設定、メモリ、チェックポイント
+- [MLIP での TS 構造を DFT で検証する](dft-backend.md)：DFT の設定、メモリ、チェックポイント
 - [トラブルシューティング](troubleshooting.md)：計算が失敗したとき
 - [opt](opt.md)、[path-opt](path-opt.md)、[all](all.md)：選んだバックエンドで動くコマンド

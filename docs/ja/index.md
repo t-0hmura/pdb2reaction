@@ -12,7 +12,7 @@ orphan: true
 <img src="../overview.jpg" alt="pdb2reaction ワークフロー概要" class="p2r-hero-figure">
 
 {.p2r-tagline}
-**pdb2reaction** は、酵素複合体や小分子を対象として、機械学習原子間ポテンシャル（MLIP）を用いて PDB/mmCIF/XYZ/GJF の構造から反応機構を解析する Python 製 CLI ツールキットです。
+**pdb2reaction** は、酵素複合体や小分子を対象として、機械学習原子間ポテンシャル（MLIP）を用いて PDB/mmCIF/XYZ/GJF の構造から反応機構を解析するための Python 製 CLI ツールキットです。
 
 {.p2r-lead}
 初めての方は [はじめに](getting-started.md) からお読みください。
@@ -51,11 +51,11 @@ orphan: true
 
 | 目的 | ページ |
 |------|------|
-| **クラスターモデルを組む・削る・広げる** | [クラスターモデルの組み方](model-setup.md) |
-| **小分子の反応機構を解析する** | [小分子の反応機構解析](small-molecules.md) |
-| **反応機構を調べる・TS が得られない** | [反応機構を調べるコツ](mechanism-tips.md) |
-| **求めた TS 構造を DFT で構造最適化する** | [MLIP の TS を DFT で確かめる](dft-backend.md) |
-| **計算が失敗した** | [トラブルシューティング](troubleshooting.md) |
+| **クラスタモデルを構築する** | [クラスターモデルの組み方](model-setup.md) |
+| **小分子についての反応機構解析を行う** | [小分子の反応機構解析](small-molecules.md) |
+| **反応機構解析・遷移状態探索を行う** | [反応機構を調べるコツ](mechanism-tips.md) |
+| **MLIP で求めた TS 構造を DFT で構造最適化する** | [MLIP での TS 構造を DFT で検証する](dft-backend.md) |
+| **計算の失敗原因を調査する** | [トラブルシューティング](troubleshooting.md) |
 
 ## サブコマンド
 
@@ -63,24 +63,24 @@ orphan: true
 
 | サブコマンド | 説明 |
 |---------|------|
-| [`all`](all.md) | 抽出（任意）、3 つの[入力モード](getting-started.md#3-反応経路を探す)（Endpoint モード・Scan-list モード・TS-only モード）のどれか 1 つ、TS/IRC・熱化学・DFT（任意）を 1 回の実行でまとめて行う |
-| [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
-| [`fix-altloc`](fix-altloc.md) | PDB の代替位置を解決 |
-| [`add-elem-info`](add-elem-info.md) | PDB の元素欄（77–78 列）を修復 |
-| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO。`--flatten` を付けると残った虚振動を除く） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。`--flatten` を付けると余分な虚振動を除く） |
-| [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
-| [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
-| [`scan`](scan.md) | 距離・角度・二面角の拘束付きスキャン（協奏スキャン・多段階スキャンに対応） |
-| [`scan2d`](scan2d.md) | 2 次元のエネルギー地形の探索・PES マッピング |
-| [`scan3d`](scan3d.md) | 3 次元のエネルギー地形の探索・PES マッピング |
-| [`freq`](freq.md) | 振動解析と熱化学 |
+| [`all`](all.md) | 反応物と生成物構造、反応物と反応座標のリスト、TS 候補構造の、3 つの[入力モード](getting-started.md#3-反応経路を探す)（Endpoint モード・Scan-list モード・TS-only モード）から、モデルの構築 → MEP 探索 → TS 構造最適化 + IRC 計算 → 熱化学解析 → DFT での 1 点計算を 1 コマンドでまとめて実行する。各段階の実行は任意に切り替え可能。酵素複合体・小分子を入力とできる。 |
+| [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位を切り出したクラスタモデルを構築 |
+| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO が利用可能） |
+| [`tsopt`](tsopt.md) | 単一構造の遷移状態（TS）構造最適化（Dimer または RS-P-RFO）。虚振動が一つの構造を得る。 |
+| [`path-opt`](path-opt.md) | Growing String 法（GSM）または Direct Max Flux 法による 1 段階の最小エネルギー経路（MEP）最適化。反応物と生成物の 2 構造から反応に伴う構造変化のトラジェクトリを構築する。 |
+| [`path-search`](path-search.md) | 複数のステップからなる反応を自動検出して多段階の最小エネルギー経路を構築する再帰的 MEP 探索。反応物・中間体・生成物構造を入力できる。 |
+| [`scan`](scan.md) | 距離・角度・二面角を変数としてエネルギー変化をスキャン（協奏スキャン・多段階スキャンに対応） |
+| [`scan2d`](scan2d.md) | 2 次元のエネルギー地形の探索・2D PES のマッピング |
+| [`scan3d`](scan3d.md) | 3 次元のエネルギー地形の探索・3D PES のマッピング |
+| [`freq`](freq.md) | 振動数解析と熱化学解析 |
 | [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
-| [`sp`](sp.md) | MLIP または `-b dft` による一点計算（エネルギー + 力 / Hessian） |
-| [`trj2fig`](trj2fig.md) | XYZ 軌跡からエネルギープロファイルをプロット |
+| [`fix-altloc`](fix-altloc.md) | PDB の代替位置を解決 |
+| [`add-elem-info`](add-elem-info.md) | PDB の元素欄（77–78 列）を修復 |
+| [`sp`](sp.md) | MLIP による一点計算（エネルギー + 力 / Hessian） |
+| [`trj2fig`](trj2fig.md) | pdb2reaction が生成する XYZ トラジェクトリからエネルギープロファイルをプロット |
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
-| [`bond-summary`](bond-summary.md) | 連続構造間の共有結合変化を検出・レポート |
+| [`bond-summary`](bond-summary.md) | 複数の状態の構造間の共有結合変化を検出・レポート |
 
 ## 設定・参照資料
 
@@ -89,34 +89,35 @@ orphan: true
 | **共通オプションと入力要件** | [共通オプションと残基・原子の指定](cli-conventions.md) |
 | **原子の固定と距離の拘束（`--freeze-atoms`・`--distance-restraint`）** | {ref}`原子の固定と距離の拘束 <ja-freeze-atoms-and-restraints>` |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
-| **CLI コマンドの一覧（英語のみ、自動生成）** | [コマンドの一覧（英語のみ）](../reference/commands/index.md) |
+| **CLI コマンドの一覧** | [コマンドの一覧](../reference/commands/index.md) |
 | **YAML 設定オプション** | [YAML 設定の一覧](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP バックエンド](backends.md) |
-| **各コマンドが書き出すファイル** | [出力ディレクトリのレイアウト](output-layout.md) |
-| **`result.json` と `summary.json` の欄** | [JSON 出力の一覧](json-output.md) |
-| **PBS・Slurm のジョブスクリプト（GPU 1 つ。複数の GPU ノードは Ray）** | [HPC 実行例](hpc-example.md) |
-| **AI エージェントから使う** | [エージェントスキル](#エージェントスキル) |
+| **各コマンドが書き出すファイル・ディレクトリの詳細** | [出力ディレクトリのレイアウト](output-layout.md) |
+| **結果を報告する JSON の項目詳細** | [JSON 出力の一覧](json-output.md) |
+| **PBS・Slurm のジョブスクリプトの例** | [HPC 実行例](hpc-example.md) |
+| **AI エージェントに pdb2reaction を使わせる** | [エージェントスキル](#エージェントスキル) |
 | **コードの構成（開発者向け）** | [アーキテクチャ](architecture.md) |
 | **用語** | [用語集](glossary.md) |
 
 ## システム要件
 
-### ハードウェア
-- **OS**: Linux（Windows では WSL2 上の Linux に導入してください）
+- **OS**: Linux（Windows では WSL2 上の Linux を推奨、Mac でも仮想環境を推奨）
 - **GPU**: 使用するバックエンドと PyTorch wheel に対応する NVIDIA ドライバー。CPU のみでも実行可能ですが低速です
 - **VRAM / RAM**: モデル、系の大きさ、Hessian の計算方式で変わります。代表的な計算で最大使用量を測ってください
-
-### ソフトウェア
 - Python 3.12（推奨）または 3.13
-- CPU 版または CUDA 対応の PyTorch。GPU での UMA は実行時に gcc と CUDA も要ります
+- CPU 版または CUDA 対応の PyTorch。GPU での UMA は実行時に gcc と CUDA も必要です（標準的な HPC 環境には通常含まれています）。
 
 セットアップは [インストール](installation.md) を参照してください。
 
 ## エージェントスキル
 
-`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向けの手順書を `skills/` に同梱しています。導入するときは、AI エージェントに次のように指示してください。
+`pdb2reaction` は、ツールの使い方や反応機構解析の手順をまとめた AI エージェント向けの手順書を `skills/` に同梱しています。
 
-> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install` の手順に従って pdb2reaction をインストールして
+次の内容をカバーしています：CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用
+
+導入するときは、AI エージェントに次のように指示してください。
+
+> `https://github.com/t-0hmura/pdb2reaction/tree/main/skills` をスキルとして取り込み、`pdb2reaction-install` の手順に従って pdb2reaction をインストールしてください。
 
 GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `skills/` のパスを渡しても構いません。導入後は、たとえば次のように指示できます。
 
@@ -126,7 +127,7 @@ GitHub のリポジトリを clone 済みなら、URL の代わりに手元の `
 
 ## 引用
 
-`pdb2reaction` を研究で利用する場合は、ACS Omega の論文を引用してください:
+`pdb2reaction` を研究で利用する場合は、以下の論文を引用してください:
 
 ```bibtex
 @article{ohmura2026pdb2reaction,

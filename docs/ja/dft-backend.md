@@ -1,4 +1,4 @@
-# MLIP の TS を DFT で確かめる
+# MLIP での TS 構造を DFT で検証する
 
 MLIP で妥当な経路が見つかったら、その TS をそのまま DFT での TS 構造最適化に進めることにも `pdb2reaction` は対応しています。TS 最適化 → IRC → 端点の最適化 → 振動数計算のワークフローを、GPU4PySCF を用いることで GPU で高速化された DFT 計算により実行可能です。
 

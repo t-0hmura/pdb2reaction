@@ -255,7 +255,7 @@ pdb2reaction all -i mutant_R.pdb mutant_P.pdb -c 'SAM,GPP,MG' -l 'GPP:-3,SAM:1' 
 * [irc](irc.md) — TS からの IRC
 * [freq](freq.md) — 振動解析と熱化学
 * [dft](dft.md) — DFT 一点計算
-* [MLIP の TS を DFT で確かめる](dft-backend.md) — `-b dft` と `--dft`
+* [MLIP での TS 構造を DFT で検証する](dft-backend.md) — `-b dft` と `--dft`
 * [反応機構を調べるコツ](mechanism-tips.md) — 反応の分け方、TS の確かめ方、TS が得られないときの対処
 * [トラブルシューティング](troubleshooting.md) — 計算が失敗したとき
 * [はじめに](getting-started.md) — 最短の実行と次に読むページ

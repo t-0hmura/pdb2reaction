@@ -95,11 +95,11 @@ result_ts_only/
 * **R・P の虚振動**: R や P に虚振動が残っても熱化学は計算され、そのモードは ZPE と G から除かれます。極小点として扱う前にモードを確認してください。
 * **IRC に進む条件**: `all` が IRC に進むのは、TS 最適化が収束し、最後の Hessian の計算が終わり、n_imag が 1 以上のときだけです。n_imag が 2 以上のときの IRC は、虚振動の 1 つに沿った診断用の計算で、構造が一次の鞍点になるわけではありません。
 * **`tsopt` の細かい設定**: `--opt-mode`、`--max-cycles`、Hessian のオプションを変えるときは、[`tsopt`](tsopt.md) を単独で実行してください。`all` の全オプションは `pdb2reaction all --help-advanced` で確認できます。
-* **DFT**: TS そのものを DFT で最適化する方法と、DFT 用の追加パッケージのインストールや GPU メモリについては [MLIP の TS を DFT で確かめる](dft-backend.md) を参照してください。
+* **DFT**: TS そのものを DFT で最適化する方法と、DFT 用の追加パッケージのインストールや GPU メモリについては [MLIP での TS 構造を DFT で検証する](dft-backend.md) を参照してください。
 
 ## 次のステップ
 
-- [MLIP の TS を DFT で確かめる](dft-backend.md): TS を DFT で精密化して確かめる
+- [MLIP での TS 構造を DFT で検証する](dft-backend.md): TS を DFT で精密化して確かめる
 - [反応機構を調べるコツ](mechanism-tips.md): TS の確かめ方と、TS が得られないときに試すこと
 - [`tsopt`](tsopt.md)・[`irc`](irc.md)・[`freq`](freq.md): 各段を単独で実行する
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md): R と P から MEP を作る
