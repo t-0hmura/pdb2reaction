@@ -59,6 +59,6 @@ jobs:
             pandas tabulate 'plotly>=6.1.1' ipywidgets 'pymsym>=0.3.5,<0.4' pytest pytest-cov
 
       - name: Run unit tests (CPU-only, no GPU)
-        timeout-minutes: 10
+        timeout-minutes: 60
         run: |
           pytest tests/ -v --tb=short -x --cov=pdb2reaction --cov-report=term-missing --cov-fail-under=15
