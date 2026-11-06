@@ -242,11 +242,11 @@ ja/architecture
 
 ## System requirements
 
-- **OS:** Linux (on Windows, WSL2 is recommended; on Mac, a virtual environment is recommended).
-- **GPU:** an NVIDIA driver compatible with the backend and PyTorch wheel. CPU execution is also supported but slower.
-- **VRAM / RAM:** depends on the model, the system size, and the Hessian mode; measure the peak on a representative run.
-- Python 3.12 (recommended) or 3.13.
-- CPU or CUDA-enabled PyTorch. UMA on a GPU also needs gcc and CUDA at run time (usually included in standard HPC environments).
+- **OS:** Linux (WSL2/Docker recommended on Windows/Mac).
+- **Python:** 3.12 (recommended) or 3.13. ORB requires 3.12.
+- **PyTorch:** CUDA (recommended) or CPU build.
+- **GPU:** at least 8 GB of VRAM. CPU execution is also supported but slower. Compatible NVIDIA driver. UMA also requires GCC and the CUDA Toolkit at runtime.
+- **RAM / VRAM:** with the default UMA model, a single point needs about 4 GB of VRAM for ~350 atoms, 8 GB for ~850 atoms, and 16 GB for ~1,750 atoms; a Hessian needs about the same. 8 GB of RAM is enough.
 
 See [Installation](installation.md) for setup.
 
