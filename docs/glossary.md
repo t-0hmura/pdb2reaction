@@ -13,7 +13,7 @@ Each abbreviation, method name, and unit used in the docs is defined here in one
 | **GSM** | Growing String Method | A string-based method that grows images from endpoints and optimizes them to approximate an MEP. |
 | **DMF** | Direct Max Flux | A chain-of-states method for optimizing an MEP by maximizing flux along the pathway. In pdb2reaction it is selected with `--mep-mode dmf`. |
 | **FB-ENM** | Flat-Bottom Elastic Network Model | The model that builds the initial path for DMF (Koda & Saito, *J. Chem. Theory Comput.* 2024); CFB-ENM is its correlated variant. |
-| **HEI** | Highest-Energy Image | The image along an MEP with maximum energy; often used as a TS guess. HEI±1 are the images on either side of it. |
+| **HEI** | Highest-Energy Image | The highest-energy local peak selected from an MEP as a TS guess; an endpoint is returned when no internal peak exists. HEI±1 are the images on either side of it. |
 | **Image** | — | A single geometry (one "node") along a chain-of-states path. |
 | **COS** | Chain-of-States | A path method that optimizes a whole chain of images together, such as GSM, the string optimizer (`stopt`), and DMF. |
 | **Segment** | — | An MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). |

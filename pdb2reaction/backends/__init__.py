@@ -248,7 +248,10 @@ def apply_effective_precision(
     eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
     if eff is None or str(eff).lower() == "auto":
         backend = resolve_backend(calc_cfg.get("backend") or "uma")
-        eff = _BACKEND_DEFAULT_PRECISION.get(backend, "fp32")
+        native_dtype = calc_cfg.get("default_dtype") if backend == "mace" else None
+        eff = {"float32": "fp32", "float64": "fp64"}.get(
+            native_dtype, _BACKEND_DEFAULT_PRECISION.get(backend, "fp32")
+        )
     if str(eff).lower() in _PRECISION_DISPATCH:
         apply_precision_to_calc_cfg(calc_cfg, str(eff).lower())
 

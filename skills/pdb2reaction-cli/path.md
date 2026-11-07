@@ -53,7 +53,7 @@ candidate, is written. In `result.json` (`--out-json`), `scientific_status` is
 converged, otherwise `partial` or `failed`. `optimization_status` is
 `converged` or `not_converged` when the engine reports convergence, and
 `completed` when it reports nothing; do not read `completed` as converged.
-`barrier_kcal` is the HEI energy relative to the first image.
+`barrier_kcal` is the selected peak energy minus its nearest preceding basin energy (`null` without an internal peak).
 
 `hei_index` between 1 and `n_images − 2` gives a TS candidate. At 0 or
 `n_images − 1` the HEI is an endpoint and not a TS candidate: check the
@@ -101,8 +101,8 @@ lists each segment in path order:
   `--max-depth` (default 10) or give intermediates.
 - If every segment is a `kink`, no bond change was found between the ends;
   check the inputs or add intermediates.
-- The warning `HEI is at an endpoint` means that in that interval no image lies
-  above the higher end, so, as for `path-opt` above, there is no TS candidate:
+- The warning `HEI is at an endpoint` means that that interval has no internal
+  local peak, so, as for `path-opt` above, there is no TS candidate:
   `path-search` returns the interval as a raw path with no `segments` entry or
   `hei_seg_NN.xyz`, adds `endpoint_hei` to `scientific_status_reasons`, and
   `all` (with or without `--refine-path`) runs no TS optimization on it. It is

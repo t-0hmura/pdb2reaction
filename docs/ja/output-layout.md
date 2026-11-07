@@ -13,7 +13,7 @@
 | `summary.log` | `path-search`、`all` | テキストの要約。ヘッダーに `Scientific status` があり、番号付きの節にセグメントごとの障壁と結合の変化、出力のツリーが入ります（[all の実行結果の判定](all.md#実行結果の判定)）。 |
 | `final_geometry.xyz` / `final_geometry.pdb` | `opt`、`tsopt` | 次のコマンドに渡す final geometry です。最適化が収束しなかった場合も書きます。`.xyz` は常に書き、`.pdb` は PDB/mmCIF 入力のとき（Gaussian 入力では `.gjf`）に書きます。 |
 | `mep_trj.pdb` / `mep_trj.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。mmCIF・大きな PDB の入力でファイル変換が有効なときは `.cif` も書き出します。 |
-| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | 反応経路のフレーム（全イメージ）と最高エネルギーイメージ。入力の形式に応じ、ファイル変換が有効なときは `.pdb` / `.cif` / `.gjf` の写しも書き出します。 |
+| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | 反応経路のフレーム（全イメージ）と選択した構造（HEI）。入力の形式に応じ、ファイル変換が有効なときは `.pdb` / `.cif` / `.gjf` の写しも書き出します。 |
 | `mep_plot.png` / `energy_diagram_MEP.png` | `path-search` | 最小エネルギー経路（MEP）のエネルギー。`mep_plot.png` は経路に沿った図、`energy_diagram_MEP.png` は状態エネルギー図です。この 2 つのうち、`all` はルートに `energy_diagram_MEP.png` だけを置きます。 |
 | `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC（固有反応座標）の軌跡（経路全体と各方向）。参照トポロジーがあれば `.pdb` の写し、mmCIF・大きな PDB の入力では `.cif` の写しも書き出します。 |
 | `finished_first.xyz` / `finished_last.xyz` | `irc` | 2 つの分岐の端で、[`opt`](opt.md) で最適化する端点の候補です。 |

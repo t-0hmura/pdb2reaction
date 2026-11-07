@@ -16,7 +16,7 @@ Read this page when you study a reaction mechanism with pdb2reaction: from a hyp
 
 ## Two routes to a TS candidate
 
-- **MEP between R and P** (Endpoint mode, or `path-opt`/`path-search`): use it when you have both ends. The highest-energy image (HEI) is the TS candidate; `path-search` splits a multi-step path where bonds change and writes `hei_seg_NN.*` per segment.
+- **MEP between R and P** (Endpoint mode, or `path-opt`/`path-search`): use it when you have both ends. The highest local peak (HEI) is the TS candidate; `path-search` splits a multi-step path where bonds change and writes `hei_seg_NN.*` per segment.
 - **Restrained scan from R** (`all -s`, or `scan`): use it when you have only R, or want to drive a chosen distance. Each stage holds the listed distances with a harmonic restraint (k = 300 by default) and optimizes everything else, so scan frames are biased structures, not stationary points. In `scan`, `--preopt` optimizes the start structure without restraints and `--endopt` the end of each stage; both are off by default.
 - Pick the scan atoms by measuring the structure, not from atom numbers in a paper: a forming bond is long in R and close to a bond length in P. Before scanning a proton transfer, measure the donor–acceptor heavy-atom distance in R; if it is well beyond a hydrogen-bond contact (roughly 3.2 Å) and no water or residue in the model bridges it, revise the hypothesis instead of driving it. If the TS or product puts the moving H on an atom you did not name, the coordinate was wrong; rebuild it rather than accepting the new acceptor.
 - Scan relaxations and endpoint pre-optimization use `gau` unless you set `--thresh`, while TS and post-IRC endpoint optimizations in `all` use `--thresh-post baker`. When the scan seeds the TS candidate or its profile looks wrong (for example a barrier near zero), rerun it with `--thresh baker` and a smaller step (`--scan-max-step-size` in `all`, `--max-step-size` in `scan`) before changing the model.
@@ -37,7 +37,7 @@ A successful TS optimization gives one imaginary mode along the reaction coordin
 
 ## Product-start scans give the reverse barrier
 
-A scan or path that starts from P reports E(TS) − E(P), the reverse barrier. The forward barrier is E(TS) − E(R). Check which end the run started from before quoting a barrier. In TS-only mode, R is the higher-energy IRC end ([outputs.md](outputs.md#rtsp-paths)).
+After TS optimization and IRC, the barrier from P is E(TS) − E(P), the reverse barrier. The forward barrier is E(TS) − E(R). Check which end the run started from before quoting a barrier. In TS-only mode, R is the higher-energy IRC end ([outputs.md](outputs.md#rtsp-paths)).
 
 Read the barrier from the energy after TS optimization, not from the top of the scan, and count it from the minimum just before that stage.
 

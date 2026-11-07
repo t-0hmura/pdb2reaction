@@ -2,7 +2,7 @@
 
 `all` runs the whole workflow in one command: it extracts the active-site model and builds the minimum energy path (MEP). When asked, it also optimizes the transition state (TS) of each reaction step and runs the intrinsic reaction coordinate (IRC), frequency, and DFT calculations.
 
-Without `--tsopt`, the run ends with TS candidates: the highest-energy image (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
+Without `--tsopt`, the run ends with TS candidates: the structure at the highest local peak (HEI) of each MEP segment. The default backend is **UMA**, Meta's pretrained [machine-learning interatomic potential (MLIP)](backends.md).
 
 ---
 
@@ -116,11 +116,11 @@ Read the outcome in three places:
 * **Console**: each TS optimization prints `[Imaginary modes] n=1 (...)` when it ends with one imaginary mode. The `====== Pipeline summary ======` block prints `Execution status:` and `Scientific status:`. When the result is not `success`, `RESULT WARNING:` lines give the reasons.
 * **`summary.log`**: the header shows `Pipeline mode` (`MEP`, `Scan`, or `TS-only`) and both statuses. Section [1] is the MEP overview; [2] lists the barrier ΔE‡, the reaction energy ΔE, and the bond changes of each segment on the MEP; [3] gives the post-processing of each segment, with n_imag under `TS imaginary freq:`; [4] tabulates the energy diagrams; [5] shows the output tree.
 * **`summary.json`**: `scientific_status` holds `success`, `partial`, or `failed`, and `scientific_status_reasons` holds the [reasons](json-output.md#execution-and-requested-stage-completion). n_imag of each TS is `post_segments[].tsopt.n_imaginary_modes`.
-  * **Barriers in `summary.json`**: with `--tsopt`, the barrier of each segment is `post_segments[].mlip.barrier_kcal` (MLIP energy of the optimized TS minus R). With `--thermo` and `--dft`, `barrier_kcal` is also under `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. `segments[].barrier_kcal` is the barrier on the MEP before TS optimization, or TS − R in TS-only mode.
+  * **Barriers in `summary.json`**: with `--tsopt`, the barrier of each segment is `post_segments[].mlip.barrier_kcal` (MLIP energy of the optimized TS minus R). With `--thermo` and `--dft`, `barrier_kcal` is also under `gibbs_mlip`, `dft`, and `gibbs_dft_mlip`. `segments[].barrier_kcal` is the local peak energy minus its nearest preceding basin energy on the MEP before TS optimization, or TS − R in TS-only mode.
 
 `success` means that every requested stage converged; with `--tsopt`, it also means that every TS has n_imag = 1. Whether the endpoints are the intended R and P is for you to check: compare the bond changes in section [2] of `summary.log` and the structures `segments/seg_NN/reactant.*` and `product.*` with the R and P you intended. If n_imag ≠ 1 or the endpoints are not the intended ones, see {ref}`When the TS search fails <ts-search-fails>`.
 
-If the highest image of the MEP between two inputs is an end image, `all` builds no segment for that pair (no barrier, no TS optimization), prints "HEI is at an endpoint", and the result is `partial` or `failed` with reason `endpoint_hei`. Check the inputs or add an intermediate.
+If the MEP between two inputs has no internal local peak, `all` builds no segment for that pair (no barrier, no TS optimization), prints "HEI is at an endpoint", and the result is `partial` or `failed` with reason `endpoint_hei`. Check the inputs or add an intermediate.
 
 ---
 
@@ -173,7 +173,7 @@ The energy diagrams are named by method:
 
 Energies in the diagrams are in kcal/mol relative to the first state (the reactant).
 
-The number in a TS label of the diagrams (TS1, TS2, ...) is the number of its segment `seg_NN`. An interval that gets no TS optimization also takes a number, so the TS numbers can skip (for example TS1, TS3). With `--refine-path`, these are the [bridge and kink segments](path-search.md#how-it-works), which have no bond change; without it, they are the pairs of inputs whose MEP has an end image as its highest image. If an interval with no bond change also needs a TS with one imaginary mode, {ref}`extract <trajectory-one-frame>` the first and last frames of its segment (`frame_start` and `frame_stop - 1` in `summary.json`, counted from 0; use `frame_start - 1` if the shared start was kept with the preceding segment) from `mep_trj.xyz` and run `all --tsopt` on them without `--refine-path`.
+The number in a TS label of the diagrams (TS1, TS2, ...) is the number of its segment `seg_NN`. An interval that gets no TS optimization also takes a number, so the TS numbers can skip (for example TS1, TS3). With `--refine-path`, these are the [bridge and kink segments](path-search.md#how-it-works), which have no bond change; without it, they are the pairs of inputs whose MEP has no internal local peak. If an interval with no bond change also needs a TS with one imaginary mode, {ref}`extract <trajectory-one-frame>` the first and last frames of its segment (`frame_start` and `frame_stop - 1` in `summary.json`, counted from 0; use `frame_start - 1` if the shared start was kept with the preceding segment) from `mep_trj.xyz` and run `all --tsopt` on them without `--refine-path`.
 
 ---
 

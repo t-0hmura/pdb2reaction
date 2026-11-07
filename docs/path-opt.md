@@ -1,6 +1,6 @@
 # `path-opt` (MEP between two structures)
 
-`path-opt` finds a minimum-energy path (MEP) between two structures, a reactant and a product, in one pass with GSM (growing string method, the default) or DMF (direct max flux). It writes the trajectory from R to P, and the highest-energy image (HEI) as a TS candidate.
+`path-opt` finds a minimum-energy path (MEP) between two structures, a reactant and a product, in one pass with GSM (growing string method, the default) or DMF (direct max flux). It writes the trajectory from R to P, and the structure at the highest local peak (HEI) as a TS candidate.
 
 ---
 
@@ -24,7 +24,7 @@ Give the reactant and the product after one `-i`, with the charge and the spin m
 pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 --out-json --out-dir ./result_path_opt
 ```
 
-The console line `[write] Wrote '…/hei.xyz'.` shows that the TS candidate was written. In `result.json` (`--out-json`), `scientific_status` is `success` when every requested stage (endpoint pre-optimization, MEP) converged, otherwise `partial` or `failed`. `barrier_kcal` is the HEI energy relative to the first image, and `hei_index` is the position of the HEI on the path.
+The console line `[write] Wrote '…/hei.xyz'.` shows that the TS candidate was written. In `result.json` (`--out-json`), `scientific_status` is `success` when every requested stage (endpoint pre-optimization, MEP) converged, otherwise `partial` or `failed`. `barrier_kcal` is the selected peak energy minus the energy of its nearest preceding local minimum (basin), and `hei_index` is the position of the HEI on the path.
 
 ### 2. Set the endpoint pre-optimization limit
 
@@ -62,7 +62,7 @@ Each endpoint is pre-optimized, with L-BFGS by default (`--opt-mode`). The produ
 2. **Growing and refining the path**:
 GSM grows a string of `--max-nodes` movable images between the two endpoints and optimizes it to `--thresh-gsm`. With `--climb` (on by default), a climbing-image search then pushes the highest image toward the saddle. DMF instead builds an interpolated path and optimizes it with IPOPT (an interior-point optimizer) to `--dmf-tol`.
 3. **Writing the HEI**:
-The image with the highest energy on the final path becomes the HEI. `hei.xyz` holds it with its energy on the comment line.
+The highest local peak on the final path becomes the HEI, even when an endpoint has a higher energy. Without an internal peak, the path has no MEP barrier and `barrier_kcal` is `null`. `hei.xyz` holds it with its energy on the comment line.
 
 ---
 
@@ -71,7 +71,7 @@ The image with the highest energy on the final path becomes the HEI. `hei.xyz` h
 | Where the HEI is | Meaning | Next step |
 | --- | --- | --- |
 | Inside the path (`hei_index` between `1` and `n_images − 2`; both are keys of `result.json`, and `n_images` is the number of images on the path) | A TS candidate | Optimize it with [`tsopt`](tsopt.md), then run [`irc`](irc.md) |
-| At an endpoint (`hei_index` is `0` or `n_images − 1`) | Not a TS candidate: no image between the endpoints lies above the higher endpoint | Check the endpoints, or get a candidate another way (see {ref}`When a TS search fails <ts-search-fails>`) |
+| At an endpoint (`hei_index` is `0` or `n_images − 1`) | Not a TS candidate: the path has no internal local peak | Check the endpoints, or get a candidate another way (see {ref}`When a TS search fails <ts-search-fails>`) |
 
 The HEI is the top of an approximate path, not a TS. A successful TS optimization gives one imaginary mode along the reaction coordinate; the HEI becomes a TS once `tsopt` gives n_imag = 1 and IRC from that TS reaches the intended R and P.
 

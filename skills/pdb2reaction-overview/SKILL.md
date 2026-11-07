@@ -28,7 +28,7 @@ pdb2reaction all -i ts_guess.pdb -l 'SAM:1,GPP:-3' --tsopt --thermo -o result_ts
 
 - `-c` cuts the active-site cluster around the named residues; without it, the input is used as the cluster. How to choose the residues, radius, and boundary: [pdb2reaction-model-setup](../pdb2reaction-model-setup/SKILL.md).
 - `--tsopt` adds TS optimization, IRC, and endpoint optimization; `--thermo` adds frequencies and Gibbs energies for R, TS, and P; `--dft` adds DFT single points on them. `--thermo` and `--dft` need `--tsopt`.
-- Each neighboring pair of inputs gives at most one segment (none when the highest image of its MEP is an end image; reason `endpoint_hei`). Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
+- Each neighboring pair of inputs gives at most one segment (none when its MEP has no internal local peak; reason `endpoint_hei`). Without intermediates, `--refine-path` splits the MEP where bonds change; `n_segments` can then exceed 1, and each extra segment is a candidate step to check with TS optimization and IRC.
 - DFT//MLIP: `--dft` evaluates R, TS, and P with DFT on the MLIP geometries; with `--thermo` it also gives DFT//MLIP Gibbs energies. To run the single points yourself, see [dft.md](../pdb2reaction-cli/dft.md).
 - With two or more structures, `-s` is an error. One structure with both `-s` and `--tsopt` runs Scan-list mode. One structure with neither is an error.
 
@@ -39,7 +39,7 @@ Run the stages as separate commands when you want to check each result before sp
 | Stage | Command | Role |
 |---|---|---|
 | Cluster | `extract` | Cuts the active-site cluster, adds cap H, sums the charge |
-| MEP | `path-opt` (default in `all`) or `path-search` (`all --refine-path`) | Path between neighboring structures; its highest-energy image (HEI) is the TS candidate |
+| MEP | `path-opt` (default in `all`) or `path-search` (`all --refine-path`) | Path between neighboring structures; its selected structure (HEI) is the TS candidate |
 | TS | `tsopt` | TS optimization (RS-P-RFO by default, Dimer as an alternative) and n_imag |
 | IRC | `irc`, then `opt` on both ends | Follows the reaction mode both ways; the optimized ends become R and P |
 | Thermo | `freq` | Frequencies and QRRHO Gibbs energies (`all --thermo`) |
@@ -70,7 +70,7 @@ Pitfalls:
 
 ## What it does
 
-`pdb2reaction` runs MLIP reaction-path calculations on enzyme active-site cluster models. With `-c`, `all` cuts the cluster from a protein–ligand PDB; without it, the PDB/mmCIF/XYZ/GJF model is used as is. It optimizes the endpoints, searches the minimum-energy path (MEP), and stops at the MEP's highest-energy image, a TS candidate; `--tsopt`, `--thermo`, and `--dft` add the later stages. Each stage is also its own subcommand.
+`pdb2reaction` runs MLIP reaction-path calculations on enzyme active-site cluster models. With `-c`, `all` cuts the cluster from a protein–ligand PDB; without it, the PDB/mmCIF/XYZ/GJF model is used as is. It optimizes the endpoints, searches the minimum-energy path (MEP), and stops at the MEP's selected local peak, a TS candidate; `--tsopt`, `--thermo`, and `--dft` add the later stages. Each stage is also its own subcommand.
 
 - **PDB-native setup**: a residue-aware extractor cuts the cluster, sums residue and ligand charges, and adds cap H at carbon cut points, with no manual atom mapping.
 - **Bundled pysisyphus fork**: optimizers, TS search (RS-P-RFO by default, Dimer as an alternative), and IRC have GPU code paths for the MLIP backends; which operations stay on the GPU depends on the backend.

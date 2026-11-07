@@ -298,9 +298,9 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `product_energy_hartree` | float | 最後のイメージのエネルギー (Hartree) |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
-| `hei_index` | int | 最高エネルギーイメージのインデックス |
+| `hei_index` | int | 選択した局所ピークのインデックス。内部にピークがなければ端点 |
 | `hei_energy_hartree` | float | HEI エネルギー |
-| `barrier_kcal` | float | 前方障壁 (kcal/mol) |
+| `barrier_kcal` | float \| null | 選択したピークとその直前の局所極小（basin）の差（kcal/mol）。内部にピークがなければ `null` |
 | `delta_kcal` | float | 反応エネルギー (kcal/mol) |
 | `files` | object | 軌跡 + HEI ファイル |
 
@@ -430,7 +430,7 @@ IRC は `execution_status` と `scientific_status` に加え、方向ごとの�
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
 | `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含みます。`path-opt` の `result.json` にも記録 |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` では `preopt_converged` が `scientific_status` の判定に入ります。`--tsopt` で、すべての反応セグメントの TS と両端点の最適化が収束すると、判定から外れます |
-| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上の障壁です（配座変化の区間では `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。`path-search` と `all --refine-path` は、`mep_trj.xyz` でそのセグメントに属するフレームも 0 始まりで記録します。`frame_ranges` は `[start, stop]` の組のリストで、`stop` は含みません。組が 1 つのときは、その組を `frame_start` と `frame_stop` にも書きます。経路をつなぐ際に共有する始点を省いたとき、そのフレームは前のセグメントに属するため `frame_start - 1` を使います。最後のフレームは `frame_stop - 1` です。 |
+| `segments` | object[] | セグメントごとの `index`（1 始まり。`all` はセグメント 1 を `segments/seg_01/` に書きます）、`tag`（名前。番号は `index` と一致するとは限りません）、`kind`（反応セグメントは `"seg"`、共有結合が変わらない[配座変化の区間（kink）](path-search.md#処理の仕組みと計算仕様)は `"kink"`、[ブリッジセグメント](path-search.md#処理の仕組みと計算仕様)は `"bridge"`、TS-only モードは `"tsopt"`）、`converged`（そのセグメントを作った最適化がすべて収束したか。収束の信号を読めなければ `null`）、`barrier_kcal`、`delta_kcal`、`bond_changes`（`{title: [entries]}` dict のリスト。ブリッジセグメントは `""`）。`barrier_kcal` は TS 最適化の前の MEP 上のピークと、その直前の局所極小（basin）のエネルギー差です（配座変化の区間と、ピークのないブリッジでは `null`）。TS-only モードでは TS − R で、R は IRC の両端のうちエネルギーが高いほうです（向きの名前で、化学的な反応の向きではありません。[all の使用上の注意点](all.md#使用上の注意点)を参照）。`path-search` と `all --refine-path` は、`mep_trj.xyz` でそのセグメントに属するフレームも 0 始まりで記録します。`frame_ranges` は `[start, stop]` の組のリストで、`stop` は含みません。組が 1 つのときは、その組を `frame_start` と `frame_stop` にも書きます。経路をつなぐ際に共有する始点を省いたとき、そのフレームは前のセグメントに属するため `frame_start - 1` を使います。最後のフレームは `frame_stop - 1` です。 |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |

@@ -13,7 +13,7 @@
 | **GSM** | Growing String Method | 端点からストリング（イメージ列）を伸長・最適化して MEP を近似する手法 |
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します |
 | **FB-ENM** | Flat-Bottom Elastic Network Model | DMF の初期経路を作るモデル（Koda & Saito, *J. Chem. Theory Comput.* 2024）。CFB-ENM はその相関を入れた変種です |
-| **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大のイメージ。TS の初期推定としてよく使われます。HEI±1 はその両隣のイメージです |
+| **HEI** | Highest-Energy Image | トラジェクトリの各区間における局所ピークのうち、最もエネルギーの高い構造で、TS の初期推定に使います。内部にピークがなければ端点を返します。HEI±1 はその両隣の構造です |
 | **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点 |
 | **COS** | Chain-of-States | イメージの鎖をまとめて最適化する経路の手法。GSM、ストリングオプティマイザ（`stopt`）、DMF など |
 | **セグメント** | — | 2 つの隣接する端点を結ぶ MEP 区間（例: R → I1, I1 → I2, …） |

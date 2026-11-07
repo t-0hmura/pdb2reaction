@@ -25,6 +25,7 @@ import time
 import click
 from pdb2reaction.core.output import emit
 import numpy as np
+from pdb2reaction.domain.mep_profile import mep_barrier_kcal, select_mep_peak
 import torch
 
 from pysisyphus.constants import ANG2BOHR
@@ -93,13 +94,8 @@ logger = logging.getLogger(__name__)
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
-    """Return the global highest-energy-image index."""
-    E = np.array(energies, dtype=float)
-    if E.size == 0:
-        raise ValueError("Cannot select an HEI from an empty energy profile.")
-    if not np.all(np.isfinite(E)):
-        raise ValueError("Cannot select an HEI from non-finite energies.")
-    return int(np.argmax(E))
+    """Return the highest local peak, or an endpoint when no peak exists."""
+    return select_mep_peak(energies)[0]
 
 
 @dataclass
@@ -1444,7 +1440,7 @@ def cli(
             _dmf_hei_E = float(_dmf_energies[_dmf_hei])
             _dmf_e0 = float(_dmf_energies[0])
             _dmf_eN = float(_dmf_energies[-1])
-            _barrier = (_dmf_hei_E - _dmf_e0) * _AU2KCAL
+            _barrier = mep_barrier_kcal(_dmf_energies)
             _delta = (_dmf_eN - _dmf_e0) * _AU2KCAL
             _dmf_converged = getattr(dmf_res, 'is_converged', None)
             _dmf_reason = getattr(dmf_res, 'reason', "") or ""
@@ -1474,7 +1470,7 @@ def cli(
                 "n_images": len(_dmf_energies),
                 "hei_index": _dmf_hei,
                 "hei_energy_hartree": _dmf_hei_E,
-                "barrier_kcal": round(_barrier, 6),
+                "barrier_kcal": round(_barrier, 6) if _barrier is not None else None,
                 "delta_kcal": round(_delta, 6),
                 "files": {
                     "final_geometries_trj_xyz": "final_geometries_trj.xyz",
@@ -1651,7 +1647,7 @@ def cli(
         _gsm_hei_E = float(_gsm_energies[_gsm_hei])
         _gsm_e0 = float(_gsm_energies[0])
         _gsm_eN = float(_gsm_energies[-1])
-        _barrier = (_gsm_hei_E - _gsm_e0) * _AU2KCAL
+        _barrier = mep_barrier_kcal(_gsm_energies)
         _delta = (_gsm_eN - _gsm_e0) * _AU2KCAL
         result_data_gsm: Dict[str, Any] = {
             "mep_mode": "gsm",
@@ -1668,7 +1664,7 @@ def cli(
             "n_images": len(_gsm_energies),
             "hei_index": _gsm_hei,
             "hei_energy_hartree": _gsm_hei_E,
-            "barrier_kcal": round(_barrier, 6),
+            "barrier_kcal": round(_barrier, 6) if _barrier is not None else None,
             "delta_kcal": round(_delta, 6),
             "files": {
                 "final_geometries_trj_xyz": "final_geometries_trj.xyz",

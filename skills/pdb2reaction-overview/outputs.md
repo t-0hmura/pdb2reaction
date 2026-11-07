@@ -60,7 +60,7 @@ result_all/
 
 - `index` (1-based) and `tag` (a label whose number can differ from `index`).
 - `kind`: `"seg"` for a reactive segment, `"kink"` for a segment with no covalent bond change, `"bridge"` for a short connecting path (its `tag` ends in `_bridge`), `"tsopt"` in TS-only mode. Reactive segments are those with `kind` `"seg"` or `"tsopt"`.
-- `barrier_kcal` and `delta_kcal`: barrier and reaction energy on the MEP before TS optimization (`null` for a kink); in TS-only mode, TS − R and P − R.
+- `barrier_kcal` and `delta_kcal`: selected MEP peak minus its nearest preceding basin, and endpoint reaction energy before TS optimization (`barrier_kcal` is `null` for a kink or a bridge without a peak); in TS-only mode, TS − R and P − R.
 - `bond_changes`: see [Bond changes](#bond-changes).
 
 `post_segments[]` appears with `--tsopt`. Match it to `segments` by `index`, not by list position.
@@ -149,7 +149,7 @@ if rls:
 
 Energies are in kcal/mol relative to R. A PNG is written only when the energies are finite and the export succeeds; `summary.json["energy_diagrams"]` keeps the energies either way, so check `image_written` there before you use a PNG. In TS-only mode the diagrams are in `segments/seg_01/`.
 
-The number in a TS label (TS1, TS2, ...) is `segments[].index`, and an interval that gets no TS optimization also takes a number, so the TS numbers can skip (for example TS1, TS3). With `--refine-path`, these are the `"kink"` and `"bridge"` segments, which have no bond change; without it, they are the pairs of inputs whose MEP has an end image as its highest image (`endpoint_hei`). If an interval with no bond change also needs a TS with one imaginary mode, take the first and last frames of its segment (`frame_start` and `frame_stop - 1` in `summary.json`, counted from 0; use `frame_start - 1` if the shared start was kept with the preceding segment) from `mep_trj.xyz` and run `all --tsopt` on them without `--refine-path`.
+The number in a TS label (TS1, TS2, ...) is `segments[].index`, and an interval that gets no TS optimization also takes a number, so the TS numbers can skip (for example TS1, TS3). With `--refine-path`, these are the `"kink"` and `"bridge"` segments, which have no bond change; without it, they are the pairs of inputs whose MEP has no internal local peak (`endpoint_hei`). If an interval with no bond change also needs a TS with one imaginary mode, take the first and last frames of its segment (`frame_start` and `frame_stop - 1` in `summary.json`, counted from 0; use `frame_start - 1` if the shared start was kept with the preceding segment) from `mep_trj.xyz` and run `all --tsopt` on them without `--refine-path`.
 
 Read a barrier from `barrier_kcal` of its level (`mlip`, `gibbs_mlip`, `dft`, `gibbs_dft_mlip`), which is TS − R. Do not compute `max(energies) − E(R)`: after thermal or DFT corrections, P or a later state can lie above the TS.
 

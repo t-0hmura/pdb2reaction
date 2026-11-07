@@ -5462,6 +5462,30 @@ def cli(
     )
 
     mep_mode_kind = str(mep_mode).strip().lower()
+    if refine_path and not single_tsopt_mode and mep_mode_kind == "gsm":
+        _notice_gs_cfg = dict(_path_search.GS_KW)
+        _notice_search_cfg = dict(_path_search.SEARCH_KW)
+        apply_yaml_overrides(merged_yaml_cfg, [
+            (_notice_gs_cfg, (("gs",),)),
+            (_notice_search_cfg, (("search",),)),
+        ])
+        if cli_param_overridden(ctx, "gsm_param") and gsm_param is not None:
+            _notice_gs_cfg["param"] = gsm_param
+        if str(_notice_gs_cfg.get("param", "")).lower() == "energy":
+            if str(_notice_search_cfg.get("refine_mode") or "peak").lower() == "peak":
+                _echo(
+                    "[all] WARNING: The combination of --refine-path, --gsm-param energy, "
+                    "and search.refine_mode: peak may cause endpoint optimization during "
+                    "path refinement to fail. search.refine_mode: minima is recommended "
+                    "for this combination.",
+                    err=True,
+                )
+            else:
+                _echo(
+                    "[all] With --refine-path and --gsm-param energy, "
+                    "search.refine_mode: minima is recommended.",
+                    narrative=True,
+                )
     effective_dmf_cfg = fresh_dmf_config(_dmf_yaml_cfg)
     if cli_param_overridden(ctx, "thresh_dmf") and thresh_dmf is not None:
         effective_dmf_cfg["tol"] = str(thresh_dmf)
@@ -6724,6 +6748,13 @@ def cli(
                 )
 
         if not bool(tsopt_decision.get("continue_irc")):
+            if not ts_only and tsopt_decision.get("n_imaginary_modes") == 0:
+                _echo(
+                    "[all] The TS candidate appears to have moved away from the saddle point "
+                    "(n_imag=0). Try rerunning the MEP search with --max-nodes 50 or higher "
+                    "to improve the path resolution near the HEI.",
+                    err=True,
+                )
             post["status"] = "stopped_before_irc"
             return post
 
@@ -6860,6 +6891,7 @@ def cli(
         )
         endpoint_prefix = "" if ts_only else f"seg_{seg_idx:02d}_"
         optimized: Dict[str, Tuple[Any, Optional[bool], Dict[str, Any]]] = {}
+        endpoint_opt_start = time.perf_counter()
         for state, g_irc, hess_key in (
             ("reactant", g_react_irc, react_hk),
             ("product", g_prod_irc, prod_hk),
@@ -6905,6 +6937,7 @@ def cli(
                 }
                 g_opt = None
             optimized[state] = (g_opt, opt_conv, opt_outcome)
+        _echo(format_elapsed("[time] Elapsed Time for Endpoint Opt", endpoint_opt_start), detail=True)
         g_react_opt, react_conv, react_outcome = optimized["reactant"]
         g_prod_opt, prod_conv, prod_outcome = optimized["product"]
         post.update(
@@ -8600,7 +8633,7 @@ def cli(
                 seg_labels = segment_labels[3 * si : 3 * si + 3]
                 if 1 <= _path_opt._select_hei_index(Es) <= len(Es) - 2:
                     labels.extend(seg_labels)
-                    energies_chain.extend((Es[0], max(Es), Es[-1]))
+                    energies_chain.extend((Es[0], Es[_path_opt._select_hei_index(Es)], Es[-1]))
                 else:
                     # An endpoint HEI is not a TS: draw only the ends of this interval.
                     labels.extend((seg_labels[0], seg_labels[2]))
@@ -8644,7 +8677,7 @@ def cli(
                     ).to_dict()
                 )
                 continue
-            barrier = (max(Es) - Es[0]) * AU2KCALPERMOL
+            barrier = _path_opt.mep_barrier_kcal(Es)
             delta = (Es[-1] - Es[0]) * AU2KCALPERMOL
             bond_summary = ""
             try:

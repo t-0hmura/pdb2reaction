@@ -20,6 +20,7 @@ import re
 import click
 from pdb2reaction.core.output import emit, verbose_level
 import numpy as np
+from pdb2reaction.domain.mep_profile import mep_barrier_kcal, select_mep_peak
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
@@ -355,13 +356,8 @@ def _segment_base_id(tag: str) -> str:
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
-    """Return the global highest-energy-image index."""
-    E = np.asarray(energies, dtype=float)
-    if E.size == 0:
-        raise ValueError("Cannot select an HEI from an empty energy profile.")
-    if not np.all(np.isfinite(E)):
-        raise ValueError("Cannot select an HEI from non-finite energies.")
-    return int(np.argmax(E))
+    """Return the highest local peak, or an endpoint when no peak exists."""
+    return select_mep_peak(energies)[0]
 
 
 def _is_local_minimum(idx: int, energies: Sequence[float]) -> bool:
@@ -420,6 +416,16 @@ class SegmentReport:
     # reactive segment whose optimizer did not explicitly converge is unusable
     # and cannot make the path aggregate a scientific success.
     converged: Optional[bool] = None
+    peak_energy_hartree: Optional[float] = None
+    peak_image: Any = field(default=None, repr=False, compare=False)
+
+
+def _segment_hei_index(images, energies, report):
+    """Keep the selected peak after stitching removes a shared first frame."""
+    for index, image in enumerate(images):
+        if image is report.peak_image:
+            return index
+    return _select_hei_index(energies)
 
 
 _PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
@@ -860,7 +866,7 @@ def _stitch_paths(
 
                 if segments_out is not None:
                     try:
-                        barrier_kcal = (max(br.energies) - br.energies[0]) * AU2KCALPERMOL
+                        barrier_kcal = mep_barrier_kcal(br.energies)
                         delta_kcal = (br.energies[-1] - br.energies[0]) * AU2KCALPERMOL
                     except Exception as exc:
                         logger.debug("Failed to compute bridge energy barrier/delta: %s", exc)
@@ -868,11 +874,13 @@ def _stitch_paths(
                         delta_kcal = float("nan")
                     bridge_report = SegmentReport(
                         tag=f"{bridge_name_base}_bridge",
-                        barrier_kcal=float(barrier_kcal),
+                        barrier_kcal=barrier_kcal,
                         delta_kcal=float(delta_kcal),
                         summary="",
                         kind="bridge",
                         converged=getattr(br, "is_converged", None),
+                        peak_energy_hartree=float(br.energies[int(br.hei_idx)]),
+                        peak_image=br.images[int(br.hei_idx)],
                     )
                     insert_pos: Optional[int] = None
                     try:
@@ -960,7 +968,11 @@ def _build_mep_diagram_data(
             first_im_energy = E_current_kcal + delta_kcal
             current = {
                 "ts_label": f"TS{seg.seg_index}",
-                "ts_energy": E_current_kcal + barrier_kcal,
+                "ts_energy": (
+                    (seg.peak_energy_hartree - E0_au) * AU2KCALPERMOL
+                    if seg.peak_energy_hartree is not None
+                    else E_current_kcal + barrier_kcal
+                ),
                 "first_im_energy": first_im_energy,
                 "tail_im_energy": first_im_energy,
                 "has_extra": False,
@@ -980,7 +992,11 @@ def _build_mep_diagram_data(
         barrier = getattr(seg, "barrier_kcal", None)
         barrier_kcal = float(barrier) if barrier is not None else float("nan")
         if seg.kind == "bridge" and np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
-            peak_energy = E_current_kcal + barrier_kcal
+            peak_energy = (
+                (seg.peak_energy_hartree - E0_au) * AU2KCALPERMOL
+                if seg.peak_energy_hartree is not None
+                else E_current_kcal + barrier_kcal
+            )
             peaks = current.setdefault("bridge_peaks", [])
             suffix = "" if not peaks else f"_{len(peaks) + 1}"
             peak_label = f"IM{current['index']}_TS{suffix}"
@@ -1237,7 +1253,7 @@ def _build_multistep_path(
             changed, step_summary = True, "(bond-change evaluation failed)"
 
         try:
-            barrier_kcal = (max(gsm.energies) - gsm.energies[0]) * AU2KCALPERMOL
+            barrier_kcal = mep_barrier_kcal(gsm.energies)
             delta_kcal = (gsm.energies[-1] - gsm.energies[0]) * AU2KCALPERMOL
         except Exception as exc:
             logger.debug("Failed to compute segment energy barrier/delta: %s", exc)
@@ -1246,11 +1262,13 @@ def _build_multistep_path(
 
         seg_report = SegmentReport(
             tag=seg_tag,
-            barrier_kcal=float(barrier_kcal),
+            barrier_kcal=barrier_kcal,
             delta_kcal=float(delta_kcal),
             summary=step_summary if changed else "(no covalent changes detected)",
             kind="seg",
             converged=getattr(gsm, "is_converged", None),
+            peak_energy_hartree=float(gsm.energies[int(gsm.hei_idx)]),
+            peak_image=gsm.images[int(gsm.hei_idx)],
         )
 
         _tag_images(
@@ -1463,7 +1481,7 @@ def _build_multistep_path(
         click.echo(textwrap.indent(right_summary, prefix="  "))
 
     try:
-        barrier_kcal = (max(step_E) - step_E[0]) * AU2KCALPERMOL
+        barrier_kcal = mep_barrier_kcal(step_E)
         delta_kcal = (step_E[-1] - step_E[0]) * AU2KCALPERMOL
     except Exception as exc:
         logger.debug("Failed to compute step energy barrier/delta: %s", exc)
@@ -1485,6 +1503,8 @@ def _build_multistep_path(
         summary=step_summary if _changed else "(no covalent changes detected)",
         kind=step_kind,
         converged=segment_converged,
+        peak_energy_hartree=float(step_E[int(ref1.hei_idx)]),
+        peak_image=step_imgs[int(ref1.hei_idx)],
     )
 
     parts: List[Tuple[List[Any], List[float]]] = []
@@ -2021,7 +2041,7 @@ def _merge_final_and_write(final_images: List[Any],
         if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
             try:
                 energies_au = [float(getattr(im, "energy")) for im in seg_frames]
-                imax = int(np.argmax(np.array(energies_au, dtype=float)))
+                imax = _segment_hei_index(seg_frames, energies_au, s)
                 hei_frame = seg_frames[imax]
                 blocks_hei, _ = _merge_pair_to_full(
                     pair_images=[hei_frame],
@@ -3108,7 +3128,7 @@ def cli(
 
                 if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
                     energies_seg = [combined_all.energies[j] for j in idxs]
-                    imax_rel = int(np.argmax(np.array(energies_seg, dtype=float)))
+                    imax_rel = _segment_hei_index(seg_imgs, energies_seg, s)
                     imax_abs = idxs[imax_rel]
                     hei_img = combined_all.images[imax_abs]
                     hei_E = [combined_all.energies[imax_abs]]
@@ -3205,9 +3225,10 @@ def cli(
                         narrative=True,
                     )
                 else:
+                    barrier_text = f"{seg.barrier_kcal:.2f}" if seg.barrier_kcal is not None else "n/a"
                     emit(
                         f"  [{i:02d}] ({kind_label}) {seg.tag}  |  "
-                        f"ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  "
+                        f"ΔE‡ = {barrier_text} kcal/mol,  "
                         f"ΔE = {seg.delta_kcal:.2f} kcal/mol",
                         narrative=True,
                     )
