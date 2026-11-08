@@ -11,6 +11,8 @@ For detailed documentation, see: docs/scan.md
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option
+
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from pathlib import Path
@@ -305,6 +307,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_dft_calculator_options()
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

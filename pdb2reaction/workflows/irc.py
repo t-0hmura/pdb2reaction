@@ -9,6 +9,8 @@ For detailed documentation, see: docs/irc.md
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option
+
 from pdb2reaction.cli.completion import completion_guard
 
 from pathlib import Path
@@ -474,9 +476,9 @@ def _echo_convert_trj_if_exists(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
-              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+              help="Optional xTB or AnySolv solvent correction for MLIP backends; dft uses native PySCF PCM/SMD. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "anysolv", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx or AnySolv for MLIP backends; PCM/SMD for dft. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).")
 @add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options()
 @add_precision_option()
@@ -487,6 +489,7 @@ def _echo_convert_trj_if_exists(
 @add_allow_charge_mult_mismatch_option()
 @add_irc_pos_def_option()
 @add_dft_calculator_options()
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

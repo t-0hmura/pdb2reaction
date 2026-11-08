@@ -52,6 +52,8 @@ plotly_get_chrome -y
 
 If the `CUDA Version` of `nvidia-smi` is below 13.0, replace `cuda130` with `cuda129`. ORB, AIMNet2, MACE, and DFT are installed in step 7 of {ref}`Step-by-step installation <step-by-step-installation>`.
 
+Install the optional dependency with `pip install 'pdb2reaction[anysolv]'` to use AnySolv. MoE is recommended for accuracy-sensitive reaction calculations. See [model access and weight download](backends.md#anysolv).
+
 (system-prerequisites)=
 ## System prerequisites
 

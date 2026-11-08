@@ -22,7 +22,7 @@ def test_calculator_leaf_help_describes_backend_specific_solvent() -> None:
 
     assert result.exit_code == 0, result.output
     normalized_help = " ".join(result.output.split())
-    assert "xTB solvent delta" in normalized_help
+    assert "xTB or AnySolv solvent correction" in normalized_help
     assert "native PySCF PCM/SMD" in normalized_help
 
 

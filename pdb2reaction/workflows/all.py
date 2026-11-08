@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option, plot_enabled
+
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from copy import deepcopy
@@ -550,6 +552,11 @@ def _run_cli_main(
     ``on_nonzero="result"`` lets completed scientific failures reach the caller's
     result checks, while execution errors still raise.
     """
+    args = list(args)
+    if (not plot_enabled()
+            and any("--plot" in parameter.opts for parameter in getattr(cli_obj, "params", ()))
+            and not any(value in {"--plot", "--no-plot"} for value in args)):
+        args.append("--no-plot")
     saved = list(sys.argv)
     label = prefix or cmd_name
     exit_code: Optional[int] = 0
@@ -2203,6 +2210,7 @@ def _enrich_summary(
             "primary_method",
             "primary_method_label",
             "dft_settings",
+            "solvation_correction",
             "dft_resources",
         ):
             if key in calculator_provenance_data:
@@ -2246,6 +2254,7 @@ def _enrich_summary(
             "mlip_backend": mlip_backend,
             "mlip_model": mlip_model,
             "mlip_task": mlip_task,
+            "solvation_correction": summary.get("solvation_correction"),
         }
     )
     if freeze_atoms:
@@ -2521,9 +2530,9 @@ def _write_segment_energy_diagram(
         )
         if title_note:
             fig.update_layout(title=title_note)
-        write_plotly_image(fig, png, scale=2)
-        image_written = True
-        _echo(f"[diagram] Wrote energy diagram → {png.name}")
+        image_written = write_plotly_image(fig, png, scale=2) is not None
+        if image_written:
+            _echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
         image_error = str(e)
         _echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
@@ -2547,7 +2556,8 @@ def _write_segment_energy_diagram(
 def _point_mep_diagram_at_root(diagrams: Any, out_dir: Path) -> None:
     """Point the MEP diagram at ``energy_diagram_MEP.png``, where ``all`` moves it."""
     for diagram in diagrams or []:
-        if isinstance(diagram, dict) and str(diagram.get("name", "")).lower().endswith("mep"):
+        if (isinstance(diagram, dict) and diagram.get("image")
+                and str(diagram.get("name", "")).lower().endswith("mep")):
             diagram["image"] = str(out_dir / "energy_diagram_MEP.png")
 
 
@@ -2595,6 +2605,8 @@ def _merge_irc_trajectories_to_single_plot(
     out_png : Path
         Output PNG path for the aggregated plot.
     """
+    if not plot_enabled():
+        return
     # Collect blocks from each segment
     all_blocks: List[str] = []
     for trj_path, reverse in trj_and_flags:
@@ -4396,9 +4408,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
-              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+              help="Optional xTB or AnySolv solvent correction for MLIP backends; dft uses native PySCF PCM/SMD. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "anysolv", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx or AnySolv for MLIP backends; PCM/SMD for dft. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).")
 @add_solvent_xtb_cmd_option()
 # ===== Path search knobs =====
 @click.option(
@@ -4987,6 +4999,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_dft_calculator_options(include_method=False, include_engine=False)
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -5518,6 +5531,7 @@ def cli(
             "mlip_backend": _mlip_backend_shared,
             "mlip_model": _mlip_model_shared,
             "mlip_task": _mlip_task_shared,
+            "solvation_correction": _shared_provenance.get("solvation_correction"),
         }
 
     def _summary_config(
@@ -6542,6 +6556,7 @@ def cli(
             "mlip_precision",
             "primary_method",
             "dft_settings",
+            "solvation_correction",
         )
         if key in _shared_provenance
     }
@@ -7075,7 +7090,7 @@ def cli(
                 "labels": ["R", ts_label, "P"],
                 "energies_au": [e_react, eT, e_prod],
                 "energies_kcal": [0.0, (eT - e_react) * AU2KCALPERMOL, (e_prod - e_react) * AU2KCALPERMOL],
-                "diagram": str(seg_dir / "energy_diagram_MLIP.png"),
+                "diagram": str(seg_dir / "energy_diagram_MLIP.png") if plot_enabled() else None,
                 "structures": state_structs,
                 "barrier_kcal": (eT - e_react) * AU2KCALPERMOL,
                 "delta_kcal": (e_prod - e_react) * AU2KCALPERMOL,
@@ -7208,7 +7223,7 @@ def cli(
                                 (GT - GR) * AU2KCALPERMOL,
                                 (GP - GR) * AU2KCALPERMOL,
                             ],
-                            "diagram": str(seg_dir / "energy_diagram_G_MLIP.png"),
+                            "diagram": str(seg_dir / "energy_diagram_G_MLIP.png") if plot_enabled() else None,
                             "structures": state_structs,
                             "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
                             "delta_kcal": (GP - GR) * AU2KCALPERMOL,
@@ -7284,7 +7299,7 @@ def cli(
                                 (eT_dft - eR_dft) * AU2KCALPERMOL,
                                 (eP_dft - eR_dft) * AU2KCALPERMOL,
                             ],
-                            "diagram": str(seg_dir / "energy_diagram_DFT.png"),
+                            "diagram": str(seg_dir / "energy_diagram_DFT.png") if plot_enabled() else None,
                             "structures": state_structs,
                             "barrier_kcal": (eT_dft - eR_dft) * AU2KCALPERMOL,
                             "delta_kcal": (eP_dft - eR_dft) * AU2KCALPERMOL,
@@ -7328,7 +7343,7 @@ def cli(
                                     (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
                                     (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
                                 ],
-                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png"),
+                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png") if plot_enabled() else None,
                                 "structures": state_structs,
                                 "barrier_kcal": (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
                                 "delta_kcal": (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
@@ -7512,6 +7527,7 @@ def cli(
                 "mlip_model": _mlip_model_shared,
                 "mlip_model_label": _mlip_model_label_shared,
                 "mlip_task": _mlip_task_shared,
+                "solvation_correction": _shared_provenance.get("solvation_correction"),
                 "mlip_precision": _mlip_precision_shared,
                 "mlip_precision_post": _mlip_precision_post,
                 "execution_status": summary.get("execution_status"),
@@ -7803,7 +7819,7 @@ def cli(
                     energies_au=[e_react, eT, e_prod],
                     ref_energy=e_react,
                     au_to_kcal=AU2KCALPERMOL,
-                    diagram_path=str(tsroot / "energy_diagram_MLIP.png"),
+                    diagram_path=str(tsroot / "energy_diagram_MLIP.png") if plot_enabled() else None,
                     structures=_structs_seg,
                 )
                 if _endpoint_stop is not None:
@@ -7816,7 +7832,7 @@ def cli(
                         energies_au=[GR, GT, GP],
                         ref_energy=GR,
                         au_to_kcal=AU2KCALPERMOL,
-                        diagram_path=str(tsroot / "energy_diagram_G_MLIP.png"),
+                        diagram_path=str(tsroot / "energy_diagram_G_MLIP.png") if plot_enabled() else None,
                         structures=_structs_seg,
                     )
                 if do_dft and _endpoint_stop is None:
@@ -7826,7 +7842,7 @@ def cli(
                             energies_au=[eR_dft, eT_dft, eP_dft],
                             ref_energy=eR_dft,
                             au_to_kcal=AU2KCALPERMOL,
-                            diagram_path=str(tsroot / "energy_diagram_DFT.png"),
+                            diagram_path=str(tsroot / "energy_diagram_DFT.png") if plot_enabled() else None,
                             structures=_structs_seg,
                         )
                     else:
@@ -7851,7 +7867,7 @@ def cli(
                             energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
                             ref_energy=GR_dft_mlip,
                             au_to_kcal=AU2KCALPERMOL,
-                            diagram_path=str(tsroot / "energy_diagram_G_DFT_plus_MLIP.png"),
+                            diagram_path=str(tsroot / "energy_diagram_G_DFT_plus_MLIP.png") if plot_enabled() else None,
                             structures=_structs_seg,
                         )
 
@@ -7879,6 +7895,7 @@ def cli(
                     "mlip_model": _mlip_model_shared,
                     "mlip_model_label": _mlip_model_label_shared,
                     "mlip_task": _mlip_task_shared,
+                    "solvation_correction": _shared_provenance.get("solvation_correction"),
                     "mlip_precision": _mlip_precision_shared,
                     "mlip_precision_post": _mlip_precision_post,
                     "command": command_str,
@@ -8602,7 +8619,8 @@ def cli(
         try:
             run_trj2fig(final_trj, [path_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
-            _echo_detail(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
+            if plot_enabled():
+                _echo_detail(f"[plot] Saved energy plot → '{path_dir / 'mep_plot.png'}'")
         except Exception as e:
             _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
@@ -8837,6 +8855,7 @@ def cli(
                 "mlip_model": _mlip_model_shared,
                 "mlip_model_label": _mlip_model_label_shared,
                 "mlip_task": _mlip_task_shared,
+                "solvation_correction": _shared_provenance.get("solvation_correction"),
                 "mlip_precision": _mlip_precision_shared,
                 "mlip_precision_post": _mlip_precision_post,
                 "command": command_str,

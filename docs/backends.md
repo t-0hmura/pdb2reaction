@@ -140,7 +140,11 @@ shorten a run is covered in [HPC example › Walltime budgeting](hpc-example.md#
 AIMNet2, and DFT can compute analytical Hessians, while a custom calculator
 supports only `FiniteDifference`.
 
-## xTB solvent correction
+## Solvent corrections
+
+For MLIP backends, `--solvent NAME` adds an implicit-solvent correction. xTB ALPB is the default when a solvent is supplied. AnySolv, a machine-learning solvation model reported to be fast and accurate, is also available. The MoE model requires a separate access request and setup. `--solvent none` (the default) disables the correction. The DFT backend and the `dft` command use native PySCF PCM/SMD.
+
+### xTB solvent correction
 
 For MLIP backends, `--solvent NAME` adds the xTB solvation energy,
 `E_xTB(solvent) - E_xTB(vacuum)`, and the matching force and Hessian differences
@@ -155,6 +159,35 @@ Each correction runs xTB twice (in solvent and in vacuum), so about 200–300
 atoms is a practical maximum rather than a hard limit; benchmark the actual
 system and hardware. The option models a named bulk solvent, so on an enzyme
 cluster use it only when that environment is justified.
+
+### AnySolv
+
+`--solvent water --solvent-model anysolv` adds the solvation energy and force correction predicted by AnySolv to the MLIP. Ordinary calculations and DMF use the same correction. The correction Hessian is computed by finite differences of the forces.
+
+Two models are available: `compact`, bundled with the AnySolv library, and `MoE`, whose weights must be obtained separately from Hugging Face. MoE is recommended for accuracy-sensitive reaction calculations, especially reactions involving charge separation.
+
+The compact model achieves accuracy close to MoE for solvation energies and partition coefficients, while overstabilization of products has been reported in reactions involving charge separation.
+
+See the [paper](https://arxiv.org/abs/2610.17226) and [official repository](https://github.com/Ant-on-knee/anysolv) for details.
+
+The MoE weights must be obtained separately. Request access and accept the FAIR Chemistry License on the [AnySolv model page](https://huggingface.co/antonknee/anysolv). Once access is available, authenticate and download the checkpoint:
+
+```bash
+pip install 'pdb2reaction[anysolv]' huggingface_hub
+hf auth login
+hf download antonknee/anysolv model_moe.pt --local-dir ./anysolv-weights
+```
+
+Set the absolute path to the downloaded weights in YAML:
+
+```yaml
+calc:
+  solvent: water
+  solvent_model: anysolv
+  anysolv_checkpoint: /absolute/path/to/anysolv-weights/model_moe.pt
+```
+
+Without a checkpoint setting, the bundled `model_compact` is used.
 
 ## DFT backend
 

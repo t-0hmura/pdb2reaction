@@ -263,6 +263,10 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result
 * **mmCIF と大きな構造の制限**: 扱える残基は 619,938 個までです（計算の間に使う内部の PDB の、1 文字の chain ID 62 種 × 残基番号 9,999）。`fix-altloc` と `add-elem-info` は PDB だけを読みます。mmCIF では、読み込みのときに altLoc を選び、元素記号を `_atom_site.type_symbol` から取ります。この値が無い行があるとエラーで止まります。
 * **`--flatten` と YAML**: `--flatten`（`opt`・`tsopt`・`all`。デフォルトで無効）は、余分な虚振動モードに沿って構造をずらし、最適化をやり直します。`--flatten` も `--no-flatten` も指定しないときは、`tsopt` は YAML に書いた `hessian_dimer.flatten_max_iter` の値を使います。`opt` は `--flatten` を付けると常に最大 50 回です。`--no-flatten` は 0 に固定します（{ref}`--flatten を使うとき <ja-flatten-precedence-caveat>` を参照）。
 
+## 図の出力
+
+`all`・`scan`・`scan2d`・`scan3d`・`path-opt`・`path-search`・`irc`は、デフォルト（`--plot`）で図を出力します。画像がいらない場合は`--no-plot`を付けてください。PNG・HTMLなどの図とChromeによる画像生成を省き、CSV・構造・JSONなどの数値出力は残します。`all`の指定は子処理にも伝わります。描画専用の`trj2fig`・`energy-diagram`にこのフラグはありません。
+
 ## 関連ドキュメント
 
 - [インストール](installation.md) — セットアップと依存関係

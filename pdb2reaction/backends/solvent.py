@@ -1,7 +1,7 @@
 # pdb2reaction/backends/solvent.py
 
 """
-xTB implicit-solvent delta-correction wrapper.
+Additive implicit-solvent correction wrapper.
 
 Wraps any ``MLIPCalculator`` and adds an xTB-based implicit-solvent
 correction::
@@ -10,7 +10,9 @@ correction::
     ΔF = F_xTB(solvent) − F_xTB(vacuum)
     ΔH = H_xTB(solvent) − H_xTB(vacuum)
 
-The correction is added to the MLIP energy/forces/Hessian.
+The correction is added to the MLIP energy/forces/Hessian. With
+``solvent_model="anysolv"``, AnySolv supplies ΔE and ΔF directly and
+the correction Hessian is obtained from central differences of ΔF.
 
 Usage::
 
@@ -59,7 +61,7 @@ def solvent_correction_enabled(solvent: str) -> bool:
 
 
 class SolventCorrectedCalculator(MLIPCalculator):
-    """Decorator that adds xTB implicit-solvent correction to any MLIP calculator.
+    """Decorator that adds an implicit-solvent correction to any MLIP calculator.
 
     If ``solvent`` is ``'none'`` (default), all calls are passed through
     to the base calculator unchanged.
@@ -73,6 +75,9 @@ class SolventCorrectedCalculator(MLIPCalculator):
         solvent_model: str = "alpb",
         xtb_cmd: str = "xtb",
         xtb_acc: float = 0.2,
+        anysolv_checkpoint: str = "model_compact",
+        anysolv_hessian_step: float = 1e-3,
+        anysolv_dtype: str | None = None,
     ):
         # Inherit charge/spin/device from base
         super().__init__(
@@ -89,13 +94,22 @@ class SolventCorrectedCalculator(MLIPCalculator):
 
         self.base = base
         self.solvent = str(solvent)
-        self.solvent_model = str(solvent_model)
+        self.solvent_model = str(solvent_model).strip().lower()
         self.xtb_cmd = str(xtb_cmd)
         self.xtb_acc = float(xtb_acc)
 
         self._enabled = solvent_correction_enabled(self.solvent)
+        self._anysolv = None
 
-        if self._enabled:
+        if self._enabled and self.solvent_model == "anysolv":
+            from .anysolv import AnySolvCorrection
+            self._anysolv = AnySolvCorrection(
+                solvent=self.solvent, charge=base.charge, spin=base.mult,
+                checkpoint=anysolv_checkpoint, device=getattr(base, "device_str", "cpu"),
+                dtype=anysolv_dtype or getattr(base, "default_dtype", getattr(base, "precision", "float64")),
+                hessian_step=anysolv_hessian_step,
+            )
+        elif self._enabled:
             mod = _get_xtb_mod()
             # Validate solvent model
             mod.normalize_solvent_model(self.solvent_model)
@@ -107,7 +121,11 @@ class SolventCorrectedCalculator(MLIPCalculator):
         need_forces: bool = False,
         need_hessian: bool = False,
     ):
-        """Compute xTB solvent delta (eV/Å units)."""
+        """Compute the selected solvent correction in eV/Å units."""
+        if self._anysolv is not None:
+            return self._anysolv.compute(
+                symbols, coords_ang, need_forces=need_forces, need_hessian=need_hessian,
+            )
         mod = _get_xtb_mod()
         de_ev, df_ev_ang, dh_ev_ang2 = mod.delta_alpb_minus_vac(
             symbols=list(symbols),

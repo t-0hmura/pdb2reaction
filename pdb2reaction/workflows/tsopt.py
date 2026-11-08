@@ -2324,9 +2324,9 @@ def _validate_reference_mode_optimizer(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
-              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+              help="Optional xTB or AnySolv solvent correction for MLIP backends; dft uses native PySCF PCM/SMD. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "anysolv", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx or AnySolv for MLIP backends; PCM/SMD for dft. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).")
 @add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options()
 @add_precision_option()

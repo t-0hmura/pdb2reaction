@@ -52,6 +52,8 @@ plotly_get_chrome -y
 
 `nvidia-smi` の `CUDA Version` が 13.0 より小さいときは、`cuda130` を `cuda129` に置き換えてください。ORB・AIMNet2・MACE・DFT の導入は {ref}`詳細なインストール手順 <ja-step-by-step-installation>` の手順 7 を参照してください。
 
+AnySolvを使う場合は`pip install 'pdb2reaction[anysolv]'`で任意依存を導入します。精度を重視する反応計算には、MoEモデルが推奨されています。[利用申請と重みの取得方法](backends.md#anysolv)を参照してください。
+
 (ja-system-prerequisites)=
 ## システムの前提パッケージ
 

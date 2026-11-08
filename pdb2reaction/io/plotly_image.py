@@ -116,8 +116,12 @@ def write_plotly_image(
     *,
     timeout_seconds: float = PLOTLY_IMAGE_TIMEOUT_SECONDS,
     **kwargs: Any,
-) -> Path:
+) -> Path | None:
     """Write one Plotly image atomically, failing after two minutes by default."""
+
+    from pdb2reaction.core.plotting import plot_enabled
+    if not plot_enabled():
+        return None
 
     timeout = float(timeout_seconds)
     if timeout <= 0:

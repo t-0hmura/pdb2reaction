@@ -156,6 +156,13 @@ _BACKEND_DEFAULT_PRECISION: Dict[str, str] = {
 }
 
 
+def _anysolv_dtype(backend: str, settings: Dict[str, Any]) -> str:
+    value = settings.get("default_dtype") if backend == "mace" else settings.get("precision")
+    if value is None or str(value).lower() == "auto":
+        value = _BACKEND_DEFAULT_PRECISION.get(backend, "fp32")
+    return "float64" if str(value).lower() in {"fp64", "float64", "double"} else "float32"
+
+
 def fp64_rerun_available(backend: Any, precision: Any) -> bool:
     """Whether a run below fp64 can be repeated in fp64 (UMA, ORB and MACE)."""
     return (
@@ -414,8 +421,14 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
     solvent_model = str(kwargs.pop("solvent_model", "alpb"))
     xtb_cmd = str(kwargs.pop("xtb_cmd", "xtb"))
     xtb_acc = float(kwargs.pop("xtb_acc", 0.2))
+    anysolv_settings = {key: kwargs.pop(key) for key in
+                        ("anysolv_checkpoint", "anysolv_hessian_step") if key in kwargs}
 
     backend = resolve_backend(backend)
+    if backend == "dft" and solvent_model.strip().lower() == "anysolv":
+        from .solvent import solvent_correction_enabled
+        if solvent_correction_enabled(solvent):
+            raise BackendError("AnySolv requires an MLIP backend; use PCM/SMD for dft.")
     # Env-var / direct-API entry point for strict determinism (the CLI uses the
     # --deterministic flag callback). Idempotent; no-op unless requested.
     from ._determinism import (
@@ -458,6 +471,8 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
             solvent_model=solvent_model,
             xtb_cmd=xtb_cmd,
             xtb_acc=xtb_acc,
+            anysolv_dtype=_anysolv_dtype(backend, kwargs),
+            **anysolv_settings,
         )
 
     return calc
@@ -475,6 +490,14 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
         Backend-specific parameters.
     """
     backend = resolve_backend(backend)
+    if backend == "dft" and str(kwargs.get("solvent_model", "")).strip().lower() == "anysolv":
+        from .solvent import solvent_correction_enabled
+        if solvent_correction_enabled(kwargs.get("solvent", "none")):
+            raise BackendError("AnySolv requires an MLIP backend; use PCM/SMD for dft.")
+    solvent = kwargs.pop("solvent", "none") if backend != "dft" else "none"
+    solvent_model = str(kwargs.pop("solvent_model", "alpb")).strip().lower() if backend != "dft" else "alpb"
+    anysolv_settings = {key: kwargs.pop(key) for key in
+                        ("anysolv_checkpoint", "anysolv_hessian_step") if key in kwargs}
     from ._determinism import (
         is_deterministic_active,
         is_deterministic_requested,
@@ -493,7 +516,18 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
     filtered = _filter_kwargs(kwargs, accepted)
     cls = _import_cls(backend, "ase_cls")
     with _announce_model_load(backend, filtered):
-        return cls(**filtered)
+        calculator = cls(**filtered)
+    from .solvent import solvent_correction_enabled
+    if solvent_model == "anysolv" and solvent_correction_enabled(solvent):
+        from .anysolv import wrap_ase_calculator
+        calculator = wrap_ase_calculator(
+            calculator, solvent=solvent, charge=kwargs.get("charge", 0), spin=kwargs.get("spin", 1),
+            checkpoint=anysolv_settings.get("anysolv_checkpoint", "model_compact"),
+            hessian_step=anysolv_settings.get("anysolv_hessian_step", 1e-3),
+            device=getattr(calculator, "device_str", kwargs.get("device", "cpu")),
+            dtype=_anysolv_dtype(backend, kwargs),
+        )
+    return calculator
 
 
 __all__ = [

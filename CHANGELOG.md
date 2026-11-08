@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-11-09
+
+### Breaking changes
+
+None.
+
+### Added
+
+- AnySolv energy and force corrections for MLIP calculations, including DMF; correction Hessians use finite differences of forces.
+- Install with `pip install 'pdb2reaction[anysolv]'` and select `--solvent-model anysolv`. The bundled compact model is the default; MoE weights are configured explicitly.
+- `--plot/--no-plot` on workflows that produce figures. Plots remain on by default; `--no-plot` retains numerical and structural outputs.
+- AnySolv and MACE-POLAR citations in the existing method reference list.
+- Updated English and Japanese setup and backend documentation.
+
 ## [0.7.1] — 2026-11-08
 
 ### Breaking changes

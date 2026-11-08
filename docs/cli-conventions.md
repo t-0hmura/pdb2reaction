@@ -266,6 +266,10 @@ built-in defaults  <  --config (YAML)  <  CLI options
 * **mmCIF and large structures**: up to 619,938 residues can be handled (62 one-character chain IDs × 9,999 residue numbers in the internal PDB used during the calculation). `fix-altloc` and `add-elem-info` read PDB only. For mmCIF, the altLoc is chosen and element symbols are taken from `_atom_site.type_symbol` when the file is read. A row without it stops with an error.
 * **`--flatten` and YAML**: `--flatten` (`opt`, `tsopt`, and `all`; off by default) displaces the structure along extra imaginary modes and optimizes again. When neither `--flatten` nor `--no-flatten` is given, `tsopt` keeps a `hessian_dimer.flatten_max_iter` value set in YAML. With `--flatten`, `opt` always uses up to 50 rounds; `--no-flatten` forces 0 (see {ref}`When --flatten is on <flatten-precedence-caveat>`).
 
+## Plot output
+
+`all`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `irc` write plots by default (`--plot`). Add `--no-plot` when figures are not needed. It skips figures such as PNG and HTML, including Chrome rendering, while retaining CSV, structures, JSON, and other numerical outputs. The setting in `all` also applies to its child commands. The plotting-only commands `trj2fig` and `energy-diagram` do not have this flag.
+
 ## See Also
 
 - [Installation](installation.md) — setup and dependencies

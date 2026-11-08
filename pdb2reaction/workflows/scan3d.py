@@ -11,6 +11,8 @@ For detailed documentation, see: docs/scan3d.md
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option, plot_enabled
+
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from pathlib import Path
@@ -255,6 +257,7 @@ def _result_calculator_fields(
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_dft_calculator_options()
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -985,7 +988,7 @@ def cli(
             & np.isfinite(z_points)
         )
         mask &= _eligible_rows3.to_numpy(dtype=bool)
-        if not np.any(mask):
+        if not np.any(mask) and plot_enabled():
             click.echo("[plot] No finite data for plotting.")
         n_unique, support_rank = _rbf_support_3d(
             d1_points[mask],
@@ -993,9 +996,9 @@ def cli(
             d3_points[mask],
         )
         # Too few or coplanar usable points: keep the data, skip only the volume plot.
-        plot_written = n_unique >= 4 and support_rank >= 3
+        plot_written = plot_enabled() and n_unique >= 4 and support_rank >= 3
         if not plot_written:
-            if n_unique:
+            if n_unique and plot_enabled():
                 click.echo(
                     "[plot] NOTE: Volume plot skipped: a 3D energy volume needs at least "
                     "four non-coplanar converged finite grid points; found "

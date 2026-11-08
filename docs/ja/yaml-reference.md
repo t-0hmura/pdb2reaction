@@ -157,11 +157,13 @@ calc:
  return_partial_hessian: true  # 動かせる原子の部分の Hessian だけを返す
  print_timing: true # Hessian計算のタイミング内訳を表示
  print_vram: true # Hessian計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
- # xTB 溶媒補正（計算コスト大）
+ # 溶媒補正（xTB / AnySolv）
  solvent: none           # none, water, methanol, acetonitrile, dmso, thf, toluene
- solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
+ solvent_model: alpb     # alpb (default), cpcmx, anysolv
  xtb_cmd: xtb            # xTBコマンドと追加オプションを指定可能（例: "xtb --etemp 1000"）
  xtb_acc: 0.2            # xTB accuracy parameter
+ anysolv_checkpoint: model_compact # MoE推奨。取得した重みの絶対パスを指定
+ anysolv_hessian_step: 0.001 # 補正Hessianの中心差分の変位幅（Å）
  # backend: dft の場合だけ使用
  dft:
   func_basis: wb97m-v/def2-svp

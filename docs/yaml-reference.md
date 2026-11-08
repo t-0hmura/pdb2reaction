@@ -157,11 +157,13 @@ calc:
  return_partial_hessian: true  # Return the Hessian of the movable atoms only
  print_timing: true # Print Hessian timing breakdown
  print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
- # xTB solvent correction (computationally expensive)
+ # Solvent correction (xTB / AnySolv)
  solvent: none           # none, water, methanol, acetonitrile, dmso, thf, or toluene
- solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
+ solvent_model: alpb     # alpb (default), cpcmx, anysolv
  xtb_cmd: xtb            # xTB command plus optional arguments, e.g. "xtb --etemp 1000"
  xtb_acc: 0.2            # xTB accuracy parameter
+ anysolv_checkpoint: model_compact # MoE recommended; set the absolute path to downloaded weights
+ anysolv_hessian_step: 0.001 # Central force-difference displacement for the correction Hessian (angstrom)
  # Used only when backend: dft
  dft:
   func_basis: wb97m-v/def2-svp

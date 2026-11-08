@@ -3260,6 +3260,18 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
     task_name = calc_cfg.get("task_name") if backend == "uma" else None
     if backend == "uma" and task_name is None:
         task_name = CALC_KW_DEFAULT.get("task_name")
+    solvation = {}
+    if (str(calc_cfg.get("solvent_model", "alpb")).lower() == "anysolv"
+            and str(calc_cfg.get("solvent", "none")).lower() not in {"", "none", "gas", "vacuum"}):
+        from pdb2reaction.backends import _anysolv_dtype
+        solvation["solvation_correction"] = {
+            "method": "anysolv",
+            "solvent": str(calc_cfg["solvent"]),
+            "checkpoint": str(calc_cfg.get("anysolv_checkpoint", CALC_KW_DEFAULT["anysolv_checkpoint"])),
+            "dtype": _anysolv_dtype(backend, dict(calc_cfg)),
+            "hessian_method": "force-finite-difference",
+            "hessian_step_angstrom": float(calc_cfg.get("anysolv_hessian_step", CALC_KW_DEFAULT["anysolv_hessian_step"])),
+        }
     return {
         "mlip_backend": backend,
         "mlip_model": None if model is None else str(model),
@@ -3269,6 +3281,7 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
         "mlip_compiled": runs_compiled({**calc_cfg, "backend": backend}),
         "primary_method": "mlip",
         "primary_method_label": "MLIP",
+        **solvation,
     }
 
 

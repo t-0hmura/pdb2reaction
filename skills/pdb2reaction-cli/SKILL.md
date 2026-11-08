@@ -47,7 +47,10 @@ keeps the original chain IDs and residue numbers.
 - `--show-config`: prints the configuration and **continues** with the run. `all`, `path-search`, and `sp` print the settings after merging defaults, YAML, and CLI; the other commands that accept it print the loaded YAML and its top-level keys.
 - `--dry-run`: checks options and inputs, then exits before any MLIP or DFT stage. `all -c/--center --dry-run` also runs extraction to check the derived charge and electron parity.
 - `--ref-pdb FILE`: a PDB/mmCIF that gives residue names and topology to XYZ/GJF inputs while their coordinates are kept.
-- `--solvent NAME`: for MLIP backends, an expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, meant mainly for small molecules in solution; with `-b dft` and the `dft` command, PySCF PCM/SMD (`--solvent-model`). `none` turns it off. Install notes: [xTB solvent correction](../pdb2reaction-install/backends.md#xtb-solvent-correction).
+- `--solvent NAME`: for MLIP backends, by default an expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, meant mainly for small molecules in solution; with `-b dft` and the `dft` command, PySCF PCM/SMD (`--solvent-model`). `none` turns it off. Install notes: [xTB solvent correction](../pdb2reaction-install/backends.md#xtb-solvent-correction).
+- `--solvent-model anysolv`: selects AnySolv instead of the default xTB ALPB correction. MoE is recommended for accuracy-sensitive reaction calculations, especially charge separation; request model access and set `calc.anysolv_checkpoint` to the absolute path of the downloaded weights ([setup](../pdb2reaction-install/backends.md#anysolv)).
+
+- `--plot/--no-plot`: plots are on by default in `all`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `irc`. Add `--no-plot` when figures are not needed; keep CSV, structures, and JSON. `all` propagates the setting to its children. Plotting-only commands do not have this flag.
 
 ## Frozen atoms
 

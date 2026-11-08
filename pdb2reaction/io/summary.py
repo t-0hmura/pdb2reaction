@@ -27,6 +27,17 @@ from pdb2reaction.core.output import mlip_model_label
 logger = logging.getLogger(__name__)
 
 
+_MACE_MODEL_IS_POLAR: Dict[str, bool] = {}
+
+
+def register_mace_model_type(model_spec: str, calculator: Any) -> None:
+    """Remember the loaded model family for citations, including local weights."""
+    _MACE_MODEL_IS_POLAR[str(model_spec)] = any(
+        type(model).__name__ == "PolarMACE"
+        for model in getattr(calculator, "models", ())
+    )
+
+
 def format_result_warning(
     reason: Any,
     *,
@@ -333,6 +344,20 @@ _CITATION_RECORDS: Dict[str, tuple[str, str]] = {
         "Nat. Mach. Intell. 7, 56-67 (2025). "
         "https://doi.org/10.1038/s42256-024-00956-x",
     ),
+    "mace_polar": (
+        "MACE-POLAR",
+        "Batatia, I.; Baldwin, W. J.; Kuryla, D.; Hart, J.; Kasoar, E.; "
+        "Elena, A. M.; Moore, H.; Gawkowski, M. J.; Shi, B. X.; Kapil, V.; "
+        "Kourtis, P.; Magdău, I.-B.; Csányi, G. MACE-POLAR-1: A Polarisable "
+        "Electrostatic Foundation Model for Molecular Chemistry. arXiv 2026, "
+        "arXiv:2602.19411. https://doi.org/10.48550/arXiv.2602.19411",
+    ),
+    "anysolv": (
+        "AnySolv",
+        "Ni, A. Z.; Lee, J. Solvating machine-learning interatomic potentials "
+        "for solution-phase chemistry. arXiv 2026, arXiv:2610.17226. "
+        "https://doi.org/10.48550/arXiv.2610.17226",
+    ),
     "omol25": (
         "OMol25",
         "Levine, D. S.; Shuaibi, M.; Spotte-Smith, E. W. C.; Taylor, M. G.; "
@@ -461,10 +486,22 @@ def _method_citation_record_keys(payload: Dict[str, Any]) -> List[str]:
             keys.append("omol25")
     elif mlip_backend == "mace":
         keys.extend(("mace", "mace_design"))
-        if "omol" in mlip_model or "polar" in mlip_model:
+        polar_aliases = {
+            f"{prefix}polar-1-{size}"
+            for prefix in ("", "mace-") for size in ("s", "m", "l")
+        }
+        is_polar = _MACE_MODEL_IS_POLAR.get(
+            str(payload.get("mlip_model") or ""), mlip_model in polar_aliases
+        )
+        if is_polar:
+            keys.append("mace_polar")
+        if "omol" in mlip_model or is_polar:
             keys.append("omol25")
     elif mlip_backend == "aimnet2":
         keys.append("aimnet2")
+    solvation = payload.get("solvation_correction")
+    if isinstance(solvation, dict) and solvation.get("method") == "anysolv":
+        keys.append("anysolv")
     pipeline_mode = str(payload.get("pipeline_mode") or "").strip().lower()
     if pipeline_mode != "tsopt-only":
         mep_mode = str(payload.get("mep_mode") or "").strip().lower()

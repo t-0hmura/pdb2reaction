@@ -132,7 +132,7 @@ See the [generated CLI reference](reference/commands/path_opt.md) for every opti
 
 * **Frozen atoms move slightly with DMF**: DMF holds frozen atoms with a harmonic restraint (k = 300 eV/Å², YAML `dmf.k_fix`) instead of fixing them, so they can drift a little from their reference positions; GSM keeps them fixed. See {ref}`Freeze atoms and restrain distances <freeze-atoms-and-restraints>`.
 * **DMF needs `cyipopt`**: install it with PyTorch from conda-forge, as in step 3 of {ref}`Step-by-step installation <step-by-step-installation>`, before you run `--mep-mode dmf`; `pydmf` comes with `pdb2reaction`. The default `--dmf-backend gpu` stops with an error when CUDA is unavailable; use `--dmf-backend cpu` then, or after a GPU out-of-memory error.
-* **DMF and implicit solvent cannot be combined**: with an MLIP backend, `--mep-mode dmf` together with `--solvent` stops with an error. Use GSM for a path with solvent.
+* **Solvent corrections with DMF**: select `--solvent-model anysolv`. DMF cannot be combined with the xTB solvent correction; use GSM for paths with xTB solvation.
 * **Options DMF ignores**: `--climb`, `--dump`, and `--fix-ends` are accepted but not used by DMF.
 * **Conflicting optimizer settings in YAML**: setting the same key to different values in `opt:` and in the section of the optimizer that runs (`lbfgs:`, `opt.lbfgs:`, `stopt.lbfgs:`, or the `rfo` equivalents) stops the run with an error.
 

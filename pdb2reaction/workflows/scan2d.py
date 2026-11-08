@@ -11,6 +11,8 @@ For detailed documentation, see: docs/scan2d.md
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option, plot_enabled
+
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from pathlib import Path
@@ -411,6 +413,7 @@ def _build_scan_context(
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_dft_calculator_options()
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -1082,15 +1085,15 @@ def cli(
                 & np.isfinite(z_points)
                 & df["seed_eligible"].to_numpy(dtype=bool)
             )
-            if not np.any(mask):
+            if not np.any(mask) and plot_enabled():
                 click.echo("[plot] No finite data for plotting.")
             n_unique, support_rank = _rbf_support(
                 d1_points[mask], d2_points[mask]
             )
             # Too few or collinear usable points: keep surface.csv, skip only the plots.
-            plots_written = n_unique >= 3 and support_rank >= 2
+            plots_written = plot_enabled() and n_unique >= 3 and support_rank >= 2
             if not plots_written:
-                if n_unique:
+                if n_unique and plot_enabled():
                     click.echo(
                         "[plot] NOTE: Plots skipped: a 2D energy surface needs at least "
                         "three non-collinear converged finite grid points; found "

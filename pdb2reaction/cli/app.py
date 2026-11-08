@@ -639,6 +639,11 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
     ),
 }
 
+for _plot_command in ("all", "scan", "scan2d", "scan3d", "path-opt", "path-search", "irc"):
+    _COMMAND_BOOL_TOGGLE_OPTIONS[_plot_command] |= frozenset({"--plot"})
+    if _plot_command in _SUBCOMMAND_PRIMARY_HELP_OPTIONS:
+        _SUBCOMMAND_PRIMARY_HELP_OPTIONS[_plot_command] |= frozenset({"--plot"})
+
 _PARSER_WRAPPER_SUBCOMMANDS: frozenset[str] = frozenset()
 
 _PARSER_WRAPPER_BOOL_OPTION_PROVIDERS: dict[str, object] = {}

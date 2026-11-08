@@ -9,6 +9,8 @@ For detailed documentation, see: docs/path-opt.md
 
 from __future__ import annotations
 
+from pdb2reaction.core.plotting import add_plot_option
+
 from pdb2reaction.cli.completion import completion_guard, record_completion
 
 from dataclasses import dataclass
@@ -269,7 +271,7 @@ def _validate_dmf_solvent_compatibility(calc_cfg: Mapping[str, Any]) -> None:
 
     solvent = str(calc_cfg.get("solvent", "none") or "none").strip().lower()
     backend = str(calc_cfg.get("backend", "uma") or "uma").strip().lower()
-    if backend == "dft":
+    if backend == "dft" or str(calc_cfg.get("solvent_model", "")).lower() == "anysolv":
         return
     if solvent not in ("", "none"):
         raise click.ClickException(
@@ -302,8 +304,8 @@ def _run_dmf_mep(
     [3] S.-i. Koda and  S. Saito, Correlated Flat-bottom Elastic Network Model for Improved Bond Rearrangement in Reaction Paths, JCTC, 21, 3513−3522 (2025). [doi: 10.1021/acs.jctc.4c01549]
     """
 
-    # MLIP solvent corrections are not part of the ASE DMF evaluator. The DFT
-    # ASE adapter is self-consistently solvent-aware and is allowed by the guard.
+    # AnySolv and native DFT solvent models are part of the ASE evaluator;
+    # the xTB correction is supported only by the pysisyphus evaluator.
     _validate_dmf_solvent_compatibility(calc_cfg)
 
     dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()
@@ -892,9 +894,9 @@ def _optimize_single(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
-              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+              help="Optional xTB or AnySolv solvent correction for MLIP backends; dft uses native PySCF PCM/SMD. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "anysolv", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx or AnySolv for MLIP backends; PCM/SMD for dft. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).")
 @add_solvent_xtb_cmd_option()
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
@@ -904,6 +906,7 @@ def _optimize_single(
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_dft_calculator_options()
+@add_plot_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

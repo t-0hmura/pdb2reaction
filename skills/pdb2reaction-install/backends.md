@@ -404,6 +404,19 @@ The correction applies to the geometry and energy commands.
 energy recomputation. It is not accepted by `dft`, `extract`, or
 structure-only utilities; `dft` has its own `--solvent` for PySCF PCM and SMD.
 
+## AnySolv
+
+Install the optional dependency with `pip install 'pdb2reaction[anysolv]' huggingface_hub`. Use `--solvent water --solvent-model anysolv`. MoE is recommended for accuracy-sensitive reaction calculations, especially charge separation; compact remains the bundled lightweight option. See the [paper](https://arxiv.org/abs/2610.17226) and [official repository](https://github.com/Ant-on-knee/anysolv).
+
+The user must request access and accept the FAIR Chemistry License on the [AnySolv model page](https://huggingface.co/antonknee/anysolv). Once access is available, authenticate and download the weights:
+
+```bash
+hf auth login
+hf download antonknee/anysolv model_moe.pt --local-dir ./anysolv-weights
+```
+
+Set `calc.solvent_model: anysolv` and `calc.anysolv_checkpoint` to the absolute path of the downloaded `model_moe.pt`. Without an explicit checkpoint, the bundled `model_compact` is used. Do not silently substitute compact for an explicitly selected MoE checkpoint when access or weights are missing. Ordinary calculations and DMF use the same correction; its Hessian is a central force difference.
+
 ## Probe the compute environment
 
 Use these probes only when the host is unknown. Run the report once, then the

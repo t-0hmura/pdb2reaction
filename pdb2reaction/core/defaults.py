@@ -14,6 +14,8 @@ from pysisyphus.normal_modes import DEFAULT_FREQUENCY_ZERO_CUTOFF_CM
 # path_opt/path_search/scan/all all reject unknown --thresh values at
 # Click parse time).
 
+PLOT_DEFAULT = True
+
 THRESH_CHOICES = ("gau_loose", "gau", "gau_tight", "gau_vtight", "baker", "never")
 
 
@@ -83,6 +85,8 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "solvent_model": "alpb",
     "xtb_cmd": "xtb",
     "xtb_acc": 0.2,
+    "anysolv_checkpoint": "model_compact",
+    "anysolv_hessian_step": 1e-3,
 }
 
 # Extended UMA calculator defaults with freeze_atoms support

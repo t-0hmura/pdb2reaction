@@ -143,7 +143,7 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
     assert "--solvent" not in basic.output
     assert "--solvent" in advanced.output
     advanced_text = " ".join(advanced.output.lower().split())
-    assert "xtb solvent delta" in advanced_text
+    assert "xtb or anysolv solvent correction" in advanced_text
     assert "native pyscf pcm/smd" in advanced_text
 
     # Compare on each option's rendered help-record column (e.g. "-r, --radius

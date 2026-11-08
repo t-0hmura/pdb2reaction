@@ -99,11 +99,44 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 `--hessian-calc-mode` で Hessian の計算方式を選びます。`FiniteDifference`（デフォルト）は力の中心差分を取り、`Analytical` は選んだデバイスで 2 階の自動微分を行います。UMA、ORB、MACE、AIMNet2、DFT は解析 Hessian を計算でき、自作の calculator は `FiniteDifference` だけに対応します。
 
-## xTB 溶媒補正
+## 溶媒補正
+
+MLIPバックエンドでは、`--solvent NAME`で暗黙溶媒の補正を加えられます。溶媒を指定したときのデフォルトはxTBのALPBです。高速・高精度とされる溶媒補正MLモデルのAnySolvも選べます。MoEモデルの利用には、別途申請などの手順が必要です。`--solvent none`（デフォルト）では補正しません。DFTバックエンドと`dft`コマンドでは、PySCFのPCM/SMDを使います。
+
+### xTB 溶媒補正
 
 MLIP のバックエンドでは、`--solvent NAME` で xTB の溶媒和エネルギー `E_xTB(solvent) - E_xTB(vacuum)` と、それに対応する力と Hessian の差を MLIP のポテンシャル面に足します。主な用途は小分子の溶液中の計算です。`--solvent-model` で `alpb`（デフォルト）か `cpcmx` を選びます。`--solvent-xtb-cmd` には追加の引数を含めた xTB のコマンドを渡せます。xTB の SCC（自己無撞着電荷）の反復が収束しないときは、`'xtb --etemp 1000'` のように指定してください。xTB は `pdb2reaction` と一緒には入らないので、`conda install -c conda-forge xtb` で導入してください。
 
 補正のたびに xTB を 2 回（溶媒中と真空中）実行するので、200〜300 原子程度が実用の目安です（上限ではありません）。実際の系と計算機で計算時間を測ってください。この補正は指定したバルクの溶媒を表すので、酵素クラスターに使うのはその環境を仮定する根拠があるときだけにしてください。
+
+### AnySolv
+
+`--solvent water --solvent-model anysolv`で、AnySolvが推論する溶媒補正のエネルギー・力をMLIPに加えます。通常の計算とDMFで同じ補正を使います。補正Hessianは、力の有限差分から求めます。
+
+モデルには、AnySolvライブラリに同梱される`compact`モデルと、Hugging Faceから別途取得する`MoE`モデルがあります。精度を重視する反応計算、特に電荷分離を伴う反応には、MoEモデルが推奨されています。
+
+compactは溶媒和エネルギーや分配係数でMoEに近い精度を示す一方、電荷分離を伴う反応で生成物を過安定化する例が報告されています。
+
+詳細は[論文](https://arxiv.org/abs/2610.17226)と[公式リポジトリ](https://github.com/Ant-on-knee/anysolv)を参照してください。
+
+MoEの重みは別途取得が必要です。[Hugging FaceのAnySolvモデルページ](https://huggingface.co/antonknee/anysolv)で利用申請とFAIR Chemistry Licenseへの同意を行い、アクセスが可能になったら認証してダウンロードしてください。
+
+```bash
+pip install 'pdb2reaction[anysolv]' huggingface_hub
+hf auth login
+hf download antonknee/anysolv model_moe.pt --local-dir ./anysolv-weights
+```
+
+取得した重みの絶対パスはYAMLで指定します。
+
+```yaml
+calc:
+  solvent: water
+  solvent_model: anysolv
+  anysolv_checkpoint: /absolute/path/to/anysolv-weights/model_moe.pt
+```
+
+モデルを指定しない場合は、同梱の`model_compact`を使います。
 
 ## DFT バックエンド
 

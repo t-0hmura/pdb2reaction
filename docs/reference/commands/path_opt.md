@@ -109,14 +109,18 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Computationally expensive xTB solvent delta
-                                  correction for MLIP backends; dft uses native
-                                  PySCF PCM/SMD. Examples: water, methanol,
-                                  acetonitrile, dmso, thf, toluene. 'none'
-                                  disables it.  [default: none]
-  --solvent-model [alpb|cpcmx|pcm|smd]
-                                  Solvent model: ALPB/CPCMx for MLIP backends;
-                                  PCM/SMD for dft.  [default: alpb]
+  --solvent TEXT                  Optional xTB or AnySolv solvent correction for
+                                  MLIP backends; dft uses native PySCF PCM/SMD.
+                                  'none' disables it. AnySolv MoE is recommended
+                                  for accuracy-sensitive reaction calculations;
+                                  see docs for model access and setup.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx|anysolv|pcm|smd]
+                                  Solvent model: ALPB/CPCMx or AnySolv for MLIP
+                                  backends; PCM/SMD for dft. For AnySolv, MoE is
+                                  recommended; select its weights with
+                                  calc.anysolv_checkpoint (see docs for model
+                                  access).  [default: alpb]
   --solvent-xtb-cmd TEXT          Command for the xTB solvent correction,
                                   including optional xTB arguments. If xTB SCC
                                   convergence is poor, increasing --etemp may
@@ -183,5 +187,7 @@ Options:
                                   unaffected.  [default: (auto); x>=1]
   --dft-memory, --dft-mem TEXT    PySCF host RAM limit (for example 64GB or
                                   120000MB).  [default: (auto)]
+  --plot / --no-plot              Write workflow plots. Use --no-plot to skip
+                                  figures and Chrome rendering.  [default: plot]
   -h, --help                      Show this message and exit.
 ```

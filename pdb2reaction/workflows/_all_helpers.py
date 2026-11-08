@@ -21,7 +21,7 @@ def build_energy_level_dict(
     energies_au: Sequence[float],
     ref_energy: float,
     au_to_kcal: float,
-    diagram_path: str,
+    diagram_path: Optional[str],
     structures: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Assemble a segment_log sub-dict for one energy level (MLIP / Gibbs / DFT).
@@ -128,6 +128,7 @@ def build_pipeline_summary_payload(
         "dmf_correlated": bool(dmf_correlated),
         "mlip_backend": mlip_backend,
         "mlip_model": mlip_model,
+        "solvation_correction": summary.get("solvation_correction"),
         "mlip_model_label": mlip_model_label,
         "mlip_task": mlip_task,
         "mlip_precision": mlip_precision,

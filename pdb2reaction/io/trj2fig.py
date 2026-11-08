@@ -32,6 +32,7 @@ from pdb2reaction.cli.common_options import (
     solvent_xtb_cmd_override,
 )
 from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
+from pdb2reaction.core.plotting import plot_enabled
 from pdb2reaction.io.plotly_image import write_plotly_image
 
 logger = logging.getLogger(__name__)
@@ -242,6 +243,8 @@ def save_outputs(
     """
     for out in outs:
         ext = out.suffix.lower()
+        if ext != ".csv" and not plot_enabled():
+            continue
         if ext == ".csv":
             write_csv(out, energies, values, unit, is_delta)
         elif ext == ".html":
@@ -330,6 +333,7 @@ def run_trj2fig(
     fig = build_figure(values, ylabel, reverse_x) if need_plot else None
 
     out_paths = [Path(o).expanduser().resolve() for o in outs]
+    out_paths = [o for o in out_paths if o.suffix.lower() == ".csv" or plot_enabled()]
     save_outputs(out_paths, fig, energies, values, unit, is_delta)
 
     return {
@@ -417,9 +421,9 @@ def run_trj2fig(
 @add_precision_option()
 @add_compile_option()
 @click.option("--solvent", default="none", show_default=True,
-              help="Computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              show_default=True, help="xTB solvent model.")
+              help="Optional xTB or AnySolv solvent correction. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "anysolv"]),
+              show_default=True, help="Solvent correction: ALPB/CPCMx or AnySolv. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).")
 @add_solvent_xtb_cmd_option()
 @click.option(
     "--out-json/--no-out-json",

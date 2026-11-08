@@ -120,6 +120,8 @@ class MACECalculator(MLIPCalculator):
         self.default_dtype = str(default_dtype)
 
         self._calc = self._build_calc(self.model_spec)
+        from pdb2reaction.io.summary import register_mace_model_type
+        register_mace_model_type(self.model_spec, self._calc)
 
     @staticmethod
     def _download_to_tmp(url: str) -> str:

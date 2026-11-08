@@ -48,11 +48,16 @@ Options:
   --compile / --no-compile        torch.compile the UMA or ORB model: slower
                                   first call, slightly faster afterwards; worth
                                   it only for long runs.  [default: (off)]
-  --solvent TEXT                  Computationally expensive xTB solvent delta
-                                  correction. Examples: water, methanol,
-                                  acetonitrile, dmso, thf, toluene. 'none'
-                                  disables it.  [default: none]
-  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  --solvent TEXT                  Optional xTB or AnySolv solvent correction.
+                                  'none' disables it. AnySolv MoE is recommended
+                                  for accuracy-sensitive reaction calculations;
+                                  see docs for model access and setup.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx|anysolv]
+                                  Solvent correction: ALPB/CPCMx or AnySolv. For
+                                  AnySolv, MoE is recommended; select its
+                                  weights with calc.anysolv_checkpoint (see docs
+                                  for model access).  [default: alpb]
   --solvent-xtb-cmd TEXT          Command for the xTB solvent correction,
                                   including optional xTB arguments. If xTB SCC
                                   convergence is poor, increasing --etemp may

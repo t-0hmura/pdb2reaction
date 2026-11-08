@@ -406,15 +406,15 @@ def add_scan_common_options(
             "--solvent",
             default="none",
             show_default=True,
-            help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
+            help="Optional xTB or AnySolv solvent correction for MLIP backends; dft uses native PySCF PCM/SMD. 'none' disables it. AnySolv MoE is recommended for accuracy-sensitive reaction calculations; see docs for model access and setup.",
         ),
         click.option(
             "--solvent-model",
             "solvent_model",
             default="alpb",
-            type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
+            type=click.Choice(["alpb", "cpcmx", "anysolv", "pcm", "smd"]),
             show_default=True,
-            help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.",
+            help="Solvent model: ALPB/CPCMx or AnySolv for MLIP backends; PCM/SMD for dft. For AnySolv, MoE is recommended; select its weights with calc.anysolv_checkpoint (see docs for model access).",
         ),
     ]
     if include_baseline:
